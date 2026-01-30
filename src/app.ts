@@ -44,8 +44,11 @@ export default async function startServe() {
     const setting = await u.db("t_setting").where("id", 1).select("tokenKey").first();
     if (!setting) return res.status(500).send({ message: "服务器未配置，请联系管理员" });
     const { tokenKey } = setting;
-    const token = req.headers.authorization?.replace("Bearer ", "");
-    if (req.path == "/other/login") return next();
+    // 从 header 或 query 参数获取 token
+    const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string).replace("Bearer ", "");
+    // 白名单路径
+    if (req.path === "/other/login") return next();
+
     if (!token) return res.status(401).send({ message: "未提供token" });
     try {
       const decoded = jwt.verify(token, tokenKey as string);

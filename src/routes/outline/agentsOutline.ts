@@ -82,7 +82,6 @@ router.ws("/", async (ws, req) => {
   type DataTyype = "msg" | "setNovel" | "cleanHistory";
   ws.on("message", async function (rawData: string) {
     let data: { type: DataTyype; data: any } | null = null;
-
     try {
       data = JSON.parse(rawData);
     } catch (error) {
