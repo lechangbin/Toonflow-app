@@ -1,3 +1,13 @@
+<p>
+  <a href="https://github.com/HBAI-Ltd/Toonflow-app">
+    <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" />
+  </a>
+  &nbsp;|&nbsp;
+  <a href="https://gitee.com/HBAI-Ltd/Toonflow-app">
+    <img src="https://img.shields.io/badge/Gitee-C71D23?style=flat-square&logo=gitee&logoColor=white" alt="Gitee" />
+  </a>
+</p>
+
 <p align="center">
   <a href="../README.md">中文</a> |
   <strong>English</strong>
@@ -13,9 +23,9 @@
     <b>
       AI Short Drama Factory
       <br />
-      Turn novels into episodes with just a tap!
+      Turn novels into episodes with a tap!
       <br />
-      AI Script × AI Visuals × Rapid Generation 🔥
+      AI Script × AI Imagery × Lightning-fast Generation 🔥
     </b>
   </p>
   <p align="center">
@@ -30,100 +40,229 @@
     </a>
   </p>
   
-  > 🚀 **One-stop Short Drama Production**: From text to characters, from storyboards to videos, zero-barrier full-process AI automation, boosting creative efficiency by 10x+!
+  > 🚀 **One-stop Short Drama Workflow**: From text to character, storyboard to video, a full AI-powered process with zero threshold, boosting creative efficiency by 10x+!
 </div>
 
 ---
 
 # 🌟 Main Features
 
-Toonflow is an AI tool that leverages AI technology to automatically convert novels into scripts, combined with AI-generated images and videos for efficient short drama creation. With Toonflow, you can easily complete the entire workflow from text to visuals, making short drama production smarter and more convenient.
+Toonflow is an AI tool that leverages AI technology to automatically turn novels into scripts, then uses AI to generate images and videos for efficient short drama production. With Toonflow, you can easily accomplish the entire workflow from text to visuals, making short drama creation more intelligent and convenient.
 
 - ✅ **Character Generation**  
-   Automatically analyzes original novel text, intelligently identifies and generates character settings including appearance, personality, identity, and other detailed information, providing a reliable foundation for subsequent script and visual creation.
+   Automatically analyzes the original novel text, intelligently recognizes and generates character profiles, including appearance, personality, identity, etc., providing a reliable foundation for subsequent script and image creation.
 - ✅ **Script Generation**  
-   Based on selected events and chapters, the system automatically generates structured scripts covering dialogue, scene descriptions, and plot progression, achieving efficient conversion from literary text to film scripts.
-- ✅ **Storyboard Production**  
-   Based on script content, intelligently generates storyboard prompts and visual designs, detailing foreground, midground, background, character dynamics, prop settings, and scene layouts. Automatically generates storyboards from scripts, providing a complete blueprint for video production.
+   Based on selected events and chapters, the system automatically generates structured scripts, covering dialogue, scene descriptions, and plot direction, enabling an efficient transition from literary text to screenplay.
+- ✅ **Storyboard Creation**  
+   According to the script content, it intelligently generates storyboard prompts and visual designs, detailing foreground, middle ground, background, character movements, props, and scene layouts. Automatically produces storyboards from the script, providing a comprehensive blueprint for video production.
 - ✅ **Video Synthesis**  
-   Integrates AI image and video technology, enabling AI-generated video clips. Incorporates online editing with support for personalized output adjustments, making film production efficient and streamlined.
+   Integrates AI image and video techniques, supporting generation of video clips via AI. With built-in online editing, supports personalized adjustments and outputs, making filmmaking highly collaborative and efficient.
 
 ---
 
 # 📦 Application Scenarios
 
-- Short video content creation
-- Novel-to-film experimentation
+- Short video content production
+- Novel-to-film experiments
 - AI Literary Adaptation Tools
 - Script development and rapid prototyping
 - Video material generation
 
 ---
 
-# 🚀 Installation and Usage Guide
+# 🔰 User Guide
+
+## 📺 Video Tutorial
+
+https://www.bilibili.com/video/BV1na6wB6Ea2
+[![Toonflow 8-minute Quick Start AI Video](./videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
+
+**Toonflow 8-Minute Quick Start AI Video**
+👉 [Click to watch](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+
+📱 Watch via WeChat QR scan
+
+<img src="./videoQR.png" alt="Watch on WeChat" width="150"/>
+
+---
+
+# 🚀 Installation
 
 ## Prerequisites
 
 Before installing and using this software, please prepare the following:
 
-- ✅ Large Language Model AI service API endpoint.
-- ✅ Sora or Doubao video service API endpoint
-- ✅ Nano Banana Pro image generation model service API endpoint
+- ✅ Large Language Model AI service endpoint.
+- ✅ Sora or Doubao video service endpoint
+- ✅ Nano Banana Pro image generation model service endpoint
 
 ## Local Installation
 
-### 1. Download and Install
+### 1. Download & Install
 
-| Operating System | Download Link                                                 | Description                     |
-| :--------------: | :------------------------------------------------------------ | :------------------------------ |
-|     Windows      | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)  | Official release package, click to download |
-|      Linux       | ⚙️ Coming Soon                                                | Coming soon, stay tuned         |
-|      macOS       | ⚙️ Coming Soon                                                | Coming soon, stay tuned         |
+| Operating System | GitHub Download                                          | Gitee Download (Recommended for China)                      | Note               |
+| :--------------: | :------------------------------------------------------ | :---------------------------------------------------------- | :----------------- |
+| Windows          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitee.com/HBAI-Ltd/Toonflow-app/releases) | Official installer |
+| Linux            | ⚙️ Coming soon                                          | ⚙️ Coming soon                                              | To be released     |
+| macOS            | ⚙️ Coming soon                                          | ⚙️ Coming soon                                              | To be released     |
 
-> Note: Currently only Windows version is supported, other systems will be available soon.
+> Note: Currently, only Windows is supported. Other systems will be gradually supported.
 
-### 2. Start Service
+### 2. Launch the Service
 
-After installation, launch the program to start using the service.
+After installation, start the program to use the service.
+
+> ⚠️ **First login**  
+> Account: `admin`  
+> Password: `admin123`
 
 ## Cloud Deployment
 
-Cloud installation and deployment tutorials are being prepared, stay tuned.
+### I. Server Requirements
+
+- **OS**: Ubuntu 20.04+ / CentOS 7+
+- **Node.js**: 23.11.1+
+- **RAM**: 1GB+
+
+### II. Server Deployment
+
+#### 1. Install the Environment
+
+```bash
+# Install Node.js
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install 24
+# Install Yarn & PM2
+npm install -g yarn pm2
+```
+
+#### 2. Deploy the Project
+
+**Clone from GitHub:**
+
+```bash
+cd /opt
+git clone https://github.com/HBAI-Ltd/Toonflow-app.git
+cd Toonflow-app
+yarn install
+yarn build
+```
+
+**Clone from Gitee (recommended in China):**
+
+```bash
+cd /opt
+git clone https://gitee.com/HBAI-Ltd/Toonflow-app.git
+cd Toonflow-app
+yarn install
+yarn build
+```
+
+#### 3. Configure PM2
+
+Create a `pm2.json` file:
+
+```json
+{
+  "name": "toonflow-app",
+  "script": "build/app.js",
+  "instances": "max",
+  "exec_mode": "cluster",
+  "env": {
+    "NODE_ENV": "prod",
+    "PORT": 60000,
+    "OSSURL": "http://127.0.0.1:60000/"
+  }
+}
+```
+
+**Environment Variable Description:**
+
+| Variable     | Description                                 |
+| ------------ | ------------------------------------------- |
+| `NODE_ENV`   | Runtime environment, `prod` means production|
+| `PORT`       | Service listening port                      |
+| `OSSURL`     | File storage access address for static files|
 
 ---
 
-# 🔧 Development Process Guide
+#### 4. Start the Service
 
-## Development Environment Setup
+```bash
+pm2 start pm2.json
+pm2 startup
+pm2 save
+```
 
-- **Node.js**: Version 23.11.1 or above required
-- **Yarn**: Recommended as the project package manager
+#### 5. Common Commands
 
-## Quick Start
+```bash
+pm2 list              # List processes
+pm2 logs toonflow-app # View logs
+pm2 restart all       # Restart all services
+pm2 monit             # Monitoring panel
+```
 
-1. **Install Dependencies**
+#### 6. Deploy the Frontend Website
 
-   Please first run the following command in the project root directory to install dependencies:
+To deploy or customize the frontend separately, refer to the frontend repo:
+
+- **GitHub**: [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
+- **Gitee**: [Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
+
+> 💡 **Note**: This repo includes pre-compiled frontend assets; regular users don’t need to deploy frontend separately. The frontend repo is for developers needing secondary development.
+
+---
+
+# 🔧 Development Workflow Guide
+
+## Development Environment Preparation
+
+- **Node.js**: Version 23.11.1+
+- **Yarn**: Recommended package manager
+
+## Quick Project Startup
+
+1. **Clone the project**
+
+   **From GitHub:**
+
+   ```bash
+   git clone https://github.com/HBAI-Ltd/Toonflow-app.git
+   cd Toonflow-app
+   ```
+
+   **From Gitee (china):**
+
+   ```bash
+   git clone https://gitee.com/HBAI-Ltd/Toonflow-app.git
+   cd Toonflow-app
+   ```
+
+2. **Install Dependencies**
+
+   Run the following in the root directory:
 
    ```bash
    yarn install
    ```
 
-2. **Start Development Environment**
+3. **Start Development Server**
 
-   - Run development service with Node.js:
+   - Launch dev server with Node.js:
 
      ```bash
      yarn dev #port 60000
      ```
 
-   - Run development service quickly with Bun:
+   - Use Bun to quickly start dev server:
 
      ```bash
      yarn bun:dev #port 60000
      ```
 
-3. **Project Build**
+4. **Build the Project**
 
    - Compile and generate TypeScript files:
 
@@ -131,32 +270,42 @@ Cloud installation and deployment tutorials are being prepared, stay tuned.
      yarn build
      ```
 
-   - Package as Windows platform executable:
+   - Package as a Windows executable:
 
      ```bash
      yarn dist:win
      ```
 
-4. **Code Quality Check**
+5. **Code Quality Check**
 
-   - Perform global syntax and standard checks:
+   - Lint globally for syntax and style:
 
      ```bash
      yarn lint
      ```
 
+## Frontend Development
+
+To modify the frontend, go to the frontend repo:
+
+- **GitHub**: [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
+- **Gitee**: [Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
+
+After building the frontend, copy the contents of the `dist` folder into this project’s `scripts/web` directory for integration.
+
 ## Project Structure
 
 ```
-📂 docs/                    # Documentation resources
+📂 docs/                    # Documentation
 📂 scripts/                 # Build scripts and static resources
+│  └─ 📂 web/              # Embedded frontend build output
 📂 src/
 ├─ 📂 agents/              # AI Agent modules
-├─ 📂 lib/                 # Common libraries (database initialization, response format)
+├─ 📂 lib/                 # Shared libs (DB init, response format)
 ├─ 📂 middleware/          # Middleware
-├─ 📂 routes/              # Route modules
+├─ 📂 routes/              # Routing modules
 │  ├─ 📂 assets/           # Asset management
-│  ├─ 📂 index/            # Homepage
+│  ├─ 📂 index/            # Home page
 │  ├─ 📂 novel/            # Novel management
 │  ├─ 📂 other/            # Other features
 │  ├─ 📂 outline/          # Outline management
@@ -170,63 +319,121 @@ Cloud installation and deployment tutorials are being prepared, stay tuned.
 │  └─ 📂 video/            # Video generation
 ├─ 📂 types/               # TypeScript type declarations
 ├─ 📂 utils/               # Utility functions
-├─ 📄 app.ts               # Application entry
-├─ 📄 core.ts              # Route core
-├─ 📄 env.ts               # Environment variable handling
+├─ 📄 app.ts               # App entry point
+├─ 📄 core.ts              # Routing core
+├─ 📄 env.ts               # Env variable handling
 ├─ 📄 err.ts               # Error handling
 ├─ 📄 router.ts            # Route registration
-└─ 📄 utils.ts             # General utilities
-📂 uploads/                 # Upload file directory
+└─ 📄 utils.ts             # Common tools
+📂 uploads/                 # Uploads
 📄 LICENSE                  # License
-📄 NOTICES.txt              # Third-party dependency declarations
-📄 package.json             # Project configuration
+📄 NOTICES.txt              # 3rd-party notices
+📄 package.json             # Project config
 📄 README.md                # Project description
-📄 tsconfig.json            # TypeScript configuration
+📄 tsconfig.json            # TypeScript config
 ```
+
+---
+
+# 🔗 Related Repos
+
+| Repository        | Description                           | GitHub                                             | Gitee                                            |
+| ----------------- | ------------------------------------- | -------------------------------------------------- | ------------------------------------------------ |
+| **Toonflow-app**  | Full client (this repo, for users)    | [GitHub](https://github.com/HBAI-Ltd/Toonflow-app) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-app) |
+| **Toonflow-web**  | Frontend source (for devs)            | [GitHub](https://github.com/HBAI-Ltd/Toonflow-web) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-web) |
+
+> 💡 **Tip**: If you just want to use Toonflow, download the client from this repo. The web repo is only for frontend customization/development.
 
 ---
 
 # 📝 Development Roadmap
 
-We are continuously optimizing the product. Here are the recent development priorities:
+We continue to optimize the product. Key focuses for the near future:
 
-1. Core Feature Upgrades
+1. Core Function Upgrades
 
-- `🧩 Prompt Enhancement Generation Agent` AI-powered intelligent video prompt enhancement, automatic storyboard script decomposition, supporting multi-shot intelligent fusion and smooth transitions
-- `📄 Multi-format Text Support` Extending intelligent parsing beyond novels to scripts, comic scripts, game dialogue texts, and other formats
+- `🧩 Prompt Refinement Agent` AI-enhanced prompt generation for videos, auto-parsing storyboards, intelligent multi-shot fusion and smooth transitions
+- `📄 Multi-format Text Support` Extending to scripts, manga scripts, game dialogue text, and more formats beyond novels
 
-2. Production Workflow Optimization
+2. Production Flow Optimization
 
-- `👗 Character Costume and Props Management` Strengthen costume, makeup, and prop consistency for long-form content, supporting multi-episode associated memory and automatic outfit generation
-- `📦 Batch Processing/Task Queue` Support multi-chapter simultaneous processing, background task management, real-time progress monitoring, and interruption recovery
+- `👗 Character Costume & Props Management` Improved consistency for costumes, makeup, props across long content, support for multi-episode memory and auto costume generation
+- `📦 Batch Processing/Task Queues` Process multiple chapters at once, backend task management, real-time monitoring and resume-on-interrupt
 
 3. Visual Generation Enhancement
 
-- `🎭 Multi-style Template Library` Built-in multiple visual style packages, supporting one-click style conversion and user-defined style saving
-- `⏱️ Intelligent Rhythm Analysis/Optimization` Analyze plot emotion curves, automatically suggest climax points and rhythm changes, optimize storyboard arrangement and production workflow
+- `🎭 Multi-style Template Library` Bundled visual style packs, one-click style swap, user-defined style saving
+- `⏱️ Intelligent Rhythm Analysis/Optimization` Analyze plot emotional arcs, auto-suggest climaxes and pace changes, optimized storyboard workflow
 
 ---
 
-# 📜 License
+# 👨‍👩‍👧‍👦 WeChat Discussion Groups
 
-Toonflow is open-sourced under the AGPL-3.0 license. License details: https://www.gnu.org/licenses/agpl-3.0.html
+~~Group 1~~
 
-You may use Toonflow for various purposes including commercial use, in compliance with the terms and conditions of AGPL-3.0.
+~~Group 2~~
 
-For proprietary commercial licenses exempt from AGPL-3.0 restrictions, please contact us via email.
+~~Group 3~~
+
+~~Group 4~~
+
+~~Group 5~~
+
+Group 6:
+
+<img src="./chat6QR.jpg" alt="Toonflow Logo" height="400"/>
+<p>Scan with WeChat to join. If the QR expires, open an issue to request an update.</p>
 
 ---
 
 # 💌 Contact Us
 
-📧 Email: [ltlctools@outlook.com](mailto:ltlctools@outlook.com?subject=Toonflow Inquiry)
+📧 Email: [ltlctools@outlook.com](mailto:ltlctools@outlook.com?subject=Toonflow%20Inquiry)
+
+---
+
+# 📜 License
+
+Toonflow is open source under the AGPL-3.0 license. Details: https://www.gnu.org/licenses/agpl-3.0.html
+
+You may use Toonflow for any purpose, including commercial, as long as you adhere to the AGPL-3.0 terms and conditions.
+
+For proprietary/commercial licensing exempt from AGPL-3.0, please contact us by email.
 
 ---
 
 # ⭐️ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=Date)](https://star-history.com/#HBAI-Ltd/Toonflow-app&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=date&legend=top-left)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app&type=date&legend=top-left)
 
-# Third-party Dependency List
+---
 
-Please refer to `NOTICES.txt`
+# 🙏 Special Thanks
+
+Thanks to the following open-source projects for empowering Toonflow:
+
+- [Express](https://expressjs.com/) – Fast, open, minimal Node.js web framework
+- [LangChain](https://js.langchain.com/) – Framework for building LLM apps
+- [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3) – High-performance SQLite3 bindings
+- [Sharp](https://sharp.pixelplumbing.com/) – High-performance Node.js image processing
+- [Axios](https://axios-http.com/) – Promise-based HTTP client
+- [Zod](https://zod.dev/) – TypeScript-first schema validation
+- [Aigne](https://github.com/aigne-com/aigne) – Unified LLM API middleware
+- [Electron](https://www.electronjs.org/) – Cross-platform desktop app framework
+
+Thanks to the following organizations/individuals for supporting Toonflow:
+
+<table>
+  <tr>
+    <td>
+      <img src="./sponsored/sophnet.png" alt="Sophnet Cloud Logo" width="48">
+    </td>
+    <td>
+      <b>Sophnet Cloud</b> provided compute sponsorship
+      <a href="https://www.sophnet.com/">[Official Site]</a>
+    </td>
+  </tr>
+</table>
+
+For the full list of third-party dependencies, see `NOTICES.txt`
+

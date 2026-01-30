@@ -1,3 +1,13 @@
+<p>
+  <a href="https://github.com/HBAI-Ltd/Toonflow-app">
+    <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" />
+  </a>
+  &nbsp;|&nbsp;
+  <a href="https://gitee.com/HBAI-Ltd/Toonflow-app">
+    <img src="https://img.shields.io/badge/Gitee-C71D23?style=flat-square&logo=gitee&logoColor=white" alt="Gitee" />
+  </a>
+</p>
+
 <p align="center">
   <strong>中文</strong> | 
   <a href="./docs/README.en.md">English</a>
@@ -60,7 +70,23 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
 
 ---
 
-# 🚀 安装与使用指南
+# 🔰 使用指南
+
+## 📺 视频教程
+
+https://www.bilibili.com/video/BV1na6wB6Ea2
+[![Toonflow 8 分钟快速上手 AI 视频](./docs/videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
+
+**Toonflow 8 分钟快速上手 AI 视频**
+👉 [点击观看](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+
+📱 手机微信扫码观看
+
+<img src="./docs/videoQR.png" alt="微信扫码观看" width="150"/>
+
+---
+
+# 🚀 安装
 
 ## 前置条件
 
@@ -74,11 +100,11 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
 
 ### 1. 下载与安装
 
-| 操作系统 | 下载链接                                                 | 说明                     |
-| :------: | :------------------------------------------------------- | :----------------------- |
-| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | 官方发布安装包，点击下载 |
-|  Linux   | ⚙️ 敬请期待                                              | 即将发布，请持续关注     |
-|  macOS   | ⚙️ 敬请期待                                              | 即将发布，请持续关注     |
+| 操作系统 | GitHub 下载                                                  | Gitee 下载（国内推荐）                                      | 说明           |
+| :------: | :----------------------------------------------------------- | :---------------------------------------------------------- | :------------- |
+| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitee.com/HBAI-Ltd/Toonflow-app/releases) | 官方发布安装包 |
+|  Linux   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                                 | 即将发布       |
+|  macOS   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                                 | 即将发布       |
 
 > 注意：目前仅支持 Windows 版本，其他系统将陆续开放。
 
@@ -86,9 +112,106 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
 
 安装完成后，启动程序即可开始使用本服务。
 
+> ⚠️ **首次登录**  
+> 账号：`admin`  
+> 密码：`admin123`
+
 ## 云端部署
 
-云端安装及部署教程正在整理中，敬请期待。
+### 一、服务器环境要求
+
+- **系统**：Ubuntu 20.04+ / CentOS 7+
+- **Node.js**：23.11.1+
+- **内存**：1GB+
+
+### 二、服务器部署
+
+#### 1. 安装环境
+
+```bash
+# 安装 Node.js
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install 24
+# 安装 Yarn 和 PM2
+npm install -g yarn pm2
+```
+
+#### 2. 部署项目
+
+**从 GitHub 克隆：**
+
+```bash
+cd /opt
+git clone https://github.com/HBAI-Ltd/Toonflow-app.git
+cd Toonflow-app
+yarn install
+yarn build
+```
+
+**从 Gitee 克隆（国内推荐）：**
+
+```bash
+cd /opt
+git clone https://gitee.com/HBAI-Ltd/Toonflow-app.git
+cd Toonflow-app
+yarn install
+yarn build
+```
+
+#### 3. 配置 PM2
+
+创建 `pm2.json` 文件：
+
+```json
+{
+  "name": "toonflow-app",
+  "script": "build/app.js",
+  "instances": "max",
+  "exec_mode": "cluster",
+  "env": {
+    "NODE_ENV": "prod",
+    "PORT": 60000,
+    "OSSURL": "http://127.0.0.1:60000/"
+  }
+}
+```
+
+**环境变量说明：**
+
+| 变量       | 说明                               |
+| ---------- | ---------------------------------- |
+| `NODE_ENV` | 运行环境，`prod` 表示生产环境      |
+| `PORT`     | 服务监听端口                       |
+| `OSSURL`   | 文件存储访问地址，用于静态资源访问 |
+
+---
+
+#### 4. 启动服务
+
+```bash
+pm2 start pm2.json
+pm2 startup
+pm2 save
+```
+
+#### 5. 常用命令
+
+```bash
+pm2 list              # 查看进程
+pm2 logs toonflow-app # 查看日志
+pm2 restart all       # 重启服务
+pm2 monit             # 监控面板
+```
+
+#### 6. 部署前端网站
+
+如需单独部署或定制前端界面，请参考前端仓库：
+
+- **GitHub**：[Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
+- **Gitee**：[Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
+
+> 💡 **说明**：本仓库已内置编译好的前端资源，普通用户无需单独部署前端。前端仓库仅供需要二次开发的开发者使用。
 
 ---
 
@@ -101,7 +224,23 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
 
 ## 快速启动项目
 
-1. **安装依赖**
+1. **克隆项目**
+
+   **从 GitHub 克隆：**
+
+   ```bash
+   git clone https://github.com/HBAI-Ltd/Toonflow-app.git
+   cd Toonflow-app
+   ```
+
+   **从 Gitee 克隆（国内推荐）：**
+
+   ```bash
+   git clone https://gitee.com/HBAI-Ltd/Toonflow-app.git
+   cd Toonflow-app
+   ```
+
+2. **安装依赖**
 
    请先在项目根目录下执行以下命令以安装依赖项：
 
@@ -109,7 +248,7 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
    yarn install
    ```
 
-2. **启动开发环境**
+3. **启动开发环境**
 
    - 使用 Node.js 运行开发服务：
 
@@ -123,7 +262,7 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
      yarn bun:dev #端口60000
      ```
 
-3. **项目打包**
+4. **项目打包**
 
    - 编译并生成 TypeScript 文件：
 
@@ -137,7 +276,7 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
      yarn dist:win
      ```
 
-4. **代码质量检查**
+5. **代码质量检查**
 
    - 进行全局语法和规范检查：
 
@@ -145,11 +284,21 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
      yarn lint
      ```
 
+## 前端开发
+
+如需修改前端界面，请前往前端仓库进行开发：
+
+- **GitHub**：[Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
+- **Gitee**：[Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
+
+前端构建后，将 `dist` 目录内容复制到本项目的 `scripts/web` 目录即可集成。
+
 ## 项目结构
 
 ```
 📂 docs/                    # 文档资源
 📂 scripts/                 # 构建脚本与静态资源
+│  └─ 📂 web/              # 前端编译产物（内置）
 📂 src/
 ├─ 📂 agents/              # AI Agent 模块
 ├─ 📂 lib/                 # 公共库（数据库初始化、响应格式）
@@ -186,6 +335,17 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
 
 ---
 
+# 🔗 相关仓库
+
+| 仓库             | 说明                               | GitHub                                             | Gitee                                            |
+| ---------------- | ---------------------------------- | -------------------------------------------------- | ------------------------------------------------ |
+| **Toonflow-app** | 完整客户端（本仓库，推荐普通用户） | [GitHub](https://github.com/HBAI-Ltd/Toonflow-app) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-app) |
+| **Toonflow-web** | 前端源代码（适合前端开发者）       | [GitHub](https://github.com/HBAI-Ltd/Toonflow-web) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-web) |
+
+> 💡 **提示**：如果您只是想使用 Toonflow，直接下载本仓库的客户端即可。前端仓库仅供需要二次开发或定制前端界面的开发者使用。
+
+---
+
 # 📝 开发计划
 
 我们正持续优化产品，以下为近期开发重点：
@@ -207,6 +367,31 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
 
 ---
 
+# 👨‍👩‍👧‍👦 微信交流群
+
+~~交流群 1~~
+
+~~交流群 2~~
+
+~~交流群 3~~
+
+~~交流群 4~~
+
+~~交流群 5~~
+
+交流群 6:
+
+<img src="./docs/chat6QR.jpg" alt="Toonflow Logo" height="400"/>
+<p>使用微信扫码添加，二维码过期可提交 Issues 提醒更新</p>
+
+---
+
+# 💌 联系我们
+
+📧 邮箱：[ltlctools@outlook.com](mailto:ltlctools@outlook.com?subject=Toonflow咨询)
+
+---
+
 # 📜 许可证
 
 Toonflow 基于 AGPL-3.0 协议开源发布，许可证详情：https://www.gnu.org/licenses/agpl-3.0.html
@@ -217,16 +402,37 @@ Toonflow 基于 AGPL-3.0 协议开源发布，许可证详情：https://www.gnu.
 
 ---
 
-# 💌 联系我们
+# ⭐️ 星标历史
 
-📧 邮箱：[ltlctools@outlook.com](mailto:ltlctools@outlook.com?subject=Toonflow咨询)
+[![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=date&legend=top-left)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app&type=date&legend=top-left)
 
 ---
 
-# ⭐️ 星标历史
+# 🙏 致谢
 
-[![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=Date)](https://star-history.com/#HBAI-Ltd/Toonflow-app&Date)
+感谢以下开源项目为 Toonflow 提供强大支持：
 
-# 第三方依赖清单
+- [Express](https://expressjs.com/) - 快速、开放、极简的 Node.js Web 框架
+- [LangChain](https://js.langchain.com/) - 构建 LLM 应用的开发框架
+- [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3) - 高性能 SQLite3 绑定库
+- [Sharp](https://sharp.pixelplumbing.com/) - 高性能 Node.js 图像处理库
+- [Axios](https://axios-http.com/) - 基于 Promise 的 HTTP 客户端
+- [Zod](https://zod.dev/) - TypeScript 优先的模式验证库
+- [Aigne](https://github.com/aigne-com/aigne) - LLM API 统一管理与接入中间件
+- [Electron](https://www.electronjs.org/) - 跨平台桌面应用开发框架
 
-请查阅`NOTICES.txt`
+感谢以下组织/单位/个人为 Toonflow 提供支持：
+
+<table>
+  <tr>
+    <td>
+      <img src="./docs/sponsored/sophnet.png" alt="算能云 Logo" width="48">
+    </td>
+    <td>
+      <b>算能云</b> 提供算力赞助
+      <a href="https://www.sophnet.com/">[官网]</a>
+    </td>
+  </tr>
+</table>
+
+完整的第三方依赖清单请查阅 `NOTICES.txt`
