@@ -45,7 +45,8 @@ export default async function startServe() {
     if (!setting) return res.status(500).send({ message: "服务器未配置，请联系管理员" });
     const { tokenKey } = setting;
     // 从 header 或 query 参数获取 token
-    const token = req.headers.authorization?.replace("Bearer ", "") || (req.query.token as string).replace("Bearer ", "");
+    const rawToken = req.headers.authorization || (req.query.token as string) || "";
+const token = rawToken.replace("Bearer ", "");
     // 白名单路径
     if (req.path === "/other/login") return next();
 
