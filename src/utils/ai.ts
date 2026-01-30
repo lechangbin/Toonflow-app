@@ -182,8 +182,14 @@ const generators = {
   },
 };
 
-export const generateImage = async (config: ImageConfig): Promise<string> => {
-  const { model, apiKey, baseURL, manufacturer } = await u.getConfig("image");
+export const generateImage = async (config: ImageConfig, replaceConfig?: Awaited<ReturnType<typeof u.getConfig<"image">>>): Promise<string> => {
+  let { model, apiKey, baseURL, manufacturer } = await u.getConfig("image");
+  if (replaceConfig) {
+    model = replaceConfig.model || model;
+    apiKey = replaceConfig.apiKey || apiKey;
+    baseURL = replaceConfig.baseURL || baseURL;
+    manufacturer = replaceConfig.manufacturer || manufacturer;
+  }
   const generator = generators[manufacturer as keyof typeof generators];
   if (!generator) throw new Error(`不支持的厂商: ${manufacturer}`);
 

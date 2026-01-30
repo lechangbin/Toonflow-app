@@ -46,7 +46,7 @@ export default async function startServe() {
     const { tokenKey } = setting;
     // 从 header 或 query 参数获取 token
     const rawToken = req.headers.authorization || (req.query.token as string) || "";
-const token = rawToken.replace("Bearer ", "");
+    const token = rawToken.replace("Bearer ", "");
     // 白名单路径
     if (req.path === "/other/login") return next();
 

@@ -1,4 +1,4 @@
-// @db-hash b6b4d8cdc25a2f4d60f1c239cd7e7060
+// @db-hash f95df46ccfda3c7f0b2a9cefdc399035
 //该文件由脚本自动生成，请勿手动修改
 
 export interface t_assets {
@@ -128,7 +128,6 @@ export interface t_video {
   'scriptId'?: number | null;
   'state'?: number | null;
   'storyboardImgs'?: string | null;
-  'time'?: number | null;
 }
 export interface t_videoConfig {
   'createTime'?: number | null;
