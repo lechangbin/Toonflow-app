@@ -36,7 +36,8 @@ export default router.post(
       );
       res.status(200).send(success(contentStr));
     } catch (err: any) {
-      res.status(500).send(error(err.error.message || "模型调用失败"));
+      const message = err?.response?.data?.error?.message || err?.error?.message || "模型调用失败";
+      res.status(500).send(error(message));
     }
   },
 );
