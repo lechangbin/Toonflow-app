@@ -151,6 +151,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("firstFrame");
         table.text("storyboardImgs");
         table.text("model");
+        table.integer("time");
         table.integer("state");
         table.integer("scriptId");
         table.integer("configId"); // 关联的视频配置ID

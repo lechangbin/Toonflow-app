@@ -239,7 +239,7 @@ const generateVideoWithConfig = async (config: VideoConfig, configItem: { model:
     const createRes = await axios.post(
       baseURL ?? "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks",
       {
-        model,
+        model: "doubao-seedance-1-5-pro-251215",
         content: [
           { type: "text", text: config.prompt },
           ...(doubaoConfig.imageBase64
