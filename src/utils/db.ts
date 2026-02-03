@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import knex from "knex";
 import initDB from "@/lib/initDB";
+import fixDB from "@/lib/fixDB";
 import type { DB } from "@/types/database";
 import crypto from "crypto";
 
@@ -40,6 +41,7 @@ const db = knex({
 });
 
 initDB(db);
+fixDB(db);
 
 if (process.env.NODE_ENV == "dev") initKnexType(db);
 

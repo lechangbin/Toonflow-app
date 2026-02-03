@@ -15,7 +15,7 @@ export default router.post(
 
     const settingData = await u.db("t_setting").select("*");
 
-    const configData = await u.db("t_config").where("userId", userId).select("*").orderBy("index", "asc");
+    const configData = await u.db("t_config").where("userId", userId).select("*") ;
 
     const parsedData = settingData.map((item) => ({
       ...item,

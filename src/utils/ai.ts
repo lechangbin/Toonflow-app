@@ -112,13 +112,25 @@ const uploadBase64ToRunninghub = async (base64Image: string, apiKey: string, bas
 
 const generators = {
   volcengine: async (config: ImageConfig, apiKey: string, baseURL: string, model: string) => {
+    if (config.size == "1K") config.size = "2K";
     apiKey = apiKey.replace("Bearer ", "");
-    const res = await axios.post(
-      `https://api.volcengineapi.com/v1/images/generations`,
-      { model, prompt: config.systemPrompt, image: config.imageBase64, size: config.size, watermark: false },
-      { headers: { Authorization: `Bearer ${apiKey}` } },
-    );
-    return res.data[0].url;
+    const body: Record<string, any> = {
+      model,
+      prompt: config.prompt,
+      size: config.size,
+      response_format: "url",
+      sequential_image_generation: "disabled",
+      stream: false,
+      watermark: false,
+    };
+    // 图生图：存在图片时添加 image 字段
+    if (config.imageBase64) {
+      body.image = config.imageBase64;
+    }
+    const res = await axios.post(`https://ark.cn-beijing.volces.com/api/v3/images/generations`, body, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    return res.data.data[0].url;
   },
 
   gemini: async (config: ImageConfig, apiKey: string, baseURL: string, model: string) => {
@@ -239,7 +251,7 @@ const generateVideoWithConfig = async (config: VideoConfig, configItem: { model:
     const createRes = await axios.post(
       baseURL ?? "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks",
       {
-        model,
+        model: "doubao-seedance-1-5-pro-251215",
         content: [
           { type: "text", text: config.prompt },
           ...(doubaoConfig.imageBase64

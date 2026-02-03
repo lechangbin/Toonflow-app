@@ -1,9 +1,6 @@
 import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import u from "@/utils";
-import { createAgent } from "langchain";
-import { openAI } from "@/agents/models";
-import { OpenAIChatModel, type OpenAIChatModelOptions } from "@aigne/openai";
 import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
 const router = express.Router();
@@ -36,7 +33,8 @@ export default router.post(
       );
       res.status(200).send(success(contentStr));
     } catch (err: any) {
-      res.status(500).send(error(err.error.message || "模型调用失败"));
+      const message = err?.response?.data?.error?.message || err?.error?.message || "模型调用失败";
+      res.status(500).send(error(message));
     }
   },
 );
