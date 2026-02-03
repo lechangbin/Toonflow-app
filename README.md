@@ -260,12 +260,6 @@ pm2 monit             # 监控面板
      yarn dev #端口60000
      ```
 
-   - 使用 Bun 快速运行开发服务：
-
-     ```bash
-     yarn bun:dev #端口60000
-     ```
-
 4. **项目打包**
 
    - 编译并生成 TypeScript 文件：

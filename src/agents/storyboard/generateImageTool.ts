@@ -115,19 +115,91 @@ async function mergeImages(imagePaths: string[]): Promise<Buffer> {
   return compressImage(mergedImage);
 }
 
-// 处理图片列表，确保不超过10张且每张不超过3MB
+// 进一步压缩单张图片到指定大小
+async function compressToSize(buffer: Buffer, targetSize: number): Promise<Buffer> {
+  if (buffer.length <= targetSize) {
+    return buffer;
+  }
+
+  const metadata = await sharp(buffer).metadata();
+  let quality = 80;
+  let scale = 1.0;
+  let compressedBuffer = buffer;
+
+  // 先尝试降低质量
+  while (compressedBuffer.length > targetSize && quality > 10) {
+    compressedBuffer = await sharp(buffer).jpeg({ quality }).toBuffer();
+    quality -= 10;
+  }
+
+  // 如果还是太大，缩小尺寸
+  while (compressedBuffer.length > targetSize && scale > 0.2) {
+    scale -= 0.1;
+    const newWidth = Math.round((metadata.width || 1000) * scale);
+    const newHeight = Math.round((metadata.height || 1000) * scale);
+    compressedBuffer = await sharp(buffer)
+      .resize(newWidth, newHeight, { fit: "inside" })
+      .jpeg({ quality: Math.max(quality, 20) })
+      .toBuffer();
+  }
+
+  return compressedBuffer;
+}
+
+// 确保图片列表总大小不超过指定限制
+async function ensureTotalSizeLimit(buffers: Buffer[], maxTotalBytes: number = 10 * 1024 * 1024): Promise<Buffer[]> {
+  let totalSize = buffers.reduce((sum, buf) => sum + buf.length, 0);
+
+  if (totalSize <= maxTotalBytes) {
+    return buffers;
+  }
+
+  // 计算每张图片的平均目标大小
+  const avgTargetSize = Math.floor(maxTotalBytes / buffers.length);
+
+  // 按大小降序排列，优先压缩大图片
+  const indexedBuffers = buffers.map((buf, idx) => ({ buf, idx, size: buf.length }));
+  indexedBuffers.sort((a, b) => b.size - a.size);
+
+  const result = [...buffers];
+
+  for (const item of indexedBuffers) {
+    totalSize = result.reduce((sum, buf) => sum + buf.length, 0);
+    if (totalSize <= maxTotalBytes) {
+      break;
+    }
+
+    // 计算这张图片需要压缩到的目标大小
+    const excessSize = totalSize - maxTotalBytes;
+    const targetSize = Math.max(item.buf.length - excessSize, avgTargetSize, 100 * 1024); // 最小100KB
+
+    if (item.buf.length > targetSize) {
+      result[item.idx] = await compressToSize(item.buf, targetSize);
+    }
+  }
+
+  return result;
+}
+
+// 处理图片列表，确保不超过10张且每张不超过3MB，总大小不超过10MB
 async function processImages(images: ImageInfo[]): Promise<Buffer[]> {
   const maxImages = 10;
+  let processedBuffers: Buffer[];
+
   if (images.length <= maxImages) {
     const buffers = await Promise.all(images.map((img) => u.oss.getFile(img.filePath)));
-    return Promise.all(buffers.map((buffer) => compressImage(buffer)));
+    processedBuffers = await Promise.all(buffers.map((buffer) => compressImage(buffer)));
+  } else {
+    const mergeStartIndex = maxImages - 1;
+    const firstBuffers = await Promise.all(images.slice(0, mergeStartIndex).map((img) => u.oss.getFile(img.filePath)));
+    const compressedFirstImages = await Promise.all(firstBuffers.map((buffer) => compressImage(buffer)));
+    const imagesToMergeList = images.slice(mergeStartIndex).map((img) => img.filePath);
+    const mergedImage = await mergeImages(imagesToMergeList);
+    processedBuffers = [...compressedFirstImages, mergedImage];
   }
-  const mergeStartIndex = maxImages - 1;
-  const firstBuffers = await Promise.all(images.slice(0, mergeStartIndex).map((img) => u.oss.getFile(img.filePath)));
-  const compressedFirstImages = await Promise.all(firstBuffers.map((buffer) => compressImage(buffer)));
-  const imagesToMergeList = images.slice(mergeStartIndex).map((img) => img.filePath);
-  const mergedImage = await mergeImages(imagesToMergeList);
-  return [...compressedFirstImages, mergedImage];
+
+  // 确保总大小不超过10MB
+  return ensureTotalSizeLimit(processedBuffers);
 }
 
 // 使用 AI 过滤与分镜相关的资产

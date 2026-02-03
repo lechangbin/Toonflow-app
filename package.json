@@ -22,13 +22,19 @@
     "license": "bun run scripts/license.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.35",
+    "@ai-sdk/deepseek": "^2.0.17",
+    "@ai-sdk/google": "^3.0.20",
+    "@ai-sdk/openai": "^3.0.25",
     "@aigne/core": "^1.72.0",
     "@aigne/openai": "^0.16.16",
     "@langchain/core": "^1.1.15",
     "@langchain/openai": "^1.2.1",
     "@rmp135/sql-ts": "^2.2.0",
+    "ai": "^6.0.67",
     "axios": "^1.13.2",
     "axios-retry": "^4.5.0",
+    "best-effort-json-parser": "^1.2.1",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -42,8 +48,10 @@
     "knex": "^3.1.0",
     "langchain": "^1.2.10",
     "morgan": "^1.10.1",
+    "qwen-ai-provider": "^0.1.1",
     "sharp": "^0.34.5",
     "sqlite3": "^5.1.7",
+    "zhipu-ai-provider": "^0.2.2",
     "zod": "^4.3.5"
   },
   "devDependencies": {
