@@ -78,7 +78,9 @@ export default router.post(
     }
 
     // 更新提示信息
-    await u.db("t_assets").where("id", id).update({ prompt });
+    if (prompt !== undefined && prompt !== null) {
+      await u.db("t_assets").where("id", id).update({ prompt });
+    }
 
     res.status(200).send(success({ message: "保存资产图片成功" }));
   },
