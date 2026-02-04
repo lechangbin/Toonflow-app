@@ -104,9 +104,7 @@ async function generateGridPrompt(options: GridPromptOptions): Promise<GridPromp
 
   if (!mainPrompts) return { prompt: errData, gridLayout: layout };
 
-  const chatModel = await u.ai.text({});
-
-  const result = await chatModel!.invoke({
+  const result = await u.ai.text.invoke({
     messages: [
       {
         role: "system",
@@ -121,8 +119,23 @@ async function generateGridPrompt(options: GridPromptOptions): Promise<GridPromp
     ],
   });
 
+  // const result = await chatModel!.invoke({
+  //   messages: [
+  //     {
+  //       role: "system",
+  //       content: mainPrompts,
+  //     },
+  //     {
+  //       role: "user",
+  //       content: `请优化以下分镜提示词：\n\n【布局】${layout.cols}列×${layout.rows}行=${
+  //         layout.totalCells
+  //       }格\n【比例】${aspectRatio}（${aspectRatioDesc}）\n【风格】${style}\n${assetsSection}\n\n【原始内容】\n${gridPositions.join("\n")}`,
+  //     },
+  //   ],
+  // });
+
   return {
-    prompt: result?.text ?? errData,
+    prompt: result.text ?? errData,
     gridLayout: layout,
   };
 }

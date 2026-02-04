@@ -55,14 +55,12 @@ export default router.post(
     const { prompt, images, duration, type = "single" } = req.body;
     const mode = type as GenerateMode;
 
-    const model = await u.ai.text({});
-
     const imagePrompts = images.map((i: { filePath: string; prompt: string }, index: number) => `Image ${index + 1}: ${i.prompt}`).join("\n");
 
     const shotCount = images.length;
     const avgDuration = (parseFloat(duration) / shotCount).toFixed(1);
 
-    const result = await model!.invoke({
+    const result = await u.ai.text.invoke({
       messages: [
         {
           role: "system",
@@ -87,6 +85,7 @@ Generate storyboard prompts:`,
         },
       ],
     });
+    console.log("%c Line:64 🥕 result", "background:#7f2b82", result.text);
 
     res.status(200).send(success(result.text));
   },

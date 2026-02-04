@@ -130,8 +130,7 @@ ${novelData}`;
 
   const mainPrompts = prompts?.customValue || prompts?.defaultValue || "不论用户说什么，请直接输出AI配置异常";
 
-  const model = await u.ai.text();
-  const result = await model.invoke({
+  const result = await u.ai.text.invoke({
     messages: [
       { role: "system", content: mainPrompts },
       { role: "user", content: userPrompt },
