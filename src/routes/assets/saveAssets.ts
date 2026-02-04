@@ -78,7 +78,7 @@ export default router.post(
     }
 
     // 更新提示信息
-    if (prompt !== undefined && prompt !== null) {
+    if (prompt !== undefined && prompt !== null && prompt !== "") {
       await u.db("t_assets").where("id", id).update({ prompt });
     }
 
