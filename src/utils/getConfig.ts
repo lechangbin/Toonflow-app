@@ -13,9 +13,9 @@ interface TextResData extends BaseConfig {
   manufacturer: "deepseek" | "openAi" | "doubao";
 }
 
+// 图像模型配置接口
 interface ImageResData extends BaseConfig {
-  baseURL: string;
-  manufacturer: "openAi" | "gemini" | "volcengine" | "runninghub" | "apimart";
+  manufacturer: "gemini" | "volcengine" | "kling" | "vidu" | "runninghub" | "apimart";
 }
 
 interface VideoResData extends BaseConfig {
