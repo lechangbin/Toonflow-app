@@ -16,25 +16,34 @@ export default router.post(
   }),
   async (req, res) => {
     const { modelName, apiKey, baseURL, manufacturer } = req.body;
-    try {
-      const contentStr = await u.ai.generateImage(
-        {
-          prompt: "2D cat",
-          imageBase64: [],
-          aspectRatio: "16:9",
-          size: "1K",
-        },
-        {
-          model: modelName,
-          apiKey,
-          baseURL,
-          manufacturer,
-        },
-      );
-      res.status(200).send(success(contentStr));
-    } catch (err: any) {
-      const message = err?.response?.data?.error?.message || err?.error?.message || "模型调用失败";
-      res.status(500).send(error(message));
-    }
+
+    const image =await u.ai.image({
+      prompt: "2D cat",
+      imageBase64: [],
+      aspectRatio: "16:9",
+      size: "1K",
+    });
+    res.status(200).send(success(image));
+
+    // try {
+    //   const contentStr = await u.ai.generateImage(
+    //     {
+    //       prompt: "2D cat",
+    //       imageBase64: [],
+    //       aspectRatio: "16:9",
+    //       size: "1K",
+    //     },
+    //     {
+    //       model: modelName,
+    //       apiKey,
+    //       baseURL,
+    //       manufacturer,
+    //     },
+    //   );
+    //   res.status(200).send(success(contentStr));
+    // } catch (err: any) {
+    //   const message = err?.response?.data?.error?.message || err?.error?.message || "模型调用失败";
+    //   res.status(500).send(error(message));
+    // }
   },
 );
