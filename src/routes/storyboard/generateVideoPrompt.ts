@@ -127,12 +127,6 @@ async function generateSingleVideoPrompt({
   if (ossPath.includes("http")) {
     imagePath = new URL(ossPath).pathname;
   }
-
-  const model = await u.ai.text({});
-  if (!model) {
-    throw new Error("无法获取语言模型，请检查语言模型配置");
-  }
-
   const messages: any[] = [
     {
       role: "system",
@@ -154,30 +148,27 @@ async function generateSingleVideoPrompt({
   ];
 
   try {
-    const result = await model.invoke({
+    const result = await u.ai.text.invoke({
       messages,
-      responseFormat: {
-        type: "json_schema",
-        jsonSchema: {
-          name: "json",
-          strict: true,
-          schema: z.toJSONSchema(cellsResultSchema),
-        },
+      output: {
+        time: z.number().describe("时长,镜头时长 1-15"),
+        content: z.string().describe("提示词内容"),
+        name: z.string().describe("分镜名称"),
       },
     });
+    console.log("%c Line:156 🍩 result", "background:#33a5ff", result);
 
-    if (!result || !result.json) {
+    if (!result) {
       console.error("AI 返回结果为空:", result);
       throw new Error("AI 返回结果为空");
     }
 
-    const json = result.json as { content: string; time: number; name: string };
-    if (!json.content || json.time === undefined || !json.name) {
-      console.error("AI 返回格式错误:", result.json);
+    if (!result.content || result.time === undefined || !result.name) {
+      console.error("AI 返回格式错误:", result);
       throw new Error("AI 返回格式错误");
     }
 
-    return json;
+    return result;
   } catch (err: any) {
     console.error("generateSingleVideoPrompt 调用失败:", err?.message || err);
     throw new Error(`生成视频提示词失败: ${err?.message || "未知错误"}`);

@@ -15,27 +15,15 @@ export default router.post(
 
     const settingData = await u.db("t_setting").select("*");
 
-    const configData = await u.db("t_config").where("userId", userId).select("*") ;
+    const configData = await u.db("t_config").where("userId", userId).select("*");
 
     const parsedData = settingData.map((item) => ({
       ...item,
-      imageModel: (() => {
-        try {
-          return JSON.parse(item.imageModel ?? "{}");
-        } catch {
-          return null;
-        }
-      })(),
-      languageModel: (() => {
-        try {
-          return JSON.parse(item.languageModel ?? "{}");
-        } catch {
-          return null;
-        }
-      })(),
-      videoModel: configData,
+      imageModel: configData.find((i) => i.type == "image"),
+      languageModel: configData.find((i) => i.type == "text"),
+      videoModel: configData.filter((i) => i.type == "video").filter(Boolean),
     }));
 
     res.status(200).send(success(parsedData));
-  }
+  },
 );

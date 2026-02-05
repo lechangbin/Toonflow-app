@@ -35,10 +35,18 @@ const errorMessages: Record<AIType, string> = {
   video: "视频模型配置不存在",
 };
 
-const needBaseURL: AIType[] = ["text", "video"];
+const needBaseURL: AIType[] = ["text", "video", "image"];
 
-export default async function getConfig<T extends AIType>(aiType: T): Promise<ResDataMap[T]> {
-  const config = await u.db("t_config").where("type", aiType).first();
+export default async function getConfig<T extends AIType>(aiType: T, manufacturer?: string): Promise<ResDataMap[T]> {
+  const config = await u
+    .db("t_config")
+    .where("type", aiType)
+    .modify((qb) => {
+      if (manufacturer) {
+        qb.where("manufacturer", manufacturer);
+      }
+    })
+    .first();
 
   if (!config) throw new Error(errorMessages[aiType]);
 

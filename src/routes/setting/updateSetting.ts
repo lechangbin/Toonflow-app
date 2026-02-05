@@ -33,23 +33,47 @@ export default router.post(
       for (const item of videoModel) {
         await u.db("t_config").insert({
           type: "video",
-          name: item.name,
+          name: item.model,
           model: item.model,
           apiKey: item.apiKey,
           baseUrl: item.baseUrl,
-          index: item.index,
           createTime: Date.now(),
           userId,
           manufacturer: item.manufacturer,
         });
       }
     }
-
+    if (languageModel) {
+      await u.db("t_config").where("type", "text").delete();
+      await u.db("t_config").insert({
+        type: "text",
+        name: languageModel.model,
+        model: languageModel.model,
+        apiKey: languageModel.apiKey,
+        baseUrl: languageModel.baseUrl,
+        createTime: Date.now(),
+        userId,
+        manufacturer: languageModel.manufacturer,
+      });
+    }
+    if (imageModel) {
+      await u.db("t_config").where("type", "image").delete();
+      await u.db("t_config").insert({
+        type: "image",
+        name: imageModel.model,
+        model: imageModel.model,
+        apiKey: imageModel.apiKey,
+        baseUrl: imageModel.baseUrl,
+        createTime: Date.now(),
+        userId,
+        manufacturer: imageModel.manufacturer,
+      });
+    }
     await u.db("t_user").where("id", userId).update({
       name,
       password,
     });
 
     res.status(200).send(success({ message: "修改全局配置成功" }));
-  }
+  },
 );

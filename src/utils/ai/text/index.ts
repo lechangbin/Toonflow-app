@@ -20,7 +20,8 @@ interface AIConfig {
 }
 
 const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
-  const sqlTextModelConfig = await u.getConfig("text");
+  let sqlTextModelConfig = {};
+  if (!config || !config?.model || !config?.apiKey || !config?.baseURL) sqlTextModelConfig = await u.getConfig("text");
   const { model, apiKey, baseURL } = { ...sqlTextModelConfig, ...config };
 
   const owned = modelList.find((m) => m.model === model);
@@ -42,11 +43,11 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
     },
   };
 
-  const output = input.output ? outputBuilders[owned.responseFormat]?.(input.output) ?? null : null;
+  const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
 
   return {
     config: {
-      model: modelInstance(model) as LanguageModel,
+      model: modelInstance(model!) as LanguageModel,
       ...(input.system && { system: input.system }),
       ...(input.prompt ? { prompt: input.prompt } : { messages: input.messages! }),
       ...(input.tools && owned.tool && { tools: input.tools }),

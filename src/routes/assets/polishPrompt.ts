@@ -1,7 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import * as zod from "zod";
-import { success } from "@/lib/responseFormat";
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 const jsonSchema = zod.object({
@@ -188,8 +188,7 @@ export default router.post(
       `;
     }
     async function generatePrompt() {
-      const model = await u.ai.text();
-      const result = await model.invoke({
+      const { prompt } = await u.ai.text.invoke({
         messages: [
           {
             role: "system",
@@ -200,21 +199,41 @@ export default router.post(
             content: userPrompt,
           },
         ],
-        responseFormat: {
-          type: "json_schema",
-          jsonSchema: {
-            name: "json",
-            strict: true,
-            schema: zod.toJSONSchema(jsonSchema),
-          },
+        output: {
+          prompt: zod.string().describe("提示词"),
         },
       });
-      return result.json;
+
+      // const result = await model.invoke({
+      //   messages: [
+      //     {
+      //       role: "system",
+      //       content: systemPrompt,
+      //     },
+      //     {
+      //       role: "user",
+      //       content: userPrompt,
+      //     },
+      //   ],
+      //   responseFormat: {
+      //     type: "json_schema",
+      //     jsonSchema: {
+      //       name: "json",
+      //       strict: true,
+      //       schema: zod.toJSONSchema(jsonSchema),
+      //     },
+      //   },
+      // });
+      return prompt;
     }
-    const data = (await generatePrompt()) as any;
+    try {
+      const prompt = (await generatePrompt()) as any;
+      if (!prompt) return res.status(500).send("失败");
 
-    if (!data.prompt) return res.status(500).send("失败");
-
-    res.status(200).send(success({ prompt: data.prompt, assetsId }));
+      res.status(200).send(success({ prompt: prompt, assetsId }));
+    } catch (e: any) {
+      console.log("%c Line:235 🥚 e", "background:#33a5ff", e);
+      return res.status(500).send(error(e?.data?.error?.message ?? e?.message ?? "生成失败"));
+    }
   },
 );
