@@ -51,10 +51,9 @@ export default router.post(
       console.log("%c Line:52 🍐 reply", "background:#ffdd4d", reply);
       res.status(200).send(success(reply));
     } catch (err) {
-      console.log(err);
-      if (typeof err === "string") return res.status(500).send(error(err));
-      const msg = err instanceof Error ? err.message : (err as any)?.error?.message;
-      return res.status(500).send(error(msg || "未知错误"));
+      const msg = u.error(err).message;
+      console.error(msg);
+      res.status(500).send(error(msg));
     }
   },
 );

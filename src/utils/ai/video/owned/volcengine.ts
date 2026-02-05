@@ -1,56 +1,74 @@
 import "../type";
 import axios from "axios";
-import { pollTask } from "@/utils/ai/utils";
+import { pollTask, validateVideoConfig } from "@/utils/ai/utils";
 
-interface DoubaoVideoConfig {
-  prompt: string;
-  savePath: string;
-  imageBase64?: string[]; // 单张参考图片 base64
-  duration: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12; // 支持 2~12 秒
-  aspectRatio: "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9" | "adaptive";
-  audio?: boolean;
-}
-
-export default async (input: ImageConfig, config: AIConfig) => {
-  console.log("%c Line:5 🍓 input", "background:#7f2b82", input);
-  console.log("%c Line:5 🍎 config", "background:#93c0a4", config);
-  if (!config.model) throw new Error("缺少Model名称");
+export default async (input: VideoConfig, config: AIConfig) => {
   if (!config.apiKey) throw new Error("缺少API Key");
 
-  const key = "Bearer " + config.apiKey.replaceAll("Bearer ", "").trim();
+  const { owned, images, hasStartEndType } = validateVideoConfig(input, config);
 
-  const doubaoConfig = config as DoubaoVideoConfig;
-  const createRes = await axios.post(
-    config.baseURL ?? "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks",
-    {
-      model: "doubao-seedance-1-5-pro-251215",
-      content: [
-        { type: "text", text: input.prompt },
-        ...(doubaoConfig.imageBase64
-          ? doubaoConfig.imageBase64.map((base64, i) => ({
-              type: "image_url",
-              image_url: { url: base64 },
-              role: i === 0 ? "first_frame" : "last_frame",
-            }))
-          : []),
-      ],
-      generate_audio: doubaoConfig.audio ?? false,
-      duration: doubaoConfig.duration,
-      resolution: doubaoConfig.aspectRatio,
-      watermark: false,
+  const authorization = "Bearer " + config.apiKey.replace(/^Bearer\s*/i, "").trim();
+  const baseUrl = config.baseURL ?? "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks";
+
+  // 判断是否为首尾帧模式（需要两张图且类型支持首尾帧）
+  const isStartEndMode = images.length === 2 && hasStartEndType;
+
+  // 构建图片内容
+  const imageContent = images.map((base64, index) => {
+    const item: Record<string, any> = {
+      type: "image_url",
+      image_url: { url: base64 },
+    };
+    if (isStartEndMode) {
+      item.role = index === 0 ? "first_frame" : "last_frame";
+    }
+    return item;
+  });
+
+  // 构建请求体
+  const requestBody: Record<string, any> = {
+    model: config.model,
+    content: [{ type: "text", text: input.prompt }, ...imageContent],
+    duration: input.duration,
+    resolution: input.resolution,
+    watermark: false,
+  };
+
+  // 仅当模型支持音频时才添加 generate_audio 字段
+  if (owned.audio) {
+    requestBody.generate_audio = input.audio ?? false;
+  }
+  // 创建视频生成任务
+  const createResponse = await axios.post(baseUrl, requestBody, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: authorization,
     },
-    { headers: { "Content-Type": "application/json", Authorization: key } },
-  );
-  const taskId = createRes.data.id;
+  });
+
+  const taskId = createResponse.data.id;
   if (!taskId) throw new Error("视频任务创建失败");
+
+  // 轮询任务状态
   return await pollTask(async () => {
-    const res = await axios.get(`${config.baseURL ?? "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks"}/${taskId}`, {
-      headers: { Authorization: key },
-    });
-    const { status, content } = res.data;
-    if (status === "succeeded") return { completed: true, imageUrl: content?.video_url };
-    if (["failed", "cancelled", "expired"].includes(status)) return { completed: false, error: `任务${status}` };
-    if (["queued", "running"].includes(status)) return { completed: false };
-    return { completed: false, error: `未知状态: ${status}` };
+    const { status, content } = (
+      await axios.get(`${baseUrl}/${taskId}`, {
+        headers: { Authorization: authorization },
+      })
+    ).data;
+
+    switch (status) {
+      case "succeeded":
+        return { completed: true, imageUrl: content?.video_url };
+      case "failed":
+      case "cancelled":
+      case "expired":
+        return { completed: false, error: `任务${status}` };
+      case "queued":
+      case "running":
+        return { completed: false };
+      default:
+        return { completed: false, error: `未知状态: ${status}` };
+    }
   });
 };

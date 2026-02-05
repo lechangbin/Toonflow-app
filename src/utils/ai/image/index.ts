@@ -5,14 +5,9 @@ import axios from "axios";
 
 import volcengine from "./owned/volcengine";
 import kling from "./owned/kling";
-import gemini from "./owned/gemini";
 import vidu from "./owned/vidu";
 import runninghub from "./owned/runninghub";
-interface AIConfig {
-  model?: string;
-  apiKey?: string;
-  baseURL?: string;
-}
+import gemini from "./owned/gemini";
 
 const urlToBase64 = async (url: string): Promise<string> => {
   const res = await axios.get(url, { responseType: "arraybuffer" });
@@ -39,8 +34,7 @@ export default async (input: ImageConfig, config?: AIConfig) => {
   if (!owned) throw new Error("不支持的模型");
 
   let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
-  console.log("%c Line:41 🍅 imageUrl", "background:#ed9ec7", imageUrl);
   if (!input.resType) input.resType = "b64";
   if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
-  return imageUrl;
+  return input;
 };

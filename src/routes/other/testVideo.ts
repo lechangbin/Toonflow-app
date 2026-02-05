@@ -20,20 +20,21 @@ export default router.post(
   async (req, res) => {
     const { modelName, apiKey, baseURL, manufacturer } = req.body;
     try {
-      const videoPath = await u.ai.generateVideo(
-        {
-          imageBase64: [],
-          savePath: "",
-          prompt: "stickman Dances",
-          duration: 10 as any,
-          aspectRatio: "16:9" as any,
-        },
-        manufacturer,
-      );
+      const videoPath = await u.ai.video({
+        imageBase64: [],
+        savePath: "test.mp4",
+        prompt: "stickman Dances",
+        duration: 4,
+        resolution: "480p",
+        aspectRatio: "16:9",
+        audio: false,
+      });
       const url = await u.oss.getFileUrl(videoPath);
       res.status(200).send(success(url));
     } catch (err: any) {
-      res.status(500).send(error(err.error.message || "模型调用失败"));
+      const msg = u.error(err).message;
+      console.error(msg);
+      res.status(500).send(error(msg));
     }
   },
 );
