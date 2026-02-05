@@ -35,18 +35,6 @@ const modelList: Owned[] = [
   },
   {
     manufacturer: "gemini",
-    model: "gemini-2.5-flash-image-preview",
-    grid: true,
-    type: "ti2i",
-  },
-  {
-    manufacturer: "gemini",
-    model: "gemini-2.5-flash-image-preview-all",
-    grid: true,
-    type: "ti2i",
-  },
-  {
-    manufacturer: "gemini",
     model: "gemini-3-pro-image-preview",
     grid: true,
     type: "ti2i",

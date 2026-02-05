@@ -1,8 +1,9 @@
 import "../type";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateImage } from "ai";
+import { generateText } from "ai";
 
 export default async (input: ImageConfig, config: AIConfig): Promise<string> => {
+  console.log("%c Line:6 🌰 config", "background:#ffdd4d", config);
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
   if (!input.prompt) throw new Error("缺少提示词");
@@ -22,13 +23,30 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     "4K": "4096x4096",
   };
 
-  const { image } = await generateImage({
-    model: google.image(config.model),
-    prompt: fullPrompt,
-    aspectRatio: input.aspectRatio as "1:1" | "3:4" | "4:3" | "9:16" | "16:9",
-    size: sizeMap[input.size] ?? "1024x1024",
+  const result = await generateText({
+    model: google.languageModel(config.model),
+    prompt: fullPrompt + `请直接输出图片`,
+    providerOptions: {
+      google: {
+        imageConfig: {
+          ...(config.model == "gemini-2.5-flash-image"
+            ? { aspectRatio: input.aspectRatio }
+            : { aspectRatio: input.aspectRatio, imageSize: input.size }),
+        },
+      },
+    },
   });
 
+  console.log(JSON.stringify(result.request, null, 2));
+  console.log(JSON.stringify(result.response.body, null, 2));
+  if (!result.files.length) {
+    console.error(JSON.stringify(result.response, null, 2));
+    throw new Error("图片生成失败");
+  }
+  let imageBase64;
+  for (const item of result.files) {
+    imageBase64 = `data:${item.mediaType};base64,${item.base64}`;
+  }
   // 返回生成的图片 base64
-  return image.base64;
+  return imageBase64!;
 };
