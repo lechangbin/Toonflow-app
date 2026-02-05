@@ -21,7 +21,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
 
-  const apiKey = "Token " + config.apiKey.replace(/Bearer\s+/g, "").trim();
+  const apiKey = "Token " + config.apiKey.replace(/Token\s+/g, "").trim();
   const viduq2Ratio = ["16:9", "9:16", "1:1", "3:4", "4:3", "21:9", "2:3", "3:2"];
   const viduq1Ratio = ["16:9", "9:16", "1:1", "3:4", "4:3"];
   let images: string[] = [];
@@ -51,7 +51,6 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     else size = input.size;
     if (!viduq2Ratio.includes(input.aspectRatio)) throw new Error("不支持的图片比例:" + input.aspectRatio);
   }
-  console.log("%c Line:23 🍔 size", "background:#ffdd4d", size);
 
   const body: Record<string, any> = {
     model: config.model,
@@ -60,16 +59,15 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     resolution: size,
     ...(images.length && { images: images }),
   };
-  console.log("%c Line:27 🍷 body", "background:#6ec1c2", body);
+
   const urlObj = getApiUrl(config.baseURL!);
   try {
     const { data } = await axios.post(urlObj.requestUrl, body, { headers: { Authorization: apiKey } });
-    console.log("%c Line:35 🥕 data", "background:#93c0a4", data);
+
     const queryUrl = template({ id: data.task_id }, urlObj.queryUrl);
-    console.log("%c Line:53 🍋 queryUrl", "background:#465975", queryUrl);
+
     return await pollTask(async () => {
       const { data: queryData } = await axios.get(queryUrl, { headers: { Authorization: apiKey } });
-      console.log("%c Line:42 🍐 queryData", "background:#4fff4B", queryData);
 
       if (queryData.state !== 0) {
         return { completed: false, error: queryData.message || "查询任务失败" };

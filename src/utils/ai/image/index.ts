@@ -8,6 +8,8 @@ import kling from "./owned/kling";
 import gemini from "./owned/gemini";
 import vidu from "./owned/vidu";
 import runninghub from "./owned/runninghub";
+import apimart from "./owned/apimart";
+import other from "./owned/other";
 interface AIConfig {
   model?: string;
   apiKey?: string;
@@ -27,7 +29,8 @@ const modelInstance = {
   kling: kling,
   vidu: vidu,
   runninghub: runninghub,
-  apimart: null,
+  apimart: apimart,
+  other
 } as const;
 
 export default async (input: ImageConfig, config?: AIConfig) => {
@@ -35,11 +38,10 @@ export default async (input: ImageConfig, config?: AIConfig) => {
   const { model, apiKey, baseURL, manufacturer } = { ...sqlTextModelConfig, ...config };
   const manufacturerFn = modelInstance[manufacturer as keyof typeof modelInstance];
   if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的图片厂商");
-  const owned = modelList.find((m) => m.model === model);
-  if (!owned) throw new Error("不支持的模型");
+  // const owned = modelList.find((m) => m.model === model);
+  // if (!owned) throw new Error("不支持的模型");
 
   let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
-  console.log("%c Line:41 🍅 imageUrl", "background:#ed9ec7", imageUrl);
   if (!input.resType) input.resType = "b64";
   if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
   return imageUrl;

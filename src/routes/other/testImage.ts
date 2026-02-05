@@ -18,13 +18,14 @@ export default router.post(
     const { modelName, apiKey, baseURL, manufacturer } = req.body;
     try {
       const image = await u.ai.image({
-        prompt: "生成16：9 四宫格图片，第一宫格是一只猫，第二宫格是一只狗， 第三宫格是一只老虎，第四宫格是猪。保证宫格图片标准等分",
+        prompt: "生成16：9 四宫格图片，第一宫格是一只猫，第二宫格是一只狗， 第三宫格是一只老虎，第四宫格是猪。保证四宫格图片标准四等分",
         imageBase64: [],
         aspectRatio: "16:9",
         size: "1K",
       });
       res.status(200).send(success(image));
     } catch (e: any) {
+      console.log("%c Line:28 🥒 e", "background:#fca650", e);
       return res.status(500).send(error(e?.response?.data ?? e?.message ?? "生成失败"));
     }
 

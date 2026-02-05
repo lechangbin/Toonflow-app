@@ -16,13 +16,6 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   // 构建完整的提示词
   const fullPrompt = input.systemPrompt ? `${input.systemPrompt}\n\n${input.prompt}` : input.prompt;
 
-  // 根据 size 配置映射到具体尺寸
-  const sizeMap: Record<string, `${number}x${number}`> = {
-    "1K": "1024x1024",
-    "2K": "2048x2048",
-    "4K": "4096x4096",
-  };
-
   const result = await generateText({
     model: google.languageModel(config.model),
     prompt: fullPrompt + `请直接输出图片`,
