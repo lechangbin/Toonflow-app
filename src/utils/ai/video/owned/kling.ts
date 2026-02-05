@@ -79,7 +79,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
         if (!videoUrl) {
           return { completed: false, error: "任务成功但未返回视频URL" };
         }
-        return { completed: true, imageUrl: videoUrl };
+        return { completed: true, url: videoUrl };
       }
       case "failed":
         return { completed: false, error: `任务失败: ${task?.task_status_msg || "未知原因"}` };

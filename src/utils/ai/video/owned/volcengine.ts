@@ -59,7 +59,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
     switch (status) {
       case "succeeded":
-        return { completed: true, imageUrl: content?.video_url };
+        return { completed: true, url: content?.video_url };
       case "failed":
       case "cancelled":
       case "expired":

@@ -40,6 +40,12 @@ const modelList: Owned[] = [
     type: "ti2i",
   },
   //Vidu
+   {
+    manufacturer: "vidu",
+    model: "viduq1",
+    grid: false,
+    type: "i2i",
+  },
   {
     manufacturer: "vidu",
     model: "viduq2",

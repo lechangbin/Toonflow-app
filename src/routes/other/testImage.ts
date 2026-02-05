@@ -30,26 +30,5 @@ export default router.post(
       console.error(msg);
       res.status(500).send(error(msg));
     }
-
-    // try {
-    //   const contentStr = await u.ai.generateImage(
-    //     {
-    //       prompt: "2D cat",
-    //       imageBase64: [],
-    //       aspectRatio: "16:9",
-    //       size: "1K",
-    //     },
-    //     {
-    //       model: modelName,
-    //       apiKey,
-    //       baseURL,
-    //       manufacturer,
-    //     },
-    //   );
-    //   res.status(200).send(success(contentStr));
-    // } catch (err: any) {
-    //   const message = err?.response?.data?.error?.message || err?.error?.message || "模型调用失败";
-    //   res.status(500).send(error(message));
-    // }
   },
 );

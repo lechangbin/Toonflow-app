@@ -6,12 +6,17 @@ import axios from "axios";
 import volcengine from "./owned/volcengine";
 import kling from "./owned/kling";
 import vidu from "./owned/vidu";
+import wan from "./owned/wan";
+import runninghub from "./owned/runninghub";
+import gemini from "./owned/gemini";
 
 const modelInstance = {
   volcengine: volcengine,
   kling: kling,
   vidu: vidu,
-  runninghub: null,
+  wan: wan,
+  gemini: gemini,
+  runninghub: runninghub,
   apimart: null,
 } as const;
 

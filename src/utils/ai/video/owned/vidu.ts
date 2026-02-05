@@ -10,7 +10,10 @@ export default async (input: VideoConfig, config: AIConfig) => {
     throw new Error("至少需要提供prompt或图片");
   }
 
-  const baseUrl = config.baseURL || "https://api.vidu.cn/ent/v2";
+  const baseUrl = "https://api.vidu.cn/ent/v2";
+  const [image2videoUrl = baseUrl + "/text2video", text2videoUrl = baseUrl + "/img2video", queryUrl = baseUrl + "/tasks"] =
+    config.baseURL!.split("|");
+
   const authorization = `Token ${config.apiKey}`;
   const hasImages = input.imageBase64 && input.imageBase64.length > 0;
 
@@ -56,7 +59,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       requestBody.audio = input.audio;
     }
 
-    const response = await axios.post(`${baseUrl}/text2video`, requestBody, {
+    const response = await axios.post(text2videoUrl, requestBody, {
       headers: {
         "Content-Type": "application/json",
         Authorization: authorization,
@@ -78,7 +81,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       requestBody.audio = input.audio;
     }
 
-    const response = await axios.post(`${baseUrl}/img2video`, requestBody, {
+    const response = await axios.post(image2videoUrl, requestBody, {
       headers: {
         "Content-Type": "application/json",
         Authorization: authorization,
@@ -89,7 +92,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   // 轮询任务状态
   return await pollTask(async () => {
-    const response = await axios.get(`${baseUrl}/tasks`, {
+    const response = await axios.get(queryUrl, {
       headers: {
         "Content-Type": "application/json",
         Authorization: authorization,
@@ -111,8 +114,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
         const creation = task.creations?.[0];
         return {
           completed: true,
-          videoUrl: creation?.url,
-          coverUrl: creation?.cover_url,
+          url: creation?.url,
         };
       }
       case "failed":

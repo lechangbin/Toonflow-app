@@ -25,7 +25,7 @@ export default router.post(
         savePath: "test.mp4",
         prompt: "stickman Dances",
         duration: 4,
-        resolution: "480p",
+        resolution: "720p",
         aspectRatio: "16:9",
         audio: false,
       });

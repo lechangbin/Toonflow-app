@@ -96,7 +96,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
       }
 
       if (task_status === "succeed") {
-        return { completed: true, imageUrl: task_result?.images?.[0]?.url };
+        return { completed: true, url: task_result?.images?.[0]?.url };
       }
 
       return { completed: false };
