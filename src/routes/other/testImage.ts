@@ -16,14 +16,17 @@ export default router.post(
   }),
   async (req, res) => {
     const { modelName, apiKey, baseURL, manufacturer } = req.body;
-
-    const image =await u.ai.image({
-      prompt: "2D cat",
-      imageBase64: [],
-      aspectRatio: "16:9",
-      size: "1K",
-    });
-    res.status(200).send(success(image));
+    try {
+      const image = await u.ai.image({
+        prompt: "生成16：9 四宫格图片，第一宫格是一只猫，第二宫格是一只狗， 第三宫格是一只老虎，第四宫格是猪。保证宫格图片标准等分",
+        imageBase64: [],
+        aspectRatio: "16:9",
+        size: "1K",
+      });
+      res.status(200).send(success(image));
+    } catch (e: any) {
+      return res.status(500).send(error(e?.response?.data ?? e?.message ?? "生成失败"));
+    }
 
     // try {
     //   const contentStr = await u.ai.generateImage(
