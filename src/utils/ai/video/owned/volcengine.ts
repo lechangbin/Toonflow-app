@@ -1,6 +1,6 @@
 import "../type";
 import axios from "axios";
-import u from "@/utils";
+import { pollTask } from "@/utils/ai/utils";
 
 interface DoubaoVideoConfig {
   prompt: string;
@@ -10,20 +10,6 @@ interface DoubaoVideoConfig {
   aspectRatio: "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9" | "adaptive";
   audio?: boolean;
 }
-
-const pollTask = async (
-  queryFn: () => Promise<{ completed: boolean; imageUrl?: string; error?: string }>,
-  maxAttempts = 500,
-  interval = 2000,
-): Promise<string> => {
-  for (let i = 0; i < maxAttempts; i++) {
-    await  new Promise((resolve) => setTimeout(resolve, interval));
-    const { completed, imageUrl, error } = await queryFn();
-    if (error) throw new Error(error);
-    if (completed && imageUrl) return imageUrl;
-  }
-  throw new Error(`任务轮询超时，已尝试 ${maxAttempts} 次`);
-};
 
 export default async (input: ImageConfig, config: AIConfig) => {
   console.log("%c Line:5 🍓 input", "background:#7f2b82", input);
