@@ -9,12 +9,9 @@ export default async (input: VideoConfig, config: AIConfig) => {
   const { images } = validateVideoConfig(input, config);
 
   // 解析URL配置：图生视频|文生视频|查询地址
-  const baseUrl = "https://api-beijing.klingai.com";
-  const [
-    image2videoUrl = baseUrl + "/v1/videos/image2video",
-    text2videoUrl = baseUrl + "/v1/videos/text2video",
-    queryUrl = baseUrl + "/v1/videos/text2video/{id}",
-  ] = config.baseURL.split("|");
+  const defaultBaseUrl =
+    "https://api-beijing.klingai.com/v1/videos/image2video|https://api-beijing.klingai.com/v1/videos/text2video|https://api-beijing.klingai.com/v1/videos/text2video/{taskId}";
+  const [image2videoUrl, text2videoUrl, queryUrl] = (config.baseURL || defaultBaseUrl).split("|");
 
   const headers = {
     Authorization: `Bearer ${config.apiKey}`,
@@ -64,7 +61,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   // 轮询任务状态
   return await pollTask(async () => {
-    const queryResponse = await axios.get(`${queryUrl.replace("{id}", taskId)}`, { headers });
+    const queryResponse = await axios.get(`${queryUrl.replace("{taskId}", taskId)}`, { headers });
     const queryData = queryResponse.data;
     if (queryData.code !== 0) {
       return { completed: false, error: `查询失败: ${queryData.message || "未知错误"}` };

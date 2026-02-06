@@ -10,9 +10,11 @@ export default async (input: VideoConfig, config: AIConfig) => {
     throw new Error("至少需要提供prompt或图片");
   }
 
-  const baseUrl = "https://api.vidu.cn/ent/v2";
-  const [image2videoUrl = baseUrl + "/text2video", text2videoUrl = baseUrl + "/img2video", queryUrl = baseUrl + "/tasks"] =
-    config.baseURL!.split("|");
+  const defaultBaseUrl = ["https://api.vidu.cn/ent/v2/text2video", "https://api.vidu.cn/ent/v2/img2video", "https://api.vidu.cn/ent/v2/tasks"].join(
+    "|",
+  );
+
+  const [text2videoUrl, image2videoUrl, queryUrl] = (config.baseURL || defaultBaseUrl).split("|");
 
   const authorization = `Token ${config.apiKey}`;
   const hasImages = input.imageBase64 && input.imageBase64.length > 0;

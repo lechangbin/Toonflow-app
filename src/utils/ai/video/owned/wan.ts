@@ -41,13 +41,13 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   const { owned, images, hasStartEndType, hasTextType } = validateVideoConfig(input, config);
 
-  // 解析URL配置
-  const baseUrl = "https://dashscope.aliyuncs.com/api/v1";
-  const [
-    i2vUrl = baseUrl + "/services/aigc/video-generation/video-synthesis",
-    kf2vUrl = baseUrl + "/services/aigc/image2video/video-synthesis",
-    queryUrl = baseUrl + "/tasks",
-  ] = (config.baseURL || "").split("|");
+  const defaultBaseUrl = [
+    "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
+    "https://dashscope.aliyuncs.com/api/v1/services/aigc/image2video/video-synthesis",
+    "https://dashscope.aliyuncs.com/api/v1/tasks/{taskId}",
+  ].join("|");
+
+  const [i2vUrl, kf2vUrl, queryUrl] = (config.baseURL || defaultBaseUrl).split("|");
 
   const types = owned.type;
   const authorization = `Bearer ${config.apiKey}`;
@@ -133,7 +133,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   // 轮询任务状态
   return await pollTask(async () => {
-    const response = await axios.get(`${queryUrl}/${taskId}`, {
+    const response = await axios.get(queryUrl.replace("{taskId}", taskId), {
       headers: { Authorization: authorization },
     });
 

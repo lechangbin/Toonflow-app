@@ -24,7 +24,7 @@ const modelInstance = {
   kling: kling,
   vidu: vidu,
   runninghub: runninghub,
-  apimart: apimart,
+  // apimart: apimart,
   other,
 } as const;
 

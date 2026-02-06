@@ -9,13 +9,18 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   const { owned, images, hasTextType } = validateVideoConfig(input, config);
 
-  const baseUrl = "https://www.runninghub.cn";
-  const parts = (config.baseURL || "").split("|");
-  const suffix = owned.model === "sora-2" ? "-pro" : "";
+  const defaultBaseUrl = [
+    "https://www.runninghub.cn/openapi/v2/rhart-video-s/image-to-video",
+    "https://www.runninghub.cn/openapi/v2/rhart-video-s/image-to-video-pro",
+    "https://www.runninghub.cn/openapi/v2/rhart-video-s/text-to-video",
+    "https://www.runninghub.cn/openapi/v2/rhart-video-s/text-to-video-pro",
+    "https://www.runninghub.cn/openapi/v2/rhart-video-s/{taskId}",
+    "https://www.runninghub.cn/openapi/v2/media/upload/binary",
+  ].join("|");
 
-  const image2videoUrl = parts[0] || `${baseUrl}/openapi/v2/rhart-video-s/image-to-video${suffix}`;
-  const text2videoUrl = parts[1] || `${baseUrl}/openapi/v2/rhart-video-s/text-to-video${suffix}`;
-  const queryUrl = parts[2] || `${baseUrl}/openapi/v2/rhart-video-s/{id}`;
+  const [image2videoUrl, image2videoProUrl, text2videoUrl, text2videoProUrl, queryUrl, uploadUrl] = (config.baseURL || defaultBaseUrl).split("|");
+
+  const isPro = owned.model === "sora-2-pro";
   const authorization = `Bearer ${config.apiKey}`;
 
   // 上传 base64 图片
@@ -41,7 +46,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
     const formData = new FormData();
     formData.append("file", buffer, { filename: "image.jpg", contentType: "image/jpeg" });
 
-    const { data } = await axios.post(`${baseUrl}/openapi/v2/media/upload/binary`, formData, {
+    const { data } = await axios.post(uploadUrl, formData, {
       headers: { Authorization: authorization },
     });
 
@@ -57,11 +62,12 @@ export default async (input: VideoConfig, config: AIConfig) => {
       headers: { "Content-Type": "application/json", Authorization: authorization },
     });
     if (data.status === "FAILED") throw new Error(`任务提交失败: ${data.errorMessage || "未知错误"}`);
-    return { taskId: data.taskId, status: data.status, videoUrl: data.results?.[0]?.url };
+    return { taskId: data.taskId, status: data.status, url: data.results?.[0]?.url };
   };
 
   const isTextToVideo = images.length === 0 && hasTextType;
-  const submitUrl = isTextToVideo ? text2videoUrl : image2videoUrl;
+  const submitUrl = isTextToVideo ? (isPro ? text2videoProUrl : text2videoUrl) : isPro ? image2videoProUrl : image2videoUrl;
+
   const requestBody: Record<string, unknown> = {
     prompt: input.prompt,
     duration: String(input.duration),
@@ -69,15 +75,14 @@ export default async (input: VideoConfig, config: AIConfig) => {
     ...(isTextToVideo ? {} : { imageUrl: await uploadImage(images[0]) }),
   };
 
-  const { taskId, status, videoUrl } = await submitTask(submitUrl, requestBody);
-  if (status === "SUCCESS" && videoUrl) return { completed: true, videoUrl };
+  const { taskId } = await submitTask(submitUrl, requestBody);
 
   return await pollTask(async () => {
-    const { data } = await axios.get(queryUrl.replace("{id}", taskId), {
+    const { data } = await axios.get(queryUrl.replace("{taskId}", taskId), {
       headers: { Authorization: authorization },
     });
     if (data.status === "SUCCESS") {
-      return data.results?.length ? { completed: true, videoUrl: data.results[0].url } : { completed: false, error: "任务成功但未返回视频链接" };
+      return data.results?.length ? { completed: true, url: data.results[0].url } : { completed: false, error: "任务成功但未返回视频链接" };
     }
     if (data.status === "FAILED") return { completed: false, error: `任务失败: ${data.errorMessage || "未知错误"}` };
     if (data.status === "QUEUED" || data.status === "RUNNING") return { completed: false };

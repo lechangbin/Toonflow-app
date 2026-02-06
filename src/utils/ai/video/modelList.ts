@@ -450,7 +450,7 @@ const modelList: Owned[] = [
   // sora
   {
     manufacturer: "runninghub",
-    model: "sora",
+    model: "sora-2",
     durationResolutionMap: [{ duration: [10, 15], resolution: [] }],
     aspectRatio: ["16:9", "9:16"],
     type: ["singleImage", "text"],
@@ -459,7 +459,26 @@ const modelList: Owned[] = [
   // sora 2
   {
     manufacturer: "runninghub",
+    model: "sora-2-pro",
+    durationResolutionMap: [{ duration: [15, 25], resolution: [] }],
+    aspectRatio: ["16:9", "9:16"],
+    type: ["singleImage", "text"],
+    audio: false,
+  },
+   // ================== Apimart 系列 ==================
+  // sora
+  {
+    manufacturer: "apimart",
     model: "sora-2",
+    durationResolutionMap: [{ duration: [10, 15], resolution: [] }],
+    aspectRatio: ["16:9", "9:16"],
+    type: ["singleImage", "text"],
+    audio: false,
+  },
+  // sora 2
+  {
+    manufacturer: "apimart",
+    model: "sora-2-pro",
     durationResolutionMap: [{ duration: [15, 25], resolution: [] }],
     aspectRatio: ["16:9", "9:16"],
     type: ["singleImage", "text"],

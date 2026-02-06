@@ -11,7 +11,13 @@ export default async (input: VideoConfig, config: AIConfig) => {
   if (!config.apiKey) throw new Error("缺少API Key");
 
   const { owned, images, hasStartEndType } = validateVideoConfig(input, config);
-  const baseUrl = (config.baseURL || "https://generativelanguage.googleapis.com").replace(/\/+$/, "");
+
+  const defaultBaseUrl = [
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:predictLongRunning",
+    "https://generativelanguage.googleapis.com/v1beta/{name}",
+  ].join("|");
+
+  const [submitUrl, queryUrl] = (config.baseURL || defaultBaseUrl).split("|");
   const headers = { "x-goog-api-key": config.apiKey };
 
   const instance: Record<string, any> = { prompt: input.prompt };
@@ -36,7 +42,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   }
 
   const { data } = await axios.post(
-    `${baseUrl}/v1beta/models/${config.model}:predictLongRunning`,
+    submitUrl.replace("{model}", config.model),
     { instances: [instance], parameters },
     { headers: { ...headers, "Content-Type": "application/json" } },
   );
@@ -44,7 +50,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   if (!data.name) throw new Error("未获取到操作名称");
 
   return pollTask(async () => {
-    const { data: status } = await axios.get(`${baseUrl}/v1beta/${data.name}`, { headers });
+    const { data: status } = await axios.get(queryUrl.replace("{name}", data.name), { headers });
     const { done, response, error } = status;
 
     if (!done) return { completed: false };
