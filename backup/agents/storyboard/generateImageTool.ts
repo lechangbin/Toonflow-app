@@ -215,8 +215,7 @@ async function filterRelevantAssets(prompts: string[], allResources: ResourceIte
     return availableImages;
   }
 
-  const chatModel = await u.ai.text({});
-  const result = await chatModel!.invoke({
+  const result = await u.ai.text.invoke({
     messages: [
       {
         role: "user",
@@ -231,23 +230,24 @@ ${availableResources.map((r) => `- ${r.name}：${r.intro}`).join("\n")}
 请仅选择在分镜中明确出现或被提及的角色、场景、道具。不要选择与分镜内容无关的资产。`,
       },
     ],
-    responseFormat: {
-      type: "json_schema",
-      jsonSchema: {
-        name: "filteredAssets",
-        strict: true,
-        schema: z.toJSONSchema(filteredAssetsSchema),
-      },
+    output: {
+      relevantAssets: z
+        .array(
+          z.object({
+            name: z.string().describe("资产名称"),
+            reason: z.string().describe("选择该资产的原因"),
+          }),
+        )
+        .describe("与分镜内容相关的资产列表"),
     },
   });
 
-  const data = result?.json as z.infer<typeof filteredAssetsSchema>;
 
-  if (!data?.relevantAssets || data.relevantAssets.length === 0) {
+  if (!result?.relevantAssets || result.relevantAssets.length === 0) {
     return availableImages;
   }
 
-  const relevantNames = new Set(data.relevantAssets.map((a) => a.name));
+  const relevantNames = new Set(result.relevantAssets.map((a) => a.name));
   const filteredImages = availableImages.filter((img) => relevantNames.has(img.name));
 
   return filteredImages.length > 0 ? filteredImages : availableImages;
@@ -318,7 +318,7 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
 
   const processedImages = await processImages(filteredImages);
 
-  const contentStr = await u.ai.generateImage({
+  const contentStr = await u.ai.image({
     systemPrompt: resourcesMapPrompts,
     prompt: prompts,
     size: "4K",

@@ -124,7 +124,7 @@ export default router.post(
       assetsId: id,
     });
 
-    const contentStr = await u.ai.generateImage({
+    const contentStr = await u.ai.image({
       systemPrompt,
       prompt: userPrompt,
       imageBase64: base64 ? [base64] : [],

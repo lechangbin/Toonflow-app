@@ -63,5 +63,5 @@ export default async (input: ImageConfig, config?: AIConfig) => {
   let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
   if (!input.resType) input.resType = "b64";
   if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
-  return input;
+  return imageUrl;
 };

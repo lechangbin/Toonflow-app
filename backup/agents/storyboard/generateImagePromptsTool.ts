@@ -104,9 +104,7 @@ async function generateGridPrompt(options: GridPromptOptions): Promise<GridPromp
 
   if (!mainPrompts) return { prompt: errData, gridLayout: layout };
 
-  const chatModel = await u.ai.text({});
-
-  const result = await chatModel!.invoke({
+  const result = await u.ai.text.invoke({
     messages: [
       {
         role: "system",

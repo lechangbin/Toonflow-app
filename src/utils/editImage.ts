@@ -79,7 +79,7 @@ async function convertDirectiveAndImages(images: Record<string, string>, directi
  */
 export default async (images: Record<string, string>, directive: string, projectId: number) => {
   const { prompt, images: base64Images } = await convertDirectiveAndImages(images, directive);
-  const contentStr = await u.ai.generateImage({
+  const contentStr = await u.ai.image({
     systemPrompt: "根据用户提供的具体修改指令，对上传的图片进行智能编辑。",
     prompt: prompt,
     imageBase64: base64Images,

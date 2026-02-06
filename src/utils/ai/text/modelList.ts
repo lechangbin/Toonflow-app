@@ -4,6 +4,7 @@ import { createZhipu } from "zhipu-ai-provider";
 import { createQwen } from "qwen-ai-provider";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 interface Owned {
   manufacturer: string;
@@ -18,7 +19,8 @@ interface Owned {
     | typeof createZhipu
     | typeof createQwen
     | typeof createGoogleGenerativeAI
-    | typeof createAnthropic;
+    | typeof createAnthropic
+    | typeof createOpenAICompatible;
 }
 
 const modelList: Owned[] = [
@@ -407,6 +409,15 @@ const modelList: Owned[] = [
     image: true,
     think: false,
     instance: createAnthropic,
+    tool: true,
+  },
+  {
+    manufacturer: "other",
+    model: "gpt-4.1",
+    responseFormat: "schema",
+    image: true,
+    think: false,
+    instance: createOpenAICompatible,
     tool: true,
   },
 ];

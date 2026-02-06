@@ -8,7 +8,6 @@ expressWs(router as unknown as Application);
 router.ws("/", async (ws, req) => {
   let agent: Storyboard;
 
-  const config = await u.getConfig("language");
 
   const projectId = req.query.projectId;
   const scriptId = req.query.scriptId;
@@ -19,10 +18,6 @@ router.ws("/", async (ws, req) => {
   }
 
   agent = new Storyboard(Number(projectId), Number(scriptId));
-
-  agent.modelName = config.model ?? "";
-  agent.baseURL = config.baseURL ?? "";
-  agent.apiKey = config.apiKey ?? "";
 
   const existing = await u
     .db("t_chatHistory")
