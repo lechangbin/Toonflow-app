@@ -88,16 +88,31 @@ export default router.post(
     const result: ResultItem[] = Object.values(itemMap);
 
     const promptsList = await u.db("t_prompts").where("code", "in", ["role-polish", "scene-polish", "storyboard-polish", "tool-polish"]);
+    const propmptIds = promptsList.map((i) => i.id);
+    const mapList = await u
+      .db("t_aiModelMap")
+      .leftJoin("t_config", "t_config.id", "t_aiModelMap.configId")
+      .whereIn("t_aiModelMap.promptsId", propmptIds as number[])
+      .select("t_config.model", "t_config.apiKey", "t_config.baseUrl", "t_config.manufacturer", "t_aiModelMap.promptsId");
     const errPrompts = "不论用户说什么，请直接输出AI配置异常";
-    const getPromptValue = (code: string): string => {
+    const getPromptValue = (code: string) => {
       const item = promptsList.find((p) => p.code === code);
-      return item?.customValue ?? item?.defaultValue ?? errPrompts;
+      if (item) {
+        const apiData = mapList.find((i) => i.promptsId == item.id);
+        if (apiData) delete apiData?.promptsId;
+        return { prompt: item?.customValue ?? item?.defaultValue ?? errPrompts, apiData: { ...(apiData ?? {}) } };
+      } else {
+        return {
+          prompt: errPrompts,
+          apiData: {},
+        };
+      }
     };
     const role = getPromptValue("role-polish");
     const scene = getPromptValue("scene-polish");
     const tool = getPromptValue("tool-polish");
     const storyboard = getPromptValue("storyboard-polish");
-
+    let apiConfig = {};
     let systemPrompt = "";
     let userPrompt = "";
     if (type == "role") {
@@ -105,7 +120,8 @@ export default router.post(
       const chapterRange = Array.isArray(data?.chapterRange) ? data.chapterRange : [data?.chapterRange];
       const novelData = (await u.db("t_novel").whereIn("chapterIndex", chapterRange).select("*")) as NovelChapter[];
       const results: string = mergeNovelText(novelData);
-      systemPrompt = role;
+      systemPrompt = role.prompt;
+      apiConfig = role.apiData;
       userPrompt = `
       请根据以下参数生成角色标准四视图提示词：
   
@@ -128,7 +144,8 @@ export default router.post(
       const chapterRange = Array.isArray(data?.chapterRange) ? data.chapterRange : [data?.chapterRange];
       const novelData = (await u.db("t_novel").whereIn("chapterIndex", chapterRange).select("*")) as NovelChapter[];
       const results: string = mergeNovelText(novelData);
-      systemPrompt = scene;
+      systemPrompt = scene.prompt;
+      apiConfig = scene.apiData;
       userPrompt = `
       请根据以下参数生成场景图提示词：
   
@@ -151,7 +168,8 @@ export default router.post(
       const chapterRange = Array.isArray(data?.chapterRange) ? data.chapterRange : [data?.chapterRange];
       const novelData = (await u.db("t_novel").whereIn("chapterIndex", chapterRange).select("*")) as NovelChapter[];
       const results: string = mergeNovelText(novelData);
-      systemPrompt = tool;
+      systemPrompt = tool.prompt;
+      apiConfig = tool.apiData;
       userPrompt = `
       请根据以下参数生成道具图提示词：
   
@@ -170,7 +188,8 @@ export default router.post(
       `;
     }
     if (type == "storyboard") {
-      systemPrompt = storyboard;
+      systemPrompt = storyboard.prompt;
+      apiConfig = storyboard.apiData;
       userPrompt = `
       请根据以下参数生成分镜图提示词：
   
@@ -188,22 +207,27 @@ export default router.post(
       `;
     }
     async function generatePrompt() {
-      const { prompt } = await u.ai.text.invoke({
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
+      apiConfig = {};
+      const result = await u.ai.text.invoke(
+        {
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt,
+            },
+            {
+              role: "user",
+              content: userPrompt,
+            },
+          ],
+          output: {
+            prompt: zod.string().describe("提示词"),
           },
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
-        output: {
-          prompt: zod.string().describe("提示词"),
         },
-      });
-
+        {
+          ...apiConfig,
+        },
+      );
       // const result = await model.invoke({
       //   messages: [
       //     {
@@ -224,7 +248,7 @@ export default router.post(
       //     },
       //   },
       // });
-      return prompt;
+      return result.prompt;
     }
     try {
       const prompt = (await generatePrompt()) as any;

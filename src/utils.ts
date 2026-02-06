@@ -13,6 +13,7 @@ import AIText from "@/utils/ai/text/index";
 import AIImage from "@/utils/ai/image/index";
 import AIVideo from "@/utils/ai/video/index";
 
+import getPromptAi from "./utils/getPromptAi";
 export default {
   db,
   oss,
@@ -28,4 +29,5 @@ export default {
   uuid,
   error,
   imageTools,
+  getPromptAi,
 };

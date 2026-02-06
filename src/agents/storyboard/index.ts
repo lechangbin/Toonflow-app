@@ -594,22 +594,49 @@ ${task}
     this.log(`Sub-Agent 调用`, agentType);
 
     const promptsList = await u.db("t_prompts").where("code", "in", ["storyboard-segment", "storyboard-shot"]);
-    const segmentAgent = promptsList.find((p) => p.code === "storyboard-segment");
-    const shotAgent = promptsList.find((p) => p.code === "storyboard-shot");
+    const promptConfig = await u.getPromptAi(promptsList.map((i) => i.id) as number[]);
+
     const errPrompts = "不论用户说什么，请直接输出Agent配置异常";
-    const SYSTEM_PROMPTS: Record<AgentType, string> = {
-      segmentAgent: segmentAgent?.customValue || segmentAgent?.defaultValue || errPrompts,
-      shotAgent: shotAgent?.customValue || shotAgent?.defaultValue || errPrompts,
+
+    const getAiPromptConfig = (code: string) => {
+      const item = promptsList.find((p) => p.code === code);
+      const subConfig = promptConfig.find((sub) => sub?.promptsId == item?.id);
+      if (subConfig) {
+        return {
+          prompt: item?.customValue || item?.defaultValue || errPrompts,
+          apiConfig: { ...subConfig },
+        };
+      } else {
+        return {
+          prompt: item?.customValue || item?.defaultValue || errPrompts,
+          apiConfig: {},
+        };
+      }
+    };
+    const segmentAgent = getAiPromptConfig("storyboard-segment");
+    const shotAgent = getAiPromptConfig("storyboard-shot");
+    const SYSTEM_PROMPTS: Record<
+      AgentType,
+      {
+        prompt: string;
+        apiConfig: Object;
+      }
+    > = {
+      segmentAgent: segmentAgent,
+      shotAgent: shotAgent,
     };
 
     const context = await this.buildFullContext(task);
 
-    const { fullStream } = await u.ai.text.stream({
-      system: SYSTEM_PROMPTS[agentType],
-      tools: this.getSubAgentTools(agentType),
-      messages: [{ role: "user", content: context }],
-      maxStep: 100,
-    });
+    const { fullStream } = await u.ai.text.stream(
+      {
+        system: SYSTEM_PROMPTS[agentType].prompt,
+        tools: this.getSubAgentTools(agentType),
+        messages: [{ role: "user", content: context }],
+        maxStep: 100,
+      },
+      SYSTEM_PROMPTS[agentType].apiConfig,
+    );
 
     let fullResponse = "";
     for await (const item of fullStream) {
@@ -673,15 +700,19 @@ ${task}
     const envContext = await this.buildEnvironmentContext();
 
     const prompts = await u.db("t_prompts").where("code", "storyboard-main").first();
+    const promptConfig = await u.getPromptAi(prompts?.id);
 
     const mainPrompts = prompts?.customValue || prompts?.defaultValue || "不论用户说什么，请直接输出Agent配置异常";
 
-    const { fullStream } = await u.ai.text.stream({
-      system: `${envContext}\n${mainPrompts}`,
-      tools: this.getAllTools(),
-      messages: this.history,
-      maxStep: 100,
-    });
+    const { fullStream } = await u.ai.text.stream(
+      {
+        system: `${envContext}\n${mainPrompts}`,
+        tools: this.getAllTools(),
+        messages: this.history,
+        maxStep: 100,
+      },
+      promptConfig,
+    );
 
     let fullResponse = "";
     for await (const item of fullStream) {

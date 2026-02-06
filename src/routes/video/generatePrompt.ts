@@ -8,25 +8,47 @@ const router = express.Router();
 
 type GenerateMode = "startEnd" | "multi" | "single";
 
-const getSystemPrompt = async (mode: GenerateMode): Promise<string> => {
+const getSystemPrompt = async (mode: GenerateMode): Promise<{ prompt: string; apiConfig: Object }> => {
   const promptsList = await u.db("t_prompts").where("code", "in", ["video-startEnd", "video-multi", "video-single", "video-main"]);
+
+  const promptAiConfig = await u.getPromptAi(promptsList.map((i) => i.id) as number[]);
+
   const errPrompts = "不论用户说什么，请直接输出AI配置异常";
-  const getPromptValue = (code: string): string => {
+  const getPromptValue = (code: string) => {
     const item = promptsList.find((p) => p.code === code);
-    return item?.customValue ?? item?.defaultValue ?? errPrompts;
+    const subData = promptAiConfig.find((i) => i?.promptsId == item?.id);
+    const returnData = {
+      prompt: item?.customValue ?? item?.defaultValue ?? errPrompts,
+      apiConfig: {},
+    };
+    if (subData) {
+      returnData.apiConfig = { ...subData };
+      return returnData;
+    } else {
+      return returnData;
+    }
   };
   const startEnd = getPromptValue("video-startEnd");
   const multi = getPromptValue("video-multi");
   const single = getPromptValue("video-single");
   const main = getPromptValue("video-main");
 
-  const modeDescriptions: Record<GenerateMode, string> = {
+  const modeDescriptions: Record<
+    GenerateMode,
+    {
+      prompt: string;
+      apiConfig: Object;
+    }
+  > = {
     startEnd: startEnd,
     multi: multi,
     single: single,
   };
-
-  return `${main}\n\n${modeDescriptions[mode]}`;
+  const modeData = modeDescriptions[mode];
+  return {
+    prompt: `${main}\n\n${modeData.prompt}`,
+    apiConfig: modeData.apiConfig,
+  };
 };
 
 const getModeDescription = (mode: GenerateMode): string => {
@@ -59,16 +81,17 @@ export default router.post(
 
     const shotCount = images.length;
     const avgDuration = (parseFloat(duration) / shotCount).toFixed(1);
-
-    const result = await u.ai.text.invoke({
-      messages: [
-        {
-          role: "system",
-          content: await getSystemPrompt(mode),
-        },
-        {
-          role: "user",
-          content: `Mode: ${getModeDescription(mode)}
+    const promptConfig = await getSystemPrompt(mode);
+    const result = await u.ai.text.invoke(
+      {
+        messages: [
+          {
+            role: "system",
+            content: promptConfig.prompt,
+          },
+          {
+            role: "user",
+            content: `Mode: ${getModeDescription(mode)}
 
 Reference Images:
 ${imagePrompts}
@@ -82,10 +105,11 @@ Parameters:
 - Average Duration: ${avgDuration}s per shot
 
 Generate storyboard prompts:`,
-        },
-      ],
-    });
-    console.log("%c Line:64 🥕 result", "background:#7f2b82", result.text);
+          },
+        ],
+      },
+      promptConfig.apiConfig,
+    );
 
     res.status(200).send(success(result.text));
   },

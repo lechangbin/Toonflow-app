@@ -224,7 +224,7 @@ export default class OutlineScript {
       }
     }
 
-    const actualStart = overwrite ? 1 : startEpisode ?? (await this.getMaxEpisode()) + 1;
+    const actualStart = overwrite ? 1 : (startEpisode ?? (await this.getMaxEpisode()) + 1);
     const insertedCount = await this.insertOutlines(episodes, actualStart);
 
     const newOutlines = await u
@@ -611,24 +611,51 @@ ${task}
     this.log(`Sub-Agent 调用`, agentType);
 
     const promptsList = await u.db("t_prompts").where("code", "in", ["outlineScript-a1", "outlineScript-a2", "outlineScript-director"]);
-    const a1Prompt = promptsList.find((p) => p.code === "outlineScript-a1");
-    const a2Prompt = promptsList.find((p) => p.code === "outlineScript-a2");
-    const directorPrompt = promptsList.find((p) => p.code === "outlineScript-director");
+    const promptConfig = await u.getPromptAi(promptsList.map((i) => i.id) as number[]);
+
     const errPrompts = "不论用户说什么，请直接输出Agent配置异常";
-    const SYSTEM_PROMPTS: Record<AgentType, string> = {
-      AI1: a1Prompt?.customValue || a1Prompt?.defaultValue || errPrompts,
-      AI2: a2Prompt?.customValue || a2Prompt?.defaultValue || errPrompts,
-      director: directorPrompt?.customValue || directorPrompt?.defaultValue || errPrompts,
+
+    const getAiPromptConfig = (code: string) => {
+      const item = promptsList.find((p) => p.code === code);
+      const subConfig = promptConfig.find((sub) => sub?.promptsId == item?.id);
+      if (subConfig) {
+        return {
+          prompt: item?.customValue || item?.defaultValue || errPrompts,
+          apiConfig: { ...subConfig },
+        };
+      } else {
+        return {
+          prompt: item?.customValue || item?.defaultValue || errPrompts,
+          apiConfig: {},
+        };
+      }
+    };
+    const a1Prompt = getAiPromptConfig("outlineScript-a1");
+    const a2Prompt = getAiPromptConfig("outlineScript-a2");
+    const directorPrompt = getAiPromptConfig("outlineScript-director");
+    const SYSTEM_PROMPTS: Record<
+      AgentType,
+      {
+        prompt: string;
+        apiConfig: Object;
+      }
+    > = {
+      AI1: a1Prompt,
+      AI2: a2Prompt,
+      director: directorPrompt,
     };
 
     const context = await this.buildFullContext(task);
 
-    const { fullStream } = await u.ai.text.stream({
-      system: SYSTEM_PROMPTS[agentType],
-      tools: this.getSubAgentTools(),
-      messages: [{ role: "user", content: context }],
-      maxStep: 100,
-    });
+    const { fullStream } = await u.ai.text.stream(
+      {
+        system: SYSTEM_PROMPTS[agentType].prompt,
+        tools: this.getSubAgentTools(),
+        messages: [{ role: "user", content: context }],
+        maxStep: 100,
+      },
+      SYSTEM_PROMPTS[agentType].apiConfig,
+    );
 
     let fullResponse = "";
     for await (const item of fullStream) {
@@ -690,15 +717,18 @@ ${task}
     const envContext = await this.buildEnvironmentContext();
 
     const prompts = await u.db("t_prompts").where("code", "outlineScript-main").first();
-
+    const promptConfig = await u.getPromptAi(prompts?.id);
     const mainPrompts = prompts?.customValue || prompts?.defaultValue || "不论用户说什么，请直接输出Agent配置异常";
 
-    const { fullStream } = await u.ai.text.stream({
-      system: `${envContext}\n${mainPrompts}`,
-      tools: this.getAllTools(),
-      messages: this.history,
-      maxStep: 100,
-    });
+    const { fullStream } = await u.ai.text.stream(
+      {
+        system: `${envContext}\n${mainPrompts}`,
+        tools: this.getAllTools(),
+        messages: this.history,
+        maxStep: 100,
+      },
+      promptConfig,
+    );
 
     let fullResponse = "";
     for await (const item of fullStream) {

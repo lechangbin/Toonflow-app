@@ -5,6 +5,7 @@ import { devToolsMiddleware } from "@ai-sdk/devtools";
 import { parse } from "best-effort-json-parser";
 import modelList from "./modelList";
 import { z } from "zod";
+import { OpenAIProvider } from "@ai-sdk/openai";
 
 interface AIInput<T extends Record<string, z.ZodTypeAny> | undefined = undefined> {
   system?: string;
@@ -19,17 +20,22 @@ interface AIConfig {
   model?: string;
   apiKey?: string;
   baseURL?: string;
+  manufacturer?: string;
 }
 
 const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
   let sqlTextModelConfig = {};
   if (!config || !config?.model || !config?.apiKey || !config?.baseURL) sqlTextModelConfig = await u.getConfig("text");
-  const { model, apiKey, baseURL } = { ...sqlTextModelConfig, ...config };
-
-  const owned = modelList.find((m) => m.model === model);
+  const { model, apiKey, baseURL, manufacturer } = { ...(sqlTextModelConfig as Awaited<ReturnType<typeof u.getConfig>>), ...config };
+  let owned;
+  if (manufacturer == "other") {
+    owned = modelList.find((m) => m.manufacturer === manufacturer);
+  } else {
+    owned = modelList.find((m) => m.model === model);
+  }
   if (!owned) throw new Error("不支持的模型或厂商");
 
-  const modelInstance = owned.instance({ apiKey, baseURL });
+  const modelInstance = owned.instance({ apiKey, baseURL: baseURL!, name: "xixixi" });
 
   const maxStep = input.maxStep ?? (input.tools ? Object.keys(input.tools).length * 5 : undefined);
   const outputBuilders: Record<string, (schema: any) => any> = {
@@ -46,16 +52,16 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
   };
 
   const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
-
+  const modelFn = owned.manufacturer == "doubao" ? (modelInstance as OpenAIProvider).chat(model!) : modelInstance(model!);
   return {
     config: {
       model:
         process.env.NODE_ENV === "dev"
           ? wrapLanguageModel({
-              model: modelInstance.chat(model!) as any,
+              model: modelFn as any,
               middleware: devToolsMiddleware(),
             })
-          : (modelInstance(model!) as LanguageModel),
+          : (modelFn as LanguageModel),
       ...(input.system && { system: input.system }),
       ...(input.prompt ? { prompt: input.prompt } : { messages: input.messages! }),
       ...(input.tools && owned.tool && { tools: input.tools }),
