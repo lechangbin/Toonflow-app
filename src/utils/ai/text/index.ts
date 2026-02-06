@@ -45,14 +45,14 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
     },
   };
 
-  const output = input.output ? outputBuilders[owned.responseFormat]?.(input.output) ?? null : null;
+  const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
 
   return {
     config: {
       model:
         process.env.NODE_ENV === "dev"
           ? wrapLanguageModel({
-              model: modelInstance(model!) as any,
+              model: modelInstance.chat(model!) as any,
               middleware: devToolsMiddleware(),
             })
           : (modelInstance(model!) as LanguageModel),
