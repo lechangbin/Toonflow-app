@@ -1,3 +1,4 @@
+import "./logger";
 import "./err";
 import "./env";
 import express, { Request, Response, NextFunction } from "express";
@@ -32,6 +33,7 @@ export default async function startServe() {
   } else {
     rootDir = path.join(process.cwd(), "uploads");
   }
+
   // 确保 uploads 目录存在
   if (!fs.existsSync(rootDir)) {
     fs.mkdirSync(rootDir, { recursive: true });

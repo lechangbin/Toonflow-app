@@ -1,4 +1,4 @@
-// @db-hash b6b4d8cdc25a2f4d60f1c239cd7e7060
+// @db-hash 4b4fd23f99ba4269f4992c7260b5a03c
 //该文件由脚本自动生成，请勿手动修改
 
 export interface t_assets {
@@ -30,7 +30,6 @@ export interface t_config {
   'baseUrl'?: string | null;
   'createTime'?: number | null;
   'id'?: number;
-  'index'?: number | null;
   'manufacturer'?: string | null;
   'model'?: string | null;
   'name'?: string | null;

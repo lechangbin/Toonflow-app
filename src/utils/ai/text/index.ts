@@ -1,5 +1,7 @@
 import u from "@/utils";
 import { generateText, streamText, Output, stepCountIs, ModelMessage, LanguageModel, Tool, GenerateTextResult } from "ai";
+import { wrapLanguageModel } from "ai";
+import { devToolsMiddleware } from "@ai-sdk/devtools";
 import { parse } from "best-effort-json-parser";
 import modelList from "./modelList";
 import { z } from "zod";
@@ -43,11 +45,17 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
     },
   };
 
-  const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
+  const output = input.output ? outputBuilders[owned.responseFormat]?.(input.output) ?? null : null;
 
   return {
     config: {
-      model: modelInstance(model!) as LanguageModel,
+      model:
+        process.env.NODE_ENV === "dev"
+          ? wrapLanguageModel({
+              model: modelInstance(model!) as any,
+              middleware: devToolsMiddleware(),
+            })
+          : (modelInstance(model!) as LanguageModel),
       ...(input.system && { system: input.system }),
       ...(input.prompt ? { prompt: input.prompt } : { messages: input.messages! }),
       ...(input.tools && owned.tool && { tools: input.tools }),

@@ -3,11 +3,8 @@ import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
 import { z } from "zod";
-import { generateText, Output, tool, stepCountIs } from "ai";
+import { tool } from "ai";
 const router = express.Router();
-
-import { createOpenAI } from "@ai-sdk/openai";
-import { createDeepSeek } from "@ai-sdk/deepseek";
 
 // 检查语言模型
 export default router.post(
@@ -48,7 +45,6 @@ export default router.post(
           baseURL,
         },
       );
-      console.log("%c Line:52 🍐 reply", "background:#ffdd4d", reply);
       res.status(200).send(success(reply));
     } catch (err) {
       const msg = u.error(err).message;

@@ -28,4 +28,4 @@ function loadDotenvESM(envPath = ".env.local") {
   console.log(`[环境变量]: ${finalPath}`);
 }
 
-if (process.env.NODE_ENV == "dev") loadDotenvESM(".env.local");
+if (typeof process.versions?.electron == "undefined") loadDotenvESM(".env.local");
