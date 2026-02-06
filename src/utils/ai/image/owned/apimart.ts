@@ -1,8 +1,6 @@
 import axios from "axios";
-import axiosRetry from "axios-retry";
 import { pollTask } from "@/utils/ai/utils";
 
-axiosRetry(axios, { retries: 3, retryDelay: () => 200 });
 
 export default async (input: ImageConfig, config: AIConfig): Promise<string> => {
   if (!config.apiKey) throw new Error("缺少API Key");
