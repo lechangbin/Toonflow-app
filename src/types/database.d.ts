@@ -1,6 +1,11 @@
-// @db-hash b6b4d8cdc25a2f4d60f1c239cd7e7060
+// @db-hash e1460b0ace03f6aaed458653a32b6ffb
 //该文件由脚本自动生成，请勿手动修改
 
+export interface t_aiModelMap {
+  'configId'?: number | null;
+  'id'?: number;
+  'promptsId'?: number | null;
+}
 export interface t_assets {
   'duration'?: string | null;
   'episode'?: string | null;
@@ -30,7 +35,6 @@ export interface t_config {
   'baseUrl'?: string | null;
   'createTime'?: number | null;
   'id'?: number;
-  'index'?: number | null;
   'manufacturer'?: string | null;
   'model'?: string | null;
   'name'?: string | null;
@@ -148,6 +152,7 @@ export interface t_videoConfig {
 }
 
 export interface DB {
+  "t_aiModelMap": t_aiModelMap;
   "t_assets": t_assets;
   "t_chatHistory": t_chatHistory;
   "t_config": t_config;

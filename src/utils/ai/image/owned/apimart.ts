@@ -1,9 +1,5 @@
 import axios from "axios";
-import u from "@/utils";
-import FormData from "form-data";
 import axiosRetry from "axios-retry";
-import { OpenAIChatModel, type OpenAIChatModelOptions } from "@aigne/openai";
-import sharp from "sharp";
 import { pollTask } from "@/utils/ai/utils";
 
 axiosRetry(axios, { retries: 3, retryDelay: () => 200 });

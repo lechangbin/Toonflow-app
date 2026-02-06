@@ -1,9 +1,18 @@
 {
-  "name": "toonflow-serve",
+ "name": "toonflow-app",
   "version": "1.0.5",
-  "description": "ToonFlow Serve - Electron Application",
+  "description": "Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。",
+  "author": "HBAI-Ltd <ltlctools@outlook.com>",
+  "homepage": "https://github.com/HBAI-Ltd/Toonflow-app#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HBAI-Ltd/Toonflow-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HBAI-Ltd/Toonflow-app/issues",
+    "email": "ltlctools@outlook.com"
+  },
   "main": "build/main.js",
-  "author": "ToonFlow Team",
   "packageManager": "yarn@1.0.0",
   "engines": {
     "node": ">=1.0.0"
@@ -19,18 +28,16 @@
     "dist:mac": "yarn build && electron-builder --mac",
     "dist:linux": "yarn build && electron-builder --linux",
     "test": "node build/app.js",
+    "debug:ai": "npx @ai-sdk/devtools",
     "license": "bun run scripts/license.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.35",
     "@ai-sdk/deepseek": "^2.0.17",
+    "@ai-sdk/devtools": "^0.0.11",
     "@ai-sdk/google": "^3.0.20",
     "@ai-sdk/openai": "^3.0.25",
     "@ai-sdk/openai-compatible": "^2.0.27",
-    "@aigne/core": "^1.72.0",
-    "@aigne/openai": "^0.16.16",
-    "@langchain/core": "^1.1.15",
-    "@langchain/openai": "^1.2.1",
     "@rmp135/sql-ts": "^2.2.0",
     "ai": "^6.0.67",
     "axios": "^1.13.2",
