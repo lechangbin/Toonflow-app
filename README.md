@@ -379,7 +379,7 @@ pm2 monit             # 监控面板
 
 交流群 6:
 
-<img src="./docs/chat6QR.jpg" alt="Toonflow Logo" height="400"/>
+<img src="./docs/chat6QR.jpg?r=1" alt="Toonflow Logo" height="400"/>
 <p>使用微信扫码添加，二维码过期可提交 Issues 提醒更新</p>
 
 ---
