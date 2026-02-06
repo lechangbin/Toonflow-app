@@ -44,7 +44,7 @@ export default router.post(
 
     // 过滤掉空值
     let fileUrl = filePath.filter((p: string) => p && p.trim() !== "");
-    
+
     if (fileUrl.length === 0) {
       return res.status(400).send(error("请至少选择一张图片"));
     }
@@ -149,17 +149,14 @@ ${prompt}
 3. 关键人物在画面中全部清晰显示，不得被遮挡、缺失或省略
 4. 画面真实、细致，无畸形、无模糊、无杂物、无多余人物、无文字、水印、logo
 `;
-
-    const videoPath = await u.ai.generateVideo(
-      {
-        imageBase64,
-        savePath,
-        prompt: inputPrompt,
-        duration: duration as any,
-        aspectRatio: resolution as any,
-      },
-      type!,
-    );
+    const videoPath = await u.ai.video({
+      imageBase64,
+      savePath,
+      prompt: inputPrompt,
+      duration: duration as any,
+      aspectRatio: resolution as any,
+      resolution: resolution as any,
+    });
 
     if (videoPath) {
       // 生成成功，更新状态为 1

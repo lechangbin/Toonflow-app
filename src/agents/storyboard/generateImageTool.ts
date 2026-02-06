@@ -343,7 +343,7 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
 
   const processedImages = await processImages(filteredImages);
 
-  const contentStr = await u.ai.generateImage({
+  const contentStr = await u.ai.image({
     systemPrompt: resourcesMapPrompts,
     prompt: prompts,
     size: "4K",

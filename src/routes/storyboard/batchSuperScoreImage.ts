@@ -22,7 +22,7 @@ async function superResolutionAndSave(
   projectId: number,
   videoRatio: string,
 ): Promise<{ ossPath: string; base64: string }> {
-  const contentStr = await u.ai.generateImage({
+  const contentStr = await u.ai.image({
     aspectRatio: videoRatio,
     size: "1K",
     resType: "b64",

@@ -47,24 +47,29 @@ export default router.post(
 
     // 获取更新后的数据
     const updatedConfig = await u.db("t_videoConfig").where({ id }).first();
-
-    res.status(200).send(success({ 
-      message: "更新视频配置成功",
-      data: {
-        id: updatedConfig.id,
-        scriptId: updatedConfig.scriptId,
-        projectId: updatedConfig.projectId,
-        manufacturer: updatedConfig.manufacturer,
-        mode: updatedConfig.mode,
-        startFrame: updatedConfig.startFrame ? JSON.parse(updatedConfig.startFrame) : null,
-        endFrame: updatedConfig.endFrame ? JSON.parse(updatedConfig.endFrame) : null,
-        images: updatedConfig.images ? JSON.parse(updatedConfig.images) : [],
-        resolution: updatedConfig.resolution,
-        duration: updatedConfig.duration,
-        prompt: updatedConfig.prompt,
-        selectedResultId: updatedConfig.selectedResultId,
-        createdAt: new Date(updatedConfig.createTime).toISOString(),
-      }
-    }));
+    if (updatedConfig) {
+      res.status(200).send(
+        success({
+          message: "更新视频配置成功",
+          data: {
+            id: updatedConfig.id,
+            scriptId: updatedConfig.scriptId,
+            projectId: updatedConfig.projectId,
+            manufacturer: updatedConfig.manufacturer,
+            mode: updatedConfig.mode,
+            startFrame: updatedConfig.startFrame ? JSON.parse(updatedConfig.startFrame) : null,
+            endFrame: updatedConfig.endFrame ? JSON.parse(updatedConfig.endFrame) : null,
+            images: updatedConfig.images ? JSON.parse(updatedConfig.images) : [],
+            resolution: updatedConfig.resolution,
+            duration: updatedConfig.duration,
+            prompt: updatedConfig.prompt,
+            selectedResultId: updatedConfig.selectedResultId,
+            createdAt: new Date(updatedConfig.createTime!).toISOString(),
+          },
+        }),
+      );
+    } else {
+      res.status(200).send(error("更新配置失败"));
+    }
   },
 );

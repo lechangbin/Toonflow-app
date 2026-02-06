@@ -6,11 +6,13 @@ import { z } from "zod";
 const router = express.Router();
 
 // 图片项schema
-const imageItemSchema = z.object({
-  id: z.number(),
-  filePath: z.string(),
-  prompt: z.string().optional(),
-}).nullable();
+const imageItemSchema = z
+  .object({
+    id: z.number(),
+    filePath: z.string(),
+    prompt: z.string().optional(),
+  })
+  .nullable();
 
 // 新增视频配置
 export default router.post(
@@ -22,31 +24,24 @@ export default router.post(
     mode: z.enum(["startEnd", "multi", "single"]),
     startFrame: imageItemSchema.optional(),
     endFrame: imageItemSchema.optional(),
-    images: z.array(z.object({
-      id: z.number(),
-      filePath: z.string(),
-      prompt: z.string().optional(),
-    })).optional(),
+    images: z
+      .array(
+        z.object({
+          id: z.number(),
+          filePath: z.string(),
+          prompt: z.string().optional(),
+        }),
+      )
+      .optional(),
     resolution: z.string(),
     duration: z.number(),
     prompt: z.string().optional(),
   }),
   async (req, res) => {
-    const { 
-      scriptId, 
-      projectId, 
-      manufacturer, 
-      mode, 
-      startFrame, 
-      endFrame, 
-      images, 
-      resolution, 
-      duration, 
-      prompt 
-    } = req.body;
+    const { scriptId, projectId, manufacturer, mode, startFrame, endFrame, images, resolution, duration, prompt } = req.body;
 
     // 生成新ID
-    const maxIdResult = await u.db("t_videoConfig").max("id as maxId").first();
+    const maxIdResult: any = await u.db("t_videoConfig").max("id as maxId").first();
     const newId = (maxIdResult?.maxId || 0) + 1;
     const now = Date.now();
 
@@ -68,23 +63,25 @@ export default router.post(
       updateTime: now,
     });
 
-    res.status(200).send(success({ 
-      message: "新增视频配置成功",
-      data: {
-        id: newId,
-        scriptId,
-        projectId,
-        manufacturer,
-        mode,
-        startFrame,
-        endFrame,
-        images: images || [],
-        resolution,
-        duration,
-        prompt: prompt || "",
-        selectedResultId: null,
-        createdAt: new Date(now).toISOString(),
-      }
-    }));
+    res.status(200).send(
+      success({
+        message: "新增视频配置成功",
+        data: {
+          id: newId,
+          scriptId,
+          projectId,
+          manufacturer,
+          mode,
+          startFrame,
+          endFrame,
+          images: images || [],
+          resolution,
+          duration,
+          prompt: prompt || "",
+          selectedResultId: null,
+          createdAt: new Date(now).toISOString(),
+        },
+      }),
+    );
   },
 );
