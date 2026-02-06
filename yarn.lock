@@ -49,7 +49,7 @@
     "@ai-sdk/provider" "3.0.7"
     "@ai-sdk/provider-utils" "4.0.13"
 
-"@ai-sdk/openai-compatible@^2.0.27":
+"@ai-sdk/openai-compatible@2.0.27", "@ai-sdk/openai-compatible@^2.0.27":
   version "2.0.27"
   resolved "https://registry.npmmirror.com/@ai-sdk/openai-compatible/-/openai-compatible-2.0.27.tgz#55c6bf3c59d71e71d9c337dbef8b764fa69e7ccd"
   integrity sha512-YpAZe7OQuMkYqcM/m1BMX0xFn4QdhuL4qGo8sNaiLq1VjEeU/pPfz51rnlpCfCvYanUL5TjIZEbdclBUwLooSQ==
@@ -112,6 +112,15 @@
   integrity sha512-VkPLrutM6VdA924/mG8OS+5frbVTcu6e046D2bgDo00tehBANR1QBJ/mPcZ9tXMFOsVcm6SQArOregxePzTFPw==
   dependencies:
     json-schema "^0.4.0"
+
+"@ai-sdk/xai@^3.0.47":
+  version "3.0.47"
+  resolved "https://registry.npmmirror.com/@ai-sdk/xai/-/xai-3.0.47.tgz#a8d3e08603865c5e401e19c801c7a80c3f31b890"
+  integrity sha512-JW43TqzPhc6Y9konMFlQ0kYcdFmTSCFu3yJlXP6RzaJSa3N2CKweUhMhXTzspqvA/wBCkCttTxf8hzXLMtSJ9Q==
+  dependencies:
+    "@ai-sdk/openai-compatible" "2.0.27"
+    "@ai-sdk/provider" "3.0.7"
+    "@ai-sdk/provider-utils" "4.0.13"
 
 "@develar/schema-utils@~2.6.5":
   version "2.6.5"

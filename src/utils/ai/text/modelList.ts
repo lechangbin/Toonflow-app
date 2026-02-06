@@ -5,6 +5,7 @@ import { createQwen } from "qwen-ai-provider";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createXai } from '@ai-sdk/xai';
 
 interface Owned {
   manufacturer: string;
@@ -411,6 +412,35 @@ const modelList: Owned[] = [
     instance: createAnthropic,
     tool: true,
   },
+  //xai
+   {
+    manufacturer: "xai",
+    model: "grok-3",
+    responseFormat: "schema",
+    image: false,
+    think: false,
+    instance: createXai,
+    tool: true,
+  },
+   {
+    manufacturer: "xai",
+    model: "grok-4",
+    responseFormat: "schema",
+    image: false,
+    think: false,
+    instance: createXai,
+    tool: true,
+  },
+   {
+    manufacturer: "xai",
+    model: "grok-4.1",
+    responseFormat: "schema",
+    image: true,
+    think: false,
+    instance: createXai,
+    tool: true,
+  },
+  //其他
   {
     manufacturer: "other",
     model: "gpt-4.1",
