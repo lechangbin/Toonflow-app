@@ -1,7 +1,6 @@
 import axios from "axios";
 import u from "@/utils";
 import FormData from "form-data";
-import axiosRetry from "axios-retry";
 import sharp from "sharp";
 
 type VideoAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9" | "adaptive";

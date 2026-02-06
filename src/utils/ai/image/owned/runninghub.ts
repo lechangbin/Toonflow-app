@@ -1,10 +1,8 @@
 import axios from "axios";
 import FormData from "form-data";
-import axiosRetry from "axios-retry";
 import sharp from "sharp";
 import { pollTask } from "@/utils/ai/utils";
 
-axiosRetry(axios, { retries: 3, retryDelay: () => 200 });
 // 上传 base64 图片到 runninghub
 const uploadBase64ToRunninghub = async (base64Image: string, apiKey: string, baseURL: string): Promise<string> => {
   try {
@@ -13,8 +11,8 @@ const uploadBase64ToRunninghub = async (base64Image: string, apiKey: string, bas
     const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, "");
     let buffer = Buffer.from(base64Data, "base64");
 
-    // 压缩图片到 5MB 以下
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    // 压缩图片到 7MB 以下
+    const MAX_SIZE = 7 * 1024 * 1024; // 7MB
     if (buffer.length > MAX_SIZE) {
       let quality = 90;
 

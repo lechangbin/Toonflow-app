@@ -7,7 +7,6 @@ import logger from "morgan";
 import cors from "cors";
 import buildRoute from "@/core";
 import fs from "fs";
-import router from "@/router";
 import path from "path";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
@@ -62,7 +61,8 @@ export default async function startServe() {
     }
   });
 
-  await router(app);
+  const router = await import("@/router");
+  await router.default(app);
 
   // 404 处理
   app.use((_, res, next: NextFunction) => {
