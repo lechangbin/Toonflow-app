@@ -1,5 +1,4 @@
 import "../type";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateImage, generateText } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 

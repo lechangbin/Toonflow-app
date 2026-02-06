@@ -6,33 +6,26 @@ import axios from "axios";
 import volcengine from "./owned/volcengine";
 import kling from "./owned/kling";
 import vidu from "./owned/vidu";
+import wan from "./owned/wan";
 import runninghub from "./owned/runninghub";
-import apimart from "./owned/apimart";
-import other from "./owned/other";
 import gemini from "./owned/gemini";
-
-const urlToBase64 = async (url: string): Promise<string> => {
-  const res = await axios.get(url, { responseType: "arraybuffer" });
-  const base64 = Buffer.from(res.data).toString("base64");
-  const mimeType = res.headers["content-type"] || "image/png";
-  return `data:${mimeType};base64,${base64}`;
-};
+import apimart from "./owned/apimart";
 
 const modelInstance = {
-  gemini: gemini,
   volcengine: volcengine,
   kling: kling,
   vidu: vidu,
+  wan: wan,
+  gemini: gemini,
   runninghub: runninghub,
-  // apimart: apimart,
-  other,
+  apimart: apimart,
 } as const;
 
-export default async (input: ImageConfig, config?: AIConfig) => {
-  const sqlTextModelConfig = await u.getConfig("image");
+export default async (input: VideoConfig, config?: AIConfig) => {
+  const sqlTextModelConfig = await u.getConfig("video");
   const { model, apiKey, baseURL, manufacturer } = { ...sqlTextModelConfig, ...config };
   const manufacturerFn = modelInstance[manufacturer as keyof typeof modelInstance];
-  if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的图片厂商");
+  if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的视频厂商");
   const owned = modelList.find((m) => m.model === model);
   if (!owned) throw new Error("不支持的模型");
 
@@ -60,8 +53,11 @@ export default async (input: ImageConfig, config?: AIConfig) => {
     });
   }
 
-  let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
-  if (!input.resType) input.resType = "b64";
-  if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
-  return input;
+  let videoUrl = await manufacturerFn(input, { model, apiKey, baseURL });
+  if (videoUrl) {
+    const response = await axios.get(videoUrl, { responseType: "stream" });
+    await u.oss.writeFile(input.savePath, response.data);
+    return input.savePath;
+  }
+  return videoUrl;
 };

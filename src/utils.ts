@@ -11,6 +11,7 @@ import * as imageTools from "@/utils/imageTools";
 
 import AIText from "@/utils/ai/text/index";
 import AIImage from "@/utils/ai/image/index";
+import AIVideo from "@/utils/ai/video/index";
 
 export default {
   db,
@@ -18,6 +19,7 @@ export default {
   ai: {
     text: AIText,
     image: AIImage,
+    video: AIVideo,
   },
   editImage,
   number2Chinese,

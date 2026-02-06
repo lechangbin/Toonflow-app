@@ -85,7 +85,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   return pollTask(async () => {
     const res = await axios.post(`https://www.runninghub.cn/task/openapi/outputs`, { taskId, apiKey: apiKey });
     const { code, msg, data } = res.data;
-    if (code === 0 && msg === "success") return { completed: true, imageUrl: data?.[0]?.fileUrl };
+    if (code === 0 && msg === "success") return { completed: true, url: data?.[0]?.fileUrl };
     if (code === 804 || code === 813) return { completed: false };
     if (code === 805) return { completed: false, error: `任务失败: ${data?.[0]?.failedReason?.exception_message || "未知原因"}` };
     return { completed: false, error: `未知状态: code=${code}, msg=${msg}` };

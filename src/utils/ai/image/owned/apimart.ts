@@ -24,7 +24,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     const res = await axios.get(`https://api.apimart.ai/v1/tasks/${taskId}`, { headers: { Authorization: apiKey }, params: { language: "en" } });
     if (res.data.code !== 200) return { completed: false, error: `查询失败: ${JSON.stringify(res.data)}` };
     const { status, result } = res.data.data;
-    if (status === "completed") return { completed: true, imageUrl: result?.images?.[0]?.url?.[0] };
+    if (status === "completed") return { completed: true, url: result?.images?.[0]?.url?.[0] };
     if (status === "failed" || status === "cancelled") return { completed: false, error: `任务${status}` };
     return { completed: false };
   });

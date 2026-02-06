@@ -80,7 +80,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
       }
 
       if (state === "succeed") {
-        return { completed: true, imageUrl: creations?.[0]?.url };
+        return { completed: true, url: creations?.[0]?.url };
       }
 
       return { completed: false };
