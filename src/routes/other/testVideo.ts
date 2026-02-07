@@ -12,20 +12,28 @@ export default router.post(
     modelName: z.string().optional(),
     apiKey: z.string(),
     baseURL: z.string().optional(),
-    manufacturer: z.enum(["runninghub", "volcengine", "apimart", "gemini", "openAi"]),
+    manufacturer: z.string(),
   }),
   async (req, res) => {
     const { modelName, apiKey, baseURL, manufacturer } = req.body;
     try {
-      const videoPath = await u.ai.video({
-        imageBase64: [],
-        savePath: "test.mp4",
-        prompt: "stickman Dances",
-        duration: 4,
-        resolution: "720p",
-        aspectRatio: "16:9",
-        audio: false,
-      });
+      const videoPath = await u.ai.video(
+        {
+          imageBase64: [],
+          savePath: "test.mp4",
+          prompt: "stickman Dances",
+          duration: 4,
+          resolution: "720p",
+          aspectRatio: "16:9",
+          audio: false,
+        },
+        {
+          model: modelName,
+          apiKey,
+          baseURL,
+          manufacturer,
+        },
+      );
       const url = await u.oss.getFileUrl(videoPath);
       res.status(200).send(success(url));
     } catch (err: any) {

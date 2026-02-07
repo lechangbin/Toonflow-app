@@ -6,7 +6,6 @@ import { parse } from "best-effort-json-parser";
 import modelList from "./modelList";
 import { z } from "zod";
 import { OpenAIProvider } from "@ai-sdk/openai";
-
 interface AIInput<T extends Record<string, z.ZodTypeAny> | undefined = undefined> {
   system?: string;
   tools?: Record<string, Tool>;
@@ -23,10 +22,9 @@ interface AIConfig {
   manufacturer?: string;
 }
 
-const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
-  let sqlTextModelConfig = {};
-  if (!config || !config?.model || !config?.apiKey || !config?.baseURL) sqlTextModelConfig = await u.getConfig("text");
-  const { model, apiKey, baseURL, manufacturer } = { ...(sqlTextModelConfig as Awaited<ReturnType<typeof u.getConfig>>), ...config };
+const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
+  if (!config || !config?.model || !config?.apiKey || !config?.baseURL || !config?.manufacturer) throw new Error("请检查模型配置是否正确");
+  const { model, apiKey, baseURL, manufacturer } = { ...config };
   let owned;
   if (manufacturer == "other") {
     owned = modelList.find((m) => m.manufacturer === manufacturer);
@@ -39,7 +37,9 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
 
   const maxStep = input.maxStep ?? (input.tools ? Object.keys(input.tools).length * 5 : undefined);
   const outputBuilders: Record<string, (schema: any) => any> = {
-    schema: (s) => Output.object({ schema: z.object(s) }),
+    schema: (s) => {
+      return Output.object({ schema: z.object(s) });
+    },
     object: () => {
       const jsonSchemaPrompt = `\n请按照以下 JSON Schema 格式返回结果:\n${JSON.stringify(
         z.toJSONSchema(z.object(input.output)),
@@ -52,16 +52,11 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig) => {
   };
 
   const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
-  const modelFn = owned.manufacturer == "doubao" ? (modelInstance as OpenAIProvider).chat(model!) : modelInstance(model!);
+  const chatModelManufacturer = ["doubao", "other", "openai"];
+  const modelFn = chatModelManufacturer.includes(owned.manufacturer) ? (modelInstance as OpenAIProvider).chat(model!) : modelInstance(model!);
   return {
     config: {
-      model:
-        process.env.NODE_ENV === "dev"
-          ? wrapLanguageModel({
-              model: modelFn as any,
-              middleware: devToolsMiddleware(),
-            })
-          : (modelFn as LanguageModel),
+      model: modelFn as LanguageModel,
       ...(input.system && { system: input.system }),
       ...(input.prompt ? { prompt: input.prompt } : { messages: input.messages! }),
       ...(input.tools && owned.tool && { tools: input.tools }),
@@ -79,7 +74,7 @@ const ai = Object.create({}) as {
   stream(input: AIInput, config?: AIConfig): Promise<ReturnType<typeof streamText>>;
 };
 
-ai.invoke = async (input: AIInput<any>, config: AIConfig = {}) => {
+ai.invoke = async (input: AIInput<any>, config: AIConfig) => {
   const options = await buildOptions(input, config);
   const result = await generateText(options.config);
   if (options.responseFormat === "object" && input.output) {
@@ -95,7 +90,7 @@ ai.invoke = async (input: AIInput<any>, config: AIConfig = {}) => {
   return result;
 };
 
-ai.stream = async (input: AIInput, config: AIConfig = {}) => {
+ai.stream = async (input: AIInput, config: AIConfig) => {
   const options = await buildOptions(input, config);
   return streamText(options.config);
 };

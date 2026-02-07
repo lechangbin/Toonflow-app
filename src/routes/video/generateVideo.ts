@@ -4,6 +4,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { t_config } from "@/types/database";
 
 const router = express.Router();
 
@@ -13,35 +14,52 @@ export default router.post(
   validateFields({
     projectId: z.number(),
     scriptId: z.number(),
-    configId: z.number().optional(), // 关联的视频配置ID
+    configId: z.number().optional(), // 关联的视频配 置ID
     type: z.string().optional(),
     resolution: z.string(),
+    aiConfigId: z.number(),
     filePath: z.array(z.string()),
     duration: z.number(),
     prompt: z.string(),
   }),
   async (req, res) => {
-    const { type, scriptId, projectId, configId, resolution, filePath, duration, prompt } = req.body;
+    const { type, scriptId, projectId, configId, aiConfigId, resolution, filePath, duration, prompt } = req.body;
 
-    // 参数校验
-    if (type === "volcengine") {
-      if (duration < 4 || duration > 12) {
-        return res.status(400).send(error("视频时长需在4-12秒之间"));
-      }
-      if (!["480p", "720p", "1080p"].includes(resolution)) {
-        return res.status(400).send(error("视频分辨率不正确"));
-      }
+    // // 参数校验
+    // if (type === "volcengine") {
+    //   if (duration < 4 || duration > 12) {
+    //     return res.status(400).send(error("视频时长需在4-12秒之间"));
+    //   }
+    //   if (!["480p", "720p", "1080p"].includes(resolution)) {
+    //     return res.status(400).send(error("视频分辨率不正确"));
+    //   }
+    // }
+
+    // if (type === "runninghub") {
+    //   if (duration !== 10 && duration !== 15) {
+    //     return res.status(400).send(error("视频时长只能是10秒或15秒"));
+    //   }
+    //   if (resolution !== "9:16" && resolution !== "16:9") {
+    //     return res.status(400).send(error("视频分辨率不正确"));
+    //   }
+    // }
+    const configData = await u.db("t_videoConfig").where("id", configId).first();
+    if (!configData) {
+      return res.status(500).send(error("视频配置不存在"));
     }
 
-    if (type === "runninghub") {
-      if (duration !== 10 && duration !== 15) {
-        return res.status(400).send(error("视频时长只能是10秒或15秒"));
-      }
-      if (resolution !== "9:16" && resolution !== "16:9") {
-        return res.status(400).send(error("视频分辨率不正确"));
-      }
+    // 优先使用视频配置中的AI配置ID查询,查不到再使用传入的aiConfigId
+    let aiConfigData = null;
+    if (configData.aiConfigId) {
+      aiConfigData = await u.db("t_config").where("id", configData.aiConfigId).first();
+    }
+    if (!aiConfigData) {
+      aiConfigData = await u.db("t_config").where("id", aiConfigId).first();
     }
 
+    if (!aiConfigData) {
+      return res.status(500).send(error("模型配置不存在"));
+    }
     // 过滤掉空值
     let fileUrl = filePath.filter((p: string) => p && p.trim() !== "");
 
@@ -103,7 +121,7 @@ export default router.post(
     res.status(200).send(success({ id: videoId, configId: configId || null }));
 
     // 异步生成视频
-    generateVideoAsync(videoId, projectId, fileUrl, savePath, prompt, duration, resolution, type);
+    generateVideoAsync(videoId, projectId, fileUrl, savePath, prompt, duration, resolution, aiConfigData);
   },
 );
 
@@ -116,7 +134,7 @@ async function generateVideoAsync(
   prompt: string,
   duration: number,
   resolution: string,
-  type?: string,
+  aiConfigData: t_config,
 ) {
   try {
     const projectData = await u.db("t_project").where("id", projectId).select("artStyle").first();
@@ -149,14 +167,22 @@ ${prompt}
 3. 关键人物在画面中全部清晰显示，不得被遮挡、缺失或省略
 4. 画面真实、细致，无畸形、无模糊、无杂物、无多余人物、无文字、水印、logo
 `;
-    const videoPath = await u.ai.video({
-      imageBase64,
-      savePath,
-      prompt: inputPrompt,
-      duration: duration as any,
-      aspectRatio: resolution as any,
-      resolution: resolution as any,
-    });
+    const videoPath = await u.ai.video(
+      {
+        imageBase64,
+        savePath,
+        prompt: inputPrompt,
+        duration: duration as any,
+        aspectRatio: resolution as any,
+        resolution: resolution as any,
+      },
+      {
+        baseURL: aiConfigData?.baseUrl!,
+        model: aiConfigData?.model!,
+        apiKey: aiConfigData?.apiKey!,
+        manufacturer: aiConfigData?.manufacturer!,
+      },
+    );
 
     if (videoPath) {
       // 生成成功，更新状态为 1

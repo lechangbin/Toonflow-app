@@ -215,11 +215,13 @@ async function filterRelevantAssets(prompts: string[], allResources: ResourceIte
     return availableImages;
   }
 
-  const { relevantAssets } = await u.ai.text.invoke({
-    messages: [
-      {
-        role: "user",
-        content: `请分析以下分镜描述，从可用资产中筛选出与分镜内容直接相关的资产。
+  const apiConfig = await u.getPromptAi("storyboardAgent");
+  const { relevantAssets } = await u.ai.text.invoke(
+    {
+      messages: [
+        {
+          role: "user",
+          content: `请分析以下分镜描述，从可用资产中筛选出与分镜内容直接相关的资产。
 
 分镜描述：
 ${prompts.map((p, i) => `${i + 1}. ${p}`).join("\n")}
@@ -228,45 +230,21 @@ ${prompts.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 ${availableResources.map((r) => `- ${r.name}：${r.intro}`).join("\n")}
 
 请仅选择在分镜中明确出现或被提及的角色、场景、道具。不要选择与分镜内容无关的资产。`,
+        },
+      ],
+      output: {
+        relevantAssets: z
+          .array(
+            z.object({
+              name: z.string().describe("资产名称"),
+              reason: z.string().describe("选择该资产的原因"),
+            }),
+          )
+          .describe("与分镜内容相关的资产列表"),
       },
-    ],
-    output: {
-      relevantAssets: z
-        .array(
-          z.object({
-            name: z.string().describe("资产名称"),
-            reason: z.string().describe("选择该资产的原因"),
-          }),
-        )
-        .describe("与分镜内容相关的资产列表"),
     },
-  });
-  //   const result = await chatModel!.invoke({
-  //     messages: [
-  //       {
-  //         role: "user",
-  //         content: `请分析以下分镜描述，从可用资产中筛选出与分镜内容直接相关的资产。
-
-  // 分镜描述：
-  // ${prompts.map((p, i) => `${i + 1}. ${p}`).join("\n")}
-
-  // 可用资产列表：
-  // ${availableResources.map((r) => `- ${r.name}：${r.intro}`).join("\n")}
-
-  // 请仅选择在分镜中明确出现或被提及的角色、场景、道具。不要选择与分镜内容无关的资产。`,
-  //       },
-  //     ],
-  //     responseFormat: {
-  //       type: "json_schema",
-  //       jsonSchema: {
-  //         name: "filteredAssets",
-  //         strict: true,
-  //         schema: z.toJSONSchema(filteredAssetsSchema),
-  //       },
-  //     },
-  //   });
-
-  // const data = result?.json as z.infer<typeof filteredAssetsSchema>;
+    apiConfig,
+  );
 
   if (!relevantAssets || relevantAssets.length === 0) {
     return availableImages;
@@ -342,14 +320,18 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
   console.log("====润色后：", prompts);
 
   const processedImages = await processImages(filteredImages);
+  const apiConfig = await u.getPromptAi("storyboardImage");
 
-  const contentStr = await u.ai.image({
-    systemPrompt: resourcesMapPrompts,
-    prompt: prompts,
-    size: "4K",
-    aspectRatio: projectInfo?.videoRatio ? (projectInfo.videoRatio as any) : "16:9",
-    imageBase64: processedImages.map((buf) => buf.toString("base64")),
-  });
+  const contentStr = await u.ai.image(
+    {
+      systemPrompt: resourcesMapPrompts,
+      prompt: prompts,
+      size: "4K",
+      aspectRatio: projectInfo?.videoRatio ? (projectInfo.videoRatio as any) : "16:9",
+      imageBase64: processedImages.map((buf) => buf.toString("base64")),
+    },
+    apiConfig,
+  );
 
   const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
   const base64Str = match?.[1] ?? contentStr;

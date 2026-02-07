@@ -47,6 +47,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   });
 
   const taskId = createResponse.data.id;
+
   if (!taskId) throw new Error("视频任务创建失败");
 
   // 轮询任务状态

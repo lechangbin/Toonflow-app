@@ -127,7 +127,7 @@ ${episodePrompt}
 ${novelData}`;
 
   const prompts = await u.db("t_prompts").where("code", "script").first();
-  const promptConfig = await u.getPromptAi(prompts?.id);
+  const promptConfig = await u.getPromptAi("generateScript");
   const mainPrompts = prompts?.customValue || prompts?.defaultValue || "不论用户说什么，请直接输出AI配置异常";
 
   const result = await u.ai.text.invoke(

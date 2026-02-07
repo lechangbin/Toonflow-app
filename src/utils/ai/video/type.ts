@@ -12,4 +12,5 @@ interface AIConfig {
   model?: string;
   apiKey?: string;
   baseURL?: string;
+  manufacturer?: string;
 }

@@ -8,23 +8,23 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    type: z.string(),
-    name: z.string(),
+    type: z.enum(["text", "video", "image"]),
     model: z.string(),
     baseUrl: z.string(),
     apiKey: z.string(),
+    modelType: z.string(),
     manufacturer: z.string(),
   }),
   async (req, res) => {
-    const { type, name, model, baseUrl, apiKey, manufacturer } = req.body;
+    const { type, model, baseUrl, apiKey, manufacturer, modelType } = req.body;
 
     await u.db("t_config").insert({
       type,
-      name,
       model,
       baseUrl,
       apiKey,
       manufacturer,
+      modelType,
       createTime: Date.now(),
       userId: 1,
     });

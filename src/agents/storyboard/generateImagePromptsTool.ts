@@ -98,7 +98,7 @@ async function generateGridPrompt(options: GridPromptOptions): Promise<GridPromp
       : "";
 
   const promptsData = await u.db("t_prompts").where("code", "generateImagePrompts").first();
-  const promptAiConfig = await u.getPromptAi(promptsData?.id);
+  const promptAiConfig = await u.getPromptAi("storyboardAgent");
   const mainPrompts = promptsData?.customValue || promptsData?.defaultValue;
   const errData = `请输出${options.prompts.length}张图片\n提示词如下:\n${options.prompts.map((p, i) => `第${i + 1}格: ${p}`).join("\n")}`;
 

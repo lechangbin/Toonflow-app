@@ -28,13 +28,16 @@ const modelInstance = {
   other,
 } as const;
 
-export default async (input: ImageConfig, config?: AIConfig) => {
-  const sqlTextModelConfig = await u.getConfig("image");
-  const { model, apiKey, baseURL, manufacturer } = { ...sqlTextModelConfig, ...config };
+export default async (input: ImageConfig, config: AIConfig) => {
+  const { model, apiKey, baseURL, manufacturer } = { ...config };
+  if (!config || !config?.model || !config?.apiKey || !config?.manufacturer) throw new Error("请检查模型配置是否正确");
+
   const manufacturerFn = modelInstance[manufacturer as keyof typeof modelInstance];
   if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的图片厂商");
-  const owned = modelList.find((m) => m.model === model);
-  if (!owned) throw new Error("不支持的模型");
+  if (manufacturer !== "other") {
+    const owned = modelList.find((m) => m.model === model);
+    if (!owned) throw new Error("不支持的模型");
+  }
 
   // 补充图片的 base64 内容类型字符串
   if (input.imageBase64 && input.imageBase64.length > 0) {

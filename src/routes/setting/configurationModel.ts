@@ -8,20 +8,13 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    id: z.number().optional(),
-    promptsId: z.number(),
+    id: z.number(),
     configId: z.number(),
   }),
   async (req, res) => {
-    const { id, promptsId, configId } = req.body;
+    const { id, configId } = req.body;
     if (id) {
       await u.db("t_aiModelMap").where("id", id).update({
-        promptsId,
-        configId,
-      });
-    } else {
-      await u.db("t_aiModelMap").insert({
-        promptsId,
         configId,
       });
     }

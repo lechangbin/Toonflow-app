@@ -1,6 +1,6 @@
 import express from "express";
 import u from "@/utils";
-import { success } from "@/lib/responseFormat";
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
 const router = express.Router();
@@ -20,8 +20,8 @@ export default router.post(
   validateFields({
     scriptId: z.number(),
     projectId: z.number(),
-    manufacturer: z.string(),
-    mode: z.enum(["startEnd", "multi", "single"]),
+    configId: z.number(),
+    mode: z.enum(["startEnd", "multi", "single",'text','']),
     startFrame: imageItemSchema.optional(),
     endFrame: imageItemSchema.optional(),
     images: z
@@ -38,19 +38,21 @@ export default router.post(
     prompt: z.string().optional(),
   }),
   async (req, res) => {
-    const { scriptId, projectId, manufacturer, mode, startFrame, endFrame, images, resolution, duration, prompt } = req.body;
+    const { scriptId, projectId, configId, mode, startFrame, endFrame, images, resolution, duration, prompt } = req.body;
 
     // 生成新ID
     const maxIdResult: any = await u.db("t_videoConfig").max("id as maxId").first();
     const newId = (maxIdResult?.maxId || 0) + 1;
     const now = Date.now();
-
+    const configData = await u.db("t_config").where("id", configId).first();
+    if (!configData) return res.status(500).send(error("不存在的模型"));
     // 插入数据
     await u.db("t_videoConfig").insert({
       id: newId,
       scriptId,
       projectId,
-      manufacturer,
+      manufacturer: configData.manufacturer,
+      aiConfigId: configId,
       mode,
       startFrame: startFrame ? JSON.stringify(startFrame) : null,
       endFrame: endFrame ? JSON.stringify(endFrame) : null,
@@ -70,7 +72,9 @@ export default router.post(
           id: newId,
           scriptId,
           projectId,
-          manufacturer,
+          manufacturer: configData.manufacturer,
+          aiConfigId: configId,
+          model: configData.model,
           mode,
           startFrame,
           endFrame,

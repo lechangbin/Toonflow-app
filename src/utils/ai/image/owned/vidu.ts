@@ -20,7 +20,6 @@ function template(replaceObj: Record<string, any>, url: string) {
 export default async (input: ImageConfig, config: AIConfig): Promise<string> => {
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
-
   const apiKey = "Token " + config.apiKey.replace(/Token\s+/g, "").trim();
   const viduq2Ratio = ["16:9", "9:16", "1:1", "3:4", "4:3", "21:9", "2:3", "3:2"];
   const viduq1Ratio = ["16:9", "9:16", "1:1", "3:4", "4:3"];
@@ -60,7 +59,8 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     ...(images.length && { images: images }),
   };
 
-  const urlObj = getApiUrl(config.baseURL!);
+  const urlObj = getApiUrl(config.baseURL! ?? "https://api.vidu.cn/ent/v2/reference2image|https://api.vidu.cn/ent/v2/tasks/{id}/creations");
+
   try {
     const { data } = await axios.post(urlObj.requestUrl, body, { headers: { Authorization: apiKey } });
 
@@ -69,17 +69,13 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     return await pollTask(async () => {
       const { data: queryData } = await axios.get(queryUrl, { headers: { Authorization: apiKey } });
 
-      if (queryData.state !== 0) {
-        return { completed: false, error: queryData.message || "查询任务失败" };
-      }
-
-      const { state, err_code, creations } = queryData.data || {};
+      const { state, err_code, creations } = queryData || {};
 
       if (state === "failed") {
         return { completed: false, error: err_code || "图片生成失败" };
       }
 
-      if (state === "succeed") {
+      if (state === "success") {
         return { completed: true, url: creations?.[0]?.url };
       }
 

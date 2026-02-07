@@ -4,6 +4,7 @@ import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
 import path from "path";
+import axios from "axios";
 
 const router = express.Router();
 
@@ -103,7 +104,12 @@ const prompt = `
 现在请根据我提供的分镜内容，严格按照以上规则输出 Motion Prompt JSON 对象。
 
 `;
-
+async function urlToBase64(imageUrl: string): Promise<string> {
+  const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+  const contentType = response.headers["content-type"] || "image/png";
+  const base64 = Buffer.from(response.data, "binary").toString("base64");
+  return `data:${contentType};base64,${base64}`;
+}
 // 生成单个分镜提示
 async function generateSingleVideoPrompt({
   scriptText,
@@ -114,19 +120,6 @@ async function generateSingleVideoPrompt({
   storyboardPrompt: string;
   ossPath: string;
 }): Promise<{ content: string; time: number; name: string }> {
-  let rootDir: string;
-  if (typeof process.versions?.electron !== "undefined") {
-    const { app } = require("electron");
-    const userDataDir: string = app.getPath("userData");
-    rootDir = path.join(userDataDir, "uploads");
-  } else {
-    rootDir = path.join(process.cwd(), "uploads");
-  }
-
-  let imagePath = ossPath;
-  if (ossPath.includes("http")) {
-    imagePath = new URL(ossPath).pathname;
-  }
   const messages: any[] = [
     {
       role: "system",
@@ -140,24 +133,27 @@ async function generateSingleVideoPrompt({
           text: `剧本内容:${scriptText}\n分镜提示词:${storyboardPrompt}`,
         },
         {
-          type: "local",
-          path: path.join(rootDir, imagePath),
+          type: "image",
+          image: await urlToBase64(ossPath),
         },
       ],
     },
   ];
 
   try {
-    const result = await u.ai.text.invoke({
-      messages,
-      output: {
-        time: z.number().describe("时长,镜头时长 1-15"),
-        content: z.string().describe("提示词内容"),
-        name: z.string().describe("分镜名称"),
-      },
-    });
-    console.log("%c Line:156 🍩 result", "background:#33a5ff", result);
+    const apiConfig = await u.getPromptAi("videoPrompt");
 
+    const result = await u.ai.text.invoke(
+      {
+        messages,
+        output: {
+          time: z.number().describe("时长,镜头时长 1-15"),
+          content: z.string().describe("提示词内容"),
+          name: z.string().describe("分镜名称"),
+        },
+      },
+      apiConfig,
+    );
     if (!result) {
       console.error("AI 返回结果为空:", result);
       throw new Error("AI 返回结果为空");

@@ -1,5 +1,5 @@
 import "../type";
-import { generateImage, generateText } from "ai";
+import { generateImage, generateText, ModelMessage } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 export default async (input: ImageConfig, config: AIConfig): Promise<string> => {
@@ -27,9 +27,24 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   const fullPrompt = input.systemPrompt ? `${input.systemPrompt}\n\n${input.prompt}` : input.prompt;
   const model = config.model;
   if (model.includes("gemini") || model.includes("nano")) {
+    let promptData;
+    if (input.imageBase64 && input.imageBase64.length) {
+      promptData = [{ role: "system", content: fullPrompt + `请直接输出图片` }];
+      (promptData as ModelMessage[]).push({
+        role: "user",
+        content: input.imageBase64.map((i) => ({
+          type: "image",
+          image: i,
+        })),
+      });
+    } else {
+      promptData = fullPrompt + `请直接输出图片`;
+    }
+    console.log("%c Line:31 🍅 promptData", "background:#2eafb0", promptData);
+
     const result = await generateText({
       model: otherProvider.languageModel(model),
-      prompt: fullPrompt + `请直接输出图片`,
+      prompt: promptData as string | ModelMessage[],
       providerOptions: {
         google: {
           imageConfig: {

@@ -417,7 +417,7 @@ const modelList: Owned[] = [
     responseFormat: "schema",
     image: true,
     think: false,
-    instance: createOpenAICompatible,
+    instance: createOpenAI,
     tool: true,
   },
 ];

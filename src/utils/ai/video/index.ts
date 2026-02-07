@@ -22,8 +22,10 @@ const modelInstance = {
 } as const;
 
 export default async (input: VideoConfig, config?: AIConfig) => {
-  const sqlTextModelConfig = await u.getConfig("video");
-  const { model, apiKey, baseURL, manufacturer } = { ...sqlTextModelConfig, ...config };
+  console.log("%c Line:25 🥛 config", "background:#2eafb0", config);
+  const { model, apiKey, baseURL, manufacturer } = { ...config };
+  if (!config || !config?.model || !config?.apiKey) throw new Error("请检查模型配置是否正确");
+
   const manufacturerFn = modelInstance[manufacturer as keyof typeof modelInstance];
   if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的视频厂商");
   const owned = modelList.find((m) => m.model === model);

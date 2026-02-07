@@ -13,12 +13,12 @@ export default router.post(
     modelName: z.string(),
     apiKey: z.string(),
     baseURL: z.string().optional(),
+    manufacturer: z.string(),
   }),
   async (req, res) => {
-    const { modelName, apiKey, baseURL } = req.body;
+    const { modelName, apiKey, baseURL, manufacturer } = req.body;
 
     const getWeatherTool = tool({
-      // strict: true,
       description: "Get the weather in a location",
       inputSchema: z.object({
         location: z.string().describe("The location to get the weather for"),
@@ -43,6 +43,7 @@ export default router.post(
           model: modelName,
           apiKey,
           baseURL,
+          manufacturer,
         },
       );
       res.status(200).send(success(reply));

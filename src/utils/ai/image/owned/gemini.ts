@@ -3,14 +3,13 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
 
 export default async (input: ImageConfig, config: AIConfig): Promise<string> => {
-  console.log("%c Line:6 🌰 config", "background:#ffdd4d", config);
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
   if (!input.prompt) throw new Error("缺少提示词");
 
   const google = createGoogleGenerativeAI({
     apiKey: config.apiKey,
-    baseURL: config.baseURL,
+    baseURL: config?.baseURL ?? "https://generativelanguage.googleapis.com/v1beta",
   });
 
   // 构建完整的提示词

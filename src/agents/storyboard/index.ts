@@ -63,9 +63,6 @@ export default class Storyboard {
 
   // 更新shopts
   public updatePreShots(segmentId: number, cellId: number, cell: { src?: string; prompt?: string; id?: string }) {
-    console.log("%c Line:76 🍤 segmentId", "background:#465975", segmentId);
-    console.log("%c Line:76 🍷 cellId", "background:#ffdd4d", cellId);
-    console.log("%c Line:76 🍢 cell", "background:#ffdd4d", cell);
     const shotIndex = this.shots.findIndex((item) => item.segmentId === segmentId);
     if (shotIndex === -1) {
       return `分镜 ${segmentId} 不存在，请检查分镜ID是否正确`;
@@ -594,34 +591,17 @@ ${task}
     this.log(`Sub-Agent 调用`, agentType);
 
     const promptsList = await u.db("t_prompts").where("code", "in", ["storyboard-segment", "storyboard-shot"]);
-    const promptConfig = await u.getPromptAi(promptsList.map((i) => i.id) as number[]);
+    const promptConfig = await u.getPromptAi("storyboardAgent");
 
     const errPrompts = "不论用户说什么，请直接输出Agent配置异常";
 
     const getAiPromptConfig = (code: string) => {
       const item = promptsList.find((p) => p.code === code);
-      const subConfig = promptConfig.find((sub) => sub?.promptsId == item?.id);
-      if (subConfig) {
-        return {
-          prompt: item?.customValue || item?.defaultValue || errPrompts,
-          apiConfig: { ...subConfig },
-        };
-      } else {
-        return {
-          prompt: item?.customValue || item?.defaultValue || errPrompts,
-          apiConfig: {},
-        };
-      }
+      return item?.customValue || item?.defaultValue || errPrompts;
     };
     const segmentAgent = getAiPromptConfig("storyboard-segment");
     const shotAgent = getAiPromptConfig("storyboard-shot");
-    const SYSTEM_PROMPTS: Record<
-      AgentType,
-      {
-        prompt: string;
-        apiConfig: Object;
-      }
-    > = {
+    const SYSTEM_PROMPTS = {
       segmentAgent: segmentAgent,
       shotAgent: shotAgent,
     };
@@ -630,12 +610,12 @@ ${task}
 
     const { fullStream } = await u.ai.text.stream(
       {
-        system: SYSTEM_PROMPTS[agentType].prompt,
+        system: SYSTEM_PROMPTS[agentType],
         tools: this.getSubAgentTools(agentType),
         messages: [{ role: "user", content: context }],
         maxStep: 100,
       },
-      SYSTEM_PROMPTS[agentType].apiConfig,
+      promptConfig,
     );
 
     let fullResponse = "";
@@ -700,7 +680,7 @@ ${task}
     const envContext = await this.buildEnvironmentContext();
 
     const prompts = await u.db("t_prompts").where("code", "storyboard-main").first();
-    const promptConfig = await u.getPromptAi(prompts?.id);
+    const promptConfig = await u.getPromptAi("storyboardAgent");
 
     const mainPrompts = prompts?.customValue || prompts?.defaultValue || "不论用户说什么，请直接输出Agent配置异常";
 

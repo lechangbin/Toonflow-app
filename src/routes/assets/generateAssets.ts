@@ -123,14 +123,18 @@ export default router.post(
       state: "生成中",
       assetsId: id,
     });
+    const apiConfig = await u.getPromptAi("assetsImage");
 
-    const contentStr = await u.ai.image({
-      systemPrompt,
-      prompt: userPrompt,
-      imageBase64: base64 ? [base64] : [],
-      size: "2K",
-      aspectRatio: "16:9",
-    });
+    const contentStr = await u.ai.image(
+      {
+        systemPrompt,
+        prompt: userPrompt,
+        imageBase64: base64 ? [base64] : [],
+        size: "2K",
+        aspectRatio: "16:9",
+      },
+      apiConfig,
+    );
 
     let insertType;
     const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
