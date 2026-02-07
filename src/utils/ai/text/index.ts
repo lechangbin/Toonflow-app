@@ -23,7 +23,7 @@ interface AIConfig {
 }
 
 const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
-  if (!config || !config?.model || !config?.apiKey || !config?.baseURL || !config?.manufacturer) throw new Error("请检查模型配置是否正确");
+  if (!config || !config?.model || !config?.apiKey || !config?.manufacturer) throw new Error("请检查模型配置是否正确");
   const { model, apiKey, baseURL, manufacturer } = { ...config };
   let owned;
   if (manufacturer == "other") {
