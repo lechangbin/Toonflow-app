@@ -40,7 +40,6 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     } else {
       promptData = fullPrompt + `请直接输出图片`;
     }
-    console.log("%c Line:31 🍅 promptData", "background:#2eafb0", promptData);
 
     const result = await generateText({
       model: otherProvider.languageModel(model),

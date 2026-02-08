@@ -10,6 +10,7 @@ import wan from "./owned/wan";
 import runninghub from "./owned/runninghub";
 import gemini from "./owned/gemini";
 import apimart from "./owned/apimart";
+import other from "./owned/other";
 
 const modelInstance = {
   volcengine: volcengine,
@@ -19,10 +20,10 @@ const modelInstance = {
   gemini: gemini,
   runninghub: runninghub,
   apimart: apimart,
+  // other: other,
 } as const;
 
 export default async (input: VideoConfig, config?: AIConfig) => {
-  console.log("%c Line:25 🥛 config", "background:#2eafb0", config);
   const { model, apiKey, baseURL, manufacturer } = { ...config };
   if (!config || !config?.model || !config?.apiKey) throw new Error("请检查模型配置是否正确");
 

@@ -36,8 +36,13 @@ interface Shot {
   x: number;
   y: number;
   cells: Array<{ src?: string; prompt?: string; id?: string }>; // 镜头数组，每个cell是一个镜头
+  fragmentContent: string;
+  assetsTags: AssetsType[];
 }
-
+interface AssetsType {
+  type: "role" | "props" | "scene";
+  text: string;
+}
 // ==================== 主类 ====================
 
 export default class Storyboard {
@@ -220,11 +225,17 @@ ${sections.join("\n\n")}
           z.object({
             segmentIndex: z.number().describe("对应的片段序号"),
             prompts: z.array(z.string()).describe("镜头提示词数组，每个提示词对应一个镜头（中文）"),
+            assetsTags: z.array(
+              z.object({
+                type: z.enum(["role", "props", "scene"]).describe("资源类型"),
+                text: z.string().describe("资源名称"),
+              }),
+            ),
           }),
         )
         .describe("要添加的分镜数组"),
     }),
-    execute: async ({ shots }: { shots: Array<{ segmentIndex: number; prompts: string[] }> }) => {
+    execute: async ({ shots }: { shots: Array<{ segmentIndex: number; prompts: string[]; assetsTags: AssetsType[] }> }) => {
       const added: { id: number; segmentIndex: number }[] = [];
       const skipped: number[] = [];
 
@@ -244,6 +255,8 @@ ${sections.join("\n\n")}
           x: 0,
           y: 0,
           cells: item.prompts.map((prompt) => ({ id: u.uuid(), prompt })),
+          fragmentContent: this.segments[item.segmentIndex]?.description,
+          assetsTags: item.assetsTags,
         });
         added.push({ id: shotId, segmentIndex: item.segmentIndex });
       }
