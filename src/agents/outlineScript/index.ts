@@ -700,7 +700,6 @@ ${task}
     const envContext = await this.buildEnvironmentContext();
 
     const prompts = await u.db("t_prompts").where("code", "outlineScript-main").first();
-    console.log("%c Line:703 🍭 prompts", "background:#f5ce50", prompts);
     const promptConfig = await u.getPromptAi("outlineScriptAgent");
 
     const mainPrompts = prompts?.customValue || prompts?.defaultValue || "不论用户说什么，请直接输出Agent配置异常";

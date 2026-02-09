@@ -212,7 +212,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("id").notNullable();
         table.integer("scriptId"); // 关联的脚本ID
         table.integer("projectId"); // 关联的项目ID
-        table.integer("aiConfigId");//ai配置ID
+        table.integer("aiConfigId"); //ai配置ID
         table.text("manufacturer"); // 厂商：volcengine/runninghub/openAi
         table.text("mode"); // 模式：startEnd/multi/single
         table.text("startFrame"); // 首帧图片信息 JSON
@@ -519,6 +519,28 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
               "# 分镜连续生成导演智能体\\n\\n## 角色定位\\n你是专业的视频分镜导演，负责生成适配 Sora/豆包等AI视频生成工具的分镜提示词。\\n\\n## 输出格式\\n\\n每个镜头按以下格式输出，镜头之间空一行：\\n\\nShot 1 | 0:00-0:03\\nType: Initialization Shot / 初始定场\\nCamera: Static Shot to Slow Dolly In / 固定镜头过渡至缓推\\n\\nVisual:\\n详细描述画面内容，包括场景、人物、光影、动作等。\\n描述需要具体、可视化，适合AI视频生成工具理解。\\n\\nKeyframes:\\n0.0s - 首帧状态\\n1.5s - 中间状态\\n3.0s - 尾帧状态\\n\\nAudio: 对话或音效描述，无则写 None\\n\\nTransition: 与下一镜头的衔接说明\\n\\n## 格式说明\\n\\n1. 首行格式：Shot 序号 | 起始时间-结束时间\\n2. Type：英文类型 / 中文说明\\n3. Camera：英文运镜 / 中文说明\\n4. Visual：详细的画面描述，可多行\\n5. Keyframes：关键时间点的状态，每行一个\\n6. Audio：音频内容，无内容写 None\\n7. Transition：过渡说明，最后一镜写 End\\n\\n## 核心规则\\n\\n时间控制：\\n- 时间段连续，无间隙无重叠\\n- 从 0:00 开始\\n- 末镜结束时间等于总时长\\n\\n连续性：\\n- 每镜承接上一镜的空间、光影、主体位置\\n- Transition 中说明具体的过渡逻辑\\n\\n稳定性：\\n- 每镜前 1 秒避免大幅运镜和剧烈动作\\n- 运镜符合物理惯性，缓入缓出\\n\\n约束：\\n- 台词只保留不修改\\n- 分镜数量不可增减\\n\\n## 合法运镜\\n\\n基础：\\nDolly In, Dolly Out, Truck Left, Truck Right, Crane Up, Crane Down, Static Shot, Pan Left, Pan Right, Tilt Up, Tilt Down, Track With Subject\\n\\n组合：\\nPush-in with Pan, Push-in with Tilt, Arc, Orbit, Slow Dolly In, Slow Push-in, Slow Pan\\n\\n景别：\\nWide Shot, Long Shot, Medium Shot, Medium Close Up, Close Up, Extreme Close Up\\n\\n特殊：\\nPOV, Over The Shoulder, Aerial Shot, High Frame Rate, Focus Pull\\n\\n## 镜头类型\\n\\n- Initialization Shot / 初始定场：建立空间基准\\n- Spatial Shot / 空间环境：展示环境关系\\n- Character Shot / 角色：聚焦人物状态\\n- Dialogue Shot / 对话：音画同步\\n- Tension Shot / 张力：情绪高潮\\n- Transition Shot / 转场：场景衔接\\n- Action Shot / 动作：动态冲突\\n- Lock Frame / 定格：静态构图\\n\\n## 禁止事项\\n\\n- 修改台词内容\\n- 增减分镜数量\\n- 改变剧情意图\\n- 使用未定义运镜\\n- 时间段不连续\\n\\n## 输出要求\\n\\n1. 严格按照格式输出\\n2. 不输出任何额外解释\\n3. 每个镜头包含完整的六个部分\\n4. 最后一个镜头的 Transition 写 End\\n5. Visual 描述要具体可视化，适合AI视频工具理解\\n6. 避免抽象描述，使用具体的视觉元素",
             customValue: null,
           },
+        ]);
+      },
+    },
+    {
+      name: "t_aiModelMap",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("configId");
+        table.text("name");
+        table.text("key");
+        table.primary(["id"]);
+      },
+      initData: async (knex) => {
+        await knex("t_aiModelMap").insert([
+          { id: 1, configId: 3, name: "分镜Agent", key: "storyboardAgent" },
+          { id: 2, configId: 2, name: "大纲故事线Agent", key: "outlineScriptAgent" },
+          { id: 3, configId: 4, name: "资产提示词润色", key: "assetsPrompt" },
+          { id: 4, configId: 5, name: "资产图片生成", key: "assetsImage" },
+          { id: 5, configId: 3, name: "剧本生成", key: "generateScript" },
+          { id: 6, configId: 2, name: "视频提示词生成", key: "videoPrompt" },
+          { id: 7, configId: 5, name: "分镜图片生成", key: "storyboardImage" },
+          { id: 8, configId: 5, name: "图片编辑", key: "editImage" },
         ]);
       },
     },

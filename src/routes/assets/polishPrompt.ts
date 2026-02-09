@@ -4,9 +4,6 @@ import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
-const jsonSchema = zod.object({
-  prompt: zod.string().describe("提示词"),
-});
 interface OutlineItem {
   description: string;
   name: string;
@@ -206,26 +203,6 @@ export default router.post(
         },
         apiConfigData,
       );
-      // const result = await model.invoke({
-      //   messages: [
-      //     {
-      //       role: "system",
-      //       content: systemPrompt,
-      //     },
-      //     {
-      //       role: "user",
-      //       content: userPrompt,
-      //     },
-      //   ],
-      //   responseFormat: {
-      //     type: "json_schema",
-      //     jsonSchema: {
-      //       name: "json",
-      //       strict: true,
-      //       schema: zod.toJSONSchema(jsonSchema),
-      //     },
-      //   },
-      // });
       return result.prompt;
     }
     try {

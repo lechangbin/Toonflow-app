@@ -1,6 +1,6 @@
 {
   "name": "toonflow-app",
-  "version": "1.0.5",
+  "version": "1.0.6-dev",
   "description": "Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。",
   "author": "HBAI-Ltd <ltlctools@outlook.com>",
   "homepage": "https://github.com/HBAI-Ltd/Toonflow-app#readme",
@@ -19,7 +19,7 @@
   },
   "scripts": {
     "dev": "nodemon --inspect --exec tsx src/app.ts",
-    "dev:win": "chcp 65001 && electronmon -r tsx scripts/main.ts",
+    "dev:gui": "chcp 65001 && electronmon -r tsx scripts/main.ts",
     "lint": "tsc --noEmit",
     "build": "tsx scripts/build.ts",
     "pack": "electron-builder --dir",
