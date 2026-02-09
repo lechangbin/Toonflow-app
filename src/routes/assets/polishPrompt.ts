@@ -32,7 +32,6 @@ interface ResultItem {
   chapterRange: number[];
 }
 function findItemByName(items: ResultItem[], name: string, type?: ItemType): ResultItem | undefined {
-  console.log("%c Line:35 🍎 items", "background:#ffdd4d", items);
   return items.find((item) => (!type || item.type === type) && item.name === name);
 }
 function mergeNovelText(novelData: NovelChapter[]): string {
@@ -56,19 +55,14 @@ export default router.post(
   async (req, res) => {
     const { assetsId, projectId, type, name, describe } = req.body;
 
-    console.log("%c Line:58 🍔", "background:#465975");
     //获取风格
     const project = await u.db("t_project").where("id", projectId).select("artStyle", "type", "intro").first();
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
-    console.log("%c Line:62 🍇", "background:#2eafb0");
     const allOutlineDataList: { data: string }[] = await u.db("t_outline").where("projectId", projectId).select("data");
-    console.log("%c Line:66 🥖 allOutlineDataList", "background:#42b983", allOutlineDataList);
 
-    console.log("%c Line:66 🧀", "background:#3f7cff");
     const itemMap: Record<string, ResultItem> = {};
 
-    console.log("%c Line:69 🥓", "background:#42b983");
     if (allOutlineDataList.length > 0)
       allOutlineDataList.forEach((row) => {
         const data: OutlineData = JSON.parse(row?.data || "{}");
@@ -128,7 +122,7 @@ export default router.post(
     }
     if (type == "scene") {
       const data = findItemByName(result, name, "scenes");
-      console.log("%c Line:129 🍅 data", "background:#93c0a4", data);
+
       const chapterRange = Array.isArray(data?.chapterRange) ? data.chapterRange : [data?.chapterRange];
       const novelData = (await u.db("t_novel").whereIn("chapterIndex", chapterRange).select("*")) as NovelChapter[];
       const results: string = mergeNovelText(novelData);
