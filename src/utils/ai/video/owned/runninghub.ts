@@ -14,7 +14,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
     "https://www.runninghub.cn/openapi/v2/rhart-video-s/image-to-video-pro",
     "https://www.runninghub.cn/openapi/v2/rhart-video-s/text-to-video",
     "https://www.runninghub.cn/openapi/v2/rhart-video-s/text-to-video-pro",
-    "https://www.runninghub.cn/openapi/v2/rhart-video-s/{taskId}",
+    "https://www.runninghub.cn/openapi/v2/query",
     "https://www.runninghub.cn/openapi/v2/media/upload/binary",
   ].join("|");
 
@@ -78,9 +78,17 @@ export default async (input: VideoConfig, config: AIConfig) => {
   const { taskId } = await submitTask(submitUrl, requestBody);
 
   return await pollTask(async () => {
-    const { data } = await axios.get(queryUrl.replace("{taskId}", taskId), {
-      headers: { Authorization: authorization },
-    });
+
+    const { data } = await axios.post(
+      queryUrl,
+      {
+        taskId,
+      },
+      {
+        headers: { Authorization: authorization },
+      },
+    );
+
     if (data.status === "SUCCESS") {
       return data.results?.length ? { completed: true, url: data.results[0].url } : { completed: false, error: "任务成功但未返回视频链接" };
     }

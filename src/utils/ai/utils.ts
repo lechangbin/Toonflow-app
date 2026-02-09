@@ -37,9 +37,15 @@ export const validateVideoConfig = (input: VideoConfig, config: AIConfig, custom
     throw new Error(`模型 ${config.model} 不支持多图模式`);
   }
   // 校验duration和resolution是否在支持范围内
-  const validDurationResolution = owned.durationResolutionMap.some(
-    (map) => map.duration.includes(input.duration) && map.resolution.includes(input.resolution as typeof map.resolution[number]),
-  );
+  const validDurationResolution = owned.durationResolutionMap.some((map) => {
+    const durationMatch = map.duration.includes(input.duration);
+    const resolutionMatch =
+      // 若 map.resolution 和 input.resolution 均为空，视为匹配
+      (!input.resolution && map.resolution.length === 0) ||
+      // 否则匹配 includes
+      map.resolution.includes(input.resolution as (typeof map.resolution)[number]);
+    return durationMatch && resolutionMatch;
+  });
   if (!validDurationResolution) {
     const supportedDurations = [...new Set(owned.durationResolutionMap.flatMap((m) => m.duration))].sort((a, b) => a - b);
     const supportedResolutions = [...new Set(owned.durationResolutionMap.flatMap((m) => m.resolution))];

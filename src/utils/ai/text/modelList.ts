@@ -48,7 +48,7 @@ const modelList: Owned[] = [
   // 豆包
   {
     manufacturer: "doubao",
-    model: "doubao-seed-1-8",
+    model: "doubao-seed-1-8-251228",
     responseFormat: "schema",
     image: true,
     think: true,
@@ -57,7 +57,7 @@ const modelList: Owned[] = [
   },
   {
     manufacturer: "doubao",
-    model: "doubao-seed-1-6",
+    model: "doubao-seed-1-6-251015",
     responseFormat: "schema",
     image: true,
     think: true,
@@ -66,7 +66,7 @@ const modelList: Owned[] = [
   },
   {
     manufacturer: "doubao",
-    model: "doubao-seed-1-6-lite",
+    model: "doubao-seed-1-6-lite-251015",
     responseFormat: "schema",
     image: true,
     think: true,
@@ -75,7 +75,7 @@ const modelList: Owned[] = [
   },
   {
     manufacturer: "doubao",
-    model: "doubao-seed-1-6-flash",
+    model: "doubao-seed-1-6-flash-250828",
     responseFormat: "schema",
     image: true,
     think: true,
@@ -286,7 +286,7 @@ const modelList: Owned[] = [
 
   // Gemini
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-2.5-pro",
     responseFormat: "schema",
     image: true,
@@ -295,7 +295,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-2.5-flash",
     responseFormat: "schema",
     image: true,
@@ -304,7 +304,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-2.0-flash",
     responseFormat: "schema",
     image: true,
@@ -313,7 +313,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-2.0-flash-lite",
     responseFormat: "schema",
     image: true,
@@ -322,7 +322,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-1.5-pro",
     responseFormat: "schema",
     image: true,
@@ -331,7 +331,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-1.5-flash",
     responseFormat: "schema",
     image: true,

@@ -10,6 +10,7 @@ import wan from "./owned/wan";
 import runninghub from "./owned/runninghub";
 import gemini from "./owned/gemini";
 import apimart from "./owned/apimart";
+import other from "./owned/other";
 
 const modelInstance = {
   volcengine: volcengine,
@@ -19,6 +20,7 @@ const modelInstance = {
   gemini: gemini,
   runninghub: runninghub,
   apimart: apimart,
+  // other: other,
 } as const;
 
 export default async (input: VideoConfig, config?: AIConfig) => {

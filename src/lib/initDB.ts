@@ -249,40 +249,38 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
           {
             id: 2,
             configId: null,
-
-            name: "大纲故事线Agent",
-            key: "outlineScriptAgent",
+            name: "分镜Agent图片生成",
+            key: "storyboardImage",
           },
           {
             id: 3,
             configId: null,
-
+            name: "大纲故事线Agent",
+            key: "outlineScriptAgent",
+          },
+          {
+            id: 4,
+            configId: null,
             name: "资产提示词润色",
             key: "assetsPrompt",
           },
           {
-            id: 4,
+            id: 5,
             configId: null,
             name: "资产图片生成",
             key: "assetsImage",
           },
           {
-            id: 5,
+            id: 6,
             configId: null,
             name: "剧本生成",
             key: "generateScript",
           },
           {
-            id: 6,
+            id: 7,
             configId: null,
             name: "视频提示词生成",
             key: "videoPrompt",
-          },
-          {
-            id: 7,
-            configId: null,
-            name: "分镜图片生成",
-            key: "storyboardImage",
           },
           {
             id: 8,
