@@ -521,6 +521,28 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         ]);
       },
     },
+    {
+      name: "t_aiModelMap",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("configId");
+        table.text("name");
+        table.text("key");
+        table.primary(["id"]);
+      },
+      initData: async (knex) => {
+        await knex("t_aiModelMap").insert([
+          { id: 1, configId: 3, name: "分镜Agent", key: "storyboardAgent" },
+          { id: 2, configId: 2, name: "大纲故事线Agent", key: "outlineScriptAgent" },
+          { id: 3, configId: 4, name: "资产提示词润色", key: "assetsPrompt" },
+          { id: 4, configId: 5, name: "资产图片生成", key: "assetsImage" },
+          { id: 5, configId: 3, name: "剧本生成", key: "generateScript" },
+          { id: 6, configId: 2, name: "视频提示词生成", key: "videoPrompt" },
+          { id: 7, configId: 5, name: "分镜图片生成", key: "storyboardImage" },
+          { id: 8, configId: 5, name: "图片编辑", key: "editImage" },
+        ]);
+      },
+    },
   ];
 
   for (const t of tables) {

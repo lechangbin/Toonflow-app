@@ -3,16 +3,9 @@ import u from "@/utils";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
-import path from "path";
 import axios from "axios";
 
 const router = express.Router();
-
-const cellsResultSchema = z.object({
-  time: z.number().describe("时长,镜头时长 1-15"),
-  content: z.string().describe("提示词内容"),
-  name: z.string().describe("分镜名称"),
-});
 
 const prompt = `
 你是一名资深动画导演，擅长将静态分镜转化为简洁、专业、详尽的 Motion Prompt（视频生成动作提示）。你理解镜头语言、情绪节奏，能补充丰富但不重复静态元素，只突出变化与动态。

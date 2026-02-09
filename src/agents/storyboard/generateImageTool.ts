@@ -36,18 +36,6 @@ interface ResourceItem {
   intro: string;
 }
 
-// 资产过滤响应的 schema
-const filteredAssetsSchema = z.object({
-  relevantAssets: z
-    .array(
-      z.object({
-        name: z.string().describe("资产名称"),
-        reason: z.string().describe("选择该资产的原因"),
-      }),
-    )
-    .describe("与分镜内容相关的资产列表"),
-});
-
 // 压缩图片直到不超过指定大小
 async function compressImage(buffer: Buffer, maxSizeBytes: number = 3 * 1024 * 1024): Promise<Buffer> {
   if (buffer.length <= maxSizeBytes) {
