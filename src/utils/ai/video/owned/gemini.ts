@@ -18,12 +18,14 @@ export default async (input: VideoConfig, config: AIConfig) => {
   ].join("|");
 
   const [submitUrl, queryUrl] = (config.baseURL || defaultBaseUrl).split("|");
+  
+  
   const headers = { "x-goog-api-key": config.apiKey };
 
   const instance: Record<string, any> = { prompt: input.prompt };
   const parameters: Record<string, any> = {
     aspectRatio: input.aspectRatio,
-    durationSeconds: String(input.duration),
+    durationSeconds: +input.duration,
     ...(input.resolution !== "720p" && { resolution: input.resolution }),
   };
 
@@ -51,12 +53,15 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   return pollTask(async () => {
     const { data: status } = await axios.get(queryUrl.replace("{name}", data.name), { headers });
+    
     const { done, response, error } = status;
+    
 
     if (!done) return { completed: false };
     if (error) return { completed: false, error: `任务失败: ${error.message || JSON.stringify(error)}` };
 
     const videoUri = response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
+    
     if (!videoUri) return { completed: false, error: "未获取到视频下载地址" };
 
     const videoRes = await axios.get(videoUri, { headers, responseType: "arraybuffer", maxRedirects: 5 });

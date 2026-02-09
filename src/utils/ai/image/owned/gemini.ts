@@ -1,23 +1,37 @@
 import "../type";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateText } from "ai";
+import { generateText, ModelMessage } from "ai";
 
 export default async (input: ImageConfig, config: AIConfig): Promise<string> => {
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
   if (!input.prompt) throw new Error("缺少提示词");
 
+  
   const google = createGoogleGenerativeAI({
     apiKey: config.apiKey,
-    baseURL: config?.baseURL ?? "https://generativelanguage.googleapis.com/v1beta",
   });
 
+  
   // 构建完整的提示词
   const fullPrompt = input.systemPrompt ? `${input.systemPrompt}\n\n${input.prompt}` : input.prompt;
+  let promptData: ModelMessage[] | string = [];
+  if (input.imageBase64 && input.imageBase64.length) {
+    promptData = [{ role: "system", content: fullPrompt + `请直接输出图片` }];
+    promptData.push({
+      role: "user",
+      content: input.imageBase64.map((i) => ({
+        type: "image",
+        image: i,
+      })),
+    });
+  } else {
+    promptData = fullPrompt + `\n请直接输出图片`;
+  }
 
   const result = await generateText({
     model: google.languageModel(config.model),
-    prompt: fullPrompt + `请直接输出图片`,
+    prompt: promptData,
     providerOptions: {
       google: {
         imageConfig: {
@@ -27,10 +41,11 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
         },
       },
     },
+    timeout: 60000,
   });
 
-  console.log(JSON.stringify(result.request, null, 2));
-  console.log(JSON.stringify(result.response.body, null, 2));
+  
+  
   if (!result.files.length) {
     console.error(JSON.stringify(result.response, null, 2));
     throw new Error("图片生成失败");

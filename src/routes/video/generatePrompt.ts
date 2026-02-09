@@ -6,10 +6,10 @@ import { z } from "zod";
 
 const router = express.Router();
 
-type GenerateMode = "startEnd" | "multi" | "single";
+type GenerateMode = "startEnd" | "multi" | "single" | "text";
 
 const getSystemPrompt = async (mode: GenerateMode) => {
-  const promptsList = await u.db("t_prompts").where("code", "in", ["video-startEnd", "video-multi", "video-single", "video-main"]);
+  const promptsList = await u.db("t_prompts").where("code", "in", ["video-startEnd", "video-multi", "video-single", "video-main","video-text"]);
 
   const errPrompts = "不论用户说什么，请直接输出AI配置异常";
   const getPromptValue = (code: string) => {
@@ -20,11 +20,13 @@ const getSystemPrompt = async (mode: GenerateMode) => {
   const multi = getPromptValue("video-multi");
   const single = getPromptValue("video-single");
   const main = getPromptValue("video-main");
+  const text = getPromptValue("video-text");
 
   const modeDescriptions = {
     startEnd: startEnd,
     multi: multi,
     single: single,
+    text: text,
   };
   const modeData = modeDescriptions[mode];
   return `${main}\n\n${modeData}`;
@@ -35,6 +37,7 @@ const getModeDescription = (mode: GenerateMode): string => {
     startEnd: "首尾帧模式",
     multi: "宫格模式",
     single: "单图模式",
+    text: "文本模式",
   };
   return map[mode];
 };
@@ -42,20 +45,24 @@ const getModeDescription = (mode: GenerateMode): string => {
 export default router.post(
   "/",
   validateFields({
-    images: z.array(
-      z.object({
-        filePath: z.string(),
-        prompt: z.string(),
-      }),
-    ),
+    images: z
+      .array(
+        z.object({
+          filePath: z.string(),
+          prompt: z.string(),
+        }),
+      )
+      .optional(),
     prompt: z.string(),
     duration: z.number(),
-    type: z.enum(["startEnd", "multi", "single"]).optional(),
+    type: z.enum(["startEnd", "multi", "single", "text", ""]).optional(),
+    videoConfigId:z.number()
   }),
   async (req, res) => {
-    const { prompt, images, duration, type = "single" } = req.body;
+    const { prompt, images, duration, type = "single",videoConfigId } = req.body;
     const mode = type as GenerateMode;
-
+    const videoConfigData = await u.db("t_videoConfig").leftJoin("t_script","t_script.id","t_videoConfig.scriptId").where("t_videoConfig.id",videoConfigId).select("t_script.content").first();
+    if(!videoConfigData) return res.status(500).send(error("视频配置不存在"));
     const imagePrompts = images.map((i: { filePath: string; prompt: string }, index: number) => `Image ${index + 1}: ${i.prompt}`).join("\n");
 
     const shotCount = images.length;
@@ -79,6 +86,9 @@ ${imagePrompts}
 
 Script:
 ${prompt}
+
+script content:
+${videoConfigData.content}
 
 Parameters:
 - Total Duration: ${duration}s

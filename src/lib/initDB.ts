@@ -213,6 +213,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("scriptId"); // 关联的脚本ID
         table.integer("projectId"); // 关联的项目ID
         table.integer("aiConfigId"); //ai配置ID
+        table.integer("audioEnabled"); //声音
         table.text("manufacturer"); // 厂商：volcengine/runninghub/openAi
         table.text("mode"); // 模式：startEnd/multi/single
         table.text("startFrame"); // 首帧图片信息 JSON

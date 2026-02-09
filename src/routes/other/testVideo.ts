@@ -17,12 +17,13 @@ export default router.post(
   async (req, res) => {
     const { modelName, apiKey, baseURL, manufacturer } = req.body;
     try {
+      const duration = manufacturer == "gemini" ? 4 : 5;
       const videoPath = await u.ai.video(
         {
           imageBase64: [],
           savePath: "test.mp4",
           prompt: "stickman Dances",
-          duration: 4,
+          duration: duration,
           resolution: "720p",
           aspectRatio: "16:9",
           audio: false,

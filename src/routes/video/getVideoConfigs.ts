@@ -38,6 +38,7 @@ export default router.post(
       prompt: config.prompt || "",
       selectedResultId: config.selectedResultId,
       createdAt: config.createTime ? new Date(config.createTime).toISOString() : new Date().toISOString(),
+      audioEnabled:!!config.audioEnabled
     }));
 
     res.status(200).send(success(result));

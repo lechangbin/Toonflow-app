@@ -6,8 +6,6 @@ import { pollTask, validateVideoConfig } from "@/utils/ai/utils";
 import { createOpenAI } from "@ai-sdk/openai";
 import { experimental_generateVideo as generateVideo } from "ai";
 export default async (input: VideoConfig, config: AIConfig) => {
-  console.log("%c Line:9 🌰 config", "background:#fca650", config);
-  console.log("%c Line:9 🍒 input", "background:#33a5ff", input);
   if (!config.apiKey) throw new Error("缺少API Key");
   if (!config.baseURL) throw new Error("缺少baseURL");
   // const { owned, images, hasTextType } = validateVideoConfig(input, config);
@@ -26,7 +24,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
     "9:16": "720x1280",
   };
   formData.append("size", sizeMap[input.aspectRatio] || "1920x1080");
-  console.log("%c Line:30 🍇 sizeMap[input.aspectRatio]", "background:#93c0a4", sizeMap[input.aspectRatio]);
+  
   if (input.imageBase64 && input.imageBase64.length) {
     const base64Data = input.imageBase64[0]!.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, "base64");
@@ -54,6 +52,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       headers: { "Content-Type": "application/json", Authorization: authorization },
     },
   );
-  console.log("%c Line:62 🍩 data", "background:#465975", data);
+  
+  
   if (data.status === "FAILED") throw new Error(`任务提交失败: ${data.errorMessage || "未知错误"}`);
 };

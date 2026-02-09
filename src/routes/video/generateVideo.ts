@@ -25,9 +25,10 @@ export default router.post(
     duration: z.number(),
     prompt: z.string(),
     mode: z.enum(["startEnd", "multi", "single", "text"]),
+    audioEnabled: z.boolean(),
   }),
   async (req, res) => {
-    const { type, mode, scriptId, projectId, configId, aiConfigId, resolution, filePath, duration, prompt } = req.body;
+    const { type, mode, scriptId, projectId, configId, aiConfigId, resolution, filePath, duration, prompt, audioEnabled } = req.body;
 
     if (mode == "text") filePath.length = 0;
     else if (!filePath.length) {
@@ -118,7 +119,7 @@ export default router.post(
     res.status(200).send(success({ id: videoId, configId: configId || null }));
 
     // 异步生成视频
-    generateVideoAsync(videoId, projectId, fileUrl, savePath, prompt, duration, resolution, aiConfigData);
+    generateVideoAsync(videoId, projectId, fileUrl, savePath, prompt, duration, resolution, audioEnabled, aiConfigData);
   },
 );
 
@@ -131,6 +132,7 @@ async function generateVideoAsync(
   prompt: string,
   duration: number,
   resolution: string,
+  audioEnabled: boolean,
   aiConfigData: t_config,
 ) {
   try {
@@ -172,6 +174,7 @@ ${prompt}
         duration: duration as any,
         aspectRatio: projectData?.videoRatio as any,
         resolution: resolution as any,
+        audio: audioEnabled,
       },
       {
         baseURL: aiConfigData?.baseUrl!,
@@ -192,7 +195,7 @@ ${prompt}
       await u.db("t_video").where("id", videoId).update({ state: -1 });
     }
   } catch (err) {
-    console.error(`视频生成失败 videoId=${videoId}:`, u.error(err).message);
+    console.error(`视频生成失败 videoId=${videoId}:`, err);
     await u.db("t_video").where("id", videoId).update({ state: -1 });
   }
 }
@@ -315,18 +318,8 @@ async function sharpProcessingImage(imageList: string[], projectId: number): Pro
   // 合成所有图片
   const result = await canvas.composite(compositeOperations).png().toBuffer();
 
-  // 保存图片到当前文件夹，方便查看测试效果
-  const timestamp = new Date().getTime();
-  const outputFileName = `merged_image_${timestamp}.png`;
-  const outputPath = path.join(__dirname, outputFileName);
-
-  try {
-    await fs.promises.writeFile(outputPath, result);
-  } catch (err) {
-    console.error(`❌ 保存图片失败:`, err);
-  }
   const imagePath = `/${projectId}/assets/${uuidv4()}.jpg`;
-  const buffer = Buffer.from(result, "base64");
+  const buffer = Buffer.from(result as any, "base64");
   await u.oss.writeFile(imagePath, buffer);
 
   return await u.oss.getFileUrl(imagePath);

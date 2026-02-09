@@ -6,7 +6,7 @@ type ConsoleMethod = (...args: unknown[]) => void;
 
 const LOG_DIR = "./logs";
 const LOG_FILE = path.join(LOG_DIR, "app.log");
-const MAX_SIZE = 10 * 1024 * 1024;
+const MAX_SIZE = 1000 * 1024 * 1024;
 const LEVELS: LogLevel[] = ["log", "info", "warn", "error", "debug"];
 
 class Logger {
