@@ -7,12 +7,13 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   if (!config.apiKey) throw new Error("缺少API Key");
   if (!input.prompt) throw new Error("缺少提示词");
 
-  
+  const options: any = {};
+  if (config.apiKey) options.apiKey = config.apiKey;
+  if (config?.baseURL) options.baseURL = config.baseURL;
   const google = createGoogleGenerativeAI({
-    apiKey: config.apiKey,
+    ...options,
   });
 
-  
   // 构建完整的提示词
   const fullPrompt = input.systemPrompt ? `${input.systemPrompt}\n\n${input.prompt}` : input.prompt;
   let promptData: ModelMessage[] | string = [];
@@ -44,8 +45,6 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     timeout: 60000,
   });
 
-  
-  
   if (!result.files.length) {
     console.error(JSON.stringify(result.response, null, 2));
     throw new Error("图片生成失败");
