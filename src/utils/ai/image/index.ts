@@ -29,6 +29,7 @@ const modelInstance = {
 } as const;
 
 export default async (input: ImageConfig, config: AIConfig) => {
+  console.log("%c Line:32 🥪 config", "background:#33a5ff", config);
   const { model, apiKey, baseURL, manufacturer } = { ...config };
   if (!config || !config?.model || !config?.apiKey || !config?.manufacturer) throw new Error("请检查模型配置是否正确");
 
@@ -64,6 +65,7 @@ export default async (input: ImageConfig, config: AIConfig) => {
   }
 
   let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
+  console.log("%c Line:68 🍷 imageUrl", "background:#4fff4B", imageUrl);
   if (!input.resType) input.resType = "b64";
   if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
   return imageUrl;

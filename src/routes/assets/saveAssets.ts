@@ -46,10 +46,10 @@ export default router.post(
       }
 
       // 检查图片表里是否有这条图片
-      const selectedImage = await u.db("t_image").where("filePath", savePath).first();
-      if (!selectedImage) {
-        return res.status(404).send({ success: false, message: "所选图片不存在，请重新生成或选定图片" });
-      }
+      // const selectedImage = await u.db("t_image").where("filePath", savePath).first();
+      // if (!selectedImage) {
+      //   return res.status(500).send({ success: false, message: "所选图片不存在，请重新生成或选定图片" });
+      // }
       imageUrl = savePath;
     }
 
