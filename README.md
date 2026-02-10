@@ -64,7 +64,7 @@ Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧
 
 - 短视频内容创作
 - 小说影视化实验
-- AI 文学 Adaptation 工具（改编工具）
+- AI 文学改编工具
 - 剧本开发与快速原型
 - 视频素材生成
 
@@ -92,7 +92,7 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 在安装和使用本软件之前，请准备以下内容：
 
-- ✅ 大语言模型 AI 服务接口地址。
+- ✅ 大语言模型 AI 服务接口地址
 - ✅ Sora 或豆包视频服务接口地址
 - ✅ Nano Banana Pro 图片生成模型服务接口
 
@@ -100,21 +100,113 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. 下载与安装
 
-| 操作系统 | GitHub 下载                                                  | 123云盘下载                                               | 说明                                                         |
-| :------: | :----------------------------------------------------------- | :-------------------------------------------------------- | :----------------------------------------------------------- |
-| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [123云盘](https://www.123865.com/s/bkn5Vv-E67cv)          | 官方发布安装包 |
-|  Linux   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                               | 即将发布                                                     |
-|  macOS   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                               | 即将发布                                                     |
+| 操作系统 | GitHub 下载                                                  | 123 云盘下载                                      | 说明           |
+| :------: | :----------------------------------------------------------- | :------------------------------------------------ | :------------- |
+| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [123 云盘](https://www.123865.com/s/bkn5Vv-E67cv) | 官方发布安装包 |
+|  Linux   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                       | 即将发布       |
+|  macOS   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                       | 即将发布       |
 
-> ⚠️ 如123云盘提示需付费，仅因云盘流量受限，本软件完全开源免费。
+> ⚠️ 如 123 云盘提示需付费，仅因云盘流量受限，本软件完全开源免费。
 
 > 目前仅支持 Windows 版本，其他系统将陆续开放。
 
-> 因 Gitee OS 环境限制及Release文件上传大小限制，暂不提供 Gitee Release 下载地址。
+> 因 Gitee OS 环境限制及 Release 文件上传大小限制，暂不提供 Gitee Release 下载地址。
 
 ### 2. 启动服务
 
 安装完成后，启动程序即可开始使用本服务。
+
+> ⚠️ **首次登录**  
+> 账号：`admin`  
+> 密码：`admin123`
+
+## Docker 部署
+
+### 前置条件
+
+- 已安装 [Docker](https://docs.docker.com/get-docker/)（版本 20.10+）
+- 已安装 [Docker Compose](https://docs.docker.com/compose/install/)（版本 2.0+）
+
+### 方式一：在线部署（推荐）
+
+从 GitHub / Gitee 自动拉取源码并构建镜像：
+
+```shell
+docker-compose -f docker/docker-compose.yml up -d --build
+```
+
+**支持的构建参数：**
+
+| 参数       | 说明                    | 默认值     | 示例                        |
+| ---------- | ----------------------- | ---------- | --------------------------- |
+| `GIT`      | 代码仓库源              | `github`   | `github` / `gitee`          |
+| `TAG`      | 指定版本标签            | 最新 tag   | `v1.0.6`                    |
+| `BRANCH`   | 指定分支                | 默认分支   | `main` / `dev`              |
+
+**版本选择优先级**：指定 TAG > 指定 BRANCH > 自动获取最新 tag > 默认分支
+
+**指定参数示例：**
+
+```shell
+# 使用 Gitee 源（国内推荐，速度更快）
+GIT=gitee docker-compose -f docker/docker-compose.yml up -d --build
+
+# 指定版本标签
+TAG=v1.0.6 docker-compose -f docker/docker-compose.yml up -d --build
+
+# 指定分支 + Gitee 源
+GIT=gitee BRANCH=dev docker-compose -f docker/docker-compose.yml up -d --build
+```
+
+### 方式二：本地构建
+
+使用本地已有的源码直接构建，适合开发者或已克隆仓库的用户：
+
+```shell
+# 先克隆项目（如已有则跳过）
+git clone https://github.com/HBAI-Ltd/Toonflow-app.git
+cd Toonflow-app
+
+# 使用本地源码构建
+docker-compose -f docker/docker-compose.local.yml up -d --build
+```
+
+### 服务端口说明
+
+| 端口    | 用途                    | 在线部署映射    | 本地构建映射      |
+| ------- | ----------------------- | --------------- | ----------------- |
+| `80`    | Nginx 前端页面          | 随机端口        | `8080:80`         |
+| `60000` | 后端 API 服务           | `60000:60000`   | `60000:60000`     |
+
+### 数据持久化
+
+默认日志目录会挂载到宿主机 `./logs` 目录。如需持久化上传文件或数据库，可在 `docker-compose.yml` 中添加 volumes：
+
+```yaml
+volumes:
+  - ./logs:/var/log
+  - ./uploads:/app/uploads      # 持久化上传文件
+  - ./data:/app/data            # 持久化数据库（如有）
+```
+
+### 常用操作命令
+
+```shell
+# 查看容器状态
+docker-compose -f docker/docker-compose.yml ps
+
+# 查看实时日志
+docker-compose -f docker/docker-compose.yml logs -f
+
+# 停止服务
+docker-compose -f docker/docker-compose.yml down
+
+# 重新构建并启动（更新版本时使用）
+docker-compose -f docker/docker-compose.yml up -d --build
+
+# 进入容器调试
+docker exec -it toonflow sh
+```
 
 > ⚠️ **首次登录**  
 > 账号：`admin`  
@@ -125,8 +217,8 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 ### 一、服务器环境要求
 
 - **系统**：Ubuntu 20.04+ / CentOS 7+
-- **Node.js**：23.11.1+
-- **内存**：1GB+
+- **Node.js**：24.x（推荐，最低 23.11.1+）
+- **内存**：2GB+
 
 ### 二、服务器部署
 
@@ -208,6 +300,10 @@ pm2 restart all       # 重启服务
 pm2 monit             # 监控面板
 ```
 
+> ⚠️ **首次登录**  
+> 账号：`admin`  
+> 密码：`admin123`
+
 #### 6. 部署前端网站
 
 如需单独部署或定制前端界面，请参考前端仓库：
@@ -254,11 +350,30 @@ pm2 monit             # 监控面板
 
 3. **启动开发环境**
 
-   - 使用 Node.js 运行开发服务：
+   本项目包含 **后端 API 服务** 和 **前端页面** 两部分，请根据需要选择启动方式：
+
+   - **方式一：仅启动后端服务（开发调试用）**
 
      ```bash
-     yarn dev #端口60000
+     yarn dev
      ```
+
+     > ⚠️ 此命令仅启动后端 API 服务（端口 60000），**不包含前端页面**。直接访问 `http://localhost:60000` 只能调用 API 接口，无法看到完整的网页界面。如需同时使用前端页面，请配合前端项目单独启动，或使用下方的 GUI 模式。
+
+   - **方式二：启动 Electron 桌面客户端（推荐完整体验）**
+
+     ```bash
+     yarn dev:gui
+     ```
+
+     > 此命令会同时启动后端服务和 Electron 桌面窗口，自带内置前端页面，开箱即用，无需额外配置。适合想要完整体验所有功能的开发者。
+
+   **两种模式对比：**
+
+   | 命令           | 启动内容               | 前端页面 | 适用场景                         |
+   | -------------- | ---------------------- | -------- | -------------------------------- |
+   | `yarn dev`     | 仅后端 API（端口 60000） | ❌ 无    | 后端开发调试、配合前端项目联调   |
+   | `yarn dev:gui` | 后端 + Electron 桌面端 | ✅ 内置  | 完整功能体验、桌面客户端开发调试 |
 
 4. **项目打包**
 
@@ -273,6 +388,18 @@ pm2 monit             # 监控面板
      ```bash
      yarn dist:win
      ```
+  
+   - 打包为 Mac 平台可执行程序：
+
+     ```bash
+     yarn dist:mac
+     ```
+
+   - 打包为 Linux 平台可执行程序：
+
+     ```bash
+     yarn dist:linux
+     ```
 
 5. **代码质量检查**
 
@@ -281,6 +408,14 @@ pm2 monit             # 监控面板
      ```bash
      yarn lint
      ```
+
+6. **AI 调试面板（可选）**
+
+   启动 AI SDK 的可视化调试工具，方便调试 AI 调用：
+
+   ```bash
+   yarn debug:ai
+   ```
 
 ## 前端开发
 
@@ -294,6 +429,7 @@ pm2 monit             # 监控面板
 ## 项目结构
 
 ```
+📂 docker/                   # Docker 配置文件
 📂 docs/                    # 文档资源
 📂 scripts/                 # 构建脚本与静态资源
 │  └─ 📂 web/              # 前端编译产物（内置）
@@ -375,7 +511,6 @@ pm2 monit             # 监控面板
 
 ~~交流群 4~~
 
-
 ~~交流群 5~~
 
 ~~交流群 6~~
@@ -416,7 +551,7 @@ Toonflow 基于 AGPL-3.0 协议开源发布，许可证详情：https://www.gnu.
 感谢以下开源项目为 Toonflow 提供强大支持：
 
 - [Express](https://expressjs.com/) - 快速、开放、极简的 Node.js Web 框架
-- [LangChain](https://js.langchain.com/) - 构建 LLM 应用的开发框架
+- [AI](https://ai-sdk.dev/) - 面向 TypeScript 的 AI 工具包
 - [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3) - 高性能 SQLite3 绑定库
 - [Sharp](https://sharp.pixelplumbing.com/) - 高性能 Node.js 图像处理库
 - [Axios](https://axios-http.com/) - 基于 Promise 的 HTTP 客户端
