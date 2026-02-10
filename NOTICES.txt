@@ -1,24 +1,42 @@
-Name: @aigne/core
-License: Elastic-2.0
-Repository: https://github.com/AIGNE-io/aigne-framework
+Name: @ai-sdk/anthropic
+License: Apache-2.0
+Repository: https://github.com/vercel/ai
 
 -----------------------------
 
-Name: @aigne/openai
-License: Elastic-2.0
-Repository: https://github.com/AIGNE-io/aigne-framework
+Name: @ai-sdk/deepseek
+License: Apache-2.0
+Repository: https://github.com/vercel/ai
 
 -----------------------------
 
-Name: @langchain/core
-License: MIT
-Repository: https://github.com/langchain-ai/langchainjs
+Name: @ai-sdk/devtools
+License: MIT*
+Repository: N/A
 
 -----------------------------
 
-Name: @langchain/openai
-License: MIT
-Repository: https://github.com/langchain-ai/langchainjs
+Name: @ai-sdk/google
+License: Apache-2.0
+Repository: https://github.com/vercel/ai
+
+-----------------------------
+
+Name: @ai-sdk/openai-compatible
+License: Apache-2.0
+Repository: https://github.com/vercel/ai
+
+-----------------------------
+
+Name: @ai-sdk/openai
+License: Apache-2.0
+Repository: https://github.com/vercel/ai
+
+-----------------------------
+
+Name: @ai-sdk/xai
+License: Apache-2.0
+Repository: https://github.com/vercel/ai
 
 -----------------------------
 
@@ -64,6 +82,12 @@ Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
 
 -----------------------------
 
+Name: ai
+License: Apache-2.0
+Repository: https://github.com/vercel/ai
+
+-----------------------------
+
 Name: axios-retry
 License: Apache-2.0
 Repository: https://github.com/softonic/axios-retry
@@ -76,6 +100,12 @@ Repository: https://github.com/axios/axios
 
 -----------------------------
 
+Name: best-effort-json-parser
+License: BSD-2-Clause
+Repository: https://github.com/beenotung/best-effort-json-parser
+
+-----------------------------
+
 Name: better-sqlite3
 License: MIT
 Repository: https://github.com/WiseLibs/better-sqlite3
@@ -85,6 +115,12 @@ Repository: https://github.com/WiseLibs/better-sqlite3
 Name: cors
 License: MIT
 Repository: https://github.com/expressjs/cors
+
+-----------------------------
+
+Name: cross-env
+License: MIT
+Repository: https://github.com/kentcdodds/cross-env
 
 -----------------------------
 
@@ -166,12 +202,6 @@ Repository: https://github.com/knex/knex
 
 -----------------------------
 
-Name: langchain
-License: MIT
-Repository: https://github.com/langchain-ai/langchainjs
-
------------------------------
-
 Name: license-checker
 License: BSD-3-Clause
 Repository: https://github.com/davglass/license-checker
@@ -187,6 +217,24 @@ Repository: https://github.com/expressjs/morgan
 Name: nodemon
 License: MIT
 Repository: https://github.com/remy/nodemon
+
+-----------------------------
+
+Name: qwen-ai-provider
+License: Apache-2.0
+Repository: https://github.com/Younis-Ahmed/qwen-ai-provider
+
+-----------------------------
+
+Name: serialize-error
+License: MIT
+Repository: https://github.com/sindresorhus/serialize-error
+
+-----------------------------
+
+Name: serialize-error
+License: MIT
+Repository: https://github.com/sindresorhus/serialize-error
 
 -----------------------------
 
@@ -214,9 +262,15 @@ Repository: https://github.com/microsoft/TypeScript
 
 -----------------------------
 
-Name: zod
+Name: uuid
 License: MIT
-Repository: https://github.com/colinhacks/zod
+Repository: https://github.com/uuidjs/uuid
+
+-----------------------------
+
+Name: zhipu-ai-provider
+License: Apache-2.0
+Repository: https://github.com/Xiang-CH/zhipu-ai-provider
 
 -----------------------------
 

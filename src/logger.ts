@@ -4,7 +4,16 @@ import * as path from "path";
 type LogLevel = "log" | "info" | "warn" | "error" | "debug";
 type ConsoleMethod = (...args: unknown[]) => void;
 
-const LOG_DIR = "./logs";
+function getLogDir(): string {
+  const isElectron = typeof process.versions?.electron !== "undefined";
+  if (isElectron) {
+    const { app } = require("electron");
+    return path.join(app.getPath("userData"), "logs");
+  }
+  return path.join(process.cwd(), "logs");
+}
+
+const LOG_DIR = getLogDir();
 const LOG_FILE = path.join(LOG_DIR, "app.log");
 const MAX_SIZE = 1000 * 1024 * 1024;
 const LEVELS: LogLevel[] = ["log", "info", "warn", "error", "debug"];
