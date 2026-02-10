@@ -1,31 +1,28 @@
 import axios from "axios";
 import u from "@/utils";
 import FormData from "form-data";
-import axiosRetry from "axios-retry";
-import { OpenAIChatModel, type OpenAIChatModelOptions } from "@aigne/openai";
 import sharp from "sharp";
 
-axiosRetry(axios, { retries: 3, retryDelay: () => 200 });
-
-export const text = async (config: OpenAIChatModelOptions = {}) => {
-  const { model, apiKey, baseURL } = await u.getConfig("language");
-  return new OpenAIChatModel({
-    apiKey: apiKey ?? "",
-    baseURL: baseURL ?? "",
-    model: model ?? "gpt-4.1",
-    modelOptions: { temperature: 0.7 },
-    ...config,
-  });
-};
-
-interface ImageConfig {
-  systemPrompt?: string;
+type VideoAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9" | "adaptive";
+interface BaseVideoConfig {
   prompt: string;
-  imageBase64: string[];
-  size: "1K" | "2K" | "4K";
-  aspectRatio: string;
-  resType?: "url" | "b64";
+  savePath: string;
+  imageBase64?: string[]; // 单张参考图片 base64
 }
+interface DoubaoVideoConfig extends BaseVideoConfig {
+  duration: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12; // 支持 2~12 秒
+  aspectRatio: VideoAspectRatio;
+  audio?: boolean;
+}
+interface RunninghubVideoConfig extends BaseVideoConfig {
+  duration: 10 | 15; // 仅支持 10 或 15 秒
+  aspectRatio: "16:9" | "9:16" | "1:1"; // 仅支持这三种比例
+}
+interface OpenAIVideoConfig extends BaseVideoConfig {
+  duration: 10 | 15; // 仅支持 10 或 15 秒
+  aspectRatio: Exclude<VideoAspectRatio, "adaptive">; // 不支持 adaptive
+}
+type VideoConfig = DoubaoVideoConfig | RunninghubVideoConfig | OpenAIVideoConfig;
 
 const urlToBase64 = async (url: string): Promise<string> => {
   const res = await axios.get(url, { responseType: "arraybuffer" });
@@ -110,127 +107,6 @@ const uploadBase64ToRunninghub = async (base64Image: string, apiKey: string, bas
   }
 };
 
-const generators = {
-  volcengine: async (config: ImageConfig, apiKey: string, baseURL: string, model: string) => {
-    if (config.size == "1K") config.size = "2K";
-    apiKey = apiKey.replace("Bearer ", "");
-    const body: Record<string, any> = {
-      model,
-      prompt: config.prompt,
-      size: config.size,
-      response_format: "url",
-      sequential_image_generation: "disabled",
-      stream: false,
-      watermark: false,
-    };
-    // 图生图：存在图片时添加 image 字段
-    if (config.imageBase64) {
-      body.image = config.imageBase64;
-    }
-    const res = await axios.post(`https://ark.cn-beijing.volces.com/api/v3/images/generations`, body, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    return res.data.data[0].url;
-  },
-
-  gemini: async (config: ImageConfig, apiKey: string, baseURL: string, model: string) => {
-    apiKey = apiKey.replace("Bearer ", "");
-    const messages = [
-      ...(config.systemPrompt ? [{ role: "system", content: config.systemPrompt }] : []),
-      { role: "user", content: config.prompt },
-      ...config.imageBase64.map((img) => ({ role: "user", content: { image: img } })),
-    ];
-    const res = await axios.post(
-      `${baseURL}/chat/completions`,
-      { model, stream: false, messages, extra_body: { google: { image_config: { aspect_ratio: config.aspectRatio, image_size: config.size } } } },
-      { headers: { Authorization: "Bearer " + apiKey } },
-    );
-
-    return res.data.choices[0].message.content;
-  },
-
-  runninghub: async (config: ImageConfig, apiKey: string, baseURL: string) => {
-    apiKey = apiKey.replace("Bearer ", "");
-    const imageUrls = await Promise.all(config.imageBase64.map((base64Image) => uploadBase64ToRunninghub(base64Image, apiKey, baseURL)));
-
-    const endpoint = config.imageBase64.length === 0 ? "/openapi/v2/rhart-image-n-pro/text-to-image" : "/openapi/v2/rhart-image-n-pro/edit";
-    const taskRes = await axios.post(
-      `https://www.runninghub.cn${endpoint}`,
-      { prompt: config.prompt, resolution: config.size, aspectRatio: config.aspectRatio, ...(imageUrls.length > 0 && { imageUrls }) },
-      { headers: { Authorization: "Bearer " + apiKey } },
-    );
-    const taskId = taskRes.data.taskId;
-    if (!taskId) throw new Error(`任务创建失败，${JSON.stringify(taskRes.data)}`);
-
-    return pollTask(async () => {
-      const res = await axios.post(`https://www.runninghub.cn/task/openapi/outputs`, { taskId, apiKey: apiKey });
-      const { code, msg, data } = res.data;
-      if (code === 0 && msg === "success") return { completed: true, imageUrl: data?.[0]?.fileUrl };
-      if (code === 804 || code === 813) return { completed: false };
-      if (code === 805) return { completed: false, error: `任务失败: ${data?.[0]?.failedReason?.exception_message || "未知原因"}` };
-      return { completed: false, error: `未知状态: code=${code}, msg=${msg}` };
-    });
-  },
-
-  apimart: async (config: ImageConfig, apiKey: string, baseURL: string, model: string) => {
-    apiKey = apiKey.replace("Bearer ", "");
-    const taskRes = await axios.post(
-      `https://api.apimart.ai/v1/images/generations`,
-      { model: "gemini-3-pro-image-preview", prompt: config.prompt, size: config.aspectRatio, n: 1, resolution: config.size },
-      { headers: { Authorization: apiKey } },
-    );
-
-    if (taskRes.data.code !== 200 || !taskRes.data.data?.[0]?.task_id) throw new Error("任务创建失败: " + JSON.stringify(taskRes.data));
-
-    const taskId = taskRes.data.data[0].task_id;
-    return pollTask(async () => {
-      const res = await axios.get(`https://api.apimart.ai/v1/tasks/${taskId}`, { headers: { Authorization: apiKey }, params: { language: "en" } });
-      if (res.data.code !== 200) return { completed: false, error: `查询失败: ${JSON.stringify(res.data)}` };
-      const { status, result } = res.data.data;
-      if (status === "completed") return { completed: true, imageUrl: result?.images?.[0]?.url?.[0] };
-      if (status === "failed" || status === "cancelled") return { completed: false, error: `任务${status}` };
-      return { completed: false };
-    });
-  },
-};
-
-export const generateImage = async (config: ImageConfig, replaceConfig?: Awaited<ReturnType<typeof u.getConfig<"image">>>): Promise<string> => {
-  let { model, apiKey, baseURL, manufacturer } = await u.getConfig("image");
-  if (replaceConfig) {
-    model = replaceConfig.model || model;
-    apiKey = replaceConfig.apiKey || apiKey;
-    baseURL = replaceConfig.baseURL || baseURL;
-    manufacturer = replaceConfig.manufacturer || manufacturer;
-  }
-  const generator = generators[manufacturer as keyof typeof generators];
-  if (!generator) throw new Error(`不支持的厂商: ${manufacturer}`);
-
-  let imageUrl = await generator(config, apiKey ?? "", baseURL ?? "", model ?? "");
-  if (!config.resType) config.resType = "b64";
-  if (config.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
-  return imageUrl;
-};
-
-type VideoAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9" | "adaptive";
-interface BaseVideoConfig {
-  prompt: string;
-  savePath: string;
-  imageBase64?: string[]; // 单张参考图片 base64
-}
-interface DoubaoVideoConfig extends BaseVideoConfig {
-  duration: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12; // 支持 2~12 秒
-  aspectRatio: VideoAspectRatio;
-  audio?: boolean;
-}
-interface RunninghubVideoConfig extends BaseVideoConfig {
-  duration: 10 | 15; // 仅支持 10 或 15 秒
-  aspectRatio: "16:9" | "9:16" | "1:1"; // 仅支持这三种比例
-}
-interface OpenAIVideoConfig extends BaseVideoConfig {
-  duration: 10 | 15; // 仅支持 10 或 15 秒
-  aspectRatio: Exclude<VideoAspectRatio, "adaptive">; // 不支持 adaptive
-}
-type VideoConfig = DoubaoVideoConfig | RunninghubVideoConfig | OpenAIVideoConfig;
 const generateVideoWithConfig = async (config: VideoConfig, configItem: { model: string; apiKey: string; baseURL: string; manufacturer: string }) => {
   const { apiKey, baseURL, manufacturer, model } = configItem;
   const imageArrPath = [];
@@ -527,34 +403,35 @@ const generateVideoWithConfig = async (config: VideoConfig, configItem: { model:
   }
   return videoUrl;
 };
-export const generateVideo = async (config: VideoConfig, manufacturer: string) => {
+
+export default async (config: VideoConfig, manufacturer: string) => {
   if (!config.imageBase64 || config.imageBase64.length <= 0) throw new Error("未传图片");
-  const configList = await u.getConfig("video", manufacturer);
-  if (!configList || configList.length === 0) {
+  const configItem = await u.getConfig("video", manufacturer);
+  if (!configItem) {
     throw new Error("未找到任何视频配置");
   }
   let lastError: Error | null = null;
-  for (const configItem of configList) {
-    // 每个配置项重试1次，共2次尝试
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const videoUrl = await generateVideoWithConfig(config, configItem);
-        if (videoUrl) {
-          const response = await axios.get(videoUrl, { responseType: "stream" });
-          await u.oss.writeFile(config.savePath, response.data);
-          return config.savePath;
-        }
-        return videoUrl;
-      } catch (error: any) {
-        lastError = error as Error;
-        console.warn(`配置 ${configItem.model} 第 ${attempt + 1} 次尝试失败:`, error?.response?.data || error.message);
-        // 如果是第一次尝试失败，继续重试
-        if (attempt === 0) continue;
-        // 第二次也失败了,跳到下一个配置项
-        break;
+  //   for (const configItem of configList) {
+  // 每个配置项重试1次，共2次尝试
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const videoUrl = await generateVideoWithConfig(config, configItem);
+      if (videoUrl) {
+        const response = await axios.get(videoUrl, { responseType: "stream" });
+        await u.oss.writeFile(config.savePath, response.data);
+        return config.savePath;
       }
+      return videoUrl;
+    } catch (error: any) {
+      lastError = error as Error;
+      console.warn(`配置 ${configItem.model} 第 ${attempt + 1} 次尝试失败:`, error?.response?.data || error.message);
+      // 如果是第一次尝试失败，继续重试
+      if (attempt === 0) continue;
+      // 第二次也失败了,跳到下一个配置项
+      break;
     }
   }
+  //   }
   // 所有配置都失败了
   throw new Error(`所有视频配置都失败了。最后一次错误: ${lastError?.message || "未知错误"}`);
 };

@@ -8,7 +8,6 @@ expressWs(router as unknown as Application);
 router.ws("/", async (ws, req) => {
   let agent: OutlineScript;
 
-  const config = await u.getConfig("language");
 
   const projectId = req.query.projectId;
   if (!projectId || typeof projectId !== "string") {
@@ -18,10 +17,6 @@ router.ws("/", async (ws, req) => {
   }
 
   agent = new OutlineScript(Number(projectId));
-
-  agent.modelName = config.model ?? "";
-  agent.baseURL = config.baseURL ?? "";
-  agent.apiKey = config.apiKey ?? "";
 
   // const existing = await u
   //   .db("t_chatHistory")

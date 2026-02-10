@@ -40,10 +40,11 @@ const db = knex({
   useNullAsDefault: true,
 });
 
-initDB(db);
-fixDB(db);
-
-if (process.env.NODE_ENV == "dev") initKnexType(db);
+(async () => {
+  await initDB(db);
+  await fixDB(db);
+  if (process.env.NODE_ENV == "dev") initKnexType(db);
+})();
 
 const dbClient = Object.assign(<TName extends TableName>(table: TName) => db<RowType<TName>, RowType<TName>[]>(table), db);
 dbClient.schema = db.schema;

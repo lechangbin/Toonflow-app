@@ -1,13 +1,13 @@
 // @/agents/Storyboard.ts
 import u from "@/utils";
-import { createAgent } from "langchain";
+import { tool, ModelMessage, Tool } from "ai";
 import { EventEmitter } from "events";
-import { openAI } from "@/agents/models";
 import { z } from "zod";
-import { tool } from "@langchain/core/tools";
 import type { DB } from "@/types/database";
 import generateImageTool from "./generateImageTool";
 import imageSplitting from "./imageSplitting";
+import path from "path";
+import sharp from "sharp";
 
 // ==================== 类型定义 ====================
 
@@ -38,15 +38,20 @@ interface Shot {
   x: number;
   y: number;
   cells: Array<{ src?: string; prompt?: string; id?: string }>; // 镜头数组，每个cell是一个镜头
+  fragmentContent: string;
+  assetsTags: AssetsType[];
 }
-
+interface AssetsType {
+  type: "role" | "props" | "scene";
+  text: string;
+}
 // ==================== 主类 ====================
 
 export default class Storyboard {
   private readonly projectId: number;
   private readonly scriptId: number;
   readonly emitter = new EventEmitter();
-  history: Array<[string, string]> = [];
+  history: ModelMessage[] = [];
   novelChapters: DB["t_novel"][] = [];
 
   // 存储 segmentAgent 生成的片段结果
@@ -58,10 +63,6 @@ export default class Storyboard {
   // 存储正在生成分镜图的分镜ID
   private generatingShots: Set<number> = new Set();
 
-  modelName = "gpt-4.1";
-  apiKey = "";
-  baseURL = "";
-
   constructor(projectId: number, scriptId: number) {
     this.projectId = projectId;
     this.scriptId = scriptId;
@@ -69,9 +70,6 @@ export default class Storyboard {
 
   // 更新shopts
   public updatePreShots(segmentId: number, cellId: number, cell: { src?: string; prompt?: string; id?: string }) {
-    console.log("%c Line:76 🍤 segmentId", "background:#465975", segmentId);
-    console.log("%c Line:76 🍷 cellId", "background:#ffdd4d", cellId);
-    console.log("%c Line:76 🍢 cell", "background:#ffdd4d", cell);
     const shotIndex = this.shots.findIndex((item) => item.segmentId === segmentId);
     if (shotIndex === -1) {
       return `分镜 ${segmentId} 不存在，请检查分镜ID是否正确`;
@@ -105,28 +103,28 @@ export default class Storyboard {
 
   // ==================== 剧本相关操作 ====================
 
-  getScript = tool(
-    async () => {
+  getScript = tool({
+    title: "getScript",
+    description: "获取剧本内容",
+    inputSchema: z.object({}),
+    execute: async () => {
       this.log("获取剧本", `scriptId: ${this.scriptId}`);
       const script = await u.db("t_script").where({ id: this.scriptId, projectId: this.projectId }).first();
       if (!script) throw new Error("剧本不存在");
       return `剧本集：${script.name}\n\n内容：\n\`\`\`${script.content}\`\`\``;
     },
-    {
-      name: "getScript",
-      description: "获取剧本内容",
-      schema: z.object({}),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   // ==================== 资产相关操作 ====================
 
   /**
    * 获取资产列表（供 segmentAgent 和 shotAgent 调用）
    */
-  getAssets = tool(
-    async () => {
+  getAssets = tool({
+    title: "getAssets",
+    description: "获取资产列表（角色、道具、场景），包含名称和详细介绍。生成片段和分镜时必须先调用此工具获取资产信息，确保名称一致性",
+    inputSchema: z.object({}),
+    execute: async () => {
       this.log("获取资产列表", `scriptId: ${this.scriptId}`);
       const scriptData = await u.db("t_script").where({ id: this.scriptId, projectId: this.projectId }).first();
       const row = await u.db("t_outline").where({ id: scriptData?.outlineId!, projectId: this.projectId }).first();
@@ -171,76 +169,84 @@ ${sections.join("\n\n")}
 2. 禁止在资产名称前后添加修饰词
 3. 禁止捏造资产列表中不存在的角色、场景、道具`;
     },
-    {
-      name: "getAssets",
-      description: "获取资产列表（角色、道具、场景），包含名称和详细介绍。生成片段和分镜时必须先调用此工具获取资产信息，确保名称一致性",
-      schema: z.object({}),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   // ==================== 片段和分镜工具 ====================
 
   /**
    * 获取当前存储的片段数据（供 shotAgent 调用）
    */
-  getSegments = tool(
-    async () => {
+  getSegments = tool({
+    title: "getSegments",
+    description: "获取当前已生成的片段数据，用于生成分镜",
+    inputSchema: z.object({}),
+    execute: async () => {
       this.log("获取片段数据", `共 ${this.segments.length} 个片段`);
       if (this.segments.length === 0) {
         return "暂无片段数据，请先调用 segmentAgent 生成片段";
       }
       return JSON.stringify(this.segments, null, 2);
     },
-    {
-      name: "getSegments",
-      description: "获取当前已生成的片段数据，用于生成分镜",
-      schema: z.object({}),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   /**
    * 更新/存储片段数据（供 segmentAgent 调用）
    */
-  updateSegments = tool(
-    async ({ segments }: { segments: Segment[] }) => {
+  updateSegments = tool({
+    title: "updateSegments",
+    description: "存储生成的片段数据，segmentAgent 在生成片段后必须调用此工具保存结果",
+    inputSchema: z.object({
+      segments: z
+        .array(
+          z.object({
+            index: z.number().describe("片段序号"),
+            description: z.string().describe("片段描述"),
+            emotion: z.string().optional().describe("情绪氛围"),
+            action: z.string().optional().describe("主要动作"),
+          }),
+        )
+        .describe("片段数组"),
+    }),
+    execute: async ({ segments }: { segments: Segment[] }) => {
       this.log("更新片段数据", `共 ${segments.length} 个片段`);
       this.segments = segments;
       this.emit("segmentsUpdated", this.segments);
       return `成功存储 ${segments.length} 个片段`;
     },
-    {
-      name: "updateSegments",
-      description: "存储生成的片段数据，segmentAgent 在生成片段后必须调用此工具保存结果",
-      schema: z.object({
-        segments: z
-          .array(
-            z.object({
-              index: z.number().describe("片段序号"),
-              description: z.string().describe("片段描述"),
-              emotion: z.string().optional().describe("情绪氛围"),
-              action: z.string().optional().describe("主要动作"),
-            }),
-          )
-          .describe("片段数组"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   /**
    * 添加分镜（供 shotAgent 调用）
    */
-  addShots = tool(
-    async ({ shots }: { shots: Array<{ segmentIndex: number; prompts: string[] }> }) => {
+  addShots = tool({
+    title: "addShots",
+    description: "添加新的分镜。每个分镜有独立ID，包含多个镜头（每个镜头对应一个提示词）。如果片段已存在分镜会跳过",
+    inputSchema: z.object({
+      shots: z
+        .array(
+          z.object({
+            segmentIndex: z.number().describe("对应的片段序号"),
+            prompts: z.array(z.string()).describe("镜头提示词数组，每个提示词对应一个镜头（中文）"),
+            assetsTags: z.array(
+              z.object({
+                type: z.enum(["role", "props", "scene"]).describe("资源类型"),
+                text: z.string().describe("资源名称"),
+              }),
+            ),
+          }),
+        )
+        .describe("要添加的分镜数组"),
+    }),
+    execute: async ({ shots }: { shots: Array<{ segmentIndex: number; prompts: string[]; assetsTags: AssetsType[] }> }) => {
       const added: { id: number; segmentIndex: number }[] = [];
       const skipped: number[] = [];
 
       for (const item of shots) {
-        const exists = this.shots.some((f) => f.segmentId === item.segmentIndex);
+        const resultIndex = item.segmentIndex - 1;
+
+        const exists = this.shots.some((f) => f.segmentId === resultIndex);
         if (exists) {
-          skipped.push(item.segmentIndex);
+          skipped.push(resultIndex);
           continue;
         }
         // 分配独立的分镜ID
@@ -248,13 +254,15 @@ ${sections.join("\n\n")}
         const shotId = this.shotIdCounter;
         this.shots.push({
           id: shotId,
-          segmentId: item.segmentIndex,
+          segmentId: resultIndex,
           title: `分镜 ${shotId}`,
           x: 0,
           y: 0,
           cells: item.prompts.map((prompt) => ({ id: u.uuid(), prompt })),
+          fragmentContent: this.segments[resultIndex]?.description,
+          assetsTags: item.assetsTags,
         });
-        added.push({ id: shotId, segmentIndex: item.segmentIndex });
+        added.push({ id: shotId, segmentIndex: resultIndex });
       }
 
       const addedInfo = added.map((a) => `分镜${a.id}(片段${a.segmentIndex})`).join(", ");
@@ -266,29 +274,20 @@ ${sections.join("\n\n")}
       }
       return `已添加${addedInfo}。当前共 ${this.shots.length} 个分镜`;
     },
-    {
-      name: "addShots",
-      description: "添加新的分镜。每个分镜有独立ID，包含多个镜头（每个镜头对应一个提示词）。如果片段已存在分镜会跳过",
-      schema: z.object({
-        shots: z
-          .array(
-            z.object({
-              segmentIndex: z.number().describe("对应的片段序号"),
-              prompts: z.array(z.string()).describe("镜头提示词数组，每个提示词对应一个镜头（中文）"),
-            }),
-          )
-          .describe("要添加的分镜数组"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   /**
    * 更新指定分镜（供 shotAgent 调用）
    * 保留原有 cells 的 id 和 src 字段，只更新 prompt
    */
-  updateShots = tool(
-    async ({ shotId, prompts }: { shotId: number; prompts: string[] }) => {
+  updateShots = tool({
+    title: "updateShots",
+    description: "更新指定分镜的镜头提示词。通过分镜ID指定要修改的分镜",
+    inputSchema: z.object({
+      shotId: z.number().describe("要更新的分镜ID"),
+      prompts: z.array(z.string()).describe("新的镜头提示词数组，每个提示词对应一个镜头"),
+    }),
+    execute: async ({ shotId, prompts }: { shotId: number; prompts: string[] }) => {
       const existingIndex = this.shots.findIndex((item) => item.id === shotId);
 
       if (existingIndex === -1) {
@@ -314,22 +313,18 @@ ${sections.join("\n\n")}
 
       return `已更新分镜 ${shotId}`;
     },
-    {
-      name: "updateShots",
-      description: "更新指定分镜的镜头提示词。通过分镜ID指定要修改的分镜",
-      schema: z.object({
-        shotId: z.number().describe("要更新的分镜ID"),
-        prompts: z.array(z.string()).describe("新的镜头提示词数组，每个提示词对应一个镜头"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   /**
    * 删除指定分镜（供 shotAgent 调用）
    */
-  deleteShots = tool(
-    async ({ shotIds }: { shotIds: number[] }) => {
+  deleteShots = tool({
+    title: "deleteShots",
+    description: "删除指定的分镜。通过分镜ID指定要删除的分镜",
+    inputSchema: z.object({
+      shotIds: z.array(z.number()).describe("要删除的分镜ID数组"),
+    }),
+    execute: async ({ shotIds }: { shotIds: number[] }) => {
       const deleted: number[] = [];
       const notFound: number[] = [];
 
@@ -351,21 +346,19 @@ ${sections.join("\n\n")}
       }
       return `已删除分镜 ${deleted.join(", ")}。当前共 ${this.shots.length} 个分镜`;
     },
-    {
-      name: "deleteShots",
-      description: "删除指定的分镜。通过分镜ID指定要删除的分镜",
-      schema: z.object({
-        shotIds: z.array(z.number()).describe("要删除的分镜ID数组"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   /**
    * 生成分镜图（异步执行，使用 nanoBanana）
    */
-  generateShotImage = tool(
-    async ({ shotIds }: { shotIds: number[] }) => {
+  generateShotImage = tool({
+    title: "generateShotImage",
+    description:
+      "为指定分镜生成分镜图。每个分镜会根据其所有提示词生成一张完整宫格图，然后自动分割为单格图片。通过分镜ID指定，不需要指定具体格子，整个分镜是一个完整的生成单元",
+    inputSchema: z.object({
+      shotIds: z.array(z.number()).describe("要生成分镜图的分镜ID数组"),
+    }),
+    execute: async ({ shotIds }: { shotIds: number[] }) => {
       const toGenerate: number[] = [];
       const alreadyGenerating: number[] = [];
       const notFound: number[] = [];
@@ -417,16 +410,7 @@ ${sections.join("\n\n")}
       }
       return result;
     },
-    {
-      name: "generateShotImage",
-      description:
-        "为指定分镜生成分镜图。每个分镜会根据其所有提示词生成一张完整宫格图，然后自动分割为单格图片。通过分镜ID指定，不需要指定具体格子，整个分镜是一个完整的生成单元",
-      schema: z.object({
-        shotIds: z.array(z.number()).describe("要生成分镜图的分镜ID数组"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   /**
    * 执行分镜图生成的具体逻辑（异步并发）
@@ -462,7 +446,6 @@ ${sections.join("\n\n")}
         this.scriptId,
         this.projectId,
       );
-
       // 通知前端正在分割图片
       this.emit("shotImageGenerateProgress", { shotId, status: "splitting", message: "正在分割宫格图片为单张镜头图" });
 
@@ -566,7 +549,7 @@ ${assetList}
 
   private buildConversationHistory(): string {
     if (!this.history.length) return "无对话历史";
-    return this.history.map(([role, content]) => `${role}: ${content}`).join("\n\n");
+    return this.history.map(({ role, content }) => `${role}: ${content}`).join("\n\n");
   }
 
   private async buildFullContext(task: string): Promise<string> {
@@ -586,26 +569,33 @@ ${task}
 
   // ==================== Sub-Agent ====================
 
-  private createModel() {
-    return openAI({
-      modelName: this.modelName,
-      configuration: { apiKey: this.apiKey, baseURL: this.baseURL },
-    });
-  }
-
   /**
    * 获取不同 Sub-Agent 可用的工具
    */
-  private getSubAgentTools(agentType: AgentType) {
+  private getSubAgentTools(agentType: AgentType): Record<string, Tool> {
     switch (agentType) {
       case "segmentAgent":
         // segmentAgent 可以获取剧本和资产，并需要调用 updateSegments 保存结果
-        return [this.getScript, this.getAssets, this.updateSegments];
+        return {
+          getScript: this.getScript,
+          getAssets: this.getAssets,
+          updateSegments: this.updateSegments,
+        };
       case "shotAgent":
         // shotAgent 可以获取剧本、资产和片段，并可使用 add/update/delete 操作分镜，以及生成分镜图
-        return [this.getScript, this.getAssets, this.getSegments, this.addShots, this.updateShots, this.deleteShots, this.generateShotImage];
+        return {
+          getScript: this.getScript,
+          getAssets: this.getAssets,
+          getSegments: this.getSegments,
+          addShots: this.addShots,
+          updateShots: this.updateShots,
+          deleteShots: this.deleteShots,
+          generateShotImage: this.generateShotImage,
+        };
       default:
-        return [this.getScript];
+        return {
+          getScript: this.getScript,
+        };
     }
   }
 
@@ -617,119 +607,124 @@ ${task}
     this.log(`Sub-Agent 调用`, agentType);
 
     const promptsList = await u.db("t_prompts").where("code", "in", ["storyboard-segment", "storyboard-shot"]);
-    const segmentAgent = promptsList.find((p) => p.code === "storyboard-segment");
-    const shotAgent = promptsList.find((p) => p.code === "storyboard-shot");
+    const promptConfig = await u.getPromptAi("storyboardAgent");
+
     const errPrompts = "不论用户说什么，请直接输出Agent配置异常";
-    const SYSTEM_PROMPTS: Record<AgentType, string> = {
-      segmentAgent: segmentAgent?.customValue || segmentAgent?.defaultValue || errPrompts,
-      shotAgent: shotAgent?.customValue || shotAgent?.defaultValue || errPrompts,
+
+    const getAiPromptConfig = (code: string) => {
+      const item = promptsList.find((p) => p.code === code);
+      return item?.customValue || item?.defaultValue || errPrompts;
+    };
+    const segmentAgent = getAiPromptConfig("storyboard-segment");
+    const shotAgent = getAiPromptConfig("storyboard-shot");
+    const SYSTEM_PROMPTS = {
+      segmentAgent: segmentAgent,
+      shotAgent: shotAgent,
     };
 
     const context = await this.buildFullContext(task);
 
-    const agent = createAgent({
-      model: this.createModel(),
-      systemPrompt: SYSTEM_PROMPTS[agentType],
-      tools: this.getSubAgentTools(agentType),
-    });
-
-    const stream = await agent.stream({ messages: [["user", context]] }, { streamMode: ["messages"], callbacks: [] });
+    const { fullStream } = await u.ai.text.stream(
+      {
+        system: SYSTEM_PROMPTS[agentType],
+        tools: this.getSubAgentTools(agentType),
+        messages: [{ role: "user", content: context }],
+        maxStep: 100,
+      },
+      promptConfig,
+    );
 
     let fullResponse = "";
-
-    for await (const [mode, chunk] of stream) {
-      if (mode !== "messages") continue;
-      const [token] = chunk as any;
-      const block = token.contentBlocks?.[0];
-
-      // 处理 AI 文本流
-      if (token.type === "ai" && block?.text) {
-        fullResponse += block.text;
-        this.emit("subAgentStream", { agent: agentType, text: block.text });
+    for await (const item of fullStream) {
+      if (item.type == "tool-call") {
+        this.emit("toolCall", { agent: "main", name: item.title, args: null });
       }
-      // 处理 tool 调用
-      if (token.type === "ai" && token.tool_calls?.length) {
-        for (const toolCall of token.tool_calls) {
-          this.emit("toolCall", { agent: agentType, name: toolCall.name, args: toolCall.args });
-        }
+      if (item.type == "text-delta") {
+        fullResponse += item.text;
+        this.emit("subAgentStream", { agent: agentType, text: item.text });
       }
     }
 
     this.emit("subAgentEnd", { agent: agentType });
-    this.history.push(["ai", fullResponse]);
+    this.history.push({
+      role: "assistant",
+      content: fullResponse,
+    });
     this.log(`Sub-Agent 完成`, agentType);
-    return fullResponse;
+
+    return fullResponse ?? `${agentType}已完成任务`;
   }
 
   private createSubAgentTool(agentType: AgentType, description: string) {
-    return tool(async ({ taskDescription }) => this.invokeSubAgent(agentType, taskDescription), {
-      name: agentType,
+    return tool({
+      title: agentType,
       description,
-      schema: z.object({
+      inputSchema: z.object({
         taskDescription: z.string().describe("具体的任务描述，包含章节范围、修改要求等详细信息"),
       }),
+      execute: async ({ taskDescription }) => this.invokeSubAgent(agentType, taskDescription),
     });
   }
 
   // ==================== 主入口 ====================
 
   private getAllTools() {
-    return [
-      this.createSubAgentTool(
+    return {
+      segmentAgent: this.createSubAgentTool(
         "segmentAgent",
         "调用片段师。负责根据剧本生成片段，会自行调用 getScript 获取剧本内容，并调用 updateSegments 保存片段结果。",
       ),
-      this.createSubAgentTool(
+      shotAgent: this.createSubAgentTool(
         "shotAgent",
         "调用分镜师。负责根据片段生成分镜提示词，会自行调用 getSegments 获取片段数据，并调用 addShots/updateShots 保存分镜结果。",
       ),
       // this.createSubAgentTool("director", "调用导演。负责审核故事线和大纲，会自行调用 updateOutline 或 saveStoryline 进行修改。"),
-      this.getScript,
-      this.getSegments,
-      this.generateShotImage,
+      getScript: this.getScript,
+      getSegments: this.getSegments,
+      generateShotImage: this.generateShotImage,
       ...this.getSubAgentTools("segmentAgent"),
       ...this.getSubAgentTools("shotAgent"),
-    ];
+    };
   }
 
   async call(msg: string): Promise<string> {
-    console.log("模型名称:", this.modelName);
-    this.history.push(["user", msg]);
+    this.history.push({
+      role: "user",
+      content: msg,
+    });
 
     const envContext = await this.buildEnvironmentContext();
 
     const prompts = await u.db("t_prompts").where("code", "storyboard-main").first();
+    const promptConfig = await u.getPromptAi("storyboardAgent");
 
     const mainPrompts = prompts?.customValue || prompts?.defaultValue || "不论用户说什么，请直接输出Agent配置异常";
 
-    const mainAgent = createAgent({
-      model: this.createModel(),
-      tools: this.getAllTools(),
-      systemPrompt: `${envContext}\n${mainPrompts}`,
-    });
-    const stream = await mainAgent.stream({ messages: this.history }, { streamMode: ["messages"], callbacks: [] });
+    const { fullStream } = await u.ai.text.stream(
+      {
+        system: `${envContext}\n${mainPrompts}`,
+        tools: this.getAllTools(),
+        messages: this.history,
+        maxStep: 100,
+      },
+      promptConfig,
+    );
 
     let fullResponse = "";
-
-    for await (const [mode, chunk] of stream) {
-      if (mode !== "messages") continue;
-      const [token] = chunk as any;
-      const block = token.contentBlocks?.[0];
-      // 处理 AI 文本流
-      if (token.type === "ai" && block?.text) {
-        fullResponse += block.text;
-        this.emit("data", block.text);
+    for await (const item of fullStream) {
+      if (item.type == "tool-call") {
+        this.emit("toolCall", { agent: "main", name: item.title, args: null });
       }
-
-      // 处理 tool 调用
-      if (token.type === "ai" && token.tool_calls?.length) {
-        for (const toolCall of token.tool_calls) {
-          this.emit("toolCall", { agent: "main", name: toolCall.name, args: toolCall.args });
-        }
+      if (item.type == "text-delta") {
+        fullResponse += item.text;
+        this.emit("data", item.text);
       }
     }
+    this.history.push({
+      role: "assistant",
+      content: fullResponse,
+    });
 
-    this.history.push(["assistant", fullResponse]);
     this.emit("response", fullResponse);
 
     return fullResponse;

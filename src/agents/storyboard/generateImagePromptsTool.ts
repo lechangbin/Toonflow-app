@@ -98,31 +98,47 @@ async function generateGridPrompt(options: GridPromptOptions): Promise<GridPromp
       : "";
 
   const promptsData = await u.db("t_prompts").where("code", "generateImagePrompts").first();
-
+  const promptAiConfig = await u.getPromptAi("storyboardAgent");
   const mainPrompts = promptsData?.customValue || promptsData?.defaultValue;
   const errData = `请输出${options.prompts.length}张图片\n提示词如下:\n${options.prompts.map((p, i) => `第${i + 1}格: ${p}`).join("\n")}`;
 
   if (!mainPrompts) return { prompt: errData, gridLayout: layout };
 
-  const chatModel = await u.ai.text({});
+  const result = await u.ai.text.invoke(
+    {
+      messages: [
+        {
+          role: "system",
+          content: mainPrompts,
+        },
+        {
+          role: "user",
+          content: `请优化以下分镜提示词：\n\n【布局】${layout.cols}列×${layout.rows}行=${
+            layout.totalCells
+          }格\n【比例】${aspectRatio}（${aspectRatioDesc}）\n【风格】${style}\n${assetsSection}\n\n【原始内容】\n${gridPositions.join("\n")}`,
+        },
+      ],
+    },
+    promptAiConfig,
+  );
 
-  const result = await chatModel!.invoke({
-    messages: [
-      {
-        role: "system",
-        content: mainPrompts,
-      },
-      {
-        role: "user",
-        content: `请优化以下分镜提示词：\n\n【布局】${layout.cols}列×${layout.rows}行=${
-          layout.totalCells
-        }格\n【比例】${aspectRatio}（${aspectRatioDesc}）\n【风格】${style}\n${assetsSection}\n\n【原始内容】\n${gridPositions.join("\n")}`,
-      },
-    ],
-  });
+  // const result = await chatModel!.invoke({
+  //   messages: [
+  //     {
+  //       role: "system",
+  //       content: mainPrompts,
+  //     },
+  //     {
+  //       role: "user",
+  //       content: `请优化以下分镜提示词：\n\n【布局】${layout.cols}列×${layout.rows}行=${
+  //         layout.totalCells
+  //       }格\n【比例】${aspectRatio}（${aspectRatioDesc}）\n【风格】${style}\n${assetsSection}\n\n【原始内容】\n${gridPositions.join("\n")}`,
+  //     },
+  //   ],
+  // });
 
   return {
-    prompt: result?.text ?? errData,
+    prompt: result.text ?? errData,
     gridLayout: layout,
   };
 }

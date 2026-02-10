@@ -3,15 +3,9 @@ import u from "@/utils";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
-import path from "path";
+import axios from "axios";
 
 const router = express.Router();
-
-const cellsResultSchema = z.object({
-  time: z.number().describe("时长,镜头时长 1-15"),
-  content: z.string().describe("提示词内容"),
-  name: z.string().describe("分镜名称"),
-});
 
 const prompt = `
 你是一名资深动画导演，擅长将静态分镜转化为简洁、专业、详尽的 Motion Prompt（视频生成动作提示）。你理解镜头语言、情绪节奏，能补充丰富但不重复静态元素，只突出变化与动态。
@@ -103,7 +97,12 @@ const prompt = `
 现在请根据我提供的分镜内容，严格按照以上规则输出 Motion Prompt JSON 对象。
 
 `;
-
+async function urlToBase64(imageUrl: string): Promise<string> {
+  const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+  const contentType = response.headers["content-type"] || "image/png";
+  const base64 = Buffer.from(response.data, "binary").toString("base64");
+  return `data:${contentType};base64,${base64}`;
+}
 // 生成单个分镜提示
 async function generateSingleVideoPrompt({
   scriptText,
@@ -114,25 +113,6 @@ async function generateSingleVideoPrompt({
   storyboardPrompt: string;
   ossPath: string;
 }): Promise<{ content: string; time: number; name: string }> {
-  let rootDir: string;
-  if (typeof process.versions?.electron !== "undefined") {
-    const { app } = require("electron");
-    const userDataDir: string = app.getPath("userData");
-    rootDir = path.join(userDataDir, "uploads");
-  } else {
-    rootDir = path.join(process.cwd(), "uploads");
-  }
-
-  let imagePath = ossPath;
-  if (ossPath.includes("http")) {
-    imagePath = new URL(ossPath).pathname;
-  }
-
-  const model = await u.ai.text({});
-  if (!model) {
-    throw new Error("无法获取语言模型，请检查语言模型配置");
-  }
-
   const messages: any[] = [
     {
       role: "system",
@@ -146,38 +126,38 @@ async function generateSingleVideoPrompt({
           text: `剧本内容:${scriptText}\n分镜提示词:${storyboardPrompt}`,
         },
         {
-          type: "local",
-          path: path.join(rootDir, imagePath),
+          type: "image",
+          image: await urlToBase64(ossPath),
         },
       ],
     },
   ];
 
   try {
-    const result = await model.invoke({
-      messages,
-      responseFormat: {
-        type: "json_schema",
-        jsonSchema: {
-          name: "json",
-          strict: true,
-          schema: z.toJSONSchema(cellsResultSchema),
+    const apiConfig = await u.getPromptAi("videoPrompt");
+
+    const result = await u.ai.text.invoke(
+      {
+        messages,
+        output: {
+          time: z.number().describe("时长,镜头时长 1-15"),
+          content: z.string().describe("提示词内容"),
+          name: z.string().describe("分镜名称"),
         },
       },
-    });
-
-    if (!result || !result.json) {
+      apiConfig,
+    );
+    if (!result) {
       console.error("AI 返回结果为空:", result);
       throw new Error("AI 返回结果为空");
     }
 
-    const json = result.json as { content: string; time: number; name: string };
-    if (!json.content || json.time === undefined || !json.name) {
-      console.error("AI 返回格式错误:", result.json);
+    if (!result.content || result.time === undefined || !result.name) {
+      console.error("AI 返回格式错误:", result);
       throw new Error("AI 返回格式错误");
     }
 
-    return json;
+    return result;
   } catch (err: any) {
     console.error("generateSingleVideoPrompt 调用失败:", err?.message || err);
     throw new Error(`生成视频提示词失败: ${err?.message || "未知错误"}`);

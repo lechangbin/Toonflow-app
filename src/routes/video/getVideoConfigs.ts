@@ -15,16 +15,20 @@ export default router.post(
     const { scriptId } = req.body;
 
     // 查询该脚本下的所有视频配置
-    const configs = await u.db("t_videoConfig")
+    const configs = await u
+      .db("t_videoConfig")
+      .leftJoin("t_config", "t_config.id", "t_videoConfig.aiConfigId")
       .where({ scriptId })
-      .orderBy("createTime", "desc");
-
+      .orderBy("createTime", "desc")
+      .select("t_videoConfig.*", "t_config.manufacturer as manufacturer", "t_config.model");
     // 解析 JSON 字段
     const result = configs.map((config: any) => ({
       id: config.id,
       scriptId: config.scriptId,
       projectId: config.projectId,
+      aiConfigId: config.aiConfigId,
       manufacturer: config.manufacturer,
+      model: config.model,
       mode: config.mode,
       startFrame: config.startFrame ? JSON.parse(config.startFrame) : null,
       endFrame: config.endFrame ? JSON.parse(config.endFrame) : null,
@@ -34,6 +38,7 @@ export default router.post(
       prompt: config.prompt || "",
       selectedResultId: config.selectedResultId,
       createdAt: config.createTime ? new Date(config.createTime).toISOString() : new Date().toISOString(),
+      audioEnabled:!!config.audioEnabled
     }));
 
     res.status(200).send(success(result));

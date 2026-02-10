@@ -17,19 +17,19 @@ async function urlToBase64(imageUrl: string): Promise<string> {
 }
 
 // 超分并保存到 oss
-async function superResolutionAndSave(
-  src: string,
-  projectId: number,
-  videoRatio: string,
-): Promise<{ ossPath: string; base64: string }> {
-  const contentStr = await u.ai.generateImage({
-    aspectRatio: videoRatio,
-    size: "1K",
-    resType: "b64",
-    systemPrompt: "你的核心任务是将所给的图片超分到 1K ，不改变图片任何内容，仅改变分辨率",
-    prompt: "你的核心任务是将所给的图片超分到 1K ，不改变图片任何内容，仅改变分辨率",
-    imageBase64: [await urlToBase64(src)],
-  });
+async function superResolutionAndSave(src: string, projectId: number, videoRatio: string): Promise<{ ossPath: string; base64: string }> {
+  const apiConfig = await u.getPromptAi("storyboardImage");
+  const contentStr = await u.ai.image(
+    {
+      aspectRatio: videoRatio,
+      size: "1K",
+      resType: "b64",
+      systemPrompt: "你的核心任务是将所给的图片超分到 1K ，不改变图片任何内容，仅改变分辨率",
+      prompt: "你的核心任务是将所给的图片超分到 1K ，不改变图片任何内容，仅改变分辨率",
+      imageBase64: [await urlToBase64(src)],
+    },
+    apiConfig,
+  );
   const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
   const base64Str = match ? match[1] : contentStr;
   const buffer = Buffer.from(base64Str, "base64");
@@ -50,9 +50,9 @@ export default router.post(
             id: z.string(),
             prompt: z.string().optional(),
             src: z.string(),
-          })
+          }),
         ),
-      })
+      }),
     ),
   }),
   async (req, res) => {
@@ -63,9 +63,7 @@ export default router.post(
     if (!projectData) return res.status(500).send(error("项目不存在"));
 
     // 遍历处理每个分镜段
-    const processSegment = async (
-      segment: { cells: { id: string; src: string }[] }
-    ) => {
+    const processSegment = async (segment: { cells: { id: string; src: string }[] }) => {
       // 超分所有 cell
       const cellsWithSuperscore = await Promise.all(
         segment.cells.map(async (cell) => {
@@ -76,9 +74,9 @@ export default router.post(
             scriptId,
             filePath: ossPath, // oss 路径（未签名）
             src: cell.src,
-            type: "分镜"
+            type: "分镜",
           };
-        })
+        }),
       );
       return cellsWithSuperscore;
     };
@@ -92,9 +90,9 @@ export default router.post(
         (item.value as any[]).map(async (cell) => ({
           ...cell,
           filePath: await u.oss.getFileUrl(cell.filePath ?? ""),
-        }))
-      )
+        })),
+      ),
     );
     res.status(200).send(success(flatList));
-  }
+  },
 );

@@ -4,6 +4,8 @@ import { createZhipu } from "zhipu-ai-provider";
 import { createQwen } from "qwen-ai-provider";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createXai } from '@ai-sdk/xai';
 
 interface Owned {
   manufacturer: string;
@@ -18,7 +20,8 @@ interface Owned {
     | typeof createZhipu
     | typeof createQwen
     | typeof createGoogleGenerativeAI
-    | typeof createAnthropic;
+    | typeof createAnthropic
+    | typeof createOpenAICompatible;
 }
 
 const modelList: Owned[] = [
@@ -45,7 +48,7 @@ const modelList: Owned[] = [
   // 豆包
   {
     manufacturer: "doubao",
-    model: "doubao-seed-1-8",
+    model: "doubao-seed-1-8-251228",
     responseFormat: "schema",
     image: true,
     think: true,
@@ -54,7 +57,7 @@ const modelList: Owned[] = [
   },
   {
     manufacturer: "doubao",
-    model: "doubao-seed-1-6",
+    model: "doubao-seed-1-6-251015",
     responseFormat: "schema",
     image: true,
     think: true,
@@ -63,7 +66,7 @@ const modelList: Owned[] = [
   },
   {
     manufacturer: "doubao",
-    model: "doubao-seed-1-6-lite",
+    model: "doubao-seed-1-6-lite-251015",
     responseFormat: "schema",
     image: true,
     think: true,
@@ -72,7 +75,7 @@ const modelList: Owned[] = [
   },
   {
     manufacturer: "doubao",
-    model: "doubao-seed-1-6-flash",
+    model: "doubao-seed-1-6-flash-250828",
     responseFormat: "schema",
     image: true,
     think: true,
@@ -283,7 +286,7 @@ const modelList: Owned[] = [
 
   // Gemini
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-2.5-pro",
     responseFormat: "schema",
     image: true,
@@ -292,7 +295,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-2.5-flash",
     responseFormat: "schema",
     image: true,
@@ -301,7 +304,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-2.0-flash",
     responseFormat: "schema",
     image: true,
@@ -310,7 +313,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-2.0-flash-lite",
     responseFormat: "schema",
     image: true,
@@ -319,7 +322,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-1.5-pro",
     responseFormat: "schema",
     image: true,
@@ -328,7 +331,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "google",
+    manufacturer: "gemini",
     model: "gemini-1.5-flash",
     responseFormat: "schema",
     image: true,
@@ -407,6 +410,44 @@ const modelList: Owned[] = [
     image: true,
     think: false,
     instance: createAnthropic,
+    tool: true,
+  },
+  //xai
+   {
+    manufacturer: "xai",
+    model: "grok-3",
+    responseFormat: "schema",
+    image: false,
+    think: false,
+    instance: createXai,
+    tool: true,
+  },
+   {
+    manufacturer: "xai",
+    model: "grok-4",
+    responseFormat: "schema",
+    image: false,
+    think: false,
+    instance: createXai,
+    tool: true,
+  },
+   {
+    manufacturer: "xai",
+    model: "grok-4.1",
+    responseFormat: "schema",
+    image: true,
+    think: false,
+    instance: createXai,
+    tool: true,
+  },
+  //其他
+  {
+    manufacturer: "other",
+    model: "gpt-4.1",
+    responseFormat: "schema",
+    image: true,
+    think: false,
+    instance: createOpenAI,
     tool: true,
   },
 ];

@@ -42,5 +42,5 @@ export default router.post(
     });
 
     res.status(200).send(success({ message: "新增视频成功" }));
-  }
+  },
 );

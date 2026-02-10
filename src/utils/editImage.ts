@@ -79,13 +79,18 @@ async function convertDirectiveAndImages(images: Record<string, string>, directi
  */
 export default async (images: Record<string, string>, directive: string, projectId: number) => {
   const { prompt, images: base64Images } = await convertDirectiveAndImages(images, directive);
-  const contentStr = await u.ai.generateImage({
-    systemPrompt: "根据用户提供的具体修改指令，对上传的图片进行智能编辑。",
-    prompt: prompt,
-    imageBase64: base64Images,
-    aspectRatio: "16:9",
-    size: "1K",
-  });
+  const apiConfig = await u.getPromptAi("editImage");
+
+  const contentStr = await u.ai.image(
+    {
+      systemPrompt: "根据用户提供的具体修改指令，对上传的图片进行智能编辑。",
+      prompt: prompt,
+      imageBase64: base64Images,
+      aspectRatio: "16:9",
+      size: "1K",
+    },
+    apiConfig,
+  );
   const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
   const buffer = Buffer.from(match && match.length >= 1 ? match[1]! : contentStr, "base64");
   const filePath = `/${projectId}/storyboard/${uuid()}.jpg`;

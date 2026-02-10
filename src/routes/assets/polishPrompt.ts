@@ -1,12 +1,9 @@
 import express from "express";
 import u from "@/utils";
 import * as zod from "zod";
-import { success } from "@/lib/responseFormat";
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
-const jsonSchema = zod.object({
-  prompt: zod.string().describe("提示词"),
-});
 interface OutlineItem {
   description: string;
   name: string;
@@ -88,8 +85,9 @@ export default router.post(
     const result: ResultItem[] = Object.values(itemMap);
 
     const promptsList = await u.db("t_prompts").where("code", "in", ["role-polish", "scene-polish", "storyboard-polish", "tool-polish"]);
+    const apiConfigData = await u.getPromptAi("assetsPrompt");
     const errPrompts = "不论用户说什么，请直接输出AI配置异常";
-    const getPromptValue = (code: string): string => {
+    const getPromptValue = (code: string) => {
       const item = promptsList.find((p) => p.code === code);
       return item?.customValue ?? item?.defaultValue ?? errPrompts;
     };
@@ -97,7 +95,6 @@ export default router.post(
     const scene = getPromptValue("scene-polish");
     const tool = getPromptValue("tool-polish");
     const storyboard = getPromptValue("storyboard-polish");
-
     let systemPrompt = "";
     let userPrompt = "";
     if (type == "role") {
@@ -125,6 +122,7 @@ export default router.post(
     }
     if (type == "scene") {
       const data = findItemByName(result, name, "scenes");
+
       const chapterRange = Array.isArray(data?.chapterRange) ? data.chapterRange : [data?.chapterRange];
       const novelData = (await u.db("t_novel").whereIn("chapterIndex", chapterRange).select("*")) as NovelChapter[];
       const results: string = mergeNovelText(novelData);
@@ -188,33 +186,33 @@ export default router.post(
       `;
     }
     async function generatePrompt() {
-      const model = await u.ai.text();
-      const result = await model.invoke({
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
-        responseFormat: {
-          type: "json_schema",
-          jsonSchema: {
-            name: "json",
-            strict: true,
-            schema: zod.toJSONSchema(jsonSchema),
+      const result = await u.ai.text.invoke(
+        {
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt,
+            },
+            {
+              role: "user",
+              content: userPrompt,
+            },
+          ],
+          output: {
+            prompt: zod.string().describe("提示词"),
           },
         },
-      });
-      return result.json;
+        apiConfigData,
+      );
+      return result.prompt;
     }
-    const data = (await generatePrompt()) as any;
+    try {
+      const prompt = (await generatePrompt()) as any;
+      if (!prompt) return res.status(500).send("失败");
 
-    if (!data.prompt) return res.status(500).send("失败");
-
-    res.status(200).send(success({ prompt: data.prompt, assetsId }));
+      res.status(200).send(success({ prompt: prompt, assetsId }));
+    } catch (e: any) {
+      return res.status(500).send(error(e?.data?.error?.message ?? e?.message ?? "生成失败"));
+    }
   },
 );

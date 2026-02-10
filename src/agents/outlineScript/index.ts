@@ -1,10 +1,8 @@
 // @/agents/outlineScript.ts
 import u from "@/utils";
-import { createAgent } from "langchain";
 import { EventEmitter } from "events";
-import { openAI } from "@/agents/models";
+import { tool, ModelMessage } from "ai";
 import { z } from "zod";
-import { tool } from "@langchain/core/tools";
 import type { DB } from "@/types/database";
 // ==================== 类型定义 ====================
 
@@ -75,12 +73,8 @@ const episodeSchema = z.object({
 export default class OutlineScript {
   private readonly projectId: number;
   readonly emitter = new EventEmitter();
-  history: Array<[string, string]> = [];
+  history: Array<ModelMessage> = [];
   novelChapters: DB["t_novel"][] = [];
-
-  modelName = "gpt-4.1";
-  apiKey = "";
-  baseURL = "";
 
   constructor(projectId: number) {
     this.projectId = projectId;
@@ -230,7 +224,7 @@ export default class OutlineScript {
       }
     }
 
-    const actualStart = overwrite ? 1 : startEpisode ?? (await this.getMaxEpisode()) + 1;
+    const actualStart = overwrite ? 1 : (startEpisode ?? (await this.getMaxEpisode()) + 1);
     const insertedCount = await this.insertOutlines(episodes, actualStart);
 
     const newOutlines = await u
@@ -403,123 +397,107 @@ ${formatList(ep.classicQuotes, (q) => q)}
 
   // ==================== Tool 定义：故事线 ====================
 
-  getStoryline = tool(
-    async () => {
+  getStoryline = tool({
+    title: "getStoryline",
+    description: "Get the weather in a location",
+    inputSchema: z.object({}),
+    execute: async () => {
       this.log("获取故事线");
       const storyline = await this.findStoryline();
       return storyline?.content ?? "当前项目暂无故事线";
     },
-    {
-      name: "getStoryline",
-      description: "获取当前项目的故事线内容",
-      schema: z.object({}),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
-  saveStoryline = tool(
-    async ({ content }) => {
+  saveStoryline = tool({
+    title: "saveStoryline",
+    description: "保存或更新当前项目的故事线，会覆盖已有内容",
+    inputSchema: z.object({
+      content: z.string().describe("故事线完整内容"),
+    }),
+    execute: async ({ content }) => {
       this.log("保存故事线");
       await this.upsertStorylineContent(content);
       return "故事线保存成功";
     },
-    {
-      name: "saveStoryline",
-      description: "保存或更新当前项目的故事线，会覆盖已有内容",
-      schema: z.object({
-        content: z.string().describe("故事线完整内容"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
-  deleteStoryline = tool(
-    async () => {
+  deleteStoryline = tool({
+    title: "deleteStoryline",
+    description: "删除当前项目的故事线",
+    inputSchema: z.object({}),
+    execute: async () => {
       this.log("删除故事线");
       const deleted = await this.deleteStorylineContent();
       return deleted > 0 ? "故事线删除成功" : "当前项目没有故事线";
     },
-    {
-      name: "deleteStoryline",
-      description: "删除当前项目的故事线",
-      schema: z.object({}),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   // ==================== Tool 定义：大纲 ====================
 
-  getOutline = tool(
-    async ({ simplified = false }) => {
+  getOutline = tool({
+    title: "getOutline",
+    description: "获取项目大纲。simplified=true返回简化列表，false返回完整内容",
+    inputSchema: z.object({
+      simplified: z.boolean().default(false).describe("是否返回简化版本"),
+    }),
+    execute: async ({ simplified }) => {
       this.log("获取大纲", `简化模式: ${simplified}`);
       return this.getOutlineText(simplified);
     },
-    {
-      name: "getOutline",
-      description: "获取项目大纲。simplified=true返回简化列表，false返回完整内容",
-      schema: z.object({
-        simplified: z.boolean().default(false).describe("是否返回简化版本"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
-  saveOutline = tool(
-    async ({ episodes, overwrite = true, startEpisode }) => {
+  saveOutline = tool({
+    title: "saveOutline",
+    description: "保存大纲数据。overwrite=true会清空现有大纲后写入，false则追加到末尾",
+    inputSchema: z.object({
+      episodes: z.array(episodeSchema).min(1).describe("大纲数据数组"),
+      overwrite: z.boolean().default(true).describe("是否覆盖现有大纲"),
+      startEpisode: z.number().optional().describe("追加模式下的起始集数（不填则自动递增）"),
+    }),
+    execute: async ({ episodes, overwrite = true, startEpisode }) => {
       this.log("保存大纲", `覆盖模式: ${overwrite}, 集数: ${episodes.length}`);
       const { insertedCount, scriptCount } = await this.saveOutlineData(episodes as EpisodeData[], overwrite, startEpisode);
       return `大纲保存成功：插入 ${insertedCount} 集大纲，创建 ${scriptCount} 个剧本记录`;
     },
-    {
-      name: "saveOutline",
-      description: "保存大纲数据。overwrite=true会清空现有大纲后写入，false则追加到末尾",
-      schema: z.object({
-        episodes: z.array(episodeSchema).min(1).describe("大纲数据数组"),
-        overwrite: z.boolean().default(true).describe("是否覆盖现有大纲"),
-        startEpisode: z.number().optional().describe("追加模式下的起始集数（不填则自动递增）"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
-  updateOutline = tool(
-    async ({ id, data }) => {
+  updateOutline = tool({
+    title: "updateOutline",
+    description: "更新指定ID的单集大纲内容",
+    inputSchema: z.object({
+      id: z.number().describe("大纲ID"),
+      data: episodeSchema.describe("更新后的大纲数据"),
+    }),
+    execute: async ({ id, data }) => {
       this.log("更新大纲", `ID: ${id}`);
       const success = await this.updateOutlineData(id, data as EpisodeData);
       return success ? `大纲ID ${id} 更新成功` : `未找到大纲ID: ${id}`;
     },
-    {
-      name: "updateOutline",
-      description: "更新指定ID的单集大纲内容",
-      schema: z.object({
-        id: z.number().describe("大纲ID"),
-        data: episodeSchema.describe("更新后的大纲数据"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
-  deleteOutline = tool(
-    async ({ ids }) => {
+  deleteOutline = tool({
+    title: "deleteOutline",
+    description: "根据大纲ID删除指定大纲及关联数据",
+    inputSchema: z.object({
+      ids: z.array(z.number()).min(1).describe("要删除的大纲ID数组"),
+    }),
+    execute: async ({ ids }) => {
       this.log("删除大纲", `IDs: ${ids.join(", ")}`);
       const results = await this.deleteOutlineData(ids);
       const summary = results.map((r, i) => `ID ${ids[i]}: ${r.status === "fulfilled" ? "成功" : "失败"}`).join(", ");
       return `删除结果: ${summary}`;
     },
-    {
-      name: "deleteOutline",
-      description: "根据大纲ID删除指定大纲及关联数据",
-      schema: z.object({
-        ids: z.array(z.number()).min(1).describe("要删除的大纲ID数组"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   // ==================== Tool 定义：章节 ====================
 
-  getChapter = tool(
-    async ({ chapterNumbers }) => {
+  getChapter = tool({
+    title: "getChapter",
+    description: "根据章节编号获取小说章节的完整原文内容，支持批量获取",
+    inputSchema: z.object({
+      chapterNumbers: z.array(z.number()).min(1).describe("章节编号数组"),
+    }),
+    execute: async ({ chapterNumbers }) => {
       this.log("获取章节", `章节号: ${chapterNumbers.join(", ")}`);
 
       const results = await Promise.all(
@@ -539,36 +517,24 @@ ${formatList(ep.classicQuotes, (q) => q)}
 
       return results.join("\n\n---\n");
     },
-    {
-      name: "getChapter",
-      description: "根据章节编号获取小说章节的完整原文内容，支持批量获取",
-      schema: z.object({
-        chapterNumbers: z.array(z.number()).min(1).describe("章节编号数组"),
-      }),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   // ==================== Tool 定义：资产 ====================
 
-  generateAssets = tool(
-    async () => {
+  generateAssets = tool({
+    title: "generateAssets",
+    description: "从当前项目的所有大纲中提取并生成角色、道具、场景资产，自动去重并清理冗余",
+    inputSchema: z.object({}),
+    execute: async () => {
       this.log("生成资产");
       const stats = await this.generateAssetsFromOutlines();
 
       if (stats.inserted === 0 && stats.updated === 0 && stats.skipped === 0) {
         return "当前项目没有大纲数据，无法生成资产";
       }
-
       return `资产生成完成：新增 ${stats.inserted}，更新 ${stats.updated}，保持 ${stats.skipped}`;
     },
-    {
-      name: "generateAssets",
-      description: "从当前项目的所有大纲中提取并生成角色、道具、场景资产，自动去重并清理冗余",
-      schema: z.object({}),
-      verboseParsingErrors: true,
-    },
-  );
+  });
 
   // ==================== 上下文构建 ====================
 
@@ -606,7 +572,7 @@ ${this.getChapterContext()}
 
   private buildConversationHistory(): string {
     if (!this.history.length) return "无对话历史";
-    return this.history.map(([role, content]) => `${role}: ${content}`).join("\n\n");
+    return this.history.map(({ role, content }) => `${role}: ${content}`).join("\n\n");
   }
 
   private async buildFullContext(task: string): Promise<string> {
@@ -627,14 +593,14 @@ ${task}
   // ==================== Sub-Agent ====================
 
   private getSubAgentTools() {
-    return [this.getChapter, this.getStoryline, this.saveStoryline, this.getOutline, this.saveOutline, this.updateOutline];
-  }
-
-  private createModel() {
-    return openAI({
-      modelName: this.modelName,
-      configuration: { apiKey: this.apiKey, baseURL: this.baseURL },
-    });
+    return {
+      getChapter: this.getChapter,
+      getStoryline: this.getStoryline,
+      saveStoryline: this.saveStoryline,
+      getOutline: this.getOutline,
+      saveOutline: this.saveOutline,
+      updateOutline: this.updateOutline,
+    };
   }
 
   /**
@@ -645,123 +611,124 @@ ${task}
     this.log(`Sub-Agent 调用`, agentType);
 
     const promptsList = await u.db("t_prompts").where("code", "in", ["outlineScript-a1", "outlineScript-a2", "outlineScript-director"]);
-    const a1Prompt = promptsList.find((p) => p.code === "outlineScript-a1");
-    const a2Prompt = promptsList.find((p) => p.code === "outlineScript-a2");
-    const directorPrompt = promptsList.find((p) => p.code === "outlineScript-director");
+    const promptConfig = await u.getPromptAi("outlineScriptAgent");
+
     const errPrompts = "不论用户说什么，请直接输出Agent配置异常";
-    const SYSTEM_PROMPTS: Record<AgentType, string> = {
-      AI1: a1Prompt?.customValue || a1Prompt?.defaultValue || errPrompts,
-      AI2: a2Prompt?.customValue || a2Prompt?.defaultValue || errPrompts,
-      director: directorPrompt?.customValue || directorPrompt?.defaultValue || errPrompts,
+
+    const getAiPromptConfig = (code: string) => {
+      const item = promptsList.find((p) => p.code === code);
+      return item?.customValue || item?.defaultValue || errPrompts;
+    };
+    const a1Prompt = getAiPromptConfig("outlineScript-a1");
+    const a2Prompt = getAiPromptConfig("outlineScript-a2");
+    const directorPrompt = getAiPromptConfig("outlineScript-director");
+    const SYSTEM_PROMPTS = {
+      AI1: a1Prompt,
+      AI2: a2Prompt,
+      director: directorPrompt,
     };
 
     const context = await this.buildFullContext(task);
 
-    const agent = createAgent({
-      model: this.createModel(),
-      systemPrompt: SYSTEM_PROMPTS[agentType],
-      tools: this.getSubAgentTools(),
-    });
-
-    const stream = await agent.stream({ messages: [["user", context]] }, { streamMode: ["messages"], callbacks: [] });
+    const { fullStream } = await u.ai.text.stream(
+      {
+        system: SYSTEM_PROMPTS[agentType],
+        tools: this.getSubAgentTools(),
+        messages: [{ role: "user", content: context }],
+        maxStep: 100,
+      },
+      promptConfig,
+    );
 
     let fullResponse = "";
-
-    for await (const [mode, chunk] of stream) {
-      if (mode !== "messages") continue;
-
-      const [token] = chunk as any;
-      const block = token.contentBlocks?.[0];
-
-      // 处理 AI 文本流
-      if (token.type === "ai" && block?.text) {
-        fullResponse += block.text;
-        this.emit("subAgentStream", { agent: agentType, text: block.text });
+    for await (const item of fullStream) {
+      if (item.type == "tool-call") {
+        this.emit("toolCall", { agent: "main", name: item.title, args: null });
       }
-
-      // 处理 tool 调用
-      if (token.type === "ai" && token.tool_calls?.length) {
-        for (const toolCall of token.tool_calls) {
-          this.emit("toolCall", { agent: agentType, name: toolCall.name, args: toolCall.args });
-        }
+      if (item.type == "text-delta") {
+        fullResponse += item.text;
+        this.emit("subAgentStream", { agent: agentType, text: item.text });
       }
     }
 
     this.emit("subAgentEnd", { agent: agentType });
-    this.history.push(["ai", fullResponse]);
+    this.history.push({
+      role: "assistant",
+      content: fullResponse,
+    });
     this.log(`Sub-Agent 完成`, agentType);
 
     return fullResponse ?? `${agentType}已完成任务`;
   }
 
   private createSubAgentTool(agentType: AgentType, description: string) {
-    return tool(async ({ taskDescription }) => this.invokeSubAgent(agentType, taskDescription), {
-      name: agentType,
+    return tool({
+      title: agentType,
       description,
-      schema: z.object({
+      inputSchema: z.object({
         taskDescription: z.string().describe("具体的任务描述，包含章节范围、修改要求等详细信息"),
       }),
+      execute: async ({ taskDescription }) => this.invokeSubAgent(agentType, taskDescription),
     });
   }
 
   // ==================== 主入口 ====================
 
   private getAllTools() {
-    return [
-      this.createSubAgentTool("AI1", "调用故事师。负责分析小说原文并生成故事线，会自行调用 saveStoryline 保存结果。"),
-      this.createSubAgentTool("AI2", "调用大纲师。负责根据故事线生成剧集大纲，会自行调用 saveOutline 保存结果。"),
-      this.createSubAgentTool("director", "调用导演。负责审核故事线和大纲，会自行调用 updateOutline 或 saveStoryline 进行修改。"),
-      this.getChapter,
-      this.getStoryline,
-      this.saveStoryline,
-      this.deleteStoryline,
-      this.getOutline,
-      this.saveOutline,
-      this.updateOutline,
-      this.deleteOutline,
-      this.generateAssets,
-    ];
+    return {
+      AI1: this.createSubAgentTool("AI1", "调用故事师。负责分析小说原文并生成故事线，会自行调用 saveStoryline 保存结果。"),
+      AI2: this.createSubAgentTool("AI2", "调用大纲师。负责根据故事线生成剧集大纲，会自行调用 saveOutline 保存结果。"),
+      director: this.createSubAgentTool("director", "调用导演。负责审核故事线和大纲，会自行调用 updateOutline 或 saveStoryline 进行修改。"),
+      getChapter: this.getChapter,
+      getStoryline: this.getStoryline,
+      saveStoryline: this.saveStoryline,
+      deleteStoryline: this.deleteStoryline,
+      getOutline: this.getOutline,
+      saveOutline: this.saveOutline,
+      updateOutline: this.updateOutline,
+      deleteOutline: this.deleteOutline,
+      generateAssets: this.generateAssets,
+    };
   }
 
   async call(msg: string): Promise<string> {
-    this.history.push(["user", msg]);
+    this.history.push({
+      role: "user",
+      content: msg,
+    });
 
     const envContext = await this.buildEnvironmentContext();
 
     const prompts = await u.db("t_prompts").where("code", "outlineScript-main").first();
+    const promptConfig = await u.getPromptAi("outlineScriptAgent");
 
     const mainPrompts = prompts?.customValue || prompts?.defaultValue || "不论用户说什么，请直接输出Agent配置异常";
 
-    const mainAgent = createAgent({
-      model: this.createModel(),
-      tools: this.getAllTools(),
-      systemPrompt: `${envContext}\n${mainPrompts}`,
-    });
-    const stream = await mainAgent.stream({ messages: this.history }, { streamMode: ["messages"], callbacks: [] });
+    const { fullStream } = await u.ai.text.stream(
+      {
+        system: `${envContext}\n${mainPrompts}`,
+        tools: this.getAllTools(),
+        messages: this.history,
+        maxStep: 100,
+      },
+      promptConfig,
+    );
 
     let fullResponse = "";
-
-    for await (const [mode, chunk] of stream) {
-      if (mode !== "messages") continue;
-
-      const [token] = chunk as any;
-      const block = token.contentBlocks?.[0];
-
-      // 处理 AI 文本流
-      if (token.type === "ai" && block?.text) {
-        fullResponse += block.text;
-        this.emit("data", block.text);
+    for await (const item of fullStream) {
+      if (item.type == "tool-call") {
+        this.emit("toolCall", { agent: "main", name: item.title, args: null });
       }
-
-      // 处理 tool 调用
-      if (token.type === "ai" && token.tool_calls?.length) {
-        for (const toolCall of token.tool_calls) {
-          this.emit("toolCall", { agent: "main", name: toolCall.name, args: toolCall.args });
-        }
+      if (item.type == "text-delta") {
+        fullResponse += item.text;
+        this.emit("data", item.text);
       }
     }
+    this.history.push({
+      role: "assistant",
+      content: fullResponse,
+    });
 
-    this.history.push(["assistant", fullResponse]);
     this.emit("response", fullResponse);
 
     return fullResponse;

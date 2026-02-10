@@ -14,8 +14,8 @@ export default router.post(
   async (req, res) => {
     const { userId } = req.body;
 
-    const data = await u.db("t_config").where("userId", userId).select("manufacturer", "model");
+    const data = await u.db("t_config").where("type", "video").where("userId", userId).select("manufacturer", "model", "id");
 
     res.status(200).send(success(data));
-  }
+  },
 );

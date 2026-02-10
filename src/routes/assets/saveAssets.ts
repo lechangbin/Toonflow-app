@@ -46,10 +46,10 @@ export default router.post(
       }
 
       // 检查图片表里是否有这条图片
-      const selectedImage = await u.db("t_image").where("filePath", savePath).first();
-      if (!selectedImage) {
-        return res.status(404).send({ success: false, message: "所选图片不存在，请重新生成或选定图片" });
-      }
+      // const selectedImage = await u.db("t_image").where("filePath", savePath).first();
+      // if (!selectedImage) {
+      //   return res.status(500).send({ success: false, message: "所选图片不存在，请重新生成或选定图片" });
+      // }
       imageUrl = savePath;
     }
 
@@ -78,7 +78,9 @@ export default router.post(
     }
 
     // 更新提示信息
-    await u.db("t_assets").where("id", id).update({ prompt });
+    if (prompt !== undefined && prompt !== null && prompt !== "") {
+      await u.db("t_assets").where("id", id).update({ prompt });
+    }
 
     res.status(200).send(success({ message: "保存资产图片成功" }));
   },

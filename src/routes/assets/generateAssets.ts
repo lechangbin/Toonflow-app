@@ -123,18 +123,23 @@ export default router.post(
       state: "生成中",
       assetsId: id,
     });
+    const apiConfig = await u.getPromptAi("assetsImage");
 
-    const contentStr = await u.ai.generateImage({
-      systemPrompt,
-      prompt: userPrompt,
-      imageBase64: base64 ? [base64] : [],
-      size: "2K",
-      aspectRatio: "16:9",
-    });
+    const contentStr = await u.ai.image(
+      {
+        systemPrompt,
+        prompt: userPrompt,
+        imageBase64: base64 ? [base64] : [],
+        size: "2K",
+        aspectRatio: "16:9",
+      },
+      apiConfig,
+    );
 
     let insertType;
     const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
     let buffer = Buffer.from(match && match.length >= 2 ? match[1]! : contentStr!, "base64");
+
     if (type != "storyboard") {
       //添加文本
       // buffer = await imageAddText(name, buffer);
@@ -152,6 +157,11 @@ export default router.post(
       insertType = "道具";
       imagePath = `/${projectId}/props/${uuidv4()}.jpg`;
     }
+    if (type == "storyboard") {
+      insertType = "分镜";
+      imagePath = `/${projectId}/storyboard/${uuidv4()}.jpg`;
+    }
+
     await u.oss.writeFile(imagePath!, buffer);
 
     await u.db("t_image").where("id", imageId).update({

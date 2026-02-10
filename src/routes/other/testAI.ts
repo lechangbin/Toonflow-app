@@ -3,11 +3,8 @@ import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
 import { z } from "zod";
-import { generateText, Output, tool, stepCountIs } from "ai";
+import { tool } from "ai";
 const router = express.Router();
-
-import { createOpenAI } from "@ai-sdk/openai";
-import { createDeepSeek } from "@ai-sdk/deepseek";
 
 // 检查语言模型
 export default router.post(
@@ -16,12 +13,12 @@ export default router.post(
     modelName: z.string(),
     apiKey: z.string(),
     baseURL: z.string().optional(),
+    manufacturer: z.string(),
   }),
   async (req, res) => {
-    const { modelName, apiKey, baseURL } = req.body;
+    const { modelName, apiKey, baseURL, manufacturer } = req.body;
 
     const getWeatherTool = tool({
-      // strict: true,
       description: "Get the weather in a location",
       inputSchema: z.object({
         location: z.string().describe("The location to get the weather for"),
@@ -46,15 +43,14 @@ export default router.post(
           model: modelName,
           apiKey,
           baseURL,
+          manufacturer,
         },
       );
-      console.log("%c Line:52 🍐 reply", "background:#ffdd4d", reply);
       res.status(200).send(success(reply));
     } catch (err) {
-      console.log(err);
-      if (typeof err === "string") return res.status(500).send(error(err));
-      const msg = err instanceof Error ? err.message : (err as any)?.error?.message;
-      return res.status(500).send(error(msg || "未知错误"));
+      const msg = u.error(err).message;
+      console.error(msg);
+      res.status(500).send(error(msg));
     }
   },
 );
