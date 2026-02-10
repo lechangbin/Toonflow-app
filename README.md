@@ -375,11 +375,16 @@ pm2 monit             # 监控面板
 
 ~~交流群 4~~
 
+
 ~~交流群 5~~
 
-交流群 6:
+~~交流群 6~~
 
-<img src="./docs/chat6QR.jpg" alt="Toonflow Logo" height="400"/>
+~~交流群 7~~
+
+交流群 8:
+
+<img src="./docs/chat8QR.jpg?r=2" alt="Toonflow Logo" height="400"/>
 <p>使用微信扫码添加，二维码过期可提交 Issues 提醒更新</p>
 
 ---
@@ -400,11 +405,11 @@ Toonflow 基于 AGPL-3.0 协议开源发布，许可证详情：https://www.gnu.
 
 ---
 
-# ⭐️ 星标历史
+<!-- # ⭐️ 星标历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=date&legend=top-left)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app&type=date&legend=top-left)
 
----
+--- -->
 
 # 🙏 致谢
 

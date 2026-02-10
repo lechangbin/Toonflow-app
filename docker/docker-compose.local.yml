@@ -1,0 +1,24 @@
+# 本地打包测试用，使用本地源码构建
+# 用法: docker-compose -f docker/docker-compose.local.yml up -d --build
+
+services:
+  toonflow:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.local
+    image: toonflow:local
+    container_name: toonflow-local
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "60000:60000"
+    environment:
+      - NODE_ENV=prod
+    volumes:
+      - ../logs:/var/log
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
