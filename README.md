@@ -517,9 +517,11 @@ pm2 monit             # 监控面板
 
 ~~交流群 7~~
 
-交流群 8:
+~~交流群8~~
 
-<img src="./docs/chat8QR.jpg?r=2" alt="Toonflow Logo" height="400"/>
+交流群 9:
+
+<img src="./docs/chat9QR.jpg?r=2" alt="Toonflow Logo" height="400"/>
 <p>使用微信扫码添加，二维码过期可提交 Issues 提醒更新</p>
 
 ---
