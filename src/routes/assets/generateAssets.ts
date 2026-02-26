@@ -2,7 +2,7 @@ import express from "express";
 import u from "@/utils";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { success,error } from "@/lib/responseFormat";
+import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import sharp from "sharp";
 const router = express.Router();
@@ -124,8 +124,8 @@ export default router.post(
       assetsId: id,
     });
     const apiConfig = await u.getPromptAi("assetsImage");
-    try{
- const contentStr = await u.ai.image(
+
+    const contentStr = await u.ai.image(
       {
         systemPrompt,
         prompt: userPrompt,
@@ -175,14 +175,6 @@ export default router.post(
     // const state = await u.db("t_assets").where("id", id).select("state").first();
 
     res.status(200).send(success({ path, assetsId: id }));
-    }catch(e){
-      await u.db("t_image").where("id",imageId).update({
-        state:"生成失败"
-      })
-      const msg = u.error(e).message || "图片生成失败"
-      return res.status(400).send(error(msg))
-    }
-   
   },
 );
 async function imageAddText(name: string, imageBuffer: Buffer) {

@@ -19,12 +19,6 @@ const modelList: Owned[] = [
     grid: false,
     type: "ti2i",
   },
-  // {
-  //   manufacturer: "volcengine",
-  //   model: "doubao-seedream-5-0-260128",
-  //   grid: false,
-  //   type: "ti2i",
-  // },
   //可灵
   {
     manufacturer: "kling",

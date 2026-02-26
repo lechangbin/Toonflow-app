@@ -6,6 +6,8 @@ import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { t_config } from "@/types/database";
 import sharp from "sharp";
+import fs from "fs";
+import path from "path";
 
 const router = express.Router();
 

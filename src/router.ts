@@ -1,4 +1,4 @@
-// @routes-hash 2c228db11434e5c7874e23f6fe832d00
+// @routes-hash 3cfad40b3c8658b442ab766a9323d740
 import { Express } from "express";
 
 import route1 from "./routes/assets/addAssets";
@@ -65,20 +65,19 @@ import route61 from "./routes/storyboard/uploadImage";
 import route62 from "./routes/task/getTaskApi";
 import route63 from "./routes/task/taskDetails";
 import route64 from "./routes/user/getUser";
-import route65 from "./routes/user/saveUser";
-import route66 from "./routes/video/addVideo";
-import route67 from "./routes/video/addVideoConfig";
-import route68 from "./routes/video/deleteVideoConfig";
-import route69 from "./routes/video/generatePrompt";
-import route70 from "./routes/video/generateVideo";
-import route71 from "./routes/video/getManufacturer";
-import route72 from "./routes/video/getVideo";
-import route73 from "./routes/video/getVideoConfigs";
-import route74 from "./routes/video/getVideoModel";
-import route75 from "./routes/video/getVideoStoryboards";
-import route76 from "./routes/video/reviseVideoStoryboards";
-import route77 from "./routes/video/saveVideo";
-import route78 from "./routes/video/upDateVideoConfig";
+import route65 from "./routes/video/addVideo";
+import route66 from "./routes/video/addVideoConfig";
+import route67 from "./routes/video/deleteVideoConfig";
+import route68 from "./routes/video/generatePrompt";
+import route69 from "./routes/video/generateVideo";
+import route70 from "./routes/video/getManufacturer";
+import route71 from "./routes/video/getVideo";
+import route72 from "./routes/video/getVideoConfigs";
+import route73 from "./routes/video/getVideoModel";
+import route74 from "./routes/video/getVideoStoryboards";
+import route75 from "./routes/video/reviseVideoStoryboards";
+import route76 from "./routes/video/saveVideo";
+import route77 from "./routes/video/upDateVideoConfig";
 
 export default async (app: Express) => {
   app.use("/assets/addAssets", route1);
@@ -145,18 +144,17 @@ export default async (app: Express) => {
   app.use("/task/getTaskApi", route62);
   app.use("/task/taskDetails", route63);
   app.use("/user/getUser", route64);
-  app.use("/user/saveUser", route65);
-  app.use("/video/addVideo", route66);
-  app.use("/video/addVideoConfig", route67);
-  app.use("/video/deleteVideoConfig", route68);
-  app.use("/video/generatePrompt", route69);
-  app.use("/video/generateVideo", route70);
-  app.use("/video/getManufacturer", route71);
-  app.use("/video/getVideo", route72);
-  app.use("/video/getVideoConfigs", route73);
-  app.use("/video/getVideoModel", route74);
-  app.use("/video/getVideoStoryboards", route75);
-  app.use("/video/reviseVideoStoryboards", route76);
-  app.use("/video/saveVideo", route77);
-  app.use("/video/upDateVideoConfig", route78);
+  app.use("/video/addVideo", route65);
+  app.use("/video/addVideoConfig", route66);
+  app.use("/video/deleteVideoConfig", route67);
+  app.use("/video/generatePrompt", route68);
+  app.use("/video/generateVideo", route69);
+  app.use("/video/getManufacturer", route70);
+  app.use("/video/getVideo", route71);
+  app.use("/video/getVideoConfigs", route72);
+  app.use("/video/getVideoModel", route73);
+  app.use("/video/getVideoStoryboards", route74);
+  app.use("/video/reviseVideoStoryboards", route75);
+  app.use("/video/saveVideo", route76);
+  app.use("/video/upDateVideoConfig", route77);
 }
