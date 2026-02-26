@@ -546,11 +546,11 @@ Toonflow 基于 AGPL-3.0 协议开源发布，许可证详情：https://www.gnu.
 
 ---
 
-<!-- # ⭐️ 星标历史
+# ⭐️ 星标历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=date&legend=top-left)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app&type=date&legend=top-left)
 
---- -->
+---
 
 # 🙏 致谢
 

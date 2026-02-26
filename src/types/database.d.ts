@@ -1,19 +1,6 @@
-// @db-hash 5a633f2d45df5d971905dd32c0ac9880
+// @db-hash 945540586ca016b1b9a42042fc5ccbf3
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _t_video_old_20260131 {
-  'configId'?: number | null;
-  'filePath'?: string | null;
-  'firstFrame'?: string | null;
-  'id'?: number;
-  'model'?: string | null;
-  'prompt'?: string | null;
-  'resolution'?: string | null;
-  'scriptId'?: number | null;
-  'state'?: number | null;
-  'storyboardImgs'?: string | null;
-  'time'?: number | null;
-}
 export interface t_aiModelMap {
   'configId'?: number | null;
   'id'?: number;
@@ -52,7 +39,6 @@ export interface t_config {
   'manufacturer'?: string | null;
   'model'?: string | null;
   'modelType'?: string | null;
-  'name'?: string | null;
   'type'?: string | null;
   'userId'?: number | null;
 }
@@ -139,6 +125,7 @@ export interface t_user {
 export interface t_video {
   'aiConfigId'?: number | null;
   'configId'?: number | null;
+  'errorReason'?: string | null;
   'filePath'?: string | null;
   'firstFrame'?: string | null;
   'id'?: number;
@@ -151,6 +138,7 @@ export interface t_video {
   'time'?: number | null;
 }
 export interface t_videoConfig {
+  'aiConfigId'?: number | null;
   'audioEnabled'?: number | null;
   'createTime'?: number | null;
   'duration'?: number | null;
@@ -170,7 +158,6 @@ export interface t_videoConfig {
 }
 
 export interface DB {
-  "_t_video_old_20260131": _t_video_old_20260131;
   "t_aiModelMap": t_aiModelMap;
   "t_assets": t_assets;
   "t_chatHistory": t_chatHistory;
