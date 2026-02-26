@@ -25,12 +25,12 @@ interface AIConfig {
 const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   if (!config || !config?.model || !config?.apiKey || !config?.manufacturer) throw new Error("请检查模型配置是否正确");
   const { model, apiKey, baseURL, manufacturer } = { ...config };
-  let owned;
-  if (manufacturer == "other") {
-    owned = modelList.find((m) => m.manufacturer === manufacturer);
-  } else {
-    owned = modelList.find((m) => m.model === model);
-  }
+  // let owned;
+  // if (manufacturer == "other" || manufacturer == "modelScope") {
+   const owned = modelList.find((m) => m.manufacturer === manufacturer);
+  // } else {
+  //   owned = modelList.find((m) => m.model === model);
+  // }
   if (!owned) throw new Error("不支持的模型或厂商");
 
   const modelInstance = owned.instance({ apiKey, baseURL: baseURL!, name: "xixixi" });
@@ -52,7 +52,7 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   };
 
   const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
-  const chatModelManufacturer = ["doubao", "other", "openai"];
+  const chatModelManufacturer = ["doubao", "other", "openai", "modelScope"];
   const modelFn = chatModelManufacturer.includes(owned.manufacturer) ? (modelInstance as OpenAIProvider).chat(model!) : modelInstance(model!);
   return {
     config: {

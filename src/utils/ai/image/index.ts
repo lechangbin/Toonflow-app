@@ -10,7 +10,7 @@ import runninghub from "./owned/runninghub";
 import apimart from "./owned/apimart";
 import other from "./owned/other";
 import gemini from "./owned/gemini";
-
+import modelScope from "./owned/modelScope";
 const urlToBase64 = async (url: string): Promise<string> => {
   const res = await axios.get(url, { responseType: "arraybuffer" });
   const base64 = Buffer.from(res.data).toString("base64");
@@ -26,6 +26,7 @@ const modelInstance = {
   runninghub: runninghub,
   // apimart: apimart,
   other,
+  modelScope,
 } as const;
 
 export default async (input: ImageConfig, config: AIConfig) => {
@@ -35,10 +36,10 @@ export default async (input: ImageConfig, config: AIConfig) => {
 
   const manufacturerFn = modelInstance[manufacturer as keyof typeof modelInstance];
   if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的图片厂商");
-  if (manufacturer !== "other") {
-    const owned = modelList.find((m) => m.model === model);
-    if (!owned) throw new Error("不支持的模型");
-  }
+  // if (manufacturer !== "other" && manufacturer !== "modelScope") {
+  //   const owned = modelList.find((m) => m.model === model);
+  //   if (!owned) throw new Error("不支持的模型");
+  // }
 
   // 补充图片的 base64 内容类型字符串
   if (input.imageBase64 && input.imageBase64.length > 0) {
@@ -65,7 +66,6 @@ export default async (input: ImageConfig, config: AIConfig) => {
   }
 
   let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
-  console.log("%c Line:68 🍷 imageUrl", "background:#4fff4B", imageUrl);
   if (!input.resType) input.resType = "b64";
   if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
   return imageUrl;

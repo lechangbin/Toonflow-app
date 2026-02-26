@@ -1,11 +1,11 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAI, OpenAIProviderSettings } from "@ai-sdk/openai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createZhipu } from "zhipu-ai-provider";
-import { createQwen } from "qwen-ai-provider";
+import { createQwen } from "qwen-ai-provider-v5";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { createXai } from '@ai-sdk/xai';
+import { createXai } from "@ai-sdk/xai";
 
 interface Owned {
   manufacturer: string;
@@ -77,6 +77,15 @@ const modelList: Owned[] = [
     manufacturer: "doubao",
     model: "doubao-seed-1-6-flash-250828",
     responseFormat: "schema",
+    image: true,
+    think: true,
+    instance: createOpenAI,
+    tool: true,
+  },
+  {
+    manufacturer: "doubao",
+    model: "doubao-seed-2-0-pro-260215",
+    responseFormat: "object",
     image: true,
     think: true,
     instance: createOpenAI,
@@ -186,7 +195,25 @@ const modelList: Owned[] = [
   {
     manufacturer: "qwen",
     model: "qwen-vl-max",
-    responseFormat: "schema",
+    responseFormat: "object",
+    image: true,
+    think: false,
+    instance: createQwen,
+    tool: true,
+  },
+  {
+    manufacturer: "qwen",
+    model: "qwen3.5-plus",
+    responseFormat: "object",
+    image: true,
+    think: false,
+    instance: createQwen,
+    tool: true,
+  },
+  {
+    manufacturer: "qwen",
+    model: "qwen3.5-plus-2026-02-15",
+    responseFormat: "object",
     image: true,
     think: false,
     instance: createQwen,
@@ -413,7 +440,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   //xai
-   {
+  {
     manufacturer: "xai",
     model: "grok-3",
     responseFormat: "schema",
@@ -422,7 +449,7 @@ const modelList: Owned[] = [
     instance: createXai,
     tool: true,
   },
-   {
+  {
     manufacturer: "xai",
     model: "grok-4",
     responseFormat: "schema",
@@ -431,13 +458,23 @@ const modelList: Owned[] = [
     instance: createXai,
     tool: true,
   },
-   {
+  {
     manufacturer: "xai",
     model: "grok-4.1",
     responseFormat: "schema",
     image: true,
     think: false,
     instance: createXai,
+    tool: true,
+  },
+  //魔塔
+  {
+    manufacturer: "modelScope",
+    model: "grok-4.1",
+    responseFormat: "object",
+    image: true,
+    think: false,
+    instance: createOpenAI,
     tool: true,
   },
   //其他

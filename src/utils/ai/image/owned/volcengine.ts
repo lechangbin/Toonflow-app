@@ -8,11 +8,20 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
 
   const apiKey = "Bearer " + config.apiKey.replace(/Bearer\s+/g, "").trim();
   const size = input.size === "1K" ? "2K" : input.size;
-
+  const sizeMap: Record<string, Record<string, string>> = {
+    "16:9": {
+      "2K": "2848x1600",
+      "4K": "4096x2304",
+    },
+    "9:16": {
+      "2K": "1600x2848",
+      "4K": "2304x4096",
+    },
+  };
   const body: Record<string, any> = {
     model: config.model,
     prompt: input.prompt,
-    size,
+    size: sizeMap[input.aspectRatio][size],
     response_format: "url",
     sequential_image_generation: "disabled",
     stream: false,
@@ -28,4 +37,4 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     const msg = u.error(error).message || "Volcengine 图片生成失败";
     throw new Error(msg);
   }
-}
+};

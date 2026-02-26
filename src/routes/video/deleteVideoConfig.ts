@@ -33,9 +33,6 @@ export default router.post(
       if (result.filePath) {
         filesToDelete.push(result.filePath);
       }
-      if (result.firstFrame) {
-        filesToDelete.push(result.firstFrame);
-      }
     }
 
     // 删除文件
