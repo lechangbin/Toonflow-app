@@ -44,3 +44,5 @@ db.sqlite-shm
 db.sqlite-wal
 
 web/*
+
+.devtools

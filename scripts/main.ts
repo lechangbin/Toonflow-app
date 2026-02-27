@@ -3,26 +3,26 @@ import path from "path";
 import startServe, { closeServe } from "src/app";
 
 function createMainWindow(): void {
-  const isDev = process.env.NODE_ENV === "dev" || !app.isPackaged;
-  const basePath = isDev ? process.cwd() : app.getAppPath();
-
   const win = new BrowserWindow({
     width: 900,
     height: 600,
     show: true,
     autoHideMenuBar: true,
-    icon: path.join(
-      basePath,
-      "scripts",
-      process.platform === "win32" ? "logo.ico" : "logo.png"
-    ),
   });
-  const htmlPath = path.join(basePath, "scripts", "web", "index.html");
+  // 开发环境和生产环境使用不同的路径
+  const isDev = process.env.NODE_ENV === "dev" || !app.isPackaged;
+  const htmlPath = isDev
+    ? path.join(process.cwd(), "scripts", "web", "index.html")
+    : path.join(app.getAppPath(), "scripts", "web", "index.html");
   void win.loadFile(htmlPath);
 }
 app.whenReady().then(async () => {
   createMainWindow();
-  await startServe();
+  try {
+    await startServe();
+  } catch (err) {
+    console.error("[服务启动失败]:", err);
+  }
 });
 
 app.on("window-all-closed", () => {
