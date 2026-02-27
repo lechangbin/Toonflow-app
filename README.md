@@ -100,13 +100,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. 下载与安装
 
-| 操作系统 | GitHub 下载                                                  | 123 云盘下载                                      | 说明           |
+| 操作系统 | GitHub 下载                                                  | 夸克网盘下载                                      | 说明           |
 | :------: | :----------------------------------------------------------- | :------------------------------------------------ | :------------- |
-| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [123 云盘](https://www.123865.com/s/bkn5Vv-E67cv) | 官方发布安装包 |
+| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
 |  Linux   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                       | 即将发布       |
 |  macOS   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                       | 即将发布       |
-
-> ⚠️ 如 123 云盘提示需付费，仅因云盘流量受限，本软件完全开源免费。
 
 > 目前仅支持 Windows 版本，其他系统将陆续开放。
 
