@@ -6,7 +6,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   if (!config.apiKey) throw new Error("缺少API Key");
   if (!config.baseURL) throw new Error("缺少baseURL配置");
 
-  const { images } = validateVideoConfig(input, config);
+  // const { images } = validateVideoConfig(input, config);
 
   // 解析URL配置：图生视频|文生视频|查询地址
   const defaultBaseUrl =
@@ -24,7 +24,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   const mode = modelMatch ? (modelMatch[2].toLowerCase() as "std" | "pro") : "std";
 
   // 判断是图生视频还是文生视频
-  const hasImage = images.length > 0;
+  const hasImage = input.imageBase64 ? input.imageBase64.length > 0 : false;
   const createUrl = hasImage ? image2videoUrl : text2videoUrl;
 
   // 去除图片的内容类型前缀（kling要求纯base64）
@@ -41,9 +41,9 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   if (hasImage) {
     // 图生视频：首帧和尾帧
-    body.image = stripDataUrl(images[0]);
-    if (images.length > 1) {
-      body.image_tail = stripDataUrl(images[1]);
+    body.image = stripDataUrl(input.imageBase64![0]);
+    if (input.imageBase64!.length > 1) {
+      body.image_tail = stripDataUrl(input.imageBase64![1]);
     }
   }
 

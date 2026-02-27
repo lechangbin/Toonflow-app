@@ -1,6 +1,20 @@
-// @db-hash 8ef9e37c14c453b2d95832b971baca8a
+// @db-hash ab4e3e93bfba304164daa7d28c804eaf
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _t_video_old_20260210 {
+  'aiConfigId'?: number | null;
+  'configId'?: number | null;
+  'filePath'?: string | null;
+  'firstFrame'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'state'?: number | null;
+  'storyboardImgs'?: string | null;
+  'time'?: number | null;
+}
 export interface t_aiModelMap {
   'configId'?: number | null;
   'id'?: number;
@@ -39,7 +53,6 @@ export interface t_config {
   'manufacturer'?: string | null;
   'model'?: string | null;
   'modelType'?: string | null;
-  'name'?: string | null;
   'type'?: string | null;
   'userId'?: number | null;
 }
@@ -52,6 +65,20 @@ export interface t_image {
   'state'?: string | null;
   'type'?: string | null;
   'videoId'?: number | null;
+}
+export interface t_imageConfig {
+  'grid'?: number | null;
+  'id'?: number;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'type'?: string | null;
+}
+export interface t_imageModel {
+  'grid'?: number | null;
+  'id'?: number;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'type'?: string | null;
 }
 export interface t_novel {
   'chapter'?: string | null;
@@ -118,6 +145,24 @@ export interface t_taskList {
   'startTime'?: string | null;
   'state'?: string | null;
 }
+export interface t_textConfig {
+  'id'?: number;
+  'image'?: number | null;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'responseFormat'?: string | null;
+  'think'?: number | null;
+  'tool'?: number | null;
+}
+export interface t_textModel {
+  'id'?: number;
+  'image'?: number | null;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'responseFormat'?: string | null;
+  'think'?: number | null;
+  'tool'?: number | null;
+}
 export interface t_user {
   'id'?: number;
   'name'?: string | null;
@@ -139,6 +184,7 @@ export interface t_video {
   'time'?: number | null;
 }
 export interface t_videoConfig {
+  'aiConfigId'?: number | null;
   'audioEnabled'?: number | null;
   'createTime'?: number | null;
   'duration'?: number | null;
@@ -155,13 +201,25 @@ export interface t_videoConfig {
   'startFrame'?: string | null;
   'updateTime'?: number | null;
 }
+export interface t_videoModel {
+  'aspectRatio'?: string | null;
+  'audio'?: number | null;
+  'durationResolutionMap'?: string | null;
+  'id'?: number;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'type'?: string | null;
+}
 
 export interface DB {
+  "_t_video_old_20260210": _t_video_old_20260210;
   "t_aiModelMap": t_aiModelMap;
   "t_assets": t_assets;
   "t_chatHistory": t_chatHistory;
   "t_config": t_config;
   "t_image": t_image;
+  "t_imageConfig": t_imageConfig;
+  "t_imageModel": t_imageModel;
   "t_novel": t_novel;
   "t_outline": t_outline;
   "t_project": t_project;
@@ -170,7 +228,10 @@ export interface DB {
   "t_setting": t_setting;
   "t_storyline": t_storyline;
   "t_taskList": t_taskList;
+  "t_textConfig": t_textConfig;
+  "t_textModel": t_textModel;
   "t_user": t_user;
   "t_video": t_video;
   "t_videoConfig": t_videoConfig;
+  "t_videoModel": t_videoModel;
 }

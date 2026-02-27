@@ -1,11 +1,12 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAI, OpenAIProviderSettings } from "@ai-sdk/openai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createZhipu } from "zhipu-ai-provider";
 import { createQwen } from "qwen-ai-provider";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { createXai } from '@ai-sdk/xai';
+import { createXai } from "@ai-sdk/xai";
+import db from "@/utils/db";
 
 interface Owned {
   manufacturer: string;
@@ -23,11 +24,24 @@ interface Owned {
     | typeof createAnthropic
     | typeof createOpenAICompatible;
 }
+const instanceMap = {
+  deepSeek: createDeepSeek,
+  volcengine: createOpenAI,
+  openai: createOpenAI,
+  zhipu: createZhipu,
+  qwen: createQwen,
 
+  gemini: createGoogleGenerativeAI,
+
+  anthropic: createAnthropic,
+  modelScope: (options: OpenAIProviderSettings) => createOpenAI({ ...options, headers: { ...options?.headers, "X-ModelScope-Async-Mode": "true" } }),
+  xai: createXai,
+  other: createOpenAI,
+};
 const modelList: Owned[] = [
   // DeepSeek
   {
-    manufacturer: "deepseek",
+    manufacturer: "deepSeek",
     model: "deepseek-chat",
     responseFormat: "schema",
     image: false,
@@ -36,7 +50,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "deepseek",
+    manufacturer: "deepSeek",
     model: "deepseek-reasoner",
     responseFormat: "schema",
     image: false,
@@ -47,7 +61,16 @@ const modelList: Owned[] = [
 
   // 豆包
   {
-    manufacturer: "doubao",
+    manufacturer: "volcengine",
+    model: "doubao-seed-2-0-mini-260215",
+    responseFormat: "object",
+    image: true,
+    think: false,
+    instance: createOpenAI,
+    tool: true,
+  },
+  {
+    manufacturer: "volcengine",
     model: "doubao-seed-1-8-251228",
     responseFormat: "schema",
     image: true,
@@ -56,7 +79,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "doubao",
+    manufacturer: "volcengine",
     model: "doubao-seed-1-6-251015",
     responseFormat: "schema",
     image: true,
@@ -65,7 +88,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "doubao",
+    manufacturer: "volcengine",
     model: "doubao-seed-1-6-lite-251015",
     responseFormat: "schema",
     image: true,
@@ -74,7 +97,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   {
-    manufacturer: "doubao",
+    manufacturer: "volcengine",
     model: "doubao-seed-1-6-flash-250828",
     responseFormat: "schema",
     image: true,
@@ -413,7 +436,7 @@ const modelList: Owned[] = [
     tool: true,
   },
   //xai
-   {
+  {
     manufacturer: "xai",
     model: "grok-3",
     responseFormat: "schema",
@@ -422,7 +445,7 @@ const modelList: Owned[] = [
     instance: createXai,
     tool: true,
   },
-   {
+  {
     manufacturer: "xai",
     model: "grok-4",
     responseFormat: "schema",
@@ -431,7 +454,7 @@ const modelList: Owned[] = [
     instance: createXai,
     tool: true,
   },
-   {
+  {
     manufacturer: "xai",
     model: "grok-4.1",
     responseFormat: "schema",
@@ -444,12 +467,24 @@ const modelList: Owned[] = [
   {
     manufacturer: "other",
     model: "gpt-4.1",
-    responseFormat: "schema",
+    responseFormat: "object",
     image: true,
     think: false,
     instance: createOpenAI,
     tool: true,
   },
 ];
-
+export const getModelList = async () => {
+  const modelLists = await db("t_textModel").select("*");
+  const resultInstaceList = modelLists.map((model) => {
+    return {
+      ...model,
+      tool: model.tool == 1 ? true : false,
+      think: model.think == 1 ? true : false,
+      image: model.image == 1 ? true : false,
+      instance: instanceMap[model.manufacturer as keyof typeof instanceMap],
+    };
+  });
+  return resultInstaceList as Owned[];
+};
 export default modelList;

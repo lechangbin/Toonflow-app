@@ -119,7 +119,7 @@ export default router.post(
     res.status(200).send(success({ id: videoId, configId: configId || null }));
 
     // 异步生成视频
-    generateVideoAsync(videoId, projectId, fileUrl, savePath, prompt, duration, resolution, audioEnabled, aiConfigData);
+    generateVideoAsync(videoId, projectId, fileUrl, savePath, prompt, duration, resolution, audioEnabled, aiConfigData, mode);
   },
 );
 
@@ -134,6 +134,7 @@ async function generateVideoAsync(
   resolution: string,
   audioEnabled: boolean,
   aiConfigData: t_config,
+  mode: string,
 ) {
   try {
     const projectData = await u.db("t_project").where("id", projectId).select("artStyle", "videoRatio").first();
@@ -175,6 +176,7 @@ ${prompt}
         aspectRatio: projectData?.videoRatio as any,
         resolution: resolution as any,
         audio: audioEnabled,
+        mode: mode as any,
       },
       {
         baseURL: aiConfigData?.baseUrl!,

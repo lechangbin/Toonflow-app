@@ -10,7 +10,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
 
-  const { owned, images, hasStartEndType } = validateVideoConfig(input, config);
+  // const { owned, images, hasStartEndType } = validateVideoConfig(input, config);
 
   const defaultBaseUrl = [
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:predictLongRunning",
@@ -18,8 +18,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   ].join("|");
 
   const [submitUrl, queryUrl] = (config.baseURL || defaultBaseUrl).split("|");
-  
-  
+
   const headers = { "x-goog-api-key": config.apiKey };
 
   const instance: Record<string, any> = { prompt: input.prompt };
@@ -30,17 +29,17 @@ export default async (input: VideoConfig, config: AIConfig) => {
   };
 
   // 根据图片数量和模型能力决定图片用法
-  const len = images.length;
-  const hasRef = owned.type.includes("reference");
-  const hasSingle = owned.type.includes("singleImage");
-
+  const len = input.imageBase64 ? input.imageBase64.length : 0;
+  const hasRef = input.mode == "multi";
+  const hasSingle = input.mode == "single";
+  const hasStartEndType = input.mode === "startEnd";
   if (len === 2 && hasStartEndType) {
-    instance.image = buildInlineImage(images[0]);
-    parameters.lastFrame = buildInlineImage(images[1]);
+    instance.image = buildInlineImage(input.imageBase64![0]);
+    parameters.lastFrame = buildInlineImage(input.imageBase64![1]);
   } else if (len === 1 && (hasSingle || hasStartEndType)) {
-    instance.image = buildInlineImage(images[0]);
+    instance.image = buildInlineImage(input.imageBase64![0]);
   } else if (len >= 1 && len <= 3 && hasRef) {
-    parameters.referenceImages = images.map((img) => ({ image: buildInlineImage(img), referenceType: "asset" }));
+    parameters.referenceImages = input.imageBase64!.map((img) => ({ image: buildInlineImage(img), referenceType: "asset" }));
   }
 
   const { data } = await axios.post(
@@ -53,15 +52,14 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   return pollTask(async () => {
     const { data: status } = await axios.get(queryUrl.replace("{name}", data.name), { headers });
-    
+
     const { done, response, error } = status;
-    
 
     if (!done) return { completed: false };
     if (error) return { completed: false, error: `任务失败: ${error.message || JSON.stringify(error)}` };
 
     const videoUri = response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
-    
+
     if (!videoUri) return { completed: false, error: "未获取到视频下载地址" };
 
     const videoRes = await axios.get(videoUri, { headers, responseType: "arraybuffer", maxRedirects: 5 });
