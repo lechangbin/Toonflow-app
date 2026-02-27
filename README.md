@@ -315,14 +315,10 @@ pm2 monit             # 监控面板
 
 # 🔧 开发流程指南
 
-<div align="center">
-  <div style="background:repeating-linear-gradient(45deg,#000,#000 10px,#ffcc00 10px,#ffcc00 20px);padding:3px;border:2px solid #000;">
-    <div style="padding:12px;">
-      <b style="text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;">🚧 PR 提交规范 🚧</b><br/>
-      <span style="text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;"><b>⛔ </b></span><code>master</code><span style="text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;"><b> 分支不接受任何 PR &nbsp;│&nbsp; ✅ 请将 PR 提交到 </b></span><code>develop</code><span style="text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;"><b> 分支</b></span>
-    </div>
-  </div>
-</div>
+> [!CAUTION]
+> 🚧 **PR 提交规范** 🚧
+> 
+> ⛔ `master` 分支不接受任何 PR ｜ ✅ 请将 PR 提交到 `develop` 分支
 
 ## 开发环境准备
 
