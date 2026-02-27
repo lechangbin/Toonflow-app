@@ -163,18 +163,22 @@ export default router.post(
     }
 
     await u.oss.writeFile(imagePath!, buffer);
+    const imageData = await u.db("t_image").where("id", imageId).select("*").first();
+    if (imageData) {
+      await u.db("t_image").where("id", imageId).update({
+        state: "生成成功",
+        filePath: imagePath,
+        type: insertType,
+      });
 
-    await u.db("t_image").where("id", imageId).update({
-      state: "生成成功",
-      filePath: imagePath,
-      type: insertType,
-    });
+      const path = await u.oss.getFileUrl(imagePath!);
 
-    const path = await u.oss.getFileUrl(imagePath!);
+      // const state = await u.db("t_assets").where("id", id).select("state").first();
 
-    // const state = await u.db("t_assets").where("id", id).select("state").first();
-
-    res.status(200).send(success({ path, assetsId: id }));
+      return res.status(200).send(success({ path, assetsId: id }));
+    } else {
+      return res.status(500).send("资产已被删除");
+    }
   },
 );
 async function imageAddText(name: string, imageBuffer: Buffer) {
