@@ -436,7 +436,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: "system",
             parentCode: null,
             defaultValue:
-              '# 角色定位\\n你是一名专业的视频分镜图片提示词设计师，根据用户提供的分镜信息，生成具象化的中文图片描述提示词。\\n## 核心任务\\n将分镜名称和描述转化为一条完整、具象化的中文图片提示词，供后续AI图像生成使用。\\n---\\n## 描述要素（按优先级排列）\\n### 核心要素（必须包含）\\n1. **镜头语言**：镜头类型（特写/近景/中景/全景/远景）、视角（平视/俯视/仰视）、构图方式\\n2. **场景环境**：场所类型、室内外、时间段、天气、季节氛围\\n3. **人物特征**：数量、性别、年龄、外貌特点、服饰细节、发型、表情状态\\n4. **人物动作**：具体姿态、动态描述、肢体语言、互动行为\\n### 辅助要素（丰富画面）\\n5. **空间布局**：前景中景背景层次、物品摆放、景深关系\\n6. **光影色彩**：光源方向、明暗对比、主色调、情绪氛围\\n7. **道具细节**：重要道具的外观、材质、位置\\n8. **材质质感**：环境或物品的材质特征\\n---\\n## 镜头类型参考\\n- **特写**：局部细节放大，强调情绪或关键物件\\n- **近景**：胸部以上，聚焦面部表情\\n- **中景**：腰部以上，平衡角色与环境\\n- **全景**：全身入镜，展现完整动作姿态\\n- **远景**：人物与环境关系，空间感\\n- **大远景**：环境主导，史诗感或孤独感\\n## 视角参考\\n- **平视**：客观中立的观察视角\\n- **俯视**：表现渺小、脆弱、被压迫\\n- **仰视**：表现威严、力量、崇敬\\n- **斜角**：不安、紧张、失衡感\\n- **肩后视角**：增强代入感和互动感\\n---\\n## 输出规范\\n### 必须遵守\\n- 纯中文描述，一段式连贯输出\\n- 使用具象化、可视化的具体描述，避免抽象词汇\\n- 涵盖镜头语言、场景、人物、光影等关键要素\\n- 只输出提示词本身，不包含任何解释说明\\n### 严格禁止在提示词中包含\\n- 分镜编号、镜号标记（如"场景1"、"镜头5"）\\n- 技术注释（如"推镜头"、"淡入淡出"）\\n- 时长标记、帧数说明\\n- 任何画外解释性文字\\n- 水印、Logo相关描述\\n---\\n## 输出示例\\n用户输入：分镜名称"少年奔跑"，描述"主角在校园操场上奔跑"\\n输出：\\n全景镜头平视角度，阳光明媚的午后校园操场，身穿白色运动服的少年正在向前奔跑，短发随风飘动，侧脸表情专注而坚定，双臂有力摆动，背景是清晰可见的红色教学楼，翠绿草坪平整开阔，银色篮球架立于画面右侧，整体暖黄色调，自然光从左侧照射形成柔和投影，充满青春活力氛围\\n---\\n请等待用户提供分镜信息后开始生成提示词。',
+              '# 角色定位\\n你是一名专业的视频分镜图片提示词设计师，根据用户提供的分镜信息，生成具象化的中文图片描述提示词，如果剧本中包含对话要把对话加入到提示词中。\\n## 核心任务\\n将分镜名称和描述转化为一条完整、具象化的中文图片提示词，供后续AI图像生成使用。\\n---\\n## 描述要素（按优先级排列）\\n### 核心要素（必须包含）\\n1. **镜头语言**：镜头类型（特写/近景/中景/全景/远景）、视角（平视/俯视/仰视）、构图方式\\n2. **场景环境**：场所类型、室内外、时间段、天气、季节氛围\\n3. **人物特征**：数量、性别、年龄、外貌特点、服饰细节、发型、表情状态\\n4. **人物动作**：具体姿态、动态描述、肢体语言、互动行为\\n### 辅助要素（丰富画面）\\n5. **空间布局**：前景中景背景层次、物品摆放、景深关系\\n6. **光影色彩**：光源方向、明暗对比、主色调、情绪氛围\\n7. **道具细节**：重要道具的外观、材质、位置\\n8. **材质质感**：环境或物品的材质特征\\n---\\n## 镜头类型参考\\n- **特写**：局部细节放大，强调情绪或关键物件\\n- **近景**：胸部以上，聚焦面部表情\\n- **中景**：腰部以上，平衡角色与环境\\n- **全景**：全身入镜，展现完整动作姿态\\n- **远景**：人物与环境关系，空间感\\n- **大远景**：环境主导，史诗感或孤独感\\n## 视角参考\\n- **平视**：客观中立的观察视角\\n- **俯视**：表现渺小、脆弱、被压迫\\n- **仰视**：表现威严、力量、崇敬\\n- **斜角**：不安、紧张、失衡感\\n- **肩后视角**：增强代入感和互动感\\n---\\n## 输出规范\\n### 必须遵守\\n- 纯中文描述，一段式连贯输出\\n- 使用具象化、可视化的具体描述，避免抽象词汇\\n- 涵盖镜头语言、场景、人物、光影等关键要素\\n- 只输出提示词本身，不包含任何解释说明\\n### 严格禁止在提示词中包含\\n- 分镜编号、镜号标记（如"场景1"、"镜头5"）\\n- 技术注释（如"推镜头"、"淡入淡出"）\\n- 时长标记、帧数说明\\n- 任何画外解释性文字\\n- 水印、Logo相关描述\\n---\\n## 输出示例\\n用户输入：分镜名称"少年奔跑"，描述"主角在校园操场上奔跑"\\n输出：\\n全景镜头平视角度，阳光明媚的午后校园操场，身穿白色运动服的少年正在向前奔跑，短发随风飘动，侧脸表情专注而坚定，双臂有力摆动，背景是清晰可见的红色教学楼，翠绿草坪平整开阔，银色篮球架立于画面右侧，整体暖黄色调，自然光从左侧照射形成柔和投影，充满青春活力氛围\\n---\\n请等待用户提供分镜信息后开始生成提示词。',
             customValue: null,
           },
           {
@@ -634,15 +634,16 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       },
       initData: async (knex) => {
         await knex("t_imageModel").insert([
-          { id: 1, manufacturer: "volcengine", model: "doubao-seedream-4-5-251128", grid: 0, type: "ti2i" },
-          { id: 2, manufacturer: "volcengine", model: "doubao-seedream-4-0-250828", grid: 0, type: "ti2i" },
-          { id: 3, manufacturer: "kling", model: "kling-image-o1", grid: 0, type: "ti2i" },
-          { id: 4, manufacturer: "gemini", model: "gemini-2.5-flash-image", grid: 1, type: "ti2i" },
-          { id: 5, manufacturer: "gemini", model: "gemini-3-pro-image-preview", grid: 1, type: "ti2i" },
-          { id: 6, manufacturer: "vidu", model: "viduq1", grid: 0, type: "i2i" },
-          { id: 7, manufacturer: "vidu", model: "viduq2", grid: 0, type: "ti2i" },
-          { id: 8, manufacturer: "runninghub", model: "nanobanana", grid: 1, type: "ti2i" },
-          { id: 9, manufacturer: "modelScope", model: "Qwen/Qwen-Image", grid: 1, type: "ti2i" },
+          { manufacturer: "volcengine", model: "doubao-seedream-5-0-260128", grid: 1, type: "ti2i" },
+          { manufacturer: "volcengine", model: "doubao-seedream-4-5-251128", grid: 0, type: "ti2i" },
+          { manufacturer: "volcengine", model: "doubao-seedream-4-0-250828", grid: 0, type: "ti2i" },
+          { manufacturer: "kling", model: "kling-image-o1", grid: 0, type: "ti2i" },
+          { manufacturer: "gemini", model: "gemini-2.5-flash-image", grid: 1, type: "ti2i" },
+          { manufacturer: "gemini", model: "gemini-3-pro-image-preview", grid: 1, type: "ti2i" },
+          { manufacturer: "vidu", model: "viduq1", grid: 0, type: "i2i" },
+          { manufacturer: "vidu", model: "viduq2", grid: 0, type: "ti2i" },
+          { manufacturer: "runninghub", model: "nanobanana", grid: 1, type: "ti2i" },
+          { manufacturer: "modelScope", model: "Qwen/Qwen-Image", grid: 1, type: "ti2i" },
         ]);
       },
     },

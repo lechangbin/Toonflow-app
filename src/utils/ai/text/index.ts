@@ -34,7 +34,6 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
     if (!owned) owned = modelList.find((m) => m.manufacturer === manufacturer);
   }
   if (!owned) throw new Error("不支持的厂商");
-  console.log("%c Line:36 🥛 owned", "background:#6ec1c2", owned);
 
   const modelInstance = owned.instance({ apiKey, baseURL: baseURL!, name: "xixixi" });
 
@@ -55,8 +54,9 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   };
 
   const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
-  const chatModelManufacturer = ["volcengine", "other", "openai"];
+  const chatModelManufacturer = ["volcengine", "other", "openai", "modelScope"];
   const modelFn = chatModelManufacturer.includes(owned.manufacturer) ? (modelInstance as OpenAIProvider).chat(model!) : modelInstance(model!);
+
   return {
     config: {
       model: modelFn as LanguageModel,
@@ -79,7 +79,7 @@ const ai = Object.create({}) as {
 
 ai.invoke = async (input: AIInput<any>, config: AIConfig) => {
   const options = await buildOptions(input, config);
-  console.log("%c Line:81 🍧 options", "background:#93c0a4", options);
+
   const result = await generateText(options.config);
   if (options.responseFormat === "object" && input.output) {
     const pattern = /{[^{}]*}|{(?:[^{}]*|{[^{}]*})*}/g;
@@ -96,7 +96,7 @@ ai.invoke = async (input: AIInput<any>, config: AIConfig) => {
 
 ai.stream = async (input: AIInput, config: AIConfig) => {
   const options = await buildOptions(input, config);
-  console.log("%c Line:98 🍬 options", "background:#fca650", options);
+
   return streamText(options.config);
 };
 
