@@ -2,7 +2,7 @@ import express from "express";
 import u from "@/utils";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { success } from "@/lib/responseFormat";
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import sharp from "sharp";
 const router = express.Router();
@@ -125,56 +125,68 @@ export default router.post(
     });
     const apiConfig = await u.getPromptAi("assetsImage");
 
-    const contentStr = await u.ai.image(
-      {
-        systemPrompt,
-        prompt: userPrompt,
-        imageBase64: base64 ? [base64] : [],
-        size: "2K",
-        aspectRatio: "16:9",
-      },
-      apiConfig,
-    );
+    try {
+      const contentStr = await u.ai.image(
+        {
+          systemPrompt,
+          prompt: userPrompt,
+          imageBase64: base64 ? [base64] : [],
+          size: "2K",
+          aspectRatio: "16:9",
+        },
+        apiConfig,
+      );
 
-    let insertType;
-    const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
-    let buffer = Buffer.from(match && match.length >= 2 ? match[1]! : contentStr!, "base64");
+      let insertType;
+      const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
+      let buffer = Buffer.from(match && match.length >= 2 ? match[1]! : contentStr!, "base64");
 
-    if (type != "storyboard") {
-      //添加文本
-      // buffer = await imageAddText(name, buffer);
+      if (type != "storyboard") {
+        //添加文本
+        // buffer = await imageAddText(name, buffer);
+      }
+      let imagePath;
+      if (type == "role") {
+        insertType = "角色";
+        imagePath = `/${projectId}/role/${uuidv4()}.jpg`;
+      }
+      if (type == "scene") {
+        insertType = "场景";
+        imagePath = `/${projectId}/scene/${uuidv4()}.jpg`;
+      }
+      if (type == "props") {
+        insertType = "道具";
+        imagePath = `/${projectId}/props/${uuidv4()}.jpg`;
+      }
+      if (type == "storyboard") {
+        insertType = "分镜";
+        imagePath = `/${projectId}/storyboard/${uuidv4()}.jpg`;
+      }
+
+      await u.oss.writeFile(imagePath!, buffer);
+      const imageData = await u.db("t_image").where("id", imageId).select("*").first();
+      if (imageData) {
+        await u.db("t_image").where("id", imageId).update({
+          state: "生成成功",
+          filePath: imagePath,
+          type: insertType,
+        });
+
+        const path = await u.oss.getFileUrl(imagePath!);
+
+        // const state = await u.db("t_assets").where("id", id).select("state").first();
+
+        return res.status(200).send(success({ path, assetsId: id }));
+      } else {
+        return res.status(500).send("资产已被删除");
+      }
+    } catch (e) {
+      await u.db("t_image").where("id", imageId).update({
+        state: "生成失败",
+      });
+      const msg = u.error(e).message || "图片生成失败";
+      return res.status(400).send(error(msg));
     }
-    let imagePath;
-    if (type == "role") {
-      insertType = "角色";
-      imagePath = `/${projectId}/role/${uuidv4()}.jpg`;
-    }
-    if (type == "scene") {
-      insertType = "场景";
-      imagePath = `/${projectId}/scene/${uuidv4()}.jpg`;
-    }
-    if (type == "props") {
-      insertType = "道具";
-      imagePath = `/${projectId}/props/${uuidv4()}.jpg`;
-    }
-    if (type == "storyboard") {
-      insertType = "分镜";
-      imagePath = `/${projectId}/storyboard/${uuidv4()}.jpg`;
-    }
-
-    await u.oss.writeFile(imagePath!, buffer);
-
-    await u.db("t_image").where("id", imageId).update({
-      state: "生成成功",
-      filePath: imagePath,
-      type: insertType,
-    });
-
-    const path = await u.oss.getFileUrl(imagePath!);
-
-    // const state = await u.db("t_assets").where("id", id).select("state").first();
-
-    res.status(200).send(success({ path, assetsId: id }));
   },
 );
 async function imageAddText(name: string, imageBuffer: Buffer) {

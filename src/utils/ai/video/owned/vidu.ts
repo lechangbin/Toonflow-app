@@ -20,30 +20,30 @@ export default async (input: VideoConfig, config: AIConfig) => {
   const hasImages = input.imageBase64 && input.imageBase64.length > 0;
 
   // 根据是否有图片，查找匹配的模型配置
-  const customOwned = modelList.find((m) => {
-    if (m.manufacturer !== "vidu") return false;
-    if (m.model !== config.model) return false;
-    if (hasImages) {
-      return m.type.some((t) => t !== "text");
-    } else {
-      return m.type.includes("text");
-    }
-  });
+  // const customOwned = modelList.find((m) => {
+  //   if (m.manufacturer !== "vidu") return false;
+  //   if (m.model !== config.model) return false;
+  //   if (hasImages) {
+  //     return m.type.some((t) => t !== "text");
+  //   } else {
+  //     return m.type.includes("text");
+  //   }
+  // });
 
-  if (!customOwned) {
-    throw new Error(`未找到匹配的模型配置: ${config.model}`);
-  }
+  // if (!customOwned) {
+  //   throw new Error(`未找到匹配的模型配置: ${config.model}`);
+  // }
 
   // 使用统一校验函数
-  const { owned, images } = validateVideoConfig(input, config, customOwned);
+  // const { owned, images } = validateVideoConfig(input, config, customOwned);
 
   // 判断生成类型
-  const genType: "text" | "image" = images.length === 0 ? "text" : "image";
+  const genType: "text" | "image" = input.imageBase64 && input.imageBase64.length === 0 ? "text" : "image";
 
-  // 校验宽高比（仅文生视频需要）
-  if (genType === "text" && owned.aspectRatio.length > 0 && !owned.aspectRatio.includes(input.aspectRatio as `${number}:${number}`)) {
-    throw new Error(`模型 ${owned.model} 不支持宽高比 ${input.aspectRatio}，支持的宽高比：${owned.aspectRatio.join("、")}`);
-  }
+  // // 校验宽高比（仅文生视频需要）
+  // if (genType === "text" && owned.aspectRatio.length > 0 && !owned.aspectRatio.includes(input.aspectRatio as `${number}:${number}`)) {
+  //   throw new Error(`模型 ${owned.model} 不支持宽高比 ${input.aspectRatio}，支持的宽高比：${owned.aspectRatio.join("、")}`);
+  // }
 
   // 创建任务
   let taskId: string;
@@ -51,13 +51,13 @@ export default async (input: VideoConfig, config: AIConfig) => {
   if (genType === "text") {
     // 文生视频
     const requestBody: Record<string, unknown> = {
-      model: owned.model,
+      model: config.model,
       prompt: input.prompt,
       duration: input.duration,
       resolution: input.resolution,
       aspect_ratio: input.aspectRatio,
     };
-    if (owned.audio && input.audio !== undefined) {
+    if (input.audio && input.audio !== undefined) {
       requestBody.audio = input.audio;
     }
 
@@ -71,15 +71,15 @@ export default async (input: VideoConfig, config: AIConfig) => {
   } else {
     // 图生视频
     const requestBody: Record<string, unknown> = {
-      model: owned.model,
-      images: images,
+      model: config.model,
+      images: input.imageBase64,
       duration: input.duration,
       resolution: input.resolution,
     };
     if (input.prompt) {
       requestBody.prompt = input.prompt;
     }
-    if (owned.audio && input.audio !== undefined) {
+    if (input.audio && input.audio !== undefined) {
       requestBody.audio = input.audio;
     }
 

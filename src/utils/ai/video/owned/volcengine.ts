@@ -5,11 +5,11 @@ import { pollTask, validateVideoConfig } from "@/utils/ai/utils";
 export default async (input: VideoConfig, config: AIConfig) => {
   if (!config.apiKey) throw new Error("缺少API Key");
 
-  const { owned, images, hasStartEndType } = validateVideoConfig(input, config);
-
+  // const { owned, images, hasStartEndType } = validateVideoConfig(input, config);
+  const hasStartEndType = input.mode === "startEnd";
   const authorization = "Bearer " + config.apiKey.replace(/^Bearer\s*/i, "").trim();
   const baseUrl = config.baseURL ?? "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks";
-
+  const images = input.imageBase64 || [];
   // 判断是否为首尾帧模式（需要两张图且类型支持首尾帧）
   const isStartEndMode = images.length === 2 && hasStartEndType;
 
@@ -35,7 +35,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   };
 
   // 仅当模型支持音频时才添加 generate_audio 字段
-  if (owned.audio) {
+  if (input?.audio) {
     requestBody.generate_audio = input.audio ?? false;
   }
   // 创建视频生成任务
@@ -52,11 +52,11 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   // 轮询任务状态
   return await pollTask(async () => {
-    const { status, content } = (
-      await axios.get(`${baseUrl}/${taskId}`, {
-        headers: { Authorization: authorization },
-      })
-    ).data;
+    const data = await axios.get(`${baseUrl}/${taskId}`, {
+      headers: { Authorization: authorization },
+    });
+
+    const { status, content } = data.data;
 
     switch (status) {
       case "succeeded":

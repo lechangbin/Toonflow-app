@@ -7,7 +7,7 @@ import { pollTask, validateVideoConfig } from "@/utils/ai/utils";
 export default async (input: VideoConfig, config: AIConfig) => {
   if (!config.apiKey) throw new Error("缺少API Key");
 
-  const { owned, images, hasTextType } = validateVideoConfig(input, config);
+  // const { owned, images, hasTextType } = validateVideoConfig(input, config);
 
   const defaultBaseUrl = [
     "https://www.runninghub.cn/openapi/v2/rhart-video-s/image-to-video",
@@ -19,8 +19,8 @@ export default async (input: VideoConfig, config: AIConfig) => {
   ].join("|");
 
   const [image2videoUrl, image2videoProUrl, text2videoUrl, text2videoProUrl, queryUrl, uploadUrl] = (config.baseURL || defaultBaseUrl).split("|");
-
-  const isPro = owned.model === "sora-2-pro";
+  const hasTextType = input.mode == "text";
+  const isPro = config.model === "sora-2-pro";
   const authorization = `Bearer ${config.apiKey}`;
 
   // 上传 base64 图片
@@ -65,20 +65,19 @@ export default async (input: VideoConfig, config: AIConfig) => {
     return { taskId: data.taskId, status: data.status, url: data.results?.[0]?.url };
   };
 
-  const isTextToVideo = images.length === 0 && hasTextType;
+  const isTextToVideo = (!input.imageBase64 || input.imageBase64.length === 0) && hasTextType;
   const submitUrl = isTextToVideo ? (isPro ? text2videoProUrl : text2videoUrl) : isPro ? image2videoProUrl : image2videoUrl;
 
   const requestBody: Record<string, unknown> = {
     prompt: input.prompt,
     duration: String(input.duration),
     aspectRatio: input.aspectRatio,
-    ...(isTextToVideo ? {} : { imageUrl: await uploadImage(images[0]) }),
+    ...(isTextToVideo ? {} : { imageUrl: await uploadImage(input.imageBase64![0]) }),
   };
 
   const { taskId } = await submitTask(submitUrl, requestBody);
 
   return await pollTask(async () => {
-
     const { data } = await axios.post(
       queryUrl,
       {

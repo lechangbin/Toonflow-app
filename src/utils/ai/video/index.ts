@@ -11,7 +11,7 @@ import runninghub from "./owned/runninghub";
 import gemini from "./owned/gemini";
 import apimart from "./owned/apimart";
 import other from "./owned/other";
-
+import grsai from "./owned/grsai";
 const modelInstance = {
   volcengine: volcengine,
   kling: kling,
@@ -20,7 +20,8 @@ const modelInstance = {
   gemini: gemini,
   runninghub: runninghub,
   apimart: apimart,
-  // other: other,
+  other: other,
+  grsai:grsai
 } as const;
 
 export default async (input: VideoConfig, config?: AIConfig) => {
@@ -29,8 +30,8 @@ export default async (input: VideoConfig, config?: AIConfig) => {
 
   const manufacturerFn = modelInstance[manufacturer as keyof typeof modelInstance];
   if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的视频厂商");
-  const owned = modelList.find((m) => m.model === model);
-  if (!owned) throw new Error("不支持的模型");
+  // const owned = modelList.find((m) => m.model === model);
+  // if (!owned) throw new Error("不支持的模型");
 
   // 补充图片的 base64 内容类型字符串
   if (input.imageBase64 && input.imageBase64.length > 0) {

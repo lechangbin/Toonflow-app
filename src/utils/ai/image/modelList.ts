@@ -59,13 +59,6 @@ const modelList: Owned[] = [
     grid: true,
     type: "ti2i",
   },
-  //ApiMart
-  {
-    manufacturer: "apimart",
-    model: "nanobanana",
-    grid: true,
-    type: "ti2i",
-  },
 ];
 
 export default modelList;

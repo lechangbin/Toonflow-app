@@ -242,11 +242,10 @@ ${sections.join("\n\n")}
       const skipped: number[] = [];
 
       for (const item of shots) {
-        const resultIndex = item.segmentIndex - 1;
 
-        const exists = this.shots.some((f) => f.segmentId === resultIndex);
+        const exists = this.shots.some((f) => f.segmentId === item.segmentIndex);
         if (exists) {
-          skipped.push(resultIndex);
+          skipped.push(item.segmentIndex);
           continue;
         }
         // 分配独立的分镜ID
@@ -254,15 +253,15 @@ ${sections.join("\n\n")}
         const shotId = this.shotIdCounter;
         this.shots.push({
           id: shotId,
-          segmentId: resultIndex,
+          segmentId: item.segmentIndex,
           title: `分镜 ${shotId}`,
           x: 0,
           y: 0,
           cells: item.prompts.map((prompt) => ({ id: u.uuid(), prompt })),
-          fragmentContent: this.segments[resultIndex]?.description,
+          fragmentContent: this.segments[item.segmentIndex - 1]?.description,
           assetsTags: item.assetsTags,
         });
-        added.push({ id: shotId, segmentIndex: resultIndex });
+        added.push({ id: shotId, segmentIndex: item.segmentIndex });
       }
 
       const addedInfo = added.map((a) => `分镜${a.id}(片段${a.segmentIndex})`).join(", ");
