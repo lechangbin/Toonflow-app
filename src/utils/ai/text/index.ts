@@ -3,7 +3,7 @@ import { generateText, streamText, Output, stepCountIs, ModelMessage, LanguageMo
 import { wrapLanguageModel } from "ai";
 import { devToolsMiddleware } from "@ai-sdk/devtools";
 import { parse } from "best-effort-json-parser";
-import modelList from "./modelList";
+import { getModelList } from "./modelList";
 import { z } from "zod";
 import { OpenAIProvider } from "@ai-sdk/openai";
 interface AIInput<T extends Record<string, z.ZodTypeAny> | undefined = undefined> {
@@ -26,12 +26,14 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   if (!config || !config?.model || !config?.apiKey || !config?.manufacturer) throw new Error("请检查模型配置是否正确");
   const { model, apiKey, baseURL, manufacturer } = { ...config };
   let owned;
+  const modelList = await getModelList();
   if (manufacturer == "other") {
     owned = modelList.find((m) => m.manufacturer === manufacturer);
   } else {
-    owned = modelList.find((m) => m.model === model);
+    owned = modelList.find((m) => m.model === model && m.manufacturer === manufacturer);
+    if (!owned) owned = modelList.find((m) => m.manufacturer === manufacturer);
   }
-  if (!owned) throw new Error("不支持的模型或厂商");
+  if (!owned) throw new Error("不支持的厂商");
 
   const modelInstance = owned.instance({ apiKey, baseURL: baseURL!, name: "xixixi" });
 
@@ -52,8 +54,9 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   };
 
   const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
-  const chatModelManufacturer = ["doubao", "other", "openai"];
+  const chatModelManufacturer = ["volcengine", "other", "openai", "modelScope","grsai"];
   const modelFn = chatModelManufacturer.includes(owned.manufacturer) ? (modelInstance as OpenAIProvider).chat(model!) : modelInstance(model!);
+
   return {
     config: {
       model: modelFn as LanguageModel,
@@ -76,6 +79,7 @@ const ai = Object.create({}) as {
 
 ai.invoke = async (input: AIInput<any>, config: AIConfig) => {
   const options = await buildOptions(input, config);
+
   const result = await generateText(options.config);
   if (options.responseFormat === "object" && input.output) {
     const pattern = /{[^{}]*}|{(?:[^{}]*|{[^{}]*})*}/g;
@@ -92,6 +96,7 @@ ai.invoke = async (input: AIInput<any>, config: AIConfig) => {
 
 ai.stream = async (input: AIInput, config: AIConfig) => {
   const options = await buildOptions(input, config);
+
   return streamText(options.config);
 };
 

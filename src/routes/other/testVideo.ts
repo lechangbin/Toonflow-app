@@ -27,6 +27,7 @@ export default router.post(
           resolution: "720p",
           aspectRatio: "16:9",
           audio: false,
+          mode: "single",
         },
         {
           model: modelName,

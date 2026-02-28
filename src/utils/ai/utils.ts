@@ -1,5 +1,5 @@
 import modelList from "./video/modelList";
-
+import { db } from "../db";
 interface ValidateResult {
   owned: (typeof modelList)[number];
   images: string[];
@@ -80,3 +80,5 @@ export const pollTask = async (
   }
   throw new Error(`任务轮询超时，已尝试 ${maxAttempts} 次`);
 };
+
+

@@ -69,26 +69,28 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
         console.error(JSON.stringify(result.response, null, 2));
         throw new Error("图片生成失败");
       }
-      const mdMatch = result.text.match(/^!\[.*?\]\((.+?)\)$/);
-      if (mdMatch) {
-        const imgInfo = mdMatch[1];
-        const base64InMd = imgInfo.match(/data:image\/[a-z]+;base64,(.+)/);
+      // 匹配所有 markdown 图片 ![...](url)
+      const mdImgPattern = /!\[.*?\]\((.+?)\)/g;
+      const matches = [...result.text.matchAll(mdImgPattern)];
+      for (const match of matches) {
+        const imgInfo = match[1];
+        // 检查是否已是 base64
+        const base64InMd = imgInfo.match(/data:image\/[a-z]+;base64,.+/);
         if (base64InMd) {
-          return imgInfo;
+          return imgInfo; // 已经是base64，直接返回
         } else {
-          return await urlToBase64(imgInfo);
+          return await urlToBase64(imgInfo); // 否则尝试转base64
         }
       }
+      // 检查纯base64字符串
       const base64Match = result.text.match(/base64,([A-Za-z0-9+/=]+)/);
-
       if (base64Match) {
         return "data:image/jpeg;base64," + base64Match[1];
       }
-      // 检查是否为图片直链 url
+      // 检查是否为图片直链接
       if (/^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|bmp)$/i.test(result.text)) {
         return await urlToBase64(result.text);
       }
-
       // 默认情况
       return result.text;
     }

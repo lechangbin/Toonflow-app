@@ -1,4 +1,4 @@
-// @db-hash 945540586ca016b1b9a42042fc5ccbf3
+// @db-hash 0f9789bd5ad2eebd79bd502988efcb4e
 //该文件由脚本自动生成，请勿手动修改
 
 export interface t_aiModelMap {
@@ -51,6 +51,13 @@ export interface t_image {
   'state'?: string | null;
   'type'?: string | null;
   'videoId'?: number | null;
+}
+export interface t_imageModel {
+  'grid'?: number | null;
+  'id'?: number;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'type'?: string | null;
 }
 export interface t_novel {
   'chapter'?: string | null;
@@ -117,6 +124,15 @@ export interface t_taskList {
   'startTime'?: string | null;
   'state'?: string | null;
 }
+export interface t_textModel {
+  'id'?: number;
+  'image'?: number | null;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'responseFormat'?: string | null;
+  'think'?: number | null;
+  'tool'?: number | null;
+}
 export interface t_user {
   'id'?: number;
   'name'?: string | null;
@@ -143,7 +159,6 @@ export interface t_videoConfig {
   'createTime'?: number | null;
   'duration'?: number | null;
   'endFrame'?: string | null;
-  'errorReason'?: string | null;
   'id'?: number;
   'images'?: string | null;
   'manufacturer'?: string | null;
@@ -156,6 +171,15 @@ export interface t_videoConfig {
   'startFrame'?: string | null;
   'updateTime'?: number | null;
 }
+export interface t_videoModel {
+  'aspectRatio'?: string | null;
+  'audio'?: number | null;
+  'durationResolutionMap'?: string | null;
+  'id'?: number;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'type'?: string | null;
+}
 
 export interface DB {
   "t_aiModelMap": t_aiModelMap;
@@ -163,6 +187,7 @@ export interface DB {
   "t_chatHistory": t_chatHistory;
   "t_config": t_config;
   "t_image": t_image;
+  "t_imageModel": t_imageModel;
   "t_novel": t_novel;
   "t_outline": t_outline;
   "t_project": t_project;
@@ -171,7 +196,9 @@ export interface DB {
   "t_setting": t_setting;
   "t_storyline": t_storyline;
   "t_taskList": t_taskList;
+  "t_textModel": t_textModel;
   "t_user": t_user;
   "t_video": t_video;
   "t_videoConfig": t_videoConfig;
+  "t_videoModel": t_videoModel;
 }

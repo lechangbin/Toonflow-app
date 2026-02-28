@@ -77,7 +77,7 @@ async function convertDirectiveAndImages(images: Record<string, string>, directi
  *   "将@图10中圈起来的部分换成@图8"
  * );
  */
-export default async (images: Record<string, string>, directive: string, projectId: number) => {
+export default async (images: Record<string, string>, directive: string, projectId: number, aspectRatio: string | null) => {
   const { prompt, images: base64Images } = await convertDirectiveAndImages(images, directive);
   const apiConfig = await u.getPromptAi("editImage");
 
@@ -86,7 +86,7 @@ export default async (images: Record<string, string>, directive: string, project
       systemPrompt: "根据用户提供的具体修改指令，对上传的图片进行智能编辑。",
       prompt: prompt,
       imageBase64: base64Images,
-      aspectRatio: "16:9",
+      aspectRatio: aspectRatio ? aspectRatio : "16:9",
       size: "1K",
     },
     apiConfig,

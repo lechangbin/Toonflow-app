@@ -6,6 +6,7 @@ interface VideoConfig {
   savePath: string;
   imageBase64?: string[];
   audio?: boolean;
+  mode: "startEnd" | "multi" | "single" | "text";
 }
 
 interface AIConfig {
