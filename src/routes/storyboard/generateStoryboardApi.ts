@@ -16,8 +16,10 @@ export default router.post(
   }),
   async (req, res) => {
     const { filePath, prompt, projectId, assetsId } = req.body;
+    //拿到图片尺寸
+    const projectInfo = await u.db("t_project").where({ id: projectId }).first();
 
-    let data = await u.editImage(filePath, prompt, projectId);
+    let data = await u.editImage(filePath, prompt, projectId,projectInfo?.videoRatio!);
     const returnData: {
       id: number | null;
       url: string | null;
