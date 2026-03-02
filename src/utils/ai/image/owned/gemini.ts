@@ -42,7 +42,6 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
         },
       },
     },
-    timeout: 60000,
   });
 
   if (!result.files.length) {
