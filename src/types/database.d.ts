@@ -1,4 +1,4 @@
-// @db-hash 0f9789bd5ad2eebd79bd502988efcb4e
+// @db-hash 4073740ecb78a07f69489a53512e9b4d
 //该文件由脚本自动生成，请勿手动修改
 
 export interface t_aiModelMap {
@@ -6,6 +6,11 @@ export interface t_aiModelMap {
   'id'?: number;
   'key'?: string | null;
   'name'?: string | null;
+}
+export interface t_artStyle {
+  'id'?: number;
+  'name'?: string | null;
+  'styles'?: string | null;
 }
 export interface t_assets {
   'duration'?: string | null;
@@ -58,6 +63,16 @@ export interface t_imageModel {
   'manufacturer'?: string | null;
   'model'?: string | null;
   'type'?: string | null;
+}
+export interface t_myTasks {
+  'describe'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'projectId'?: number | null;
+  'relatedObjects'?: string | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'taskClass'?: string | null;
 }
 export interface t_novel {
   'chapter'?: string | null;
@@ -114,15 +129,6 @@ export interface t_storyline {
   'name'?: string | null;
   'novelIds'?: string | null;
   'projectId'?: number | null;
-}
-export interface t_taskList {
-  'endTime'?: string | null;
-  'id'?: number;
-  'name'?: string | null;
-  'projectName'?: number | null;
-  'prompt'?: string | null;
-  'startTime'?: string | null;
-  'state'?: string | null;
 }
 export interface t_textModel {
   'id'?: number;
@@ -183,11 +189,13 @@ export interface t_videoModel {
 
 export interface DB {
   "t_aiModelMap": t_aiModelMap;
+  "t_artStyle": t_artStyle;
   "t_assets": t_assets;
   "t_chatHistory": t_chatHistory;
   "t_config": t_config;
   "t_image": t_image;
   "t_imageModel": t_imageModel;
+  "t_myTasks": t_myTasks;
   "t_novel": t_novel;
   "t_outline": t_outline;
   "t_project": t_project;
@@ -195,7 +203,6 @@ export interface DB {
   "t_script": t_script;
   "t_setting": t_setting;
   "t_storyline": t_storyline;
-  "t_taskList": t_taskList;
   "t_textModel": t_textModel;
   "t_user": t_user;
   "t_video": t_video;

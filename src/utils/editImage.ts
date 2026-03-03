@@ -88,6 +88,10 @@ export default async (images: Record<string, string>, directive: string, project
       imageBase64: base64Images,
       aspectRatio: aspectRatio ? aspectRatio : "16:9",
       size: "1K",
+      taskClass: "图片编辑",
+      name: `图片编辑-${uuid()}`,
+      describe: `编辑指令: ${directive}`,
+      projectId,
     },
     apiConfig,
   );

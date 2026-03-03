@@ -79,7 +79,7 @@ const ai = Object.create({}) as {
 
 ai.invoke = async (input: AIInput<any>, config: AIConfig) => {
   const options = await buildOptions(input, config);
-
+  
   const result = await generateText(options.config);
   if (options.responseFormat === "object" && input.output) {
     const pattern = /{[^{}]*}|{(?:[^{}]*|{[^{}]*})*}/g;

@@ -4,50 +4,45 @@ import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { number, z } from "zod";
 const router = express.Router();
-
-export default router.get(
+export default router.post(
   "/",
   validateFields({
-    projectName: z.string(),
-    taskName: z.string(),
-    state: z.string(),
+    state: z.string().optional().nullable(),
+    taskClass: z.string().optional().nullable(),
     page: z.number(),
     limit: z.number(),
+    projectId: z.number(),
   }),
   async (req, res) => {
-    const { projectName, taskName, state, page = 1, limit = 10 }: any = req.query;
+    const { taskClass, state, page = 1, limit = 10, projectId }: any = req.body;
     const offset = (page - 1) * limit;
     const data = await u
-      .db("t_taskList")
+      .db("t_myTasks")
+      .where("projectId", projectId)
       .andWhere((qb) => {
-        if (projectName) {
-          qb.andWhere("t_taskList.projectName", projectName);
-        }
-        if (taskName) {
-          qb.andWhere("t_taskList.name", taskName);
+        if (taskClass) {
+          qb.andWhere("t_myTasks.taskClass", taskClass);
         }
         if (state) {
-          qb.andWhere("t_taskList.state", state);
+          qb.andWhere("t_myTasks.state", state);
         }
       })
       .select("*")
       .offset(offset)
       .limit(limit);
     const totalQuery = (await u
-      .db("t_taskList")
+      .db("t_myTasks")
+      .where("projectId", projectId)
       .andWhere((qb) => {
-        if (projectName) {
-          qb.andWhere("t_taskList.projectName", projectName);
-        }
-        if (taskName) {
-          qb.andWhere("t_taskList.name", taskName);
+        if (taskClass) {
+          qb.andWhere("t_myTasks.taskClass", taskClass);
         }
         if (state) {
-          qb.andWhere("t_taskList.state", state);
+          qb.andWhere("t_myTasks.state", state);
         }
       })
       .count("* as total")
       .first()) as any;
     res.status(200).send(success({ data, total: totalQuery?.total }));
-  }
+  },
 );
