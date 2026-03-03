@@ -1183,7 +1183,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
           },
           {
             id: 54,
-            manufacturer: "grsai",
+            manufacturer: "grsai",  
             model: "veo3.1-fast-4k",
             durationResolutionMap: JSON.stringify([]),
             aspectRatio: JSON.stringify(["16:9", "9:16"]),
