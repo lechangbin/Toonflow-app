@@ -41,13 +41,13 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   const outputBuilders: Record<string, (schema: any) => any> = {
     schema: (s) => {
       const schemaPrompt = `\n请按照以下 schema 格式返回结果:\n${JSON.stringify(
-      z.toJSONSchema(z.object(s)),
-      null,
-      2,
-    )}\n请输出JSON格式，只返回结果，不要将Schema返回。`;
-    input.system = (input.system ?? "") + schemaPrompt;
-    // 返回验证模式
-    return Output.object({ schema: z.object(s) });
+        z.toJSONSchema(z.object(s)),
+        null,
+        2,
+      )}\n请输出JSON格式，只返回结果，不要将Schema返回。`;
+      input.system = (input.system ?? "") + schemaPrompt;
+      // 返回验证模式
+      return Output.object({ schema: z.object(s) });
     },
     object: () => {
       const jsonSchemaPrompt = `\n请按照以下 JSON Schema 格式返回结果:\n${JSON.stringify(
