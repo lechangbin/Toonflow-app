@@ -28,6 +28,10 @@ export default router.post(
           aspectRatio: "16:9",
           audio: false,
           mode: "single",
+          taskClass: "测试视频生成",
+          name: "测试视频生成",
+          describe: "测试视频生成",
+          projectId: 0,
         },
         {
           model: modelName,

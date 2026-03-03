@@ -103,8 +103,8 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 | 操作系统 | GitHub 下载                                                  | 夸克网盘下载                                    | 说明           |
 | :------: | :----------------------------------------------------------- | :---------------------------------------------- | :------------- |
 | Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
-|  Linux   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                     | 即将发布       |
-|  macOS   | ⚙️ 敬请期待                                                  | ⚙️ 敬请期待                                     | 即将发布       |
+|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包       |
+|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包       |
 
 > 目前仅支持 Windows 版本，其他系统将陆续开放。
 
@@ -530,10 +530,11 @@ pm2 monit             # 监控面板
 
 ~~交流群 12~~
 
-交流群 13:
+~~交流群 13~~
 
-<img src="./docs/chat13QR.jpg?r=2" alt="Toonflow Logo" height="400"/>
-<p>使用微信扫码添加，二维码过期可提交 Issues 提醒更新</p>
+拉群小助手:
+
+<img src="./docs/QR.png" alt="Toonflow Logo" height="400"/>
 
 ---
 
@@ -555,7 +556,7 @@ Toonflow 基于 AGPL-3.0 协议开源发布，许可证详情：https://www.gnu.
 
 # ⭐️ 星标历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=date&legend=top-left)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=timeline&legend=top-left)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app&type=timeline&legend=top-left)
 
 ---
 

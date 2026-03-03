@@ -7,6 +7,10 @@ interface VideoConfig {
   imageBase64?: string[];
   audio?: boolean;
   mode: "startEnd" | "multi" | "single" | "text";
+  taskClass: string;
+  name: string;
+  projectId: number;
+  describe?: string;
 }
 
 interface AIConfig {

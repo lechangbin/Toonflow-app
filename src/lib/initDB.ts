@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 import { v4 as uuid } from "uuid";
+import { artStyle } from "./artStyle";
 interface TableSchema {
   name: string;
   builder: (table: Knex.CreateTableBuilder) => void;
@@ -96,6 +97,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "t_project",
       builder: (table) => {
         table.integer("id");
+        table.string("projectType");
         table.text("name");
         table.text("intro");
         table.text("type");
@@ -161,20 +163,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       },
     },
     {
-      name: "t_taskList",
-      builder: (table) => {
-        table.integer("id").notNullable();
-        table.integer("projectName");
-        table.text("name");
-        table.text("prompt");
-        table.text("state");
-        table.text("startTime");
-        table.text("endTime");
-        table.primary(["id"]);
-        table.unique(["id"]);
-      },
-    },
-    {
       name: "t_image",
       builder: (table) => {
         table.integer("id").notNullable();
@@ -206,6 +194,36 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["id"]);
       },
       initData: async (knex) => {},
+    },
+    {
+      name: "t_myTasks",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("projectId");
+        table.string("taskClass");
+        table.string("relatedObjects");
+        table.string("model");
+        table.text("describe");
+        table.string("state");
+        table.integer("startTime");
+        table.string("reason");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+      initData: async (knex) => {},
+    },
+    {
+      name: "t_artStyle",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.string("name");
+        table.text("styles");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+      initData: async (knex) => {
+        await knex("t_artStyle").insert(artStyle.map((item, index) => ({ id: index + 1, name: item.name, styles: JSON.stringify(item.styles) })));
+      },
     },
     {
       name: "t_videoConfig",

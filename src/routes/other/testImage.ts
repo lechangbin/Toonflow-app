@@ -24,6 +24,10 @@ export default router.post(
           imageBase64: [],
           aspectRatio: "16:9",
           size: "1K",
+          taskClass: "测试任务",
+          name: "测试图片生成",
+          describe: "测试语言模型生成图片",
+          projectId: 0,
         },
         {
           model: modelName,

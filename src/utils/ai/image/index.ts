@@ -12,6 +12,7 @@ import other from "./owned/other";
 import gemini from "./owned/gemini";
 import modelScope from "./owned/modelScope";
 import grsai from "./owned/grsai";
+import { tr } from "zod/locales";
 
 const urlToBase64 = async (url: string): Promise<string> => {
   const res = await axios.get(url, { responseType: "arraybuffer" });
@@ -29,20 +30,31 @@ const modelInstance = {
   // apimart: apimart,
   modelScope,
   other,
-  grsai
+  grsai,
 } as const;
 
 export default async (input: ImageConfig, config: AIConfig) => {
   const { model, apiKey, baseURL, manufacturer } = { ...config };
+
   if (!config || !config?.model || !config?.apiKey || !config?.manufacturer) throw new Error("请检查模型配置是否正确");
 
   const manufacturerFn = modelInstance[manufacturer as keyof typeof modelInstance];
   if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的图片厂商");
+
   // if (manufacturer !== "other") {
   //   const owned = modelList.find((m) => m.model === model);
   //   if (!owned) throw new Error("不支持的模型");
   // }
-
+  //添加到任务中心
+  const [taskId] = await u.db("t_myTasks").insert({
+    taskClass: input.taskClass,
+    relatedObjects: input.name,
+    model: config?.model ? config.model : "未知模型",
+    describe: input.describe ? input.describe : "无",
+    state: "进行中",
+    startTime: Date.now(),
+    projectId: input.projectId,
+  });
   // 补充图片的 base64 内容类型字符串
   if (input.imageBase64 && input.imageBase64.length > 0) {
     input.imageBase64 = input.imageBase64.map((img) => {
@@ -66,9 +78,19 @@ export default async (input: ImageConfig, config: AIConfig) => {
       return `data:image/png;base64,${img}`;
     });
   }
-
-  let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
-  if (!input.resType) input.resType = "b64";
-  if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
-  return imageUrl;
+  try {
+    let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
+    if (!input.resType) input.resType = "b64";
+    if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
+    await u.db("t_myTasks").where("id", taskId).update({
+      state: "已完成",
+    });
+    return imageUrl;
+  } catch (error: any) {
+    await u.db("t_myTasks").where("id", taskId).update({
+      state: "生成失败",
+      reason: error.message,
+    });
+    throw error;
+  }
 };

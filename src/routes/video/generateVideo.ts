@@ -177,6 +177,10 @@ ${prompt}
         resolution: resolution as any,
         audio: audioEnabled,
         mode: mode as any,
+        taskClass: "视频生成",
+        name: `视频生成-${videoId}`,
+        describe: `视频生成，时长${duration}秒，分辨率${resolution}`,
+        projectId,
       },
       {
         baseURL: aiConfigData?.baseUrl!,

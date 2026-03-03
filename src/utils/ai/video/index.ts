@@ -21,7 +21,7 @@ const modelInstance = {
   runninghub: runninghub,
   apimart: apimart,
   other: other,
-  grsai:grsai
+  grsai: grsai,
 } as const;
 
 export default async (input: VideoConfig, config?: AIConfig) => {
@@ -32,7 +32,16 @@ export default async (input: VideoConfig, config?: AIConfig) => {
   if (!manufacturerFn) if (!manufacturerFn) throw new Error("不支持的视频厂商");
   // const owned = modelList.find((m) => m.model === model);
   // if (!owned) throw new Error("不支持的模型");
-
+  //添加到任务中心
+  const [taskId] = await u.db("t_myTasks").insert({
+    taskClass: input.taskClass,
+    relatedObjects: input.name,
+    model: config?.model ? config.model : "未知模型",
+    describe: input.describe ? input.describe : "无",
+    state: "进行中",
+    startTime: Date.now(),
+    projectId: input.projectId,
+  });
   // 补充图片的 base64 内容类型字符串
   if (input.imageBase64 && input.imageBase64.length > 0) {
     input.imageBase64 = input.imageBase64.map((img) => {
@@ -59,9 +68,20 @@ export default async (input: VideoConfig, config?: AIConfig) => {
 
   let videoUrl = await manufacturerFn(input, { model, apiKey, baseURL });
   if (videoUrl) {
-    const response = await axios.get(videoUrl, { responseType: "stream" });
-    await u.oss.writeFile(input.savePath, response.data);
-    return input.savePath;
+    try {
+      const response = await axios.get(videoUrl, { responseType: "stream" });
+      await u.oss.writeFile(input.savePath, response.data);
+      await u.db("t_myTasks").where("id", taskId).update({
+        state: "已完成",
+      });
+      return input.savePath;
+    } catch (err: any) {
+      await u.db("t_myTasks").where("id", taskId).update({
+        state: "生成失败",
+        reason: err.message,
+      });
+      return videoUrl;
+    }
   }
   return videoUrl;
 };

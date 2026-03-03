@@ -1,4 +1,4 @@
-// @db-hash bdfbb3a599198f1e91b2e5d7930ccd96
+// @db-hash 8171d26b6ac1f411a6ec46a0381b821a
 //该文件由脚本自动生成，请勿手动修改
 
 export interface t_aiModelMap {
@@ -7,8 +7,12 @@ export interface t_aiModelMap {
   'key'?: string | null;
   'name'?: string | null;
 }
+export interface t_artStyle {
+  'id'?: number;
+  'name'?: string | null;
+  'styles'?: string | null;
+}
 export interface t_assets {
-  'dialogue'?: string | null;
   'duration'?: string | null;
   'episode'?: string | null;
   'filePath'?: string | null;
@@ -60,6 +64,17 @@ export interface t_imageModel {
   'model'?: string | null;
   'type'?: string | null;
 }
+export interface t_myTasks {
+  'describe'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'projectId'?: number | null;
+  'reason'?: string | null;
+  'relatedObjects'?: string | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'taskClass'?: string | null;
+}
 export interface t_novel {
   'chapter'?: string | null;
   'chapterData'?: string | null;
@@ -81,6 +96,7 @@ export interface t_project {
   'id'?: number | null;
   'intro'?: string | null;
   'name'?: string | null;
+  'projectType'?: string | null;
   'type'?: string | null;
   'userId'?: number | null;
   'videoRatio'?: string | null;
@@ -116,15 +132,6 @@ export interface t_storyline {
   'novelIds'?: string | null;
   'projectId'?: number | null;
 }
-export interface t_taskList {
-  'endTime'?: string | null;
-  'id'?: number;
-  'name'?: string | null;
-  'projectName'?: number | null;
-  'prompt'?: string | null;
-  'startTime'?: string | null;
-  'state'?: string | null;
-}
 export interface t_textModel {
   'id'?: number;
   'image'?: number | null;
@@ -158,7 +165,6 @@ export interface t_videoConfig {
   'aiConfigId'?: number | null;
   'audioEnabled'?: number | null;
   'createTime'?: number | null;
-  'dialogue'?: string | null;
   'duration'?: number | null;
   'endFrame'?: string | null;
   'id'?: number;
@@ -185,11 +191,13 @@ export interface t_videoModel {
 
 export interface DB {
   "t_aiModelMap": t_aiModelMap;
+  "t_artStyle": t_artStyle;
   "t_assets": t_assets;
   "t_chatHistory": t_chatHistory;
   "t_config": t_config;
   "t_image": t_image;
   "t_imageModel": t_imageModel;
+  "t_myTasks": t_myTasks;
   "t_novel": t_novel;
   "t_outline": t_outline;
   "t_project": t_project;
@@ -197,7 +205,6 @@ export interface DB {
   "t_script": t_script;
   "t_setting": t_setting;
   "t_storyline": t_storyline;
-  "t_taskList": t_taskList;
   "t_textModel": t_textModel;
   "t_user": t_user;
   "t_video": t_video;

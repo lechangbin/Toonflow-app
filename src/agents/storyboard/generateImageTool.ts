@@ -317,6 +317,10 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
       size: "4K",
       aspectRatio: projectInfo?.videoRatio ? (projectInfo.videoRatio as any) : "16:9",
       imageBase64: processedImages.map((buf) => buf.toString("base64")),
+      taskClass: "分镜图生成",
+      name: `分镜图-${outline?.title || "未知剧集"}`,
+      describe: prompts,
+      projectId,
     },
     apiConfig,
   );

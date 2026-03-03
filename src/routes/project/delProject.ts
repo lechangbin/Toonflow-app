@@ -27,6 +27,7 @@ export default router.post(
     await u.db("t_novel").where("projectId", id).delete();
     await u.db("t_storyline").where("projectId", id).delete();
     await u.db("t_outline").where("projectId", id).delete();
+    await u.db("t_myTasks").where("projectId", id).delete();
 
     await u.db("t_script").where("projectId", id).delete();
     await u.db("t_assets").where("projectId", id).delete();
@@ -55,5 +56,5 @@ export default router.post(
     }
 
     res.status(200).send(success({ message: "删除项目成功" }));
-  }
+  },
 );
