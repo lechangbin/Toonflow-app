@@ -75,9 +75,10 @@ export default async (input: VideoConfig, config?: AIConfig) => {
         state: "已完成",
       });
       return input.savePath;
-    } catch (err) {
+    } catch (err: any) {
       await u.db("t_myTasks").where("id", taskId).update({
         state: "生成失败",
+        reason: err.message,
       });
       return videoUrl;
     }

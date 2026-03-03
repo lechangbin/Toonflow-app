@@ -1,4 +1,4 @@
-// @db-hash dc7a91d1bfdbd1024a03543cfd93dfb9
+// @db-hash 8171d26b6ac1f411a6ec46a0381b821a
 //该文件由脚本自动生成，请勿手动修改
 
 export interface t_aiModelMap {
@@ -69,6 +69,7 @@ export interface t_myTasks {
   'id'?: number;
   'model'?: string | null;
   'projectId'?: number | null;
+  'reason'?: string | null;
   'relatedObjects'?: string | null;
   'startTime'?: number | null;
   'state'?: string | null;

@@ -86,9 +86,10 @@ export default async (input: ImageConfig, config: AIConfig) => {
       state: "已完成",
     });
     return imageUrl;
-  } catch (error) {
+  } catch (error: any) {
     await u.db("t_myTasks").where("id", taskId).update({
       state: "生成失败",
+      reason: error.message,
     });
     throw error;
   }

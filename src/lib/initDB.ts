@@ -206,6 +206,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("describe");
         table.string("state");
         table.integer("startTime");
+        table.string("reason");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -1183,7 +1184,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
           },
           {
             id: 54,
-            manufacturer: "grsai",  
+            manufacturer: "grsai",
             model: "veo3.1-fast-4k",
             durationResolutionMap: JSON.stringify([]),
             aspectRatio: JSON.stringify(["16:9", "9:16"]),
