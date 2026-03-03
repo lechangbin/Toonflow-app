@@ -5,6 +5,7 @@ import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
+//删除分镜 
 export default router.post(
   "/",
   validateFields({

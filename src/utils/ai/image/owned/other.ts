@@ -1,6 +1,8 @@
 import "../type";
 import { generateImage, generateText, ModelMessage } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenAI, OpenAIProviderSettings } from "@ai-sdk/openai";
+
 import axios from "axios";
 
 export default async (input: ImageConfig, config: AIConfig): Promise<string> => {
@@ -11,7 +13,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   const apiKey = config.apiKey.replace("Bearer ", "");
 
   const otherProvider = createOpenAICompatible({
-    name: "xixixi",
+    name: "other",
     baseURL: config.baseURL,
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -43,15 +45,18 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     }
 
     const result = await generateText({
-      model: otherProvider.languageModel(model),
+      model: otherProvider.languageModel(model, { provider: "other" }),
       prompt: promptData as string | ModelMessage[],
       providerOptions: {
-        google: {
-          imageConfig: {
-            ...(config.model == "gemini-2.5-flash-image"
-              ? { aspectRatio: input.aspectRatio }
-              : { aspectRatio: input.aspectRatio, imageSize: input.size }),
+        other: {
+          extra_body: {
+            image_config: {
+              ...(config.model == "gemini-2.5-flash-image"
+                ? { aspectRatio: input.aspectRatio }
+                : { aspect_ratio: input.aspectRatio, image_size: input.size }),
+            },
           },
+
           responseModalities: ["IMAGE"],
         },
       },

@@ -37,7 +37,7 @@ async function superResolutionAndSave(src: string, projectId: number, videoRatio
   await u.oss.writeFile(ossPath, buffer);
   return { ossPath, base64: `data:image/jpg;base64,${base64Str}` };
 }
-
+// 图片超分
 export default router.post(
   "/",
   validateFields({

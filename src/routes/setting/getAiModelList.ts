@@ -21,13 +21,22 @@ export default router.post(
       .db(sqlTableMap[type as "image" | "text" | "video"])
       .whereNot("manufacturer", "other")
       .select("id", "manufacturer", "model");
+
     const result: Record<string, any[]> = {};
+    const modelCache: Record<string, Set<string>> = {};
+
     for (const row of modelLists) {
       if (!result[row.manufacturer]) {
         result[row.manufacturer] = [];
+        modelCache[row.manufacturer] = new Set();
       }
-      result[row.manufacturer].push({ label: row.model, value: row.model });
+      if (!modelCache[row.manufacturer].has(row.model)) {
+        result[row.manufacturer].push({ label: row.model, value: row.model });
+        modelCache[row.manufacturer].add(row.model);
+      }
     }
+
     res.status(200).send(success(result));
   },
 );
+

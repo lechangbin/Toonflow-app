@@ -6,7 +6,7 @@ import { z } from "zod";
 import { v4 as uuid } from "uuid";
 const router = express.Router();
 
-// 上传对话图片
+// 图片上传
 export default router.post(
   "/",
   validateFields({
