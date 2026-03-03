@@ -2,6 +2,7 @@ import "../type";
 import { generateImage, generateText, ModelMessage } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenAI, OpenAIProviderSettings } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 import axios from "axios";
 
@@ -30,6 +31,12 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   const fullPrompt = input.systemPrompt ? `${input.systemPrompt}\n\n${input.prompt}` : input.prompt;
   const model = config.model;
   if (model.includes("gemini") || model.includes("nano")) {
+    // 对于 Gemini 模型，使用 Google provider 以支持 imageConfig 参数
+    const googleProvider = createGoogleGenerativeAI({
+      apiKey: apiKey,
+      baseURL: config.baseURL,
+    });
+
     let promptData;
     if (input.imageBase64 && input.imageBase64.length) {
       promptData = [{ role: "system", content: fullPrompt + `请直接输出图片` }];
@@ -43,21 +50,16 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
     } else {
       promptData = fullPrompt + `请直接输出图片`;
     }
-
     const result = await generateText({
-      model: otherProvider.languageModel(model, { provider: "other" }),
+      model: googleProvider.languageModel(model),
       prompt: promptData as string | ModelMessage[],
       providerOptions: {
-        other: {
-          extra_body: {
-            image_config: {
-              ...(config.model == "gemini-2.5-flash-image"
-                ? { aspectRatio: input.aspectRatio }
-                : { aspect_ratio: input.aspectRatio, image_size: input.size }),
-            },
+        google: {
+          imageConfig: {
+            ...(config.model == "gemini-2.5-flash-image"
+              ? { aspectRatio: input.aspectRatio }
+              : { aspectRatio: input.aspectRatio, imageSize: input.size }),
           },
-
-          responseModalities: ["IMAGE"],
         },
       },
     });
