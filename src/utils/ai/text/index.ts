@@ -40,6 +40,13 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   const maxStep = input.maxStep ?? (input.tools ? Object.keys(input.tools).length * 5 : undefined);
   const outputBuilders: Record<string, (schema: any) => any> = {
     schema: (s) => {
+      const schemaPrompt = `\n请按照以下 schema 格式返回结果:\n${JSON.stringify(
+        z.toJSONSchema(z.object(s)),
+        null,
+        2,
+      )}\n请输出JSON格式，只返回结果，不要将Schema返回。`;
+      input.system = (input.system ?? "") + schemaPrompt;
+      // 返回验证模式
       return Output.object({ schema: z.object(s) });
     },
     object: () => {
@@ -47,7 +54,7 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
         z.toJSONSchema(z.object(input.output)),
         null,
         2,
-      )}\n只返回结果，不要将Schema返回。`;
+      )}\n请输出JSON格式，只返回结果，不要将Schema返回。`;
       input.system = (input.system ?? "") + jsonSchemaPrompt;
       // return Output.json();
     },
