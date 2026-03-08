@@ -24,7 +24,6 @@ export default router.post(
       type,
       artStyle,
       videoRatio,
-      projectType,
     });
 
     res.status(200).send(success({ message: "修改成功" }));

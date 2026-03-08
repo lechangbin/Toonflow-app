@@ -35,7 +35,7 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   }
   if (!owned) throw new Error("不支持的厂商");
 
-  const modelInstance = owned.instance({ apiKey, baseURL: baseURL!, name: "xixixi" });
+  const modelInstance = owned.instance({ apiKey: apiKey!, baseURL: baseURL! });
 
   const maxStep = input.maxStep ?? (input.tools ? Object.keys(input.tools).length * 5 : undefined);
   const outputBuilders: Record<string, (schema: any) => any> = {
@@ -61,7 +61,7 @@ const buildOptions = async (input: AIInput<any>, config: AIConfig = {}) => {
   };
 
   const output = input.output ? (outputBuilders[owned.responseFormat]?.(input.output) ?? null) : null;
-  const chatModelManufacturer = ["volcengine", "other", "openai", "modelScope","grsai"];
+  const chatModelManufacturer = ["volcengine", "other", "openai", "modelScope", "grsai"];
   const modelFn = chatModelManufacturer.includes(owned.manufacturer) ? (modelInstance as OpenAIProvider).chat(model!) : modelInstance(model!);
 
   return {
@@ -86,7 +86,7 @@ const ai = Object.create({}) as {
 
 ai.invoke = async (input: AIInput<any>, config: AIConfig) => {
   const options = await buildOptions(input, config);
-  
+
   const result = await generateText(options.config);
   if (options.responseFormat === "object" && input.output) {
     const pattern = /{[^{}]*}|{(?:[^{}]*|{[^{}]*})*}/g;

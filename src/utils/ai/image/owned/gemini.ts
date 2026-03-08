@@ -6,7 +6,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
   if (!input.prompt) throw new Error("缺少提示词");
-
+  
   const options: any = {};
   if (config.apiKey) options.apiKey = config.apiKey;
   if (config?.baseURL) options.baseURL = config.baseURL;

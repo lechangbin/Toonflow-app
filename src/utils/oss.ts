@@ -66,6 +66,9 @@ class OSS {
    * @throws 路径不在 OSS 根目录内、文件不存在等错误
    */
   async getFile(userRelPath: string): Promise<Buffer> {
+    console.log("%c Line:69 🥔 userRelPath", "background:#ffdd4d", userRelPath);
+    console.log("%c Line:72 🥥 this.rootDir", "background:#ea7e5c", this.rootDir);
+
     await this.ensureInit();
     return fs.readFile(resolveSafeLocalPath(userRelPath, this.rootDir));
   }

@@ -13,7 +13,7 @@ import gemini from "./owned/gemini";
 import modelScope from "./owned/modelScope";
 import grsai from "./owned/grsai";
 import { tr } from "zod/locales";
-
+import formal from "./owned/formal";
 const urlToBase64 = async (url: string): Promise<string> => {
   const res = await axios.get(url, { responseType: "arraybuffer" });
   const base64 = Buffer.from(res.data).toString("base64");
@@ -31,6 +31,7 @@ const modelInstance = {
   modelScope,
   other,
   grsai,
+  formal,
 } as const;
 
 export default async (input: ImageConfig, config: AIConfig) => {
@@ -46,15 +47,15 @@ export default async (input: ImageConfig, config: AIConfig) => {
   //   if (!owned) throw new Error("不支持的模型");
   // }
   //添加到任务中心
-  const [taskId] = await u.db("t_myTasks").insert({
-    taskClass: input.taskClass,
-    relatedObjects: input.name,
-    model: config?.model ? config.model : "未知模型",
-    describe: input.describe ? input.describe : "无",
-    state: "进行中",
-    startTime: Date.now(),
-    projectId: input.projectId,
-  });
+  // const [taskId] = await u.db("t_myTasks").insert({
+  //   taskClass: input.taskClass,
+  //   relatedObjects: input.name,
+  //   model: config?.model ? config.model : "未知模型",
+  //   describe: input.describe ? input.describe : "无",
+  //   state: "进行中",
+  //   startTime: Date.now(),
+  //   projectId: input.projectId,
+  // });
   // 补充图片的 base64 内容类型字符串
   if (input.imageBase64 && input.imageBase64.length > 0) {
     input.imageBase64 = input.imageBase64.map((img) => {
@@ -82,15 +83,15 @@ export default async (input: ImageConfig, config: AIConfig) => {
     let imageUrl = await manufacturerFn(input, { model, apiKey, baseURL });
     if (!input.resType) input.resType = "b64";
     if (input.resType === "b64" && imageUrl.startsWith("http")) imageUrl = await urlToBase64(imageUrl);
-    await u.db("t_myTasks").where("id", taskId).update({
-      state: "已完成",
-    });
+    // await u.db("t_myTasks").where("id", taskId).update({
+    //   state: "已完成",
+    // });
     return imageUrl;
   } catch (error: any) {
-    await u.db("t_myTasks").where("id", taskId).update({
-      state: "生成失败",
-      reason: error.message,
-    });
+    // await u.db("t_myTasks").where("id", taskId).update({
+    //   state: "生成失败",
+    //   reason: error.message,
+    // });
     throw error;
   }
 };

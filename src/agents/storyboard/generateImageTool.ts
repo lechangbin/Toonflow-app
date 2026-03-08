@@ -175,14 +175,25 @@ async function processImages(images: ImageInfo[]): Promise<Buffer[]> {
   let processedBuffers: Buffer[];
 
   if (images.length <= maxImages) {
+    console.log("%c Line:178 🥤 images", "background:#ffdd4d", images);
+
+    console.log("%c Line:179 🍑", "background:#ed9ec7");
     const buffers = await Promise.all(images.map((img) => u.oss.getFile(img.filePath)));
+    console.log("%c Line:179 🧀 buffers", "background:#ffdd4d", buffers);
     processedBuffers = await Promise.all(buffers.map((buffer) => compressImage(buffer)));
+    console.log("%c Line:181 🍇 processedBuffers", "background:#e41a6a", processedBuffers);
   } else {
     const mergeStartIndex = maxImages - 1;
+
+    console.log("%c Line:183 🍖", "background:#6ec1c2");
     const firstBuffers = await Promise.all(images.slice(0, mergeStartIndex).map((img) => u.oss.getFile(img.filePath)));
+    console.log("%c Line:183 🍉 firstBuffers", "background:#42b983", firstBuffers);
     const compressedFirstImages = await Promise.all(firstBuffers.map((buffer) => compressImage(buffer)));
+    console.log("%c Line:185 🍺 compressedFirstImages", "background:#42b983", compressedFirstImages);
     const imagesToMergeList = images.slice(mergeStartIndex).map((img) => img.filePath);
+    console.log("%c Line:187 🍿 imagesToMergeList", "background:#b03734", imagesToMergeList);
     const mergedImage = await mergeImages(imagesToMergeList);
+    console.log("%c Line:189 🍉 mergedImage", "background:#ed9ec7", mergedImage);
     processedBuffers = [...compressedFirstImages, mergedImage];
   }
 
@@ -288,6 +299,7 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
 
   // 使用 AI 过滤相关资产
   const filteredImages = await filterRelevantAssets(cellPrompts, resources, allImages);
+  console.log("%c Line:291 🍇 filteredImages", "background:#4fff4B", filteredImages);
 
   const resourcesMapPrompts = buildResourcesMapPrompts(filteredImages);
   console.log("====润色前：", cellPrompts);
@@ -324,6 +336,7 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
     },
     apiConfig,
   );
+    console.log("%c Line:315 🍊 contentStr", "background:#ffdd4d", contentStr);
 
   const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
   const base64Str = match?.[1] ?? contentStr;

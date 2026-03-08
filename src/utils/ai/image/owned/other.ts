@@ -44,7 +44,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
         role: "user",
         content: input.imageBase64.map((i) => ({
           type: "image",
-          image: i,
+          image: i.replace(/^data:image\/[^;]+;base64,/, ""),
         })),
       });
     } else {
@@ -111,8 +111,14 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
       aspectRatio: input.aspectRatio as "1:1" | "3:4" | "4:3" | "9:16" | "16:9",
       size: sizeMap[input.size] ?? "1024x1024",
     });
+      console.log("%c Line:106 🥚 image", "background:#e41a6a", image);
+      
 
-    return image.base64;
+    if (image.base64.startsWith("data:image/")) {
+      return image.base64;
+    } else {
+      return `data:image/png;base64,${image.base64}`;
+    }
   }
 };
 

@@ -46,6 +46,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       Authorization: authorization,
     },
   });
+    console.log("%c Line:44 🍡 createResponse", "background:#2eafb0", createResponse);
 
   const taskId = createResponse.data.id;
 

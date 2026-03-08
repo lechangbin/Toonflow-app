@@ -40,7 +40,7 @@ export default router.post(
     const { id, type, projectId, base64, prompt, name } = req.body;
 
     //获取风格
-    const project = await u.db("t_project").where("id", projectId).select("artStyle", "type", "intro").first();
+    const project = await u.db("t_project").where("id", projectId).select("artStyle", "type", "intro", "videoRatio").first();
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
     const promptsList = await u
@@ -137,7 +137,7 @@ export default router.post(
           prompt: userPrompt,
           imageBase64: base64 ? [base64] : [],
           size: "2K",
-          aspectRatio: "16:9",
+          aspectRatio: project.videoRatio ?? "16:9",
           taskClass: taskClass,
           name: name,
           describe: prompt,

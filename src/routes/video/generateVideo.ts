@@ -35,11 +35,18 @@ export default router.post(
       return res.status(500).send(error("请先选择图片"));
     }
     const configData = await u.db("t_videoConfig").where("id", configId).first();
-
     if (!configData) {
       return res.status(500).send(error("视频配置不存在"));
     }
-    if (configData.manufacturer == "runninghub") {
+    // 优先使用视频配置中的AI配置ID查询,查不到再使用传入的aiConfigId
+    let aiConfigData = null;
+    if (configData.aiConfigId) {
+      aiConfigData = await u.db("t_config").where("id", configData.aiConfigId).first();
+    }
+    if (!aiConfigData || !aiConfigData?.model) {
+      return res.status(500).send(error("模型不存在"));
+    }
+    if (aiConfigData.model?.includes("sora")) {
       if (filePath.length > 1) {
         const gridUrl = await sharpProcessingImage(filePath, projectId);
         if (gridUrl) {
@@ -49,18 +56,6 @@ export default router.post(
       }
     }
 
-    // 优先使用视频配置中的AI配置ID查询,查不到再使用传入的aiConfigId
-    let aiConfigData = null;
-    if (configData.aiConfigId) {
-      aiConfigData = await u.db("t_config").where("id", configData.aiConfigId).first();
-    }
-    if (!aiConfigData) {
-      aiConfigData = await u.db("t_config").where("id", aiConfigId).first();
-    }
-
-    if (!aiConfigData) {
-      return res.status(500).send(error("模型配置不存在"));
-    }
     // 过滤掉空值
     let fileUrl = filePath.filter((p: string) => p && p.trim() !== "");
 
@@ -201,7 +196,7 @@ ${prompt}
       await u.db("t_video").where("id", videoId).update({ state: -1 });
     }
   } catch (err) {
-    console.error(`视频生成失败 videoId=${videoId}:`, err);
+    // console.error(`视频生成失败 videoId=${videoId}:`, (err as any).response);
     await u
       .db("t_video")
       .where("id", videoId)

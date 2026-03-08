@@ -9,7 +9,7 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    projectType: z.string(),
+    projectType: z.string().optional(),
     name: z.string(),
     intro: z.string(),
     type: z.string(),
@@ -20,7 +20,6 @@ export default router.post(
     const { projectType, name, intro, type, artStyle, videoRatio } = req.body;
 
     await u.db("t_project").insert({
-      projectType,
       name,
       intro,
       type,

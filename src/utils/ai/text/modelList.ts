@@ -21,8 +21,7 @@ interface Owned {
     | typeof createZhipu
     | typeof createQwen
     | typeof createGoogleGenerativeAI
-    | typeof createAnthropic
-    | typeof createOpenAICompatible;
+    | typeof createAnthropic;
 }
 const instanceMap = {
   deepSeek: createDeepSeek,
@@ -35,7 +34,8 @@ const instanceMap = {
   modelScope: (options: OpenAIProviderSettings) => createOpenAI({ ...options, headers: { ...options?.headers, "X-ModelScope-Async-Mode": "true" } }),
   xai: createXai,
   other: createOpenAI,
-  grsai:createOpenAI
+  grsai: createOpenAI,
+  formal: createOpenAI,
 };
 const modelList: Owned[] = [
   // DeepSeek

@@ -98,7 +98,6 @@ export default class Storyboard {
 
   private log(action: string, detail?: string) {
     const msg = detail ? `${action}: ${detail}` : action;
-    console.log(`\n[${new Date().toLocaleTimeString()}] ${msg}\n`);
   }
 
   // ==================== 剧本相关操作 ====================
@@ -242,7 +241,6 @@ ${sections.join("\n\n")}
       const skipped: number[] = [];
 
       for (const item of shots) {
-
         const exists = this.shots.some((f) => f.segmentId === item.segmentIndex);
         if (exists) {
           skipped.push(item.segmentIndex);
@@ -445,6 +443,7 @@ ${sections.join("\n\n")}
         this.scriptId,
         this.projectId,
       );
+
       // 通知前端正在分割图片
       this.emit("shotImageGenerateProgress", { shotId, status: "splitting", message: "正在分割宫格图片为单张镜头图" });
 
@@ -460,8 +459,10 @@ ${sections.join("\n\n")}
 
       for (let i = 0; i < imageBuffers.length; i++) {
         const fileName = `${this.projectId}/chat/${this.scriptId}/storyboard/shot_${shotId}_take_${i}_${timestamp}.png`;
+
         await u.oss.writeFile(fileName, imageBuffers[i]);
         const imageUrl = await u.oss.getFileUrl(fileName);
+
         imagePaths.push(imageUrl);
 
         // 每保存一张镜头图片通知进度

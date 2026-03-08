@@ -67,6 +67,9 @@ export default async (input: VideoConfig, config: AIConfig) => {
         Authorization: authorization,
       },
     });
+      console.log("%c Line:65 🍢 response", "background:#3f7cff", response);
+      
+
     taskId = response.data.task_id;
   } else {
     // 图生视频
@@ -89,6 +92,8 @@ export default async (input: VideoConfig, config: AIConfig) => {
         Authorization: authorization,
       },
     });
+      console.log("%c Line:90 🍷 response", "background:#2eafb0", response.data);
+
     taskId = response.data.task_id;
   }
 
@@ -103,6 +108,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
         task_ids: [taskId],
       },
     });
+    console.log("%c Line:113 🧀 response.data", "background:#33a5ff", response.data);
 
     const tasks = response.data.tasks;
     if (!tasks || tasks.length === 0) {

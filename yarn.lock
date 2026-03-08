@@ -8,20 +8,20 @@
   integrity sha512-ukTPVhqG4jNzMro2qA9HSCSSVJN3aN7tlb+hfqYCt3ER0yWroeA2VR38MNrOHLQ/cVj+DaIMad0kFCtWWowh/A==
 
 "@ai-sdk/anthropic@^3.0.35":
-  version "3.0.50"
-  resolved "https://registry.npmmirror.com/@ai-sdk/anthropic/-/anthropic-3.0.50.tgz#5ffdb638ae5418a2bf53d97448346af7ab77e09a"
-  integrity sha512-BkCUgGTp/iZJuuFBF1wv7GGnrEJg7X7hqbaa+/t4HTBt9dZn3e6NFn5NhPUvo2p5SreUeHEl0As0r2uaVn3K9Q==
+  version "3.0.58"
+  resolved "https://registry.npmmirror.com/@ai-sdk/anthropic/-/anthropic-3.0.58.tgz#de49aa3cb7e8a0115eb9d42da05f108d23a90822"
+  integrity sha512-/53SACgmVukO4bkms4dpxpRlYhW8Ct6QZRe6sj1Pi5H00hYhxIrqfiLbZBGxkdRvjsBQeP/4TVGsXgH5rQeb8Q==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
-    "@ai-sdk/provider-utils" "4.0.16"
+    "@ai-sdk/provider-utils" "4.0.19"
 
 "@ai-sdk/deepseek@^2.0.17":
-  version "2.0.21"
-  resolved "https://registry.npmmirror.com/@ai-sdk/deepseek/-/deepseek-2.0.21.tgz#7a08cb59e25bf5799c3a0461c6f6061a60d22f2e"
-  integrity sha512-swIljtTiEBt5fTmnHftb20MnM06eBEANJzEYAUvU1m3yQH+HcduHxwVMLUtf9M7RqpTrBrAJxLtHHP5kPIVSCQ==
+  version "2.0.24"
+  resolved "https://registry.npmmirror.com/@ai-sdk/deepseek/-/deepseek-2.0.24.tgz#c2e8aa1af5b7e4c7c21b355408ee58f659581163"
+  integrity sha512-4vOEekW4TAYVHN0qgiwoUOQZhguGwZBiEw8LDeUmpWBm07QkLRAtxYCaSoMiA4hZZojao5mj6NRGEBW1CnDPtg==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
-    "@ai-sdk/provider-utils" "4.0.16"
+    "@ai-sdk/provider-utils" "4.0.19"
 
 "@ai-sdk/devtools@^0.0.11":
   version "0.0.11"
@@ -32,52 +32,52 @@
     "@hono/node-server" "^1.13.7"
     hono "^4.6.14"
 
-"@ai-sdk/gateway@3.0.59":
-  version "3.0.59"
-  resolved "https://registry.npmmirror.com/@ai-sdk/gateway/-/gateway-3.0.59.tgz#1ce7933878656a74f132eb6230caaf22786fd5d3"
-  integrity sha512-MbtheWHgEFV/8HL1Z6E3hOAsmP73zZlNFg0F0nJAD0Adnjp4J/plqNK00Y896d+dWTw+r0OXzyov9/2wCFjH0Q==
+"@ai-sdk/gateway@3.0.66":
+  version "3.0.66"
+  resolved "https://registry.npmmirror.com/@ai-sdk/gateway/-/gateway-3.0.66.tgz#64ad8f7b45acaa4c93c53be2bb39e772e49e31b5"
+  integrity sha512-SIQ0YY0iMuv+07HLsZ+bB990zUJ6S4ujORAh+Jv1V2KGNn73qQKnGO0JBk+w+Res8YqOFSycwDoWcFlQrVxS4A==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
-    "@ai-sdk/provider-utils" "4.0.16"
+    "@ai-sdk/provider-utils" "4.0.19"
     "@vercel/oidc" "3.1.0"
 
-"@ai-sdk/google@^3.0.20":
-  version "3.0.34"
-  resolved "https://registry.npmmirror.com/@ai-sdk/google/-/google-3.0.34.tgz#5e32b761c9434a0df1046fa8be1c0ffe48f29eac"
-  integrity sha512-1tXUr1W5YACXPgtHYWIU3raqMsayp6cMI8NUT4EEzzZSpvHzkkiNWHEr+bGxEGurSUukfo+pE1RKpLwBFOZtJg==
+"@ai-sdk/google@^3.0.43":
+  version "3.0.43"
+  resolved "https://registry.npmmirror.com/@ai-sdk/google/-/google-3.0.43.tgz#e955d8cb8a598bc75d5aa39d4eaf1cc580dc1ac8"
+  integrity sha512-NGCgP5g8HBxrNdxvF8Dhww+UKfqAkZAmyYBvbu9YLoBkzAmGKDBGhVptN/oXPB5Vm0jggMdoLycZ8JReQM8Zqg==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
-    "@ai-sdk/provider-utils" "4.0.16"
+    "@ai-sdk/provider-utils" "4.0.19"
 
-"@ai-sdk/openai-compatible@2.0.31", "@ai-sdk/openai-compatible@^2.0.27":
-  version "2.0.31"
-  resolved "https://registry.npmmirror.com/@ai-sdk/openai-compatible/-/openai-compatible-2.0.31.tgz#11aca181c215049b1c79b86cf7d58dcf68170da9"
-  integrity sha512-e78xiImcTe2aCMQoFbVJluQmUV4XgahOmmehAuRPlcwzRv2KtkvuLCXPC9Xcy2u83e8SimVva9k9G8SvZcnaBA==
+"@ai-sdk/openai-compatible@2.0.35", "@ai-sdk/openai-compatible@^2.0.27":
+  version "2.0.35"
+  resolved "https://registry.npmmirror.com/@ai-sdk/openai-compatible/-/openai-compatible-2.0.35.tgz#ab1edce39a255b1456efdf8e9a8fd4c5566c82fb"
+  integrity sha512-g3wA57IAQFb+3j4YuFndgkUdXyRETZVvbfAWM+UX7bZSxA3xjes0v3XKgIdKdekPtDGsh4ZX2byHD0gJIMPfiA==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
-    "@ai-sdk/provider-utils" "4.0.16"
+    "@ai-sdk/provider-utils" "4.0.19"
 
 "@ai-sdk/openai@^3.0.25":
-  version "3.0.37"
-  resolved "https://registry.npmmirror.com/@ai-sdk/openai/-/openai-3.0.37.tgz#8f5361eba21848b37663cbe113c91c666fe9ed58"
-  integrity sha512-bcYjT3/58i/C0DN3AnrjiGsAb0kYivZLWWUtgTjsBurHSht/LTEy+w3dw5XQe3FmZwX7Z/mUQCiA3wB/5Kf7ow==
+  version "3.0.41"
+  resolved "https://registry.npmmirror.com/@ai-sdk/openai/-/openai-3.0.41.tgz#22f559888cd4f9bb312c5c576441c3412f442e7b"
+  integrity sha512-IZ42A+FO+vuEQCVNqlnAPYQnnUpUfdJIwn1BEDOBywiEHa23fw7PahxVtlX9zm3/zMvTW4JKPzWyvAgDu+SQ2A==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
-    "@ai-sdk/provider-utils" "4.0.16"
+    "@ai-sdk/provider-utils" "4.0.19"
 
-"@ai-sdk/provider-utils@4.0.16", "@ai-sdk/provider-utils@^4.0.0":
-  version "4.0.16"
-  resolved "https://registry.npmmirror.com/@ai-sdk/provider-utils/-/provider-utils-4.0.16.tgz#24bb427d5ed023ef245f3a7af0e83590c45a74b5"
-  integrity sha512-kBvDqNkt5EwlzF9FujmNhhtl8FYg3e8FO8P5uneKliqfRThWemzBj+wfYr7ZCymAQhTRnwSSz1/SOqhOAwmx9g==
+"@ai-sdk/provider-utils@4.0.19", "@ai-sdk/provider-utils@^4.0.0":
+  version "4.0.19"
+  resolved "https://registry.npmmirror.com/@ai-sdk/provider-utils/-/provider-utils-4.0.19.tgz#535f87c34f19d5584068c522005780ba59123093"
+  integrity sha512-3eG55CrSWCu2SXlqq2QCsFjo3+E7+Gmg7i/oRVoSZzIodTuDSfLb3MRje67xE9RFea73Zao7Lm4mADIfUETKGg==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
     "@standard-schema/spec" "^1.1.0"
     eventsource-parser "^3.0.6"
 
 "@ai-sdk/provider-utils@^3.0.0":
-  version "3.0.21"
-  resolved "https://registry.npmmirror.com/@ai-sdk/provider-utils/-/provider-utils-3.0.21.tgz#b98175079d2787f0dda7027d74482f4ae1acfbc8"
-  integrity sha512-veuMwTLxsgh31Jjn0SnBABnM1f7ebHhRWcV2ZuY3hP3iJDCZ8VXBaYqcHXoOQDqUXTCas08sKQcHyWK+zl882Q==
+  version "3.0.22"
+  resolved "https://registry.npmmirror.com/@ai-sdk/provider-utils/-/provider-utils-3.0.22.tgz#fc9824f5a5c290a95c14888de130b02e52020060"
+  integrity sha512-fFT1KfUUKktfAFm5mClJhS1oux9tP2qgzmEZVl5UdwltQ1LO/s8hd7znVrgKzivwv1s1FIPza0s9OpJaNB/vHw==
   dependencies:
     "@ai-sdk/provider" "2.0.1"
     "@standard-schema/spec" "^1.0.0"
@@ -105,13 +105,13 @@
     json-schema "^0.4.0"
 
 "@ai-sdk/xai@^3.0.47":
-  version "3.0.60"
-  resolved "https://registry.npmmirror.com/@ai-sdk/xai/-/xai-3.0.60.tgz#9dd4f427121fb1fa63e531c0beda43a3669758eb"
-  integrity sha512-nDOUyzeepmyyoL5+9LxmwXy3BoX9mZy7cv3BjHPN4Xc+SVFVqL7uj/9m1oLRCNmpwfA/9QBq9kuD+J31EfdhMw==
+  version "3.0.67"
+  resolved "https://registry.npmmirror.com/@ai-sdk/xai/-/xai-3.0.67.tgz#b49f5c171c6515e38e3cbfafdff746054892c0b0"
+  integrity sha512-KQQIDc91dUA5IGFMnXBuvPBeraYNTdpDC1qUS+JG8vE+/299//5sZFafI1kKYUu3f3p7LaZrKXYgZ1Ni7QIRbw==
   dependencies:
-    "@ai-sdk/openai-compatible" "2.0.31"
+    "@ai-sdk/openai-compatible" "2.0.35"
     "@ai-sdk/provider" "3.0.8"
-    "@ai-sdk/provider-utils" "4.0.16"
+    "@ai-sdk/provider-utils" "4.0.19"
 
 "@develar/schema-utils@~2.6.5":
   version "2.6.5"
@@ -370,9 +370,9 @@
   integrity sha512-k2Ty1JcVojjJFwrg/ThKi2ujJ7XNLYaFGNB/bWT9wGR+oSMJHMa5w+CUq6p/pVrKeNNgA7pCqEcjSnHVoqJQFw==
 
 "@hono/node-server@^1.13.7":
-  version "1.19.9"
-  resolved "https://registry.npmmirror.com/@hono/node-server/-/node-server-1.19.9.tgz#8f37119b1acf283fd3f6035f3d1356fdb97a09ac"
-  integrity sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==
+  version "1.19.11"
+  resolved "https://registry.npmmirror.com/@hono/node-server/-/node-server-1.19.11.tgz#dc419f0826dd2504e9fc86ad289d5636a0444e2f"
+  integrity sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==
 
 "@img/colour@^1.0.0":
   version "1.1.0"
@@ -774,16 +774,16 @@
   integrity sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==
 
 "@types/node@*":
-  version "25.3.3"
-  resolved "https://registry.npmmirror.com/@types/node/-/node-25.3.3.tgz#605862544ee7ffd7a936bcbf0135a14012f1e549"
-  integrity sha512-DpzbrH7wIcBaJibpKo9nnSQL0MTRdnWttGyE5haGwK86xgMOkFLp7vEyfQPGLOJh5wNYiJ3V9PmUMDhV9u8kkQ==
+  version "25.3.5"
+  resolved "https://registry.npmmirror.com/@types/node/-/node-25.3.5.tgz#beccb5915561f7a9970ace547ad44d6cdbf39b46"
+  integrity sha512-oX8xrhvpiyRCQkG1MFchB09f+cXftgIXb3a7UUa4Y3wpmZPw5tyZGTLWhlESOLq1Rq6oDlc8npVU2/9xiCuXMA==
   dependencies:
     undici-types "~7.18.0"
 
 "@types/node@^24.9.0":
-  version "24.11.0"
-  resolved "https://registry.npmmirror.com/@types/node/-/node-24.11.0.tgz#34e8f9603ada03fdc36a532faefdb8e1bb3693a0"
-  integrity sha512-fPxQqz4VTgPI/IQ+lj9r0h+fDR66bzoeMGHp8ASee+32OSGIkeASsoZuJixsQoVef1QJbeubcPBxKk22QVoWdw==
+  version "24.11.2"
+  resolved "https://registry.npmmirror.com/@types/node/-/node-24.11.2.tgz#4d16d5f21256a0506c9d7b58fcda1d4d3dadc530"
+  integrity sha512-HTsxyfkxTNxOXBsEdgIOzbMgBjDGPvkTfw0B1m09j1LFPk8u3tSL8SNBRTSc381wXXX/Wp93qPi1kQXwnWuHgA==
   dependencies:
     undici-types "~7.16.0"
 
@@ -801,9 +801,9 @@
   integrity sha512-JOqsl+ZoCpP4e8TDke9W79FDcSgPAR0l6pixx2JHkhnRjvShyYiAYw2LVsnA7K08Y6DeOnaU6ujmENO4os/cYg==
 
 "@types/qs@*":
-  version "6.14.0"
-  resolved "https://registry.npmmirror.com/@types/qs/-/qs-6.14.0.tgz#d8b60cecf62f2db0fb68e5e006077b9178b85de5"
-  integrity sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==
+  version "6.15.0"
+  resolved "https://registry.npmmirror.com/@types/qs/-/qs-6.15.0.tgz#963ab61779843fe910639a50661b48f162bc7f79"
+  integrity sha512-JawvT8iBVWpzTrz3EGw9BTQFg3BQNmwERdKE22vlTxawwtbyUSlMppvZYKLZzB5zgACXdXxbD3m1bXaMqP/9ow==
 
 "@types/range-parser@*":
   version "1.2.7"
@@ -907,13 +907,13 @@ aggregate-error@^3.0.0:
     indent-string "^4.0.0"
 
 ai@^6.0.67:
-  version "6.0.105"
-  resolved "https://registry.npmmirror.com/ai/-/ai-6.0.105.tgz#85c38f7d67de571435f480cb5c49201a7207599e"
-  integrity sha512-rp+exWtZS3J0DDvZIfetpKCIg7D3cCsvBPoFN3I67IDTs9aoBZDbpecoIkmNLT+U9RBkoEial3OGHRvme23HCw==
+  version "6.0.116"
+  resolved "https://registry.npmmirror.com/ai/-/ai-6.0.116.tgz#dc1c3d929453e165fcd3f188d8663617ecf94129"
+  integrity sha512-7yM+cTmyRLeNIXwt4Vj+mrrJgVQ9RMIW5WO0ydoLoYkewIvsMcvUmqS4j2RJTUXaF1HphwmSKUMQ/HypNRGOmA==
   dependencies:
-    "@ai-sdk/gateway" "3.0.59"
+    "@ai-sdk/gateway" "3.0.66"
     "@ai-sdk/provider" "3.0.8"
-    "@ai-sdk/provider-utils" "4.0.16"
+    "@ai-sdk/provider-utils" "4.0.19"
     "@opentelemetry/api" "1.9.0"
 
 ajv-keywords@^3.4.1:
@@ -1796,9 +1796,9 @@ electron-publish@26.8.1:
     mime "^2.5.2"
 
 electron@^40.0.0:
-  version "40.6.1"
-  resolved "https://registry.npmmirror.com/electron/-/electron-40.6.1.tgz#f7dca0c028a13144abe2192ec2b6a75ef7418dfc"
-  integrity sha512-u9YfoixttdauciHV9Ut9Zf3YipJoU093kR1GSYTTXTAXqhiXI0G1A0NnL/f0O2m2UULCXaXMf2W71PloR6V9pQ==
+  version "40.8.0"
+  resolved "https://registry.npmmirror.com/electron/-/electron-40.8.0.tgz#d149210300bf7df95e5d3db4a40d388e12ef7549"
+  integrity sha512-WoPq0Nr9Yx3g7T6VnJXdwa/rr2+VRyH3a+K+ezfMKBlf6WjxE/LmhMQabKbb6yjm9RbZhJBRcYyoLph421O2mQ==
   dependencies:
     "@electron/get" "^2.0.0"
     "@types/node" "^24.9.0"
@@ -2139,9 +2139,9 @@ fs-extra@^10.0.0, fs-extra@^10.1.0:
     universalify "^2.0.0"
 
 fs-extra@^11.1.1:
-  version "11.3.3"
-  resolved "https://registry.npmmirror.com/fs-extra/-/fs-extra-11.3.3.tgz#a27da23b72524e81ac6c3815cc0179b8c74c59ee"
-  integrity sha512-VWSRii4t0AFm6ixFFmLLx1t7wS1gh+ckoa84aOeapGum0h+EZd1EhEumSB+ZdDLnEPuucsVB9oB7cxJHap6Afg==
+  version "11.3.4"
+  resolved "https://registry.npmmirror.com/fs-extra/-/fs-extra-11.3.4.tgz#ab6934eca8bcf6f7f6b82742e33591f86301d6fc"
+  integrity sha512-CTXd6rk/M3/ULNQj8FBqBWHYBVYybQ3VPBw0xGKFe3tuH7ytT6ACnvzpIQ3UZtB8yvUKC2cXn1a+x+5EVQLovA==
   dependencies:
     graceful-fs "^4.2.0"
     jsonfile "^6.0.1"
@@ -2399,9 +2399,9 @@ hasown@^2.0.2:
     function-bind "^1.1.2"
 
 hono@^4.6.14:
-  version "4.12.3"
-  resolved "https://registry.npmmirror.com/hono/-/hono-4.12.3.tgz#fd8dd1127c30956a9d58c1b0c4535d21c1ef3e16"
-  integrity sha512-SFsVSjp8sj5UumXOOFlkZOG6XS9SJDKw0TbwFeV+AJ8xlST8kxK5Z/5EYa111UY8732lK2S/xB653ceuaoGwpg==
+  version "4.12.5"
+  resolved "https://registry.npmmirror.com/hono/-/hono-4.12.5.tgz#8c16209b35040025d3f110d18f3b821de6cab00f"
+  integrity sha512-3qq+FUBtlTHhtYxbxheZgY8NIFnkkC/MR8u5TTsr7YZ3wixryQ3cCwn3iZbg8p8B88iDBBAYSfZDS75t8MN7Vg==
 
 hosted-git-info@^2.1.4:
   version "2.8.9"
@@ -4324,9 +4324,9 @@ tar@^6.0.2, tar@^6.1.11, tar@^6.1.2:
     yallist "^4.0.0"
 
 tar@^7.4.3, tar@^7.5.6, tar@^7.5.7:
-  version "7.5.9"
-  resolved "https://registry.npmmirror.com/tar/-/tar-7.5.9.tgz#817ac12a54bc4362c51340875b8985d7dc9724b8"
-  integrity sha512-BTLcK0xsDh2+PUe9F6c2TlRp4zOOBMTkoQHQIWSIzI0R7KG46uEwq4OPk2W7bZcprBMsuaeFsqwYr7pjh6CuHg==
+  version "7.5.10"
+  resolved "https://registry.npmmirror.com/tar/-/tar-7.5.10.tgz#2281541123f5507db38bc6eb22619f4bbaef73ad"
+  integrity sha512-8mOPs1//5q/rlkNSPcCegA6hiHJYDmSLEI8aMH/CdSQJNWztHC9WHNam5zdQlfpTwB9Xp7IBEsHfV5LKMJGVAw==
   dependencies:
     "@isaacs/fs-minipass" "^4.0.0"
     chownr "^3.0.0"

@@ -1,4 +1,4 @@
-// @db-hash 8171d26b6ac1f411a6ec46a0381b821a
+// @db-hash a7e02eb0ccc2f0608c1cafc9191f3291
 //该文件由脚本自动生成，请勿手动修改
 
 export interface t_aiModelMap {
@@ -64,17 +64,6 @@ export interface t_imageModel {
   'model'?: string | null;
   'type'?: string | null;
 }
-export interface t_myTasks {
-  'describe'?: string | null;
-  'id'?: number;
-  'model'?: string | null;
-  'projectId'?: number | null;
-  'reason'?: string | null;
-  'relatedObjects'?: string | null;
-  'startTime'?: number | null;
-  'state'?: string | null;
-  'taskClass'?: string | null;
-}
 export interface t_novel {
   'chapter'?: string | null;
   'chapterData'?: string | null;
@@ -96,7 +85,6 @@ export interface t_project {
   'id'?: number | null;
   'intro'?: string | null;
   'name'?: string | null;
-  'projectType'?: string | null;
   'type'?: string | null;
   'userId'?: number | null;
   'videoRatio'?: string | null;
@@ -197,7 +185,6 @@ export interface DB {
   "t_config": t_config;
   "t_image": t_image;
   "t_imageModel": t_imageModel;
-  "t_myTasks": t_myTasks;
   "t_novel": t_novel;
   "t_outline": t_outline;
   "t_project": t_project;
