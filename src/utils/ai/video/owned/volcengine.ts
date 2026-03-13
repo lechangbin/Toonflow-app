@@ -19,7 +19,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       type: "image_url",
       image_url: { url: base64 },
     };
-    if (isStartEndMode) {  
+    if (isStartEndMode) {
       item.role = index === 0 ? "first_frame" : "last_frame";
     }
     return item;
@@ -46,7 +46,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       Authorization: authorization,
     },
   });
-    console.log("%c Line:44 🍡 createResponse", "background:#2eafb0", createResponse);
+  console.log("%c Line:44 🍡 createResponse", "background:#2eafb0", createResponse);
 
   const taskId = createResponse.data.id;
 
@@ -54,14 +54,16 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   // 轮询任务状态
   return await pollTask(async () => {
-    const data = await axios.get(`${baseUrl}/${taskId}`, {
+    const data = await axios.get(`${baseUrl}/query/${taskId}`, {
       headers: { Authorization: authorization },
     });
+    console.log("%c Line:62 🥕 data.data", "background:#e41a6a", data.data);
 
     const { status, content, error } = data.data;
 
     switch (status) {
       case "succeeded":
+      case "completed":
         return { completed: true, url: content?.video_url };
       case "failed":
       case "cancelled":
@@ -75,6 +77,9 @@ export default async (input: VideoConfig, config: AIConfig) => {
         return { completed: false, error: `任务${status}: ${errorMsg}` };
       case "queued":
       case "running":
+      case "unknown":
+      case "submit":
+      case "in_progress":
         return { completed: false };
       default:
         return { completed: false, error: `未知状态: ${status}` };

@@ -1,18 +1,74 @@
 import "../type";
-import { generateImage, generateText, ModelMessage } from "ai";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { pollTask } from "@/utils/ai/utils";
 import u from "@/utils";
 import axios from "axios";
-function getApiUrl(apiUrl: string) {
-  if (apiUrl.includes("|")) {
-    const parts = apiUrl.split("|");
-    if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
-      throw new Error("url 格式错误，请使用 url1|url2 格式");
-    }
-    return { requestUrl: parts[0].trim(), queryUrl: parts[1].trim() };
+import path from "path";
+
+import * as volcengine from "../adapter/volcengine";
+import * as openai from "../adapter/openai";
+import * as vidu from "../adapter/vidu";
+import * as wan from "../adapter/wan";
+
+// 适配器映射
+const modelFn = {
+  volcengine,
+  vidu,
+  openai,
+  wan,
+} as const;
+
+// 模型名称到适配器的映射（精确匹配）
+const modelMapping: Record<string, keyof typeof modelFn> = {
+  // Volcengine 火山引擎模型
+  "doubao-seedance-1-5-pro-251215": "volcengine",
+  "doubao-seedance-1-0-pro-250528": "volcengine",
+  "Seedance-2.0": "volcengine",
+  // Vidu 模型
+  ViduQ2: "vidu",
+  "ViduQ2-turbo": "vidu",
+  "ViduQ2-pro": "vidu",
+  "ViduQ3-pro": "vidu",
+  // OpenAI 模型
+  sora2: "openai",
+  "sora2-pro": "openai",
+  "gpt-video": "openai",
+  // 万象/Wan 模型
+  "Wan2.6-T2V": "wan",
+  "Wan2.6-I2V": "wan",
+};
+
+// 模型名称关键字到适配器的映射（模糊匹配）
+const modelKeywords: Array<{ keywords: string[]; adapter: keyof typeof modelFn }> = [
+  { keywords: ["doubao", "volcengine", "seedance"], adapter: "volcengine" },
+  { keywords: ["vidu"], adapter: "vidu" },
+  { keywords: ["sora", "openai", "gpt"], adapter: "openai" },
+  { keywords: ["wan", "wanx"], adapter: "wan" },
+];
+
+/**
+ * 根据模型名称获取对应的适配器
+ */
+function getModelAdapter(modelName: string) {
+  // 1. 先尝试精确匹配
+  const exactMatch = modelMapping[modelName.toLowerCase()];
+  if (exactMatch) {
+    return modelFn[exactMatch];
   }
-  throw new Error("请填写正确的url");
+
+  // 2. 尝试关键字模糊匹配
+  const lowerModelName = modelName.toLowerCase();
+  for (const { keywords, adapter } of modelKeywords) {
+    if (keywords.some((kw) => lowerModelName.includes(kw.toLowerCase()))) {
+      return modelFn[adapter];
+    }
+  }
+
+  // 3. 如果模型名称本身就是适配器名称
+  if (modelName in modelFn) {
+    return modelFn[modelName as keyof typeof modelFn];
+  }
+
+  return modelFn["wan"];
 }
 function template(replaceObj: Record<string, any>, url: string) {
   return url.replace(/\{(\w+)\}/g, (match, varName) => {
@@ -23,77 +79,78 @@ export default async (input: VideoConfig, config: AIConfig): Promise<string> => 
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
 
-  const defaultBaseURL = "http://127.0.0.1:3000/videogenerator/generate|http://127.0.0.1:3000/videogenerator/generate/{id}";
-  const { requestUrl, queryUrl } = getApiUrl(config.baseURL! ?? defaultBaseURL);
-  // 根据 size 配置映射到具体尺寸
-  const sizeMap: Record<string, Record<string, string>> = {
-    "480P": {
-      "16:9": "832*480",
-      "9:16": "480*332",
-    },
-    "720P": {
-      "16:9": "1280*720",
-      "9:16": "720*1280",
-    },
-    "1080P": {
-      "16:9": "1920*1080",
-      "9:16": "1080*1920",
-    },
-  };
-  // 构建完整的提示词
-  let mergedImage = input.imageBase64;
-  if (mergedImage && mergedImage.length) {
-    const smallImage = await u.imageTools.mergeImages(mergedImage, "5mb");
-    mergedImage = [smallImage];
-  }
+  // 根据模型名称获取对应的适配器
+  const modelAdapter = getModelAdapter(config.model);
 
-  const size = sizeMap[input.resolution]?.[input.aspectRatio] ?? "1280*720";
-  const imageCount: { type: string; image_url: string }[] = [];
-  if (input.imageBase64 && input.imageBase64.length) {
-    input.imageBase64.forEach((i, index) => {
-      imageCount.push({
-        type: "image_url",
-        image_url: { url: i },
-        role: index === 0 ? "first_frame" : "last_frame",
-      });
-    });
-  }
-  const taskBody: Record<string, any> = {
-    model: config.model,
-    content: [
-      {
-        type: "text",
-        text: input.prompt,
-      },
-      ...imageCount,
-    ],
-    // parameters: {
-    //   aspect_ratio: input.aspectRatio,
-    //   size: input.resolution,
-    //   duration: input.duration,
-    // },
-    // ...(typeof input.audio === "boolean" ? { generate_audio: input.audio } : {}),
-  };
-  console.log("%c Line:62 🥑 taskBody", "background:#ea7e5c", taskBody);
+  const { requestUrl, queryUrl, downLoadUrl = null } = modelAdapter.buildReqUrl("http://127.0.0.1:33332");
+  const taskBody = await modelAdapter.buildReqBody(input, config);
 
   const apiKey = config.apiKey.replace("Bearer ", "");
   try {
     const { data } = await axios.post(requestUrl, taskBody, { headers: { Authorization: `Bearer ${apiKey}` } });
-    console.log("%c Line:70 🥪 data", "background:#ed9ec7", data);
-    console.log("%c Line:84 🍐 data.code != uccess", "background:#e41a6a", data.code != "success");
-    console.log("%c Line:83 🍇 data.code", "background:#b03734", data.code);
+    console.log("%c Line:91 🌽 data", "background:#3f7cff", data);
 
-    if (data.code != "success") throw new Error(`任务提交失败: ${data || "未知错误"}`);
-    const taskId = data.data;
+    const taskId = data.id ?? data.taskId ?? data.task_id ?? data.data;
+
+    if (!taskId) throw new Error(`任务提交失败: ${data ? JSON.stringify(data) : "未知错误"}`);
 
     return await pollTask(async () => {
       const { data: queryData } = await axios.get(template({ id: taskId }, queryUrl), {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
-      console.log("%c Line:77 🍧 data", "background:#f5ce50", queryData);
+        console.log("%c Line:99 🥝 queryData", "background:#e41a6a", queryData);
 
-      const { status, result_url, fail_reason } = queryData.data || {};
+      // const { status, result_url, fail_reason } = queryData.data || {};
 
+      const status = queryData?.status ?? queryData?.data?.status;
+      const result_url = queryData?.metadata?.url ?? queryData?.data?.result_url;
+      const fail_reason = queryData?.data?.fail_reason ?? queryData?.data;
+
+      switch (status) {
+        case "completed":
+        case "SUCCESS":
+        case "success":
+          if (downLoadUrl) {
+            // 下载视频，带重试机制
+            let videoRes;
+            let retries = 3;
+            let lastError;
+
+            for (let i = 0; i < retries; i++) {
+              try {
+                // 构建下载URL
+                const finalDownloadUrl = downLoadUrl
+                  ? template({ id: taskId }, downLoadUrl)
+                  : queryData.video_url || queryData.url || queryData.metadata.url; // 从响应中获取视频URL
+
+                videoRes = await axios.get(finalDownloadUrl, {
+                  headers: { Authorization: `Bearer ${apiKey}` },
+                  responseType: "arraybuffer",
+                  timeout: 60 * 1000 * 10, // 60秒超时
+                });
+                break; // 成功则跳出循环
+              } catch (error) {
+                lastError = error;
+                console.error(`视频下载失败，第 ${i + 1}/${retries} 次尝试:`, error);
+                if (i < retries - 1) {
+                  // 等待后重试，使用指数退避
+                  await new Promise((resolve) => setTimeout(resolve, Math.pow(2, i) * 1000));
+                }
+              }
+            }
+            if (!videoRes) {
+              throw new Error(`视频下载失败，已重试 ${retries} 次: ${lastError}`);
+            }
+
+            // 将视频buffer转换为base64或直接返回buffer
+            const savePath = input.savePath.endsWith(".mp4") ? input.savePath : path.join(input.savePath, `other_${Date.now()}.mp4`);
+            await u.oss.writeFile(input.savePath, videoRes.data);
+
+            return { completed: true, url: savePath };
+          } else {
+            return { completed: true, url: result_url };
+          }
+      }
       if (status === "FAILURE") {
         return { completed: false, error: fail_reason ? fail_reason : "视频生成失败" };
       }
@@ -105,16 +162,8 @@ export default async (input: VideoConfig, config: AIConfig): Promise<string> => 
       return { completed: false };
     });
   } catch (error: any) {
-    console.log("%c Line:105 🍖 error", "background:#ed9ec7", error);
     const msg = u.error(error).message || "图片生成失败";
-    console.log("%c Line:107 🌽 u.error(error)", "background:#ea7e5c", u.error(error));
+
     throw new Error(msg);
   }
 };
-
-async function urlToBase64(url: string): Promise<string> {
-  const res = await axios.get(url, { responseType: "arraybuffer" });
-  const base64 = Buffer.from(res.data).toString("base64");
-  const mimeType = res.headers["content-type"] || "image/png";
-  return `data:${mimeType};base64,${base64}`;
-}
