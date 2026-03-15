@@ -17,7 +17,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   if (!config.model) throw new Error("缺少Model名称");
   if (!config.apiKey) throw new Error("缺少API Key");
 
-  const { requestUrl, queryUrl = null } = modelFn["volcengine"].buildReqUrl("http://127.0.0.1:33332");
+  const { requestUrl, queryUrl = null } = modelFn["volcengine"].buildReqUrl(config.baseURL || "https://api.toonflow.net");
   const taskBody = modelFn["volcengine"].buildReqBody(input, config);
 
   const apiKey = config.apiKey.replace("Bearer ", "");

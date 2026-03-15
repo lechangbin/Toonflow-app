@@ -6,12 +6,15 @@ export function buildReqBody(input: VideoConfig, config: AIConfig) {
     ...(input.imageBase64 && input.imageBase64.length ? { images: input.imageBase64 } : {}),
     prompt: input.prompt,
     duration: input.duration,
-    resolution: input.resolution,
-    audio: input?.audio ?? false,
-    aspect_ratio: input.aspectRatio,
-    off_peak: false,
+    size: input.resolution,
+    metadata: {
+      aspect_ratio: input.aspectRatio,
+      audio: input?.audio ?? false,
+      off_peak: false,
+    },
   };
 
+    console.log("%c Line:5 🍔 requestBody", "background:#465975", requestBody);
   return requestBody;
 }
 

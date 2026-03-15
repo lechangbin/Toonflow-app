@@ -1,6 +1,192 @@
-// @db-hash a7e02eb0ccc2f0608c1cafc9191f3291
+// @db-hash f991a54893850ab9ff4a67665391191d
 //该文件由脚本自动生成，请勿手动修改
 
+export interface memories {
+  'access_count'?: number;
+  'content': string;
+  'created_at': number;
+  'embedding': string;
+  'id'?: string;
+  'type': string;
+}
+export interface o_agentDeploy {
+  'id'?: number;
+  'name'?: string | null;
+  'startTime'?: number | null;
+}
+export interface o_artStyle {
+  'id'?: number;
+  'name'?: string | null;
+  'styles'?: string | null;
+}
+export interface o_assets {
+  'id'?: number;
+  'name'?: string | null;
+  'startTime'?: number | null;
+}
+export interface o_chatHistory {
+  'data'?: string | null;
+  'id'?: number;
+  'novel'?: string | null;
+  'projectId'?: number | null;
+  'type'?: string | null;
+}
+export interface o_event {
+  'createTime'?: number | null;
+  'detail'?: string | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_eventChapter {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_image {
+  'assetsId'?: number | null;
+  'filePath'?: string | null;
+  'id'?: number;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
+  'state'?: string | null;
+  'type'?: string | null;
+  'videoId'?: number | null;
+}
+export interface o_model {
+  'id'?: number;
+  'name'?: string | null;
+  'startTime'?: number | null;
+}
+export interface o_myTasks {
+  'describe'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'projectId'?: number | null;
+  'reason'?: string | null;
+  'relatedObjects'?: string | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'taskClass'?: string | null;
+}
+export interface o_novel {
+  'chapter'?: string | null;
+  'chapterData'?: string | null;
+  'chapterIndex'?: number | null;
+  'createTime'?: number | null;
+  'id'?: number;
+  'projectId'?: number | null;
+  'reel'?: string | null;
+}
+export interface o_outline {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_outlineNovel {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_project {
+  'artStyle'?: string | null;
+  'createTime'?: number | null;
+  'id'?: number | null;
+  'intro'?: string | null;
+  'name'?: string | null;
+  'projectType'?: string | null;
+  'type'?: string | null;
+  'userId'?: number | null;
+  'videoRatio'?: string | null;
+}
+export interface o_prompts {
+  'code'?: string | null;
+  'customValue'?: string | null;
+  'defaultValue'?: string | null;
+  'id'?: number;
+  'name'?: string | null;
+  'parentCode'?: string | null;
+  'type'?: string | null;
+}
+export interface o_script {
+  'content'?: string | null;
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+  'projectId'?: number | null;
+}
+export interface o_scriptAssets {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_scriptOutline {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_setting {
+  'id'?: number;
+  'imageModel'?: string | null;
+  'languageModel'?: string | null;
+  'projectId'?: number | null;
+  'tokenKey'?: string | null;
+  'userId'?: number | null;
+}
+export interface o_skills {
+  'id'?: number;
+  'name'?: string | null;
+  'startTime'?: number | null;
+}
+export interface o_storyboard {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_storyboardScript {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_user {
+  'id'?: number;
+  'name'?: string | null;
+  'password'?: string | null;
+  'tokenKey'?: string | null;
+}
+export interface o_vendorConfig {
+  'code'?: string | null;
+  'createTime'?: number | null;
+  'icon'?: string | null;
+  'id'?: number;
+  'inputs'?: string | null;
+  'inputValues'?: string | null;
+  'models'?: string | null;
+  'name'?: string | null;
+  'version'?: string | null;
+}
+export interface o_video {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
+export interface o_videoConfig {
+  'aiConfigId'?: number | null;
+  'audioEnabled'?: number | null;
+  'createTime'?: number | null;
+  'duration'?: number | null;
+  'endFrame'?: string | null;
+  'id'?: number;
+  'images'?: string | null;
+  'manufacturer'?: string | null;
+  'mode'?: string | null;
+  'projectId'?: number | null;
+  'prompt'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'selectedResultId'?: number | null;
+  'startFrame'?: string | null;
+  'updateTime'?: number | null;
+}
 export interface t_aiModelMap {
   'configId'?: number | null;
   'id'?: number;
@@ -178,6 +364,32 @@ export interface t_videoModel {
 }
 
 export interface DB {
+  "memories": memories;
+  "o_agentDeploy": o_agentDeploy;
+  "o_artStyle": o_artStyle;
+  "o_assets": o_assets;
+  "o_chatHistory": o_chatHistory;
+  "o_event": o_event;
+  "o_eventChapter": o_eventChapter;
+  "o_image": o_image;
+  "o_model": o_model;
+  "o_myTasks": o_myTasks;
+  "o_novel": o_novel;
+  "o_outline": o_outline;
+  "o_outlineNovel": o_outlineNovel;
+  "o_project": o_project;
+  "o_prompts": o_prompts;
+  "o_script": o_script;
+  "o_scriptAssets": o_scriptAssets;
+  "o_scriptOutline": o_scriptOutline;
+  "o_setting": o_setting;
+  "o_skills": o_skills;
+  "o_storyboard": o_storyboard;
+  "o_storyboardScript": o_storyboardScript;
+  "o_user": o_user;
+  "o_vendorConfig": o_vendorConfig;
+  "o_video": o_video;
+  "o_videoConfig": o_videoConfig;
   "t_aiModelMap": t_aiModelMap;
   "t_artStyle": t_artStyle;
   "t_assets": t_assets;

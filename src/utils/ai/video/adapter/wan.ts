@@ -26,26 +26,25 @@ export function buildReqBody(input: VideoConfig, config: AIConfig) {
     },
   };
   const hasStartEnd = input.mode == "startEnd";
-  console.log("%c Line:29 🎂 hasStartEnd", "background:#2eafb0", hasStartEnd);
+
   const imageReq: Record<string, string> = {};
   if (hasStartEnd && Array.isArray(images) && images.length) {
-    if (images[0]) imageReq.img_url = images[0];
+    if (images[0]) imageReq.first_frame_url = images[0];
     if (images[1]) imageReq.last_frame_url = images[1];
   } else if (!hasStartEnd && Array.isArray(images) && images[0]) {
-    console.log("%c Line:35 🍤", "background:#f5ce50");
     imageReq.img_url = images[0];
   }
 
-  const resolutionKey = input.resolution.toLowerCase();
-  console.log("%c Line:43 🍑 resolutionKey", "background:#e41a6a", resolutionKey);
+  const resolutionKey = input.resolution;
+
   const size = sizeMap[resolutionKey]?.[input.aspectRatio];
 
   const requestBody: any = {
     model: config.model,
     ...(imageReq?.img_url ? { input_reference: imageReq.img_url } : {}),
     prompt: input.prompt,
+    size,
     duration: input.duration,
-    size: !images.length ? size : input.resolution.toUpperCase(),
     metadata: {
       ...imageReq,
       audio: input?.audio ?? false,

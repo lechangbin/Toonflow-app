@@ -21,6 +21,8 @@ export default async (input: VideoConfig, config: AIConfig) => {
     };
     if (isStartEndMode) {
       item.role = index === 0 ? "first_frame" : "last_frame";
+    } else {
+      item.role = "reference_image";
     }
     return item;
   });
@@ -35,7 +37,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
   };
 
   // 仅当模型支持音频时才添加 generate_audio 字段
-  if (input?.audio) {
+  if (typeof input?.audio == "boolean") {
     requestBody.generate_audio = input.audio ?? false;
   }
 
@@ -46,7 +48,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       Authorization: authorization,
     },
   });
-  console.log("%c Line:44 🍡 createResponse", "background:#2eafb0", createResponse);
+  console.log("%c Line:44 🍡 createResponse", "background:#2eafb0", createResponse.data);
 
   const taskId = createResponse.data.id;
 
@@ -54,7 +56,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   // 轮询任务状态
   return await pollTask(async () => {
-    const data = await axios.get(`${baseUrl}/query/${taskId}`, {
+    const data = await axios.get(`${baseUrl}/${taskId}`, {
       headers: { Authorization: authorization },
     });
     console.log("%c Line:62 🥕 data.data", "background:#e41a6a", data.data);

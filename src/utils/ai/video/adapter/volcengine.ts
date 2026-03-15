@@ -34,6 +34,7 @@ export function buildReqBody(input: VideoConfig, config: AIConfig) {
     size: input.resolution,
     metadata: {
       generate_audio: input?.audio ?? false,
+      ratio: input.aspectRatio,
       image_roles: ["first_frame", "last_frame"],
     },
   };

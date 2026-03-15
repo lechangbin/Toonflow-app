@@ -71,14 +71,28 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
     const requestBody: any = {
       model: config.model,
-      prompt: input.prompt,
-      aspect_ratio: input.aspectRatio || "16:9",
-      size: "720p",
+      images: [
+        "https://prod-ss-images.s3.cn-northwest-1.amazonaws.com.cn/vidu-maas/template/startend2video-1.jpeg",
+        "https://prod-ss-images.s3.cn-northwest-1.amazonaws.com.cn/vidu-maas/template/startend2video-2.jpeg",
+      ],
+      prompt:
+        "The camera zooms in on the bird, which then flies to the right. With its flight being smooth and natural, the bird soars in the sky. with a red light effect following and surrounding it from behind.",
+      duration: 5,
+      seed: 0,
+      resolution: "1080p",
+      audio: true,
+      off_peak: false,
     };
 
     if (input.imageBase64 && input.imageBase64.length) {
-      requestBody.images = input.imageBase64;
+      requestBody.images = [
+        "https://prod-ss-images.s3.cn-northwest-1.amazonaws.com.cn/vidu-maas/template/startend2video-1.jpeg",
+        "https://prod-ss-images.s3.cn-northwest-1.amazonaws.com.cn/vidu-maas/template/startend2video-2.jpeg",
+      ];
     }
+
+    console.log("%c Line:86 🍷 requestUrl", "background:#4fff4B", requestUrl);
+    console.log("%c Line:89 🥪 authorization", "background:#3f7cff", authorization);
 
     const response = await axios.post(requestUrl, JSON.stringify(requestBody), {
       headers: {
@@ -88,6 +102,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
     });
     taskId = response.data.id;
     resData = response.data;
+    console.log("%c Line:91 🍎 resData", "background:#ed9ec7", resData);
   }
   console.log("%c Line:87 🥒 taskId", "background:#f5ce50", taskId);
 
@@ -95,7 +110,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
 
   return await pollTask(async () => {
     // 构建查询URL，两个地址模式时使用URL参数
-    const finalQueryUrl = isThreeUrlMode ? template({ id: taskId }, queryUrl) : `${queryUrl}?id=${taskId}`;
+    const finalQueryUrl = isThreeUrlMode ? template({ id: taskId }, queryUrl) : template({ id: taskId }, queryUrl);
 
     const { data: queryData } = await axios.get(finalQueryUrl, {
       headers: { Authorization: authorization },
@@ -111,7 +126,8 @@ export default async (input: VideoConfig, config: AIConfig) => {
       for (let i = 0; i < retries; i++) {
         try {
           // 构建下载URL
-          const finalDownloadUrl = isThreeUrlMode && downLoadUrl ? template({ id: taskId }, downLoadUrl) : queryData.video_url || queryData.url; // 从响应中获取视频URL
+          const finalDownloadUrl =
+            isThreeUrlMode && downLoadUrl ? template({ id: taskId }, downLoadUrl) : queryData.video_url || queryData.url || queryData.metadata.url; // 从响应中获取视频URL
 
           videoRes = await axios.get(finalDownloadUrl, {
             headers: isThreeUrlMode ? { Authorization: authorization } : {},

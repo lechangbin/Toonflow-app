@@ -82,7 +82,7 @@ export default async (input: VideoConfig, config: AIConfig): Promise<string> => 
   // 根据模型名称获取对应的适配器
   const modelAdapter = getModelAdapter(config.model);
 
-  const { requestUrl, queryUrl, downLoadUrl = null } = modelAdapter.buildReqUrl("http://127.0.0.1:33332");
+  const { requestUrl, queryUrl, downLoadUrl = null } = modelAdapter.buildReqUrl(config.baseURL || "https://api.toonflow.net");
   const taskBody = await modelAdapter.buildReqBody(input, config);
 
   const apiKey = config.apiKey.replace("Bearer ", "");
@@ -98,7 +98,7 @@ export default async (input: VideoConfig, config: AIConfig): Promise<string> => 
       const { data: queryData } = await axios.get(template({ id: taskId }, queryUrl), {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
-        console.log("%c Line:99 🥝 queryData", "background:#e41a6a", queryData);
+      console.log("%c Line:99 🥝 queryData", "background:#e41a6a", queryData);
 
       // const { status, result_url, fail_reason } = queryData.data || {};
 
