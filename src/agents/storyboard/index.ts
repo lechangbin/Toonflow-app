@@ -104,7 +104,7 @@ export default class Storyboard {
 
   getScript = tool({
     title: "getScript",
-    description: "获取剧本内容",
+    description: "用于获取剧本内容",
     inputSchema: z.object({}),
     execute: async () => {
       this.log("获取剧本", `scriptId: ${this.scriptId}`);
@@ -662,7 +662,9 @@ ${task}
       inputSchema: z.object({
         taskDescription: z.string().describe("具体的任务描述，包含章节范围、修改要求等详细信息"),
       }),
-      execute: async ({ taskDescription }) => this.invokeSubAgent(agentType, taskDescription),
+      execute: async ({ taskDescription }) => {
+        return this.invokeSubAgent(agentType, taskDescription);
+      },
     });
   }
 
@@ -672,7 +674,7 @@ ${task}
     return {
       segmentAgent: this.createSubAgentTool(
         "segmentAgent",
-        "调用片段师。负责根据剧本生成片段，会自行调用 getScript 获取剧本内容，并调用 updateSegments 保存片段结果。",
+        "调用片段师。负责根据剧本生成片段，必须调用 getScript工具 获取剧本内容，并调用 updateSegments 保存片段结果。",
       ),
       shotAgent: this.createSubAgentTool(
         "shotAgent",

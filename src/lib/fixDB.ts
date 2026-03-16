@@ -104,110 +104,104 @@ export default async (knex: Knex): Promise<void> => {
   if (needInsert.length) {
     await knex("t_aiModelMap").insert(needInsert);
   }
-  const checkVideoModel = await knex("t_videoModel").where("manufacturer", "formal").where("model", "Sora-2-I2V").first();
-  if (!checkVideoModel) {
-    await knex("t_videoModel").where("manufacturer", "formal").delete();
+  const viduVideototal = await knex("t_videoModel").where("manufacturer", "vidu").count({ count: "*" });
+  console.log("%c Line:108 🍷 viduVideototal", "background:#fca650", viduVideototal);
+  const viduCount = Number(viduVideototal[0].count);
+  if (viduCount > 5) {
+    await knex("t_videoModel").where("manufacturer", "vidu").delete();
     await knex("t_videoModel").insert([
       {
-        manufacturer: "formal",
-        model: "Seedance-1.5-Pro-audio",
-        durationResolutionMap: JSON.stringify([{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
-        aspectRatio: JSON.stringify(["16:9", "9:16"]),
-        audio: 0,
-        type: JSON.stringify(["endFrameOptional"]),
-      },
-      {
-        manufacturer: "formal",
-        model: "Seedance-1.5-Pro-NotAudio",
-        durationResolutionMap: JSON.stringify([{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
-        aspectRatio: JSON.stringify(["16:9", "9:16"]),
-        audio: 0,
-        type: JSON.stringify(["endFrameOptional"]),
-      },
-      {
-        manufacturer: "formal",
-        model: "Seedance-1.0-Pro",
-        durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
-        aspectRatio: JSON.stringify(["16:9", "9:16"]),
-        audio: 0,
-        type: JSON.stringify(["endFrameOptional"]),
-      },
-      {
-        manufacturer: "formal",
-        model: "ViduQ3-turbo",
+        manufacturer: "vidu",
+        model: "viduq3-pro",
         durationResolutionMap: JSON.stringify([
           { duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], resolution: ["540p", "720p", "1080p"] },
         ]),
         aspectRatio: JSON.stringify(["16:9", "9:16", "3:4", "4:3", "1:1"]),
         audio: 1,
-        type: JSON.stringify(["singleImage"]),
+        type: JSON.stringify(["text", "singleImage"]),
       },
       {
-        manufacturer: "formal",
-        model: "ViduQ3-pro",
-        durationResolutionMap: JSON.stringify([
-          { duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], resolution: ["540p", "720p", "1080p"] },
-        ]),
-        aspectRatio: JSON.stringify(["16:9", "9:16", "3:4", "4:3", "1:1"]),
-        audio: 1,
-        type: JSON.stringify(["singleImage"]),
-      },
-      {
-        manufacturer: "formal",
-        model: "ViduQ2-pro-fast",
+        manufacturer: "vidu",
+        model: "viduq2-pro-fast",
         durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["720p", "1080p"] }]),
         aspectRatio: JSON.stringify([]),
         audio: 0,
         type: JSON.stringify(["singleImage", "startEndRequired"]),
       },
       {
-        manufacturer: "formal",
-        model: "ViduQ2-pro",
+        manufacturer: "vidu",
+        model: "viduq2-pro",
         durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
+        aspectRatio: JSON.stringify([]),
+        audio: 0,
+        type: JSON.stringify(["singleImage", "reference", "startEndRequired", "text"]),
+      },
+      {
+        manufacturer: "vidu",
+        model: "viduq2-turbo",
+        durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
+        aspectRatio: JSON.stringify([]),
+        audio: 0,
+        type: JSON.stringify(["singleImage", "reference", "startEndRequired", "text"]),
+      },
+      {
+        manufacturer: "vidu",
+        model: "vidu2.0",
+        durationResolutionMap: JSON.stringify([
+          { duration: [4], resolution: ["360p", "720p", "1080p"] },
+          { duration: [8], resolution: ["720p"] },
+        ]),
         aspectRatio: JSON.stringify([]),
         audio: 0,
         type: JSON.stringify(["singleImage", "reference", "startEndRequired"]),
       },
+    ]);
+  }
+  const klingVideototal = await knex("t_videoModel").where("manufacturer", "kling").count({ count: "*" });
+  console.log("%c Line:161 🍋 klingVideototal", "background:#93c0a4", klingVideototal);
+  const kelingcount = Number(klingVideototal[0].count);
+  if (kelingcount > 5) {
+    await knex("t_videoModel").where("manufacturer", "kling").delete();
+    await knex("t_videoModel").insert([
       {
-        manufacturer: "formal",
-        model: "ViduQ2-turbo",
-        durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
-        aspectRatio: JSON.stringify([]),
+        manufacturer: "kling",
+        model: "kling-v1(STD)",
+        durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["720p"] }]),
+        aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
         audio: 0,
-        type: JSON.stringify(["singleImage", "reference", "startEndRequired"]),
+        type: JSON.stringify(["text", "startEndRequired"]),
       },
       {
-        manufacturer: "formal",
-        model: "ViduQ2",
-        durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
-        aspectRatio: JSON.stringify([]),
+        manufacturer: "kling",
+        model: "kling-v1(PRO)",
+        durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
+        aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
         audio: 0,
-        type: JSON.stringify(["singleImage", "reference"]),
+        type: JSON.stringify(["text", "startEndRequired"]),
       },
-
       {
-        manufacturer: "formal",
-        model: "Sora-2-I2V",
-        durationResolutionMap: JSON.stringify([{ duration: [4, 8, 12], resolution: [] }]),
-        aspectRatio: JSON.stringify([]),
+        manufacturer: "kling",
+        model: "kling-v1-6(PRO)",
+        durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
+        aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
         audio: 0,
-        type: JSON.stringify(["singleImage", "reference"]),
+        type: JSON.stringify(["text", "startEndRequired"]),
       },
       {
-        manufacturer: "formal",
-        model: "Wan2.6-I2V-720P",
-        durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720p"] }]),
-        aspectRatio: JSON.stringify([]),
-        audio: 1,
-        type: JSON.stringify(["singleImage"]),
+        manufacturer: "kling",
+        model: "kling-v2-5-turbo(PRO)",
+        durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
+        aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
+        audio: 0,
+        type: JSON.stringify(["text", "startEndRequired"]),
       },
       {
-        manufacturer: "formal",
-        model: "Wan2.6-I2V-720P-1080P",
-        durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["1080p"] }]),
-        aspectRatio: JSON.stringify([]),
-        audio: 1,
-        type: JSON.stringify(["singleImage"]),
+        manufacturer: "kling",
+        model: "kling-v2-6(PRO)",
+        durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
+        aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
+        audio: 0,
+        type: JSON.stringify(["text", "startEndRequired"]),
       },
     ]);
   }
@@ -222,31 +216,6 @@ export default async (knex: Knex): Promise<void> => {
         audio: 1,
         type: JSON.stringify(["endFrameOptional", "multiImage"]),
       },
-    ]);
-  }
-  const checkImageModel = await knex("t_imageModel").where("manufacturer", "formal").where("model", "Doubao-Seedream-5.0-Lite").first();
-  if (!checkImageModel) {
-    await knex("t_imageModel").where("manufacturer", "formal").delete();
-    await knex("t_imageModel").insert([
-      { manufacturer: "formal", model: "Doubao-Seedream-5.0-Lite", grid: 1, type: "ti2i" },
-      { manufacturer: "formal", model: "doubao-seedream-4-5-251128", grid: 1, type: "ti2i" },
-      { manufacturer: "formal", model: "doubao-seedream-4-0-250828", grid: 1, type: "ti2i" },
-    ]);
-  }
-  const checkTextModel = await knex("t_imageModel").where("manufacturer", "formal").where("model", "claude-sonnet-4-6").first();
-  if (!checkTextModel) {
-    await knex("t_textModel").where("manufacturer", "formal").delete();
-    await knex("t_textModel").insert([
-      { manufacturer: "formal", model: "gpt-4.1", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "doubao-seed-2-0-pro-260215", responseFormat: "object", image: 0, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "doubao-seed-1-8-251215", responseFormat: "schema", image: 0, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "gpt-5.2", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "gpt-5.1", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "claude-sonnet-4-6", responseFormat: "schema", image: 0, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "claude-sonnet-4-5-20250929", responseFormat: "schema", image: 0, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "claude-opus-4-5-20251101", responseFormat: "schema", image: 0, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "qwen3.5-plus", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-      { manufacturer: "formal", model: "qwen3-max-2026-01-23", responseFormat: "schema", image: 1, think: 0, tool: 1 },
     ]);
   }
 };

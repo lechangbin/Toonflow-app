@@ -111,8 +111,6 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
       aspectRatio: input.aspectRatio as "1:1" | "3:4" | "4:3" | "9:16" | "16:9",
       size: sizeMap[input.size] ?? "1024x1024",
     });
-      console.log("%c Line:106 🥚 image", "background:#e41a6a", image);
-      
 
     if (image.base64.startsWith("data:image/")) {
       return image.base64;

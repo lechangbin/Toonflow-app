@@ -82,7 +82,7 @@ export default async (input: VideoConfig, config: AIConfig): Promise<string> => 
   // 根据模型名称获取对应的适配器
   const modelAdapter = getModelAdapter(config.model);
 
-  const { requestUrl, queryUrl, downLoadUrl = null } = modelAdapter.buildReqUrl(config.baseURL || "https://api.toonflow.net");
+  const { requestUrl, queryUrl, downLoadUrl = null } = modelAdapter.buildReqUrl(config.baseURL);
   const taskBody = await modelAdapter.buildReqBody(input, config);
 
   const apiKey = config.apiKey.replace("Bearer ", "");
