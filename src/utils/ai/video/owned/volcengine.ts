@@ -10,8 +10,6 @@ export default async (input: VideoConfig, config: AIConfig) => {
   const authorization = "Bearer " + config.apiKey.replace(/^Bearer\s*/i, "").trim();
   const baseUrl = config.baseURL ?? "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks";
   const images = input.imageBase64 || [];
-  // 判断是否为首尾帧模式（需要两张图且类型支持首尾帧）
-  const isStartEndMode = images.length === 2 && hasStartEndType;
 
   // 构建图片内容
   const imageContent = images.map((base64, index) => {
@@ -19,7 +17,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       type: "image_url",
       image_url: { url: base64 },
     };
-    if (isStartEndMode) {
+    if (hasStartEndType) {
       item.role = index === 0 ? "first_frame" : "last_frame";
     } else {
       item.role = "reference_image";
