@@ -99,9 +99,9 @@ const prompt = `
 `;
 async function urlToBase64(imageUrl: string): Promise<string> {
   const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
-  const contentType = response.headers["content-type"] || "image/png";
+  const contentType = response.headers["content-type"] || "image/jpg";
   const base64 = Buffer.from(response.data, "binary").toString("base64");
-  return `data:${contentType};base64,${base64}`;
+  return `${base64}`;
 }
 // 生成单个分镜提示
 async function generateSingleVideoPrompt({
@@ -113,6 +113,8 @@ async function generateSingleVideoPrompt({
   storyboardPrompt: string;
   ossPath: string;
 }): Promise<{ content: string; time: number; name: string }> {
+  console.log("%c Line:116 🍭 ossPath", "background:#6ec1c2", ossPath);
+
   const messages: any[] = [
     {
       role: "system",
@@ -134,8 +136,10 @@ async function generateSingleVideoPrompt({
   ];
 
   try {
+    console.log("%c Line:140 🍩", "background:#4fff4B");
     const apiConfig = await u.getPromptAi("videoPrompt");
 
+    console.log("%c Line:143 🍑", "background:#e41a6a");
     const result = await u.ai.text.invoke(
       {
         messages,
@@ -159,6 +163,7 @@ async function generateSingleVideoPrompt({
 
     return result;
   } catch (err: any) {
+    console.log("%c Line:167 🥤 err", "background:#465975", err);
     console.error("generateSingleVideoPrompt 调用失败:", err?.message || err);
     throw new Error(`生成视频提示词失败: ${err?.message || "未知错误"}`);
   }

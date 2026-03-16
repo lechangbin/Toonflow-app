@@ -98,14 +98,13 @@ export default class Storyboard {
 
   private log(action: string, detail?: string) {
     const msg = detail ? `${action}: ${detail}` : action;
-    console.log(`\n[${new Date().toLocaleTimeString()}] ${msg}\n`);
   }
 
   // ==================== 剧本相关操作 ====================
 
   getScript = tool({
     title: "getScript",
-    description: "获取剧本内容",
+    description: "用于获取剧本内容",
     inputSchema: z.object({}),
     execute: async () => {
       this.log("获取剧本", `scriptId: ${this.scriptId}`);
@@ -242,7 +241,6 @@ ${sections.join("\n\n")}
       const skipped: number[] = [];
 
       for (const item of shots) {
-
         const exists = this.shots.some((f) => f.segmentId === item.segmentIndex);
         if (exists) {
           skipped.push(item.segmentIndex);
@@ -445,6 +443,7 @@ ${sections.join("\n\n")}
         this.scriptId,
         this.projectId,
       );
+
       // 通知前端正在分割图片
       this.emit("shotImageGenerateProgress", { shotId, status: "splitting", message: "正在分割宫格图片为单张镜头图" });
 
@@ -460,8 +459,10 @@ ${sections.join("\n\n")}
 
       for (let i = 0; i < imageBuffers.length; i++) {
         const fileName = `${this.projectId}/chat/${this.scriptId}/storyboard/shot_${shotId}_take_${i}_${timestamp}.png`;
+
         await u.oss.writeFile(fileName, imageBuffers[i]);
         const imageUrl = await u.oss.getFileUrl(fileName);
+
         imagePaths.push(imageUrl);
 
         // 每保存一张镜头图片通知进度
@@ -661,7 +662,9 @@ ${task}
       inputSchema: z.object({
         taskDescription: z.string().describe("具体的任务描述，包含章节范围、修改要求等详细信息"),
       }),
-      execute: async ({ taskDescription }) => this.invokeSubAgent(agentType, taskDescription),
+      execute: async ({ taskDescription }) => {
+        return this.invokeSubAgent(agentType, taskDescription);
+      },
     });
   }
 
@@ -671,7 +674,7 @@ ${task}
     return {
       segmentAgent: this.createSubAgentTool(
         "segmentAgent",
-        "调用片段师。负责根据剧本生成片段，会自行调用 getScript 获取剧本内容，并调用 updateSegments 保存片段结果。",
+        "调用片段师。负责根据剧本生成片段，必须调用 getScript工具 获取剧本内容，并调用 updateSegments 保存片段结果。",
       ),
       shotAgent: this.createSubAgentTool(
         "shotAgent",

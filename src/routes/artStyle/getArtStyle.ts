@@ -5,15 +5,15 @@ import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
-//删除分镜 
 export default router.post(
   "/",
   validateFields({
-    id: z.number(),
+    name: z.string(),
   }),
   async (req, res) => {
-    const { id } = req.body;
-    await u.db("t_assets").where("id", id).delete();
-    res.status(200).send(success("分镜删除成功"));
+    const { name } = req.body;
+    const data = await u.db("t_artStyle").where("name", name).select("styles").first();
+    const styles = data?.styles ? JSON.parse(data.styles) : [];
+    res.status(200).send(success(styles));
   },
 );

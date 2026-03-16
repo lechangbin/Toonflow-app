@@ -5,7 +5,7 @@ import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
-// 删除大纲
+// 保存历史消息记录
 export default router.post(
   "/",
   validateFields({

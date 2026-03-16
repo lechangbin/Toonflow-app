@@ -40,7 +40,7 @@ export default router.post(
     const { id, type, projectId, base64, prompt, name } = req.body;
 
     //获取风格
-    const project = await u.db("t_project").where("id", projectId).select("artStyle", "type", "intro").first();
+    const project = await u.db("t_project").where("id", projectId).select("artStyle", "type", "intro", "videoRatio").first();
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
     const promptsList = await u
@@ -123,8 +123,13 @@ export default router.post(
       state: "生成中",
       assetsId: id,
     });
-    const apiConfig = await u.getPromptAi("assetsImage");
+    let taskClass = "";
+    if (type == "role") taskClass = "角色图生成";
+    if (type == "scene") taskClass = "场景图生成";
+    if (type == "props") taskClass = "道具图生成";
+    if (type == "storyboard") taskClass = "分镜图生成";
 
+    const apiConfig = await u.getPromptAi("assetsImage");
     try {
       const contentStr = await u.ai.image(
         {
@@ -132,7 +137,11 @@ export default router.post(
           prompt: userPrompt,
           imageBase64: base64 ? [base64] : [],
           size: "2K",
-          aspectRatio: "16:9",
+          aspectRatio: project.videoRatio ?? "16:9",
+          taskClass: taskClass,
+          name: name,
+          describe: prompt,
+          projectId: projectId,
         },
         apiConfig,
       );
@@ -171,7 +180,6 @@ export default router.post(
           filePath: imagePath,
           type: insertType,
         });
-
         const path = await u.oss.getFileUrl(imagePath!);
 
         // const state = await u.db("t_assets").where("id", id).select("state").first();

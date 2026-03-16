@@ -159,15 +159,6 @@ const modelList: Owned[] = [
     audio: false,
   },
   // ================== ViduQ3系列 ==================
-  // viduq3-pro 文生视频
-  {
-    manufacturer: "vidu",
-    model: "viduq3-pro",
-    durationResolutionMap: [{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], resolution: ["540p", "720p", "1080p"] }],
-    aspectRatio: ["16:9", "9:16", "3:4", "4:3", "1:1"],
-    type: ["text"],
-    audio: true,
-  },
   // viduq3-pro 图生视频
   {
     manufacturer: "vidu",
@@ -187,14 +178,6 @@ const modelList: Owned[] = [
     audio: false,
   },
   // viduq2-pro 文生视频
-  {
-    manufacturer: "vidu",
-    model: "viduq2-pro",
-    durationResolutionMap: [{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }],
-    aspectRatio: ["16:9", "9:16", "3:4", "4:3", "1:1"],
-    type: ["text"],
-    audio: false,
-  },
   // viduq2-pro 图生视频
   {
     manufacturer: "vidu",
@@ -205,14 +188,6 @@ const modelList: Owned[] = [
     audio: false,
   },
   // viduq2-turbo 文生视频
-  {
-    manufacturer: "vidu",
-    model: "viduq2-turbo",
-    durationResolutionMap: [{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }],
-    aspectRatio: ["16:9", "9:16", "3:4", "4:3", "1:1"],
-    type: ["text"],
-    audio: false,
-  },
   // viduq2-turbo 图生视频
   {
     manufacturer: "vidu",
@@ -223,14 +198,6 @@ const modelList: Owned[] = [
     audio: false,
   },
   // viduq1 文生视频
-  {
-    manufacturer: "vidu",
-    model: "viduq1",
-    durationResolutionMap: [{ duration: [5], resolution: ["1080p"] }],
-    aspectRatio: ["16:9", "9:16", "1:1"],
-    type: ["text"],
-    audio: false,
-  },
   // viduq1 图生视频
   {
     manufacturer: "vidu",
@@ -465,7 +432,7 @@ const modelList: Owned[] = [
     type: ["singleImage", "text"],
     audio: false,
   },
-   // ================== Apimart 系列 ==================
+  // ================== Apimart 系列 ==================
   // sora
   {
     manufacturer: "apimart",

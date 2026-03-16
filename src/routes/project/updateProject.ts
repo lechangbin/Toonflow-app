@@ -14,9 +14,10 @@ export default router.post(
     type: z.string().optional().nullable(),
     artStyle: z.string().optional().nullable(),
     videoRatio: z.string().optional().nullable(),
+    projectType: z.string().optional().nullable(),
   }),
   async (req, res) => {
-    const { id, intro, type, artStyle, videoRatio } = req.body;
+    const { id, intro, type, artStyle, videoRatio, projectType } = req.body;
 
     await u.db("t_project").where("id", id).update({
       intro,
@@ -26,5 +27,5 @@ export default router.post(
     });
 
     res.status(200).send(success({ message: "修改成功" }));
-  }
+  },
 );

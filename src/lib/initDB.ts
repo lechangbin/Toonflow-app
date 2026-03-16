@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 import { v4 as uuid } from "uuid";
+import { artStyle } from "./artStyle";
 interface TableSchema {
   name: string;
   builder: (table: Knex.CreateTableBuilder) => void;
@@ -96,6 +97,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "t_project",
       builder: (table) => {
         table.integer("id");
+        // table.string("projectType");
         table.text("name");
         table.text("intro");
         table.text("type");
@@ -161,20 +163,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       },
     },
     {
-      name: "t_taskList",
-      builder: (table) => {
-        table.integer("id").notNullable();
-        table.integer("projectName");
-        table.text("name");
-        table.text("prompt");
-        table.text("state");
-        table.text("startTime");
-        table.text("endTime");
-        table.primary(["id"]);
-        table.unique(["id"]);
-      },
-    },
-    {
       name: "t_image",
       builder: (table) => {
         table.integer("id").notNullable();
@@ -206,6 +194,36 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["id"]);
       },
       initData: async (knex) => {},
+    },
+    // {
+    //   name: "t_myTasks",
+    //   builder: (table) => {
+    //     table.integer("id").notNullable();
+    //     table.integer("projectId");
+    //     table.string("taskClass");
+    //     table.string("relatedObjects");
+    //     table.string("model");
+    //     table.text("describe");
+    //     table.string("state");
+    //     table.integer("startTime");
+    //     table.text("reason");
+    //     table.primary(["id"]);
+    //     table.unique(["id"]);
+    //   },
+    //   initData: async (knex) => {},
+    // },
+    {
+      name: "t_artStyle",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.string("name");
+        table.text("styles");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+      initData: async (knex) => {
+        await knex("t_artStyle").insert(artStyle.map((item, index) => ({ id: index + 1, name: item.name, styles: JSON.stringify(item.styles) })));
+      },
     },
     {
       name: "t_videoConfig",
@@ -573,54 +591,38 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
           { manufacturer: "deepSeek", model: "deepseek-chat", responseFormat: "schema", image: 0, think: 0, tool: 1 },
           { manufacturer: "deepSeek", model: "deepseek-reasoner", responseFormat: "schema", image: 0, think: 1, tool: 1 },
           { manufacturer: "volcengine", model: "doubao-seed-2-0-pro-260215", responseFormat: "object", image: 1, think: 1, tool: 1 },
-          // { manufacturer: "volcengine", model: "doubao-seed-2-0-lite-260215", responseFormat: "object", image: 1, think: 1, tool: 1 },
-          // { manufacturer: "volcengine", model: "doubao-seed-2-0-mini-260215", responseFormat: "object", image: 1, think: 1, tool: 1 },
           { manufacturer: "volcengine", model: "doubao-seed-1-8-251228", responseFormat: "schema", image: 1, think: 1, tool: 1 },
-          // { manufacturer: "volcengine", model: "doubao-seed-1-6-251015", responseFormat: "schema", image: 1, think: 1, tool: 1 },
-          // { manufacturer: "volcengine", model: "doubao-seed-1-6-lite-251015", responseFormat: "schema", image: 1, think: 1, tool: 1 },
-          // { manufacturer: "volcengine", model: "doubao-seed-1-6-flash-250828", responseFormat: "schema", image: 1, think: 1, tool: 1 },
           { manufacturer: "zhipu", model: "glm-4.7", responseFormat: "object", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "zhipu", model: "glm-4.7-flashx", responseFormat: "object", image: 0, think: 0, tool: 1 },
           { manufacturer: "zhipu", model: "glm-4.6", responseFormat: "object", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "zhipu", model: "glm-4.5-air", responseFormat: "object", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "zhipu", model: "glm-4.5-airx", responseFormat: "object", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "zhipu", model: "glm-4-long", responseFormat: "object", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "zhipu", model: "glm-4-flashx-250414", responseFormat: "object", image: 0, think: 0, tool: 1 },
           { manufacturer: "zhipu", model: "glm-4.7-flash", responseFormat: "object", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "zhipu", model: "glm-4.5-flash", responseFormat: "object", image: 0, think: 1, tool: 1 },
-          // { manufacturer: "zhipu", model: "glm-4-flash-250414", responseFormat: "object", image: 0, think: 0, tool: 1 },
           { manufacturer: "zhipu", model: "glm-4.6v", responseFormat: "object", image: 1, think: 1, tool: 1 },
           { manufacturer: "qwen", model: "qwen-vl-max", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "qwen", model: "qwen-plus-latest", responseFormat: "schema", image: 0, think: 0, tool: 1 },
           { manufacturer: "qwen", model: "qwen-max", responseFormat: "schema", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "qwen", model: "qwen2.5-72b-instruct", responseFormat: "schema", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "qwen", model: "qwen2.5-14b-instruct-1m", responseFormat: "schema", image: 0, think: 0, tool: 1 },
-          // { manufacturer: "qwen", model: "qwen2.5-vl-72b-instruct", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "openai", model: "gpt-4o", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "openai", model: "gpt-4o-mini", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "openai", model: "gpt-4.1", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "openai", model: "gpt-5.1", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "openai", model: "gpt-5.2", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "gemini", model: "gemini-3-pro-preview", responseFormat: "schema", image: 1, think: 1, tool: 1 },
           { manufacturer: "gemini", model: "gemini-2.5-pro", responseFormat: "schema", image: 1, think: 1, tool: 1 },
-          // { manufacturer: "gemini", model: "gemini-2.5-flash", responseFormat: "schema", image: 1, think: 1, tool: 1 },
-          // { manufacturer: "gemini", model: "gemini-2.0-flash", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "gemini", model: "gemini-2.0-flash-lite", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "gemini", model: "gemini-1.5-pro", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "gemini", model: "gemini-1.5-flash", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "anthropic", model: "claude-opus-4-5", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "anthropic", model: "claude-haiku-4-5", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "anthropic", model: "claude-sonnet-4-5", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "anthropic", model: "claude-opus-4-1", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "anthropic", model: "claude-opus-4-0", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "anthropic", model: "claude-sonnet-4-0", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "anthropic", model: "claude-3-7-sonnet-latest", responseFormat: "schema", image: 1, think: 0, tool: 1 },
-          // { manufacturer: "anthropic", model: "claude-3-5-haiku-latest", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "xai", model: "grok-3", responseFormat: "schema", image: 0, think: 0, tool: 1 },
           { manufacturer: "xai", model: "grok-4", responseFormat: "schema", image: 0, think: 0, tool: 1 },
           { manufacturer: "xai", model: "grok-4.1", responseFormat: "schema", image: 1, think: 0, tool: 1 },
           { manufacturer: "other", model: "", responseFormat: "object", image: 1, think: 0, tool: 1 },
           { manufacturer: "modelScope", model: "deepseek-ai/DeepSeek-V3.2", responseFormat: "object", image: 0, think: 0, tool: 1 },
+
+          // { manufacturer: "formal", model: "gpt-4.1", responseFormat: "schema", image: 1, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "doubao-seed-2-0-pro-260215", responseFormat: "object", image: 0, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "doubao-seed-1-8-251215", responseFormat: "schema", image: 0, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "gpt-5.2", responseFormat: "schema", image: 1, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "gpt-5.1", responseFormat: "schema", image: 1, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "claude-sonnet-4-6", responseFormat: "schema", image: 0, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "claude-sonnet-4-5-20250929", responseFormat: "schema", image: 0, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "claude-opus-4-5-20251101", responseFormat: "schema", image: 0, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "qwen3.5-plus", responseFormat: "schema", image: 1, think: 0, tool: 1 },
+          // { manufacturer: "formal", model: "qwen3-max-2026-01-23", responseFormat: "schema", image: 1, think: 0, tool: 1 },
         ]);
       },
     },
@@ -638,7 +640,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         await knex("t_imageModel").insert([
           { manufacturer: "volcengine", model: "doubao-seedream-5-0-260128", grid: 1, type: "ti2i" },
           { manufacturer: "volcengine", model: "doubao-seedream-4-5-251128", grid: 0, type: "ti2i" },
-          // { manufacturer: "volcengine", model: "doubao-seedream-4-0-250828", grid: 0, type: "ti2i" },
           { manufacturer: "kling", model: "kling-image-o1", grid: 0, type: "ti2i" },
           { manufacturer: "gemini", model: "gemini-2.5-flash-image", grid: 1, type: "ti2i" },
           { manufacturer: "gemini", model: "gemini-3-pro-image-preview", grid: 1, type: "ti2i" },
@@ -650,6 +651,10 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
           { manufacturer: "grsai", model: "nano-banana-pro", grid: 1, type: "ti2i" },
           { manufacturer: "grsai", model: "nano-banana", grid: 1, type: "ti2i" },
           { manufacturer: "grsai", model: "nano-banana-2", grid: 1, type: "ti2i" },
+
+          // { manufacturer: "formal", model: "Doubao-Seedream-5.0-Lite", grid: 1, type: "ti2i" },
+          // { manufacturer: "formal", model: "doubao-seedream-4-5-251128", grid: 1, type: "ti2i" },
+          // { manufacturer: "formal", model: "doubao-seedream-4-0-250828", grid: 1, type: "ti2i" },
         ]);
       },
     },
@@ -668,7 +673,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       initData: async (knex) => {
         await knex("t_videoModel").insert([
           {
-            id: 1,
             manufacturer: "volcengine",
             model: "doubao-seedance-1-5-pro-251215",
             durationResolutionMap: JSON.stringify([{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
@@ -677,7 +681,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text", "endFrameOptional"]),
           },
           {
-            id: 2,
             manufacturer: "volcengine",
             model: "doubao-seedance-1-0-pro-250528",
             durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
@@ -686,7 +689,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text", "endFrameOptional"]),
           },
           {
-            id: 3,
             manufacturer: "volcengine",
             model: "doubao-seedance-1-0-pro-fast-251015",
             durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
@@ -695,7 +697,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text", "singleImage"]),
           },
           {
-            id: 4,
             manufacturer: "volcengine",
             model: "doubao-seedance-1-0-lite-i2v-250428",
             durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
@@ -704,106 +705,54 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["endFrameOptional", "reference"]),
           },
           {
-            id: 5,
             manufacturer: "volcengine",
-            model: "doubao-seedance-1-0-lite-t2v-250428",
-            durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
+            model: "doubao-seedance-2-0-260128",
+            durationResolutionMap: JSON.stringify([{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720p", "480p"] }]),
             aspectRatio: JSON.stringify(["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]),
-            audio: 0,
-            type: JSON.stringify(["text"]),
+            audio: 1,
+            type: JSON.stringify(["endFrameOptional", "multiImage"]),
           },
           {
-            id: 6,
             manufacturer: "kling",
             model: "kling-v1(STD)",
             durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["720p"] }]),
             aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
             audio: 0,
-            type: JSON.stringify(["text"]),
+            type: JSON.stringify(["text", "startEndRequired"]),
           },
           {
-            id: 7,
-            manufacturer: "kling",
-            model: "kling-v1(STD)",
-            durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["720p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["startEndRequired"]),
-          },
-          {
-            id: 8,
             manufacturer: "kling",
             model: "kling-v1(PRO)",
             durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
             aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
             audio: 0,
-            type: JSON.stringify(["text"]),
+            type: JSON.stringify(["text", "startEndRequired"]),
           },
           {
-            id: 9,
-            manufacturer: "kling",
-            model: "kling-v1(PRO)",
-            durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["startEndRequired"]),
-          },
-          {
-            id: 10,
             manufacturer: "kling",
             model: "kling-v1-6(PRO)",
             durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
             aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
             audio: 0,
-            type: JSON.stringify(["text"]),
+            type: JSON.stringify(["text", "startEndRequired"]),
           },
           {
-            id: 11,
-            manufacturer: "kling",
-            model: "kling-v1-6(PRO)",
-            durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["startEndRequired"]),
-          },
-          {
-            id: 12,
             manufacturer: "kling",
             model: "kling-v2-5-turbo(PRO)",
             durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
             aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
             audio: 0,
-            type: JSON.stringify(["text"]),
+            type: JSON.stringify(["text", "startEndRequired"]),
           },
           {
-            id: 13,
-            manufacturer: "kling",
-            model: "kling-v2-5-turbo(PRO)",
-            durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["startEndRequired"]),
-          },
-          {
-            id: 14,
             manufacturer: "kling",
             model: "kling-v2-6(PRO)",
             durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
             aspectRatio: JSON.stringify(["16:9", "1:1", "9:16"]),
             audio: 0,
-            type: JSON.stringify(["text"]),
+            type: JSON.stringify(["text", "startEndRequired"]),
           },
           {
-            id: 15,
-            manufacturer: "kling",
-            model: "kling-v2-6(PRO)",
-            durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["1080p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["startEndRequired"]),
-          },
-          {
-            id: 16,
             manufacturer: "vidu",
             model: "viduq3-pro",
             durationResolutionMap: JSON.stringify([
@@ -811,21 +760,9 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             ]),
             aspectRatio: JSON.stringify(["16:9", "9:16", "3:4", "4:3", "1:1"]),
             audio: 1,
-            type: JSON.stringify(["text"]),
+            type: JSON.stringify(["text", "singleImage"]),
           },
           {
-            id: 17,
-            manufacturer: "vidu",
-            model: "viduq3-pro",
-            durationResolutionMap: JSON.stringify([
-              { duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], resolution: ["540p", "720p", "1080p"] },
-            ]),
-            aspectRatio: JSON.stringify([]),
-            audio: 1,
-            type: JSON.stringify(["singleImage"]),
-          },
-          {
-            id: 18,
             manufacturer: "vidu",
             model: "viduq2-pro-fast",
             durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["720p", "1080p"] }]),
@@ -834,70 +771,22 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["singleImage", "startEndRequired"]),
           },
           {
-            id: 19,
-            manufacturer: "vidu",
-            model: "viduq2-pro",
-            durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
-            aspectRatio: JSON.stringify(["16:9", "9:16", "3:4", "4:3", "1:1"]),
-            audio: 0,
-            type: JSON.stringify(["text"]),
-          },
-          {
-            id: 20,
             manufacturer: "vidu",
             model: "viduq2-pro",
             durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
             aspectRatio: JSON.stringify([]),
             audio: 0,
-            type: JSON.stringify(["singleImage", "reference", "startEndRequired"]),
+            type: JSON.stringify(["singleImage", "reference", "startEndRequired", "text"]),
           },
           {
-            id: 21,
-            manufacturer: "vidu",
-            model: "viduq2-turbo",
-            durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
-            aspectRatio: JSON.stringify(["16:9", "9:16", "3:4", "4:3", "1:1"]),
-            audio: 0,
-            type: JSON.stringify(["text"]),
-          },
-          {
-            id: 22,
             manufacturer: "vidu",
             model: "viduq2-turbo",
             durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
             aspectRatio: JSON.stringify([]),
             audio: 0,
-            type: JSON.stringify(["singleImage", "reference", "startEndRequired"]),
+            type: JSON.stringify(["singleImage", "reference", "startEndRequired", "text"]),
           },
           {
-            id: 23,
-            manufacturer: "vidu",
-            model: "viduq1",
-            durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["1080p"] }]),
-            aspectRatio: JSON.stringify(["16:9", "9:16", "1:1"]),
-            audio: 0,
-            type: JSON.stringify(["text"]),
-          },
-          {
-            id: 24,
-            manufacturer: "vidu",
-            model: "viduq1",
-            durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["1080p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["singleImage", "reference", "startEndRequired"]),
-          },
-          {
-            id: 25,
-            manufacturer: "vidu",
-            model: "viduq1-classic",
-            durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["1080p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["singleImage", "startEndRequired"]),
-          },
-          {
-            id: 26,
             manufacturer: "vidu",
             model: "vidu2.0",
             durationResolutionMap: JSON.stringify([
@@ -909,7 +798,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["singleImage", "reference", "startEndRequired"]),
           },
           {
-            id: 27,
             manufacturer: "wan",
             model: "wan2.6-t2v",
             durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720p", "1080p"] }]),
@@ -918,7 +806,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text"]),
           },
           {
-            id: 28,
             manufacturer: "wan",
             model: "wan2.5-t2v-preview",
             durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["480p", "720p", "1080p"] }]),
@@ -927,7 +814,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text"]),
           },
           {
-            id: 29,
             manufacturer: "wan",
             model: "wan2.2-t2v-plus",
             durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["480p", "1080p"] }]),
@@ -936,7 +822,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text"]),
           },
           {
-            id: 30,
             manufacturer: "wan",
             model: "wanx2.1-t2v-turbo",
             durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["480p", "720p"] }]),
@@ -945,7 +830,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text"]),
           },
           {
-            id: 31,
             manufacturer: "wan",
             model: "wanx2.1-t2v-plus",
             durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["720p"] }]),
@@ -954,7 +838,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text"]),
           },
           {
-            id: 32,
             manufacturer: "wan",
             model: "wan2.6-i2v-flash",
             durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720p", "1080p"] }]),
@@ -963,7 +846,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["singleImage"]),
           },
           {
-            id: 33,
             manufacturer: "wan",
             model: "wan2.6-i2v",
             durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720p", "1080p"] }]),
@@ -972,7 +854,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["singleImage"]),
           },
           {
-            id: 34,
             manufacturer: "wan",
             model: "wan2.5-i2v-preview",
             durationResolutionMap: JSON.stringify([{ duration: [5, 10], resolution: ["480p", "720p", "1080p"] }]),
@@ -981,7 +862,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["singleImage"]),
           },
           {
-            id: 35,
             manufacturer: "wan",
             model: "wan2.2-i2v-flash",
             durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["480p", "720p", "1080p"] }]),
@@ -990,7 +870,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["singleImage"]),
           },
           {
-            id: 36,
             manufacturer: "wan",
             model: "wan2.2-i2v-plus",
             durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["480p", "1080p"] }]),
@@ -999,25 +878,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["singleImage"]),
           },
           {
-            id: 37,
-            manufacturer: "wan",
-            model: "wanx2.1-i2v-plus",
-            durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["720p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["singleImage"]),
-          },
-          {
-            id: 38,
-            manufacturer: "wan",
-            model: "wanx2.1-i2v-turbo",
-            durationResolutionMap: JSON.stringify([{ duration: [3, 4, 5], resolution: ["480p", "720p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["singleImage"]),
-          },
-          {
-            id: 39,
             manufacturer: "wan",
             model: "wan2.2-kf2v-flash",
             durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["480p", "720p", "1080p"] }]),
@@ -1026,16 +886,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["startEndRequired"]),
           },
           {
-            id: 40,
-            manufacturer: "wan",
-            model: "wanx2.1-kf2v-plus",
-            durationResolutionMap: JSON.stringify([{ duration: [5], resolution: ["720p"] }]),
-            aspectRatio: JSON.stringify([]),
-            audio: 0,
-            type: JSON.stringify(["startEndRequired"]),
-          },
-          {
-            id: 41,
             manufacturer: "gemini",
             model: "veo-3.1-generate-preview",
             durationResolutionMap: JSON.stringify([
@@ -1047,7 +897,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text", "singleImage", "startEndRequired", "endFrameOptional", "reference"]),
           },
           {
-            id: 42,
             manufacturer: "gemini",
             model: "veo-3.1-fast-generate-preview",
             durationResolutionMap: JSON.stringify([
@@ -1059,7 +908,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text", "singleImage", "startEndRequired", "endFrameOptional", "reference"]),
           },
           {
-            id: 43,
             manufacturer: "gemini",
             model: "veo-3.0-generate-preview",
             durationResolutionMap: JSON.stringify([
@@ -1071,7 +919,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text", "singleImage"]),
           },
           {
-            id: 44,
             manufacturer: "gemini",
             model: "veo-3.0-fast-generate-preview",
             durationResolutionMap: JSON.stringify([
@@ -1083,7 +930,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text", "singleImage"]),
           },
           {
-            id: 45,
             manufacturer: "gemini",
             model: "veo-2.0-generate-001",
             durationResolutionMap: JSON.stringify([{ duration: [5, 6, 7, 8], resolution: ["720p"] }]),
@@ -1092,34 +938,30 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["text", "singleImage"]),
           },
           {
-            id: 46,
             manufacturer: "runninghub",
             model: "sora-2",
             durationResolutionMap: JSON.stringify([{ duration: [10, 15], resolution: [] }]),
             aspectRatio: JSON.stringify(["16:9", "9:16"]),
             audio: 0,
-            type: JSON.stringify(["singleImage", "text"]),
+            type: JSON.stringify(["singleImage", "text", "multiImage"]),
           },
           {
-            id: 47,
             manufacturer: "runninghub",
             model: "sora-2-pro",
             durationResolutionMap: JSON.stringify([{ duration: [15, 25], resolution: [] }]),
             aspectRatio: JSON.stringify(["16:9", "9:16"]),
             audio: 0,
-            type: JSON.stringify(["singleImage", "text"]),
+            type: JSON.stringify(["singleImage", "text", "multiImage"]),
           },
           {
-            id: 48,
             manufacturer: "grsai",
             model: "sora-2",
             durationResolutionMap: JSON.stringify([{ duration: [10, 15], resolution: [] }]),
             aspectRatio: JSON.stringify(["16:9", "9:16"]),
             audio: 0,
-            type: JSON.stringify(["singleImage", "text"]),
+            type: JSON.stringify(["singleImage", "text", "multiImage"]),
           },
           {
-            id: 49,
             manufacturer: "grsai",
             model: "veo3.1-pro",
             durationResolutionMap: JSON.stringify([]),
@@ -1129,7 +971,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
           },
 
           {
-            id: 50,
             manufacturer: "grsai",
             model: "veo3.1-pro-1080p",
             durationResolutionMap: JSON.stringify([]),
@@ -1138,7 +979,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["startEndRequired", "text"]),
           },
           {
-            id: 51,
             manufacturer: "grsai",
             model: "veo3.1-pro-4k",
             durationResolutionMap: JSON.stringify([]),
@@ -1147,7 +987,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["startEndRequired", "text"]),
           },
           {
-            id: 52,
             manufacturer: "grsai",
             model: "veo3.1-fast",
             durationResolutionMap: JSON.stringify([]),
@@ -1156,7 +995,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["startEndRequired", "text"]),
           },
           {
-            id: 53,
             manufacturer: "grsai",
             model: "veo3.1-fast-1080p",
             durationResolutionMap: JSON.stringify([]),
@@ -1165,7 +1003,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             type: JSON.stringify(["startEndRequired", "text"]),
           },
           {
-            id: 54,
             manufacturer: "grsai",
             model: "veo3.1-fast-4k",
             durationResolutionMap: JSON.stringify([]),
@@ -1173,6 +1010,108 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             audio: 0,
             type: JSON.stringify(["startEndRequired", "text"]),
           },
+
+          // {
+          //   manufacturer: "formal",
+          //   model: "Seedance-1.5-Pro-audio",
+          //   durationResolutionMap: JSON.stringify([{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
+          //   aspectRatio: JSON.stringify(["16:9", "9:16"]),
+          //   audio: 0,
+          //   type: JSON.stringify(["endFrameOptional"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "Seedance-1.5-Pro-NotAudio",
+          //   durationResolutionMap: JSON.stringify([{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
+          //   aspectRatio: JSON.stringify(["16:9", "9:16"]),
+          //   audio: 0,
+          //   type: JSON.stringify(["endFrameOptional"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "Seedance-1.0-Pro",
+          //   durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }]),
+          //   aspectRatio: JSON.stringify(["16:9", "9:16"]),
+          //   audio: 0,
+          //   type: JSON.stringify(["endFrameOptional"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "ViduQ3-turbo",
+          //   durationResolutionMap: JSON.stringify([
+          //     { duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], resolution: ["540p", "720p", "1080p"] },
+          //   ]),
+          //   aspectRatio: JSON.stringify(["16:9", "9:16", "3:4", "4:3", "1:1"]),
+          //   audio: 1,
+          //   type: JSON.stringify(["singleImage"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "ViduQ3-pro",
+          //   durationResolutionMap: JSON.stringify([
+          //     { duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], resolution: ["540p", "720p", "1080p"] },
+          //   ]),
+          //   aspectRatio: JSON.stringify(["16:9", "9:16", "3:4", "4:3", "1:1"]),
+          //   audio: 1,
+          //   type: JSON.stringify(["singleImage"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "ViduQ2-pro-fast",
+          //   durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["720p", "1080p"] }]),
+          //   aspectRatio: JSON.stringify([]),
+          //   audio: 0,
+          //   type: JSON.stringify(["singleImage", "startEndRequired"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "ViduQ2-pro",
+          //   durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
+          //   aspectRatio: JSON.stringify([]),
+          //   audio: 0,
+          //   type: JSON.stringify(["singleImage", "reference", "startEndRequired"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "ViduQ2-turbo",
+          //   durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
+          //   aspectRatio: JSON.stringify([]),
+          //   audio: 0,
+          //   type: JSON.stringify(["singleImage", "reference", "startEndRequired"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "ViduQ2",
+          //   durationResolutionMap: JSON.stringify([{ duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["540p", "720p", "1080p"] }]),
+          //   aspectRatio: JSON.stringify([]),
+          //   audio: 0,
+          //   type: JSON.stringify(["singleImage", "reference"]),
+          // },
+
+          // {
+          //   manufacturer: "formal",
+          //   model: "Sora-2-I2V",
+          //   durationResolutionMap: JSON.stringify([{ duration: [4, 8, 12], resolution: [] }]),
+          //   aspectRatio: JSON.stringify([]),
+          //   audio: 0,
+          //   type: JSON.stringify(["singleImage", "reference"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "Wan2.6-I2V-720P",
+          //   durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720p"] }]),
+          //   aspectRatio: JSON.stringify([]),
+          //   audio: 1,
+          //   type: JSON.stringify(["singleImage"]),
+          // },
+          // {
+          //   manufacturer: "formal",
+          //   model: "Wan2.6-I2V-720P-1080P",
+          //   durationResolutionMap: JSON.stringify([{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["1080p"] }]),
+          //   aspectRatio: JSON.stringify([]),
+          //   audio: 1,
+          //   type: JSON.stringify(["singleImage"]),
+          // },
         ]);
       },
     },

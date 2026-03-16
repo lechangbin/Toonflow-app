@@ -5,7 +5,7 @@ import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
 const router = express.Router();
 
-// 生成分镜图
+// 图片编辑
 export default router.post(
   "/",
   validateFields({

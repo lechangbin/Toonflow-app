@@ -5,6 +5,7 @@ import Storyboard from "@/agents/storyboard";
 const router = express.Router();
 expressWs(router as unknown as Application);
 
+// 分镜对话Agent
 router.ws("/", async (ws, req) => {
   let agent: Storyboard;
 

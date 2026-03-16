@@ -27,6 +27,10 @@ async function superResolutionAndSave(src: string, projectId: number, videoRatio
       systemPrompt: "你的核心任务是将所给的图片超分到 1K ，不改变图片任何内容，仅改变分辨率",
       prompt: "你的核心任务是将所给的图片超分到 1K ，不改变图片任何内容，仅改变分辨率",
       imageBase64: [await urlToBase64(src)],
+      taskClass: "分镜图超分",
+      name: `分镜图超分-${v4()}`,
+      describe: `原始图片链接: ${src}`,
+      projectId,
     },
     apiConfig,
   );
@@ -37,7 +41,7 @@ async function superResolutionAndSave(src: string, projectId: number, videoRatio
   await u.oss.writeFile(ossPath, buffer);
   return { ossPath, base64: `data:image/jpg;base64,${base64Str}` };
 }
-
+// 图片超分
 export default router.post(
   "/",
   validateFields({

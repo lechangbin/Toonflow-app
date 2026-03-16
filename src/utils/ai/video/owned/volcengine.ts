@@ -21,6 +21,8 @@ export default async (input: VideoConfig, config: AIConfig) => {
     };
     if (isStartEndMode) {
       item.role = index === 0 ? "first_frame" : "last_frame";
+    } else {
+      item.role = "reference_image";
     }
     return item;
   });
@@ -35,9 +37,10 @@ export default async (input: VideoConfig, config: AIConfig) => {
   };
 
   // 仅当模型支持音频时才添加 generate_audio 字段
-  if (input?.audio) {
+  if (typeof input?.audio == "boolean") {
     requestBody.generate_audio = input.audio ?? false;
   }
+
   // 创建视频生成任务
   const createResponse = await axios.post(baseUrl, requestBody, {
     headers: {
@@ -45,6 +48,7 @@ export default async (input: VideoConfig, config: AIConfig) => {
       Authorization: authorization,
     },
   });
+  console.log("%c Line:44 🍡 createResponse", "background:#2eafb0", createResponse.data);
 
   const taskId = createResponse.data.id;
 
@@ -55,18 +59,29 @@ export default async (input: VideoConfig, config: AIConfig) => {
     const data = await axios.get(`${baseUrl}/${taskId}`, {
       headers: { Authorization: authorization },
     });
+    console.log("%c Line:62 🥕 data.data", "background:#e41a6a", data.data);
 
-    const { status, content } = data.data;
+    const { status, content, error } = data.data;
 
     switch (status) {
       case "succeeded":
+      case "completed":
         return { completed: true, url: content?.video_url };
       case "failed":
       case "cancelled":
       case "expired":
-        return { completed: false, error: `任务${status}` };
+        let errorMsg = "";
+        try {
+          errorMsg = typeof error === "string" ? error : JSON.stringify(error);
+        } catch (e) {
+          errorMsg = error || "";
+        }
+        return { completed: false, error: `任务${status}: ${errorMsg}` };
       case "queued":
       case "running":
+      case "unknown":
+      case "submit":
+      case "in_progress":
         return { completed: false };
       default:
         return { completed: false, error: `未知状态: ${status}` };

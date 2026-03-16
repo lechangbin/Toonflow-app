@@ -176,13 +176,19 @@ async function processImages(images: ImageInfo[]): Promise<Buffer[]> {
 
   if (images.length <= maxImages) {
     const buffers = await Promise.all(images.map((img) => u.oss.getFile(img.filePath)));
+
     processedBuffers = await Promise.all(buffers.map((buffer) => compressImage(buffer)));
   } else {
     const mergeStartIndex = maxImages - 1;
+
     const firstBuffers = await Promise.all(images.slice(0, mergeStartIndex).map((img) => u.oss.getFile(img.filePath)));
+
     const compressedFirstImages = await Promise.all(firstBuffers.map((buffer) => compressImage(buffer)));
+
     const imagesToMergeList = images.slice(mergeStartIndex).map((img) => img.filePath);
+
     const mergedImage = await mergeImages(imagesToMergeList);
+
     processedBuffers = [...compressedFirstImages, mergedImage];
   }
 
@@ -290,7 +296,7 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
   const filteredImages = await filterRelevantAssets(cellPrompts, resources, allImages);
 
   const resourcesMapPrompts = buildResourcesMapPrompts(filteredImages);
-  console.log("====润色前：", cellPrompts);
+
   const promptsData = await generateImagePromptsTool({
     prompts: cellPrompts,
     style: `类型：${projectInfo?.type!}，风格：${projectInfo?.artStyle!}`,
@@ -305,7 +311,6 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
   // 注意：请严格按照提示词内容生成图片，确保人物样貌、艺术风格、色调光影一致。
   // `;
   const prompts = promptsData.prompt;
-  console.log("====润色后：", prompts);
 
   const processedImages = await processImages(filteredImages);
   const apiConfig = await u.getPromptAi("storyboardImage");
@@ -317,10 +322,13 @@ export default async (cells: { prompt: string }[], scriptId: number, projectId: 
       size: "4K",
       aspectRatio: projectInfo?.videoRatio ? (projectInfo.videoRatio as any) : "16:9",
       imageBase64: processedImages.map((buf) => buf.toString("base64")),
+      taskClass: "分镜图生成",
+      name: `分镜图-${outline?.title || "未知剧集"}`,
+      describe: prompts,
+      projectId,
     },
     apiConfig,
   );
-
   const match = contentStr.match(/base64,([A-Za-z0-9+/=]+)/);
   const base64Str = match?.[1] ?? contentStr;
   const buffer = Buffer.from(base64Str, "base64");

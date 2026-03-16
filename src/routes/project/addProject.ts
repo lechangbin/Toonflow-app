@@ -9,6 +9,7 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
+    projectType: z.string().optional(),
     name: z.string(),
     intro: z.string(),
     type: z.string(),
@@ -16,7 +17,7 @@ export default router.post(
     videoRatio: z.string(),
   }),
   async (req, res) => {
-    const { name, intro, type, artStyle, videoRatio } = req.body;
+    const { projectType, name, intro, type, artStyle, videoRatio } = req.body;
 
     await u.db("t_project").insert({
       name,
@@ -29,5 +30,5 @@ export default router.post(
     });
 
     res.status(200).send(success({ message: "新增项目成功" }));
-  }
+  },
 );

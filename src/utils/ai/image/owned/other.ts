@@ -1,6 +1,9 @@
 import "../type";
 import { generateImage, generateText, ModelMessage } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenAI, OpenAIProviderSettings } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+
 import axios from "axios";
 
 export default async (input: ImageConfig, config: AIConfig): Promise<string> => {
@@ -11,7 +14,7 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   const apiKey = config.apiKey.replace("Bearer ", "");
 
   const otherProvider = createOpenAICompatible({
-    name: "xixixi",
+    name: "other",
     baseURL: config.baseURL,
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -28,6 +31,12 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
   const fullPrompt = input.systemPrompt ? `${input.systemPrompt}\n\n${input.prompt}` : input.prompt;
   const model = config.model;
   if (model.includes("gemini") || model.includes("nano")) {
+    // 对于 Gemini 模型，使用 Google provider 以支持 imageConfig 参数
+    const googleProvider = createGoogleGenerativeAI({
+      apiKey: apiKey,
+      baseURL: config.baseURL,
+    });
+
     let promptData;
     if (input.imageBase64 && input.imageBase64.length) {
       promptData = [{ role: "system", content: fullPrompt + `请直接输出图片` }];
@@ -35,15 +44,14 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
         role: "user",
         content: input.imageBase64.map((i) => ({
           type: "image",
-          image: i,
+          image: i.replace(/^data:image\/[^;]+;base64,/, ""),
         })),
       });
     } else {
       promptData = fullPrompt + `请直接输出图片`;
     }
-
     const result = await generateText({
-      model: otherProvider.languageModel(model),
+      model: googleProvider.languageModel(model),
       prompt: promptData as string | ModelMessage[],
       providerOptions: {
         google: {
@@ -52,7 +60,6 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
               ? { aspectRatio: input.aspectRatio }
               : { aspectRatio: input.aspectRatio, imageSize: input.size }),
           },
-          responseModalities: ["IMAGE"],
         },
       },
     });
@@ -105,7 +112,11 @@ export default async (input: ImageConfig, config: AIConfig): Promise<string> => 
       size: sizeMap[input.size] ?? "1024x1024",
     });
 
-    return image.base64;
+    if (image.base64.startsWith("data:image/")) {
+      return image.base64;
+    } else {
+      return `data:image/png;base64,${image.base64}`;
+    }
   }
 };
 
