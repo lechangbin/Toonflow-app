@@ -23,9 +23,4 @@ export default async (knex: Knex): Promise<void> => {
       });
     }
   };
-
-  // memories 表新增字段
-  await addColumn("memories", "episodesId", "text");
-  await addColumn("memories", "agentType", "text");
-  await addColumn("memories", "name", "text");
 };
