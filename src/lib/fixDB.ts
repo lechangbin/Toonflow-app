@@ -105,7 +105,7 @@ export default async (knex: Knex): Promise<void> => {
     await knex("t_aiModelMap").insert(needInsert);
   }
   const viduVideototal = await knex("t_videoModel").where("manufacturer", "vidu").count({ count: "*" });
-  console.log("%c Line:108 🍷 viduVideototal", "background:#fca650", viduVideototal);
+
   const viduCount = Number(viduVideototal[0].count);
   if (viduCount > 5) {
     await knex("t_videoModel").where("manufacturer", "vidu").delete();
@@ -158,7 +158,7 @@ export default async (knex: Knex): Promise<void> => {
     ]);
   }
   const klingVideototal = await knex("t_videoModel").where("manufacturer", "kling").count({ count: "*" });
-  console.log("%c Line:161 🍋 klingVideototal", "background:#93c0a4", klingVideototal);
+
   const kelingcount = Number(klingVideototal[0].count);
   if (kelingcount > 5) {
     await knex("t_videoModel").where("manufacturer", "kling").delete();
