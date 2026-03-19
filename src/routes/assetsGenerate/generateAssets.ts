@@ -111,11 +111,14 @@ export default router.post(
       });
       aiImage.save(imagePath!);
       const imageData = await u.db("o_image").where("id", imageId).select("*").first();
+      const modelData = model.split(":")[1];
       if (imageData) {
         await u.db("o_image").where("id", imageId).update({
           state: "生成成功",
           filePath: imagePath,
           type: insertType,
+          model: modelData,
+          resolution: resolution,
         });
         const path = await u.oss.getFileUrl(imagePath!);
         await u.db("o_assets").where("id", id).update({
