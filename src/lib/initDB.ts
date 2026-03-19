@@ -48,8 +48,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => {
-      },
+      initData: async (knex) => {},
     },
     //技能表
     {
@@ -61,7 +60,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //Agent配置表
     {
@@ -153,16 +152,36 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             value: uuid().slice(0, 8),
           },
           {
-            key: "shortTermMemoryLength",
-            value: 10,
-          },
-          {
-            key: "searchTopK",
+            key: "messagesPerSummary",
             value: 3,
           },
           {
-            key: "similarityThreshold",
-            value: 0.3,
+            key: "shortTermLimit",
+            value: 5,
+          },
+          {
+            key: "summaryMaxLength",
+            value: 500,
+          },
+          {
+            key: "summaryLimit",
+            value: 10,
+          },
+          {
+            key: "ragLimit",
+            value: 3,
+          },
+          {
+            key: "deepRetrieveSummaryLimit",
+            value: 5,
+          },
+          {
+            key: "modelOnnxFile",
+            value: '["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]',
+          },
+          {
+            key: "modelDtype",
+            value: "fp16",
           },
         ]);
       },
@@ -183,7 +202,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //提示词表
     {
@@ -200,7 +219,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["id"]);
         table.unique(["code"]); // 代号唯一
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //资产表
     {
@@ -220,7 +239,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //任务中心表
     {
@@ -238,7 +257,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //小说原文表
     {
