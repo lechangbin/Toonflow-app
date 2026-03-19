@@ -45,7 +45,7 @@ db.sqlite-wal
 
 web/*
 
-db2.sqlite
+*.sqlite
 
 .devtools
 data/oss/*
