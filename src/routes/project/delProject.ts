@@ -26,7 +26,7 @@ export default router.post(
     await u.db("o_project").where("id", id).delete();
     await u.db("o_novel").where("projectId", id).delete();
     await u.db("o_outline").where("projectId", id).delete();
-    await u.db("o_myTasks").where("projectId", id).delete();
+    await u.db("o_tasks").where("projectId", id).delete();
 
     await u.db("o_script").where("projectId", id).delete();
     await u.db("o_assets").where("projectId", id).delete();
@@ -44,8 +44,6 @@ export default router.post(
     await tempAssetsQuery.delete();
 
     await u.db("o_video").whereIn("scriptId", scriptIds).delete();
-
-    await u.db("o_chatHistory").where("projectId", id).delete();
 
     try {
       await u.oss.deleteDirectory(`${id}/`);

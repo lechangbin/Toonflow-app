@@ -18,14 +18,14 @@ export default router.post(
     const rows = await u
       .db("memories")
       .where({ isolationKey, type: "message" })
-      .orderBy("createdAt", "asc")
-      .select("id", "content", "createdAt");
+      .orderBy("createTime", "asc")
+      .select("id", "content", "createTime");
 
     const history = rows.map((row) => ({
       id: row.id,
       role: "user",
       content: [{ type: "text", status: "complete", data: row.content }],
-      createdAt: row.createdAt,
+      createTime: row.createTime,
     }));
 
     res.status(200).send(success({ history }));

@@ -11,7 +11,7 @@ export default router.post(
     projectId: z.number(),
   }),
   async (req, res) => {
-    const data = await u.db("o_myTasks").where("projectId", req.body.projectId).select("taskClass").groupBy("taskClass");
+    const data = await u.db("o_tasks").where("projectId", req.body.projectId).select("taskClass").groupBy("taskClass");
     res.status(200).send(success(data));
   },
 );
