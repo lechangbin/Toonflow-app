@@ -3,6 +3,7 @@ import { createAGUIStream } from "@/utils/agent/aguiTools";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
 import { useSkill } from "@/utils/agent/skillsTools";
+import tools from "@/agents/productionAgent/tools";
 
 const router = express.Router();
 
@@ -17,15 +18,16 @@ export default router.post("/", async (req, res) => {
   //记忆
   const memory = new Memory("productionAgent", isolationKey);
   //skill
-  const skill = await useSkill("production-agent");
+  const skill = await useSkill("production-agent", "decision");
 
   const agui = createAGUIStream(res);
   agui.runStarted();
+  agui.custom("systemMessage", "已由 决策层AI 接管对话");
 
   // 存入用户消息
   await memory.add("user", text);
 
-    // 获取记忆上下文
+  // 获取记忆上下文
   const mem = await memory.get(text);
   const memoryContext = [
     mem.rag.length > 0 && `[相关记忆]\n${mem.rag.map((r) => r.content).join("\n")}`,
@@ -35,28 +37,21 @@ export default router.post("/", async (req, res) => {
     .filter(Boolean)
     .join("\n\n");
 
-
   const systemPrompt = [skill.prompt, memoryContext && `## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`]
     .filter(Boolean)
     .join("\n\n");
 
-  const messages = [
-    {
-      role: "user" as const,
-      content: text,
-    },
-  ];
-
   const { textStream } = await u.Ai.Text("productionAgent").stream({
     system: systemPrompt,
-    messages,
+    messages: [{ role: "user", content: text }],
     tools: {
       ...skill.tools,
       ...memory.getTools(),
+      ...tools(isolationKey, agui),
     },
     onFinish: async (completion) => {
       // 存入助手回复
-      await memory.add("assistant", completion.text);
+      await memory.add("decisionAI", completion.text);
     },
   });
 
@@ -65,9 +60,8 @@ export default router.post("/", async (req, res) => {
 
   for await (const chunk of textStream) {
     if (!msg) msg = agui.textMessage();
-    msg.content(chunk);
+    msg.send(chunk);
     fullResponse += chunk;
-    await delay(1);
   }
 
   msg?.end();
