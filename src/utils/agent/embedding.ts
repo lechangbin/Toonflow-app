@@ -2,18 +2,24 @@ import { pipeline, env as transformersEnv, FeatureExtractionPipeline } from "@hu
 import path from "path";
 import fs from "fs";
 import getPath from "@/utils/getPath";
+import db from "@/utils/db";
 
 // ── 模型配置 ──
-const modelOnnxFile = ["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]; // 模型文件路径
-const modelDtype = "fp16" as const; // 量化类型：fp32
-
+// const modelOnnxFile = ["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]; // 模型文件路径
+// const modelDtype = "fp16" as const; // 量化类型：fp32
 let extractor: FeatureExtractionPipeline | null = null;
 
 export async function initEmbedding(): Promise<void> {
   if (extractor) return;
 
   //todo 模型配置放到这里
-
+  const modelConfigData = await db("o_setting").whereIn("key", ["modelOnnxFile", "modelDtype"]);
+  const modelObj: Record<string, string> = {};
+  Object.entries(modelConfigData).forEach(([key, value]) => {
+    modelObj[key] = value as string;
+  });
+  let modelOnnxFile = modelObj?.modelOnnxFile ? JSON.parse(modelObj.modelOnnxFile) : ["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]; // 模型文件路径
+  let modelDtype = modelObj?.modelDtype ?? ("fp16" as const); // 量化类型：fp32
   const onnxPath = path.join(getPath("models"), ...modelOnnxFile);
   if (!fs.existsSync(onnxPath)) {
     throw new Error(`Embedding 模型文件不存在: ${onnxPath}`);

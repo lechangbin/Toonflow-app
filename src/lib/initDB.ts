@@ -140,16 +140,36 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             value: uuid().slice(0, 8),
           },
           {
-            key: "shortTermMemoryLength",
-            value: 10,
-          },
-          {
-            key: "searchTopK",
+            key: "messagesPerSummary",
             value: 3,
           },
           {
-            key: "similarityThreshold",
-            value: 0.3,
+            key: "shortTermLimit",
+            value: 5,
+          },
+          {
+            key: "summaryMaxLength",
+            value: 500,
+          },
+          {
+            key: "summaryLimit",
+            value: 10,
+          },
+          {
+            key: "ragLimit",
+            value: 3,
+          },
+          {
+            key: "deepRetrieveSummaryLimit",
+            value: 5,
+          },
+          {
+            key: "modelOnnxFile",
+            value: '["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]',
+          },
+          {
+            key: "modelDtype",
+            value: "fp16",
           },
         ]);
       },
