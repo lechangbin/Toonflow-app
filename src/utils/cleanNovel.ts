@@ -56,7 +56,7 @@ class CleanNovel {
     let preData: Novel | null = null;
     //所有事件
     let totalEvent: EventType[] = [];
-    const intansce = await ai.create(1);
+    const intansce = u.Ai.Text("eventExtractAi");
 
     try {
       for (let gi = 0; gi < groups.length; gi++) {
@@ -82,12 +82,11 @@ class CleanNovel {
         });
         let resData;
         try {
-          resData = await intansce.text.invoke(
-            {
-              messages: [
-                {
-                  role: "system",
-                  content: `
+          resData = await intansce.invoke({
+            messages: [
+              {
+                role: "system",
+                content: `
 你是专业剧本结构分析师，负责将用户提供的章节文本拆分为标准情节单元。请严格遵循以下规则执行。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -116,34 +115,32 @@ class CleanNovel {
 - 单个章节拆分为多个情节单元；
 - 遗漏任何章节。
 `,
-                },
-                ...cleanText,
-              ],
-              output: {
-                event: z.array(
-                  z
-                    .object({
-                      chapter: z
-                        .string()
-                        .describe(
-                          "事件覆盖的章节（如1-3章、4-6章），章节划分必须连续，每个章节范围只能属于一个事件。事件分割不可过细——避免只描述琐碎、日常细节的微小事件。",
-                        ),
-                      name: z.string().describe("事件名称"),
-                      detail: z.string().describe("事件过程详情（包括起因、经过、结果、场景、人物等）"),
-                    })
-                    .describe("事件必须在100-200字说明起因经过结果，不可将单一章节或细小场景独立成事件，"),
-                ),
               },
-            },
-            { modelName: "gpt-4.1" },
-          );
+              ...cleanText,
+            ],
+            // output: {
+            //   event: z.array(
+            //     z
+            //       .object({
+            //         chapter: z
+            //           .string()
+            //           .describe(
+            //             "事件覆盖的章节（如1-3章、4-6章），章节划分必须连续，每个章节范围只能属于一个事件。事件分割不可过细——避免只描述琐碎、日常细节的微小事件。",
+            //           ),
+            //         name: z.string().describe("事件名称"),
+            //         detail: z.string().describe("事件过程详情（包括起因、经过、结果、场景、人物等）"),
+            //       })
+            //       .describe("事件必须在100-200字说明起因经过结果，不可将单一章节或细小场景独立成事件，"),
+            //   ),
+            // },
+          });
         } catch (e) {
           taskRecord(-1, u.error(e).message);
           throw e;
         }
         taskRecord(1);
 
-        preData = resData as Novel;
+        preData = resData.text as Novel;
 
         const newEvents = preData?.event || [];
         newEvents.forEach((newItem) => {
