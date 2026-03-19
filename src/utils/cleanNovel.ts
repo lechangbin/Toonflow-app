@@ -1,5 +1,6 @@
 import * as z from "zod";
-import { ModelMessage } from "ai";
+import { ModelMessage, Output } from "ai";
+
 import { o_novel } from "@/types/database";
 import ai from "@/utils/ai";
 import u from "@/utils";
@@ -118,21 +119,23 @@ class CleanNovel {
               },
               ...cleanText,
             ],
-            // output: {
-            //   event: z.array(
-            //     z
-            //       .object({
-            //         chapter: z
-            //           .string()
-            //           .describe(
-            //             "事件覆盖的章节（如1-3章、4-6章），章节划分必须连续，每个章节范围只能属于一个事件。事件分割不可过细——避免只描述琐碎、日常细节的微小事件。",
-            //           ),
-            //         name: z.string().describe("事件名称"),
-            //         detail: z.string().describe("事件过程详情（包括起因、经过、结果、场景、人物等）"),
-            //       })
-            //       .describe("事件必须在100-200字说明起因经过结果，不可将单一章节或细小场景独立成事件，"),
-            //   ),
-            // },
+            output: Output.object({
+              schema: z.object({
+                event: z.array(
+                  z
+                    .object({
+                      chapter: z
+                        .string()
+                        .describe(
+                          "事件覆盖的章节（如1-3章、4-6章），章节划分必须连续，每个章节范围只能属于一个事件。事件分割不可过细——避免只描述琐碎、日常细节的微小事件。",
+                        ),
+                      name: z.string().describe("事件名称"),
+                      detail: z.string().describe("事件过程详情（包括起因、经过、结果、场景、人物等）"),
+                    })
+                    .describe("事件必须在100-200字说明起因经过结果，不可将单一章节或细小场景独立成事件，"),
+                ),
+              }),
+            }),
           });
         } catch (e) {
           taskRecord(-1, u.error(e).message);
@@ -140,7 +143,7 @@ class CleanNovel {
         }
         taskRecord(1);
 
-        preData = resData.text as Novel;
+        preData = JSON.parse(resData.text);
 
         const newEvents = preData?.event || [];
         newEvents.forEach((newItem) => {
