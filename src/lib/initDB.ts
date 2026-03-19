@@ -423,9 +423,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("filePath");
         table.text("type");
         table.integer("assetsId");
-        table.integer("scriptId");
-        table.integer("projectId");
-        table.integer("videoId");
+        table.text("model");
+        table.text("resolution");
         table.text("state");
         table.primary(["id"]);
         table.unique(["id"]);
