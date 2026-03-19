@@ -1,4 +1,4 @@
-// @db-hash d3a4624b2923d297b29ac84195c244aa
+// @db-hash ad26ece2cf8002d48518ba2b8cd908f8
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -29,8 +29,8 @@ export interface o_artStyle {
 }
 export interface o_assets {
   'describe'?: string | null;
-  'filePath'?: string | null;
   'id'?: number;
+  'imageId'?: number | null;
   'name'?: string | null;
   'projectId'?: number | null;
   'prompt'?: string | null;
@@ -67,16 +67,6 @@ export interface o_image {
   'state'?: string | null;
   'type'?: string | null;
   'videoId'?: number | null;
-}
-export interface o_knowledge {
-  'agentType': string;
-  'content': string;
-  'createdTime': number;
-  'embedding': string;
-  'id'?: string;
-  'projectId': number;
-  'source'?: string | null;
-  'title': string;
 }
 export interface o_model {
   'apiKey'?: string | null;
@@ -234,7 +224,6 @@ export interface DB {
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_image": o_image;
-  "o_knowledge": o_knowledge;
   "o_model": o_model;
   "o_myTasks": o_myTasks;
   "o_novel": o_novel;
