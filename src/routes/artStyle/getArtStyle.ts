@@ -12,7 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { name } = req.body;
-    const data = await u.db("t_artStyle").where("name", name).select("styles").first();
+    const data = await u.db("o_artStyle").where("name", name).select("styles").first();
     const styles = data?.styles ? JSON.parse(data.styles) : [];
     res.status(200).send(success(styles));
   },

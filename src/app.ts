@@ -2,6 +2,8 @@ import "./logger";
 import "./err";
 import "./env";
 import express, { Request, Response, NextFunction } from "express";
+import { Server } from "socket.io";
+import http from "node:http";
 import expressWs from "express-ws";
 import logger from "morgan";
 import cors from "cors";
@@ -10,11 +12,15 @@ import fs from "fs";
 import path from "path";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
+import socketInit from "@/socket/index";
 
 const app = express();
-let server: ReturnType<typeof app.listen> | null = null;
+const server = http.createServer(app);
 
 export default async function startServe(randomPort: Boolean = false) {
+  const io = new Server(server, { cors: { origin: "*" } });
+  socketInit(io);
+
   if (process.env.NODE_ENV == "dev") await buildRoute();
 
   expressWs(app);
@@ -24,14 +30,7 @@ export default async function startServe(randomPort: Boolean = false) {
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
-  let rootDir: string;
-  if (typeof process.versions?.electron !== "undefined") {
-    const { app } = require("electron");
-    const userDataDir: string = app.getPath("userData");
-    rootDir = path.join(userDataDir, "uploads");
-  } else {
-    rootDir = path.join(process.cwd(), "uploads");
-  }
+  const rootDir = u.getPath("oss");
 
   // 确保 uploads 目录存在
   if (!fs.existsSync(rootDir)) {
@@ -42,14 +41,14 @@ export default async function startServe(randomPort: Boolean = false) {
   app.use(express.static(rootDir));
 
   app.use(async (req, res, next) => {
-    const setting = await u.db("t_setting").where("id", 1).select("tokenKey").first();
-    if (!setting) return res.status(500).send({ message: "服务器未配置，请联系管理员" });
-    const { tokenKey } = setting;
+    const setting = await u.db("o_setting").where("key", "tokenKey").select("value").first();
+    if (!setting) return res.status(444).send({ message: "服务器秘钥未配置，请联系管理员" });
+    const { value: tokenKey } = setting;
     // 从 header 或 query 参数获取 token
     const rawToken = req.headers.authorization || (req.query.token as string) || "";
     const token = rawToken.replace("Bearer ", "");
     // 白名单路径
-    if (req.path === "/other/login") return next();
+    if (req.path === "/api/login/login") return next();
 
     if (!token) return res.status(401).send({ message: "未提供token" });
     try {
@@ -66,7 +65,7 @@ export default async function startServe(randomPort: Boolean = false) {
 
   // 404 处理
   app.use((_, res, next: NextFunction) => {
-    return res.status(404).send({ message: "Not Found" });
+    return res.status(404).send({ message: "API 404 Not Found" });
   });
 
   // 错误处理
@@ -78,9 +77,9 @@ export default async function startServe(randomPort: Boolean = false) {
   });
 
   const port = randomPort ? 0 : parseInt(process.env.PORT || "60000");
-  return await new Promise((resolve, reject) => {
-    server = app.listen(port, async (v) => {
-      const address = server?.address();
+  return await new Promise((resolve) => {
+    server.listen(port, async () => {
+      const address = server.address();
       const realPort = typeof address === "string" ? address : address?.port;
       console.log(`[服务启动成功]: http://localhost:${realPort}`);
       resolve(realPort);

@@ -1,33 +1,26 @@
 import db from "@/utils/db";
 import oss from "@/utils/oss";
 // import * as ai from "@/utils/ai";
-import editImage from "@/utils/editImage";
-import number2Chinese from "@/utils/number2Chinese";
-import deleteOutline from "@/utils/deleteOutline";
 import getConfig from "./utils/getConfig";
 import { v4 as uuid } from "uuid";
 import error from "@/utils/error";
-import * as imageTools from "@/utils/imageTools";
+import cleanNovel from "./utils/cleanNovel";
+import getPath from "@/utils/getPath";
+import vm from "@/utils/vm";
+import { getPrompts } from "@/utils/getPrompts";
+import task from "@/utils/taskRecord";
+import Ai from "@/utils/ai";
 
-import AIText from "@/utils/ai/text/index";
-import AIImage from "@/utils/ai/image/index";
-import AIVideo from "@/utils/ai/video/index";
-
-import getPromptAi from "./utils/getPromptAi";
 export default {
   db,
   oss,
-  ai: {
-    text: AIText,
-    image: AIImage,
-    video: AIVideo,
-  },
-  editImage,
-  number2Chinese,
-  deleteOutline,
   getConfig,
   uuid,
   error,
-  imageTools,
-  getPromptAi,
+  cleanNovel,
+  vm,
+  getPath,
+  Ai,
+  getPrompts,
+  task,
 };

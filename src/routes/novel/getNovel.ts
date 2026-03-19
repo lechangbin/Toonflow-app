@@ -10,16 +10,38 @@ export default router.post(
   "/",
   validateFields({
     projectId: z.number(),
+    page: z.number(),
+    limit: z.number(),
+    search: z.string().optional(),
+
   }),
   async (req, res) => {
-    const { projectId } = req.body;
-
+    const { projectId, page, limit, search } = req.body;
+    const offset = (page - 1) * limit;
     const data = await u
-      .db("t_novel")
+      .db("o_novel")
       .where("projectId", projectId)
       .select("id", "chapterIndex as index", "reel", "chapter", "chapterData")
-      .orderBy("chapterIndex", "asc");
+      .andWhere((qb) => {
+        if (search) {
+          qb.where("chapter", "like", `%${search}%`);
+        }
+      })
+      .orderBy("chapterIndex", "asc")
+      .limit(limit)
+      .offset(offset);
+    // 统计总数
+    const totalQuery = (await u
+      .db("o_novel")
+      .where("projectId", projectId)
+      .andWhere((qb) => {
+        if (search) {
+          qb.where("chapter", "like", `%${search}%`);
+        }
+      })
+      .count("* as total")
+      .first()) as any;
 
-    res.status(200).send(success(data));
+    res.status(200).send(success({ data, total: totalQuery.total }));
   }
 );

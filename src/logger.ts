@@ -1,19 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
+import getPath from "@/utils/getPath";
 
 type LogLevel = "log" | "info" | "warn" | "error" | "debug";
 type ConsoleMethod = (...args: unknown[]) => void;
 
-function getLogDir(): string {
-  const isElectron = typeof process.versions?.electron !== "undefined";
-  if (isElectron) {
-    const { app } = require("electron");
-    return path.join(app.getPath("userData"), "logs");
-  }
-  return path.join(process.cwd(), "logs");
-}
-
-const LOG_DIR = getLogDir();
+const LOG_DIR = getPath("logs");
 const LOG_FILE = path.join(LOG_DIR, "app.log");
 const MAX_SIZE = 1000 * 1024 * 1024;
 const LEVELS: LogLevel[] = ["log", "info", "warn", "error", "debug"];
@@ -89,7 +81,6 @@ class Logger {
 
   private hijack(): void {
     if (this.isHijacked) return;
-
     // 劫持 console 方法
     for (const level of LEVELS) {
       const original = console[level];
@@ -97,7 +88,12 @@ class Logger {
       this.originalConsole[level] = original.bind(console);
       (console as any)[level] = (...args: unknown[]) => {
         this.writing = true;
-        this.write(level, args);
+        try {
+          // this.write(level, args);
+        } catch (err) {
+          this.originalConsole.error?.("[Logger Error]", err);
+        }
+
         this.originalConsole[level]!(...args);
         this.writing = false;
       };

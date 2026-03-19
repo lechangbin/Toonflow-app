@@ -1,24 +1,17 @@
 import { readFile, writeFile } from "fs/promises";
-import u from "@/utils";
+import getPath from "@/utils/getPath";
 import fs from "fs";
 import path from "path";
 import knex from "knex";
 import initDB from "@/lib/initDB";
-import fixDB from "@/lib/fixDB";
+// import fixDB from "@/lib/fixDB";
 import type { DB } from "@/types/database";
 import crypto from "crypto";
 
 type TableName = keyof DB & string;
 type RowType<TName extends TableName> = DB[TName];
 
-let dbPath: string;
-if (typeof process.versions?.electron !== "undefined") {
-  const { app } = require("electron");
-  const userDataDir: string = app.getPath("userData");
-  dbPath = path.join(userDataDir, "db.sqlite");
-} else {
-  dbPath = path.join(process.cwd(), "db.sqlite");
-}
+const dbPath = getPath("db2.sqlite");
 console.log("数据库目录:", dbPath);
 const dbDir = path.dirname(dbPath);
 
@@ -42,7 +35,7 @@ const db = knex({
 
 (async () => {
   await initDB(db);
-  await fixDB(db);
+  // await fixDB(db);
   if (process.env.NODE_ENV == "dev") initKnexType(db);
 })();
 

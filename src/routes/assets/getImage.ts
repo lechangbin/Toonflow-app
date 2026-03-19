@@ -14,26 +14,24 @@ export default router.post(
   async (req, res) => {
     const { assetsId } = req.body;
 
-    const assets = await u.db("t_assets").where("id", assetsId).select("id", "filePath", "scriptId", "type", "state").first();
+    const assets = await u.db("o_assets").where("id", assetsId).select("id", "imageId", "type", "state").first();
 
-    const tempAssets = await u.db("t_image").where("assetsId", assetsId).select("id", "filePath", "assetsId", "type", "state");
+    const rawTempAssets = await u.db("o_image").where("assetsId", assetsId).select("id", "filePath", "assetsId", "type", "state");
 
-    for (const item of tempAssets) {
-      if (item.filePath) {
-        item.filePath = await u.oss.getFileUrl(item.filePath);
-      } else {
-        item.filePath = "";
-      }
-    }
+    const tempAssets = await Promise.all(
+      rawTempAssets.map(async (item) => ({
+        ...item,
+        filePath: item.filePath ? await u.oss.getFileUrl(item.filePath) : "",
+        selected: assets?.imageId != null && Number(item.id) === Number(assets.imageId),
+      })),
+    );
 
     const data = {
       id: assets!.id,
       state: assets!.state,
-      filePath: assets!.filePath ? await u.oss.getFileUrl(assets!.filePath) : "",
-      scriptId: assets!.scriptId,
+      imageId: assets!.imageId ?? null,
       tempAssets,
     };
-
     res.status(200).send(success(data));
   },
 );

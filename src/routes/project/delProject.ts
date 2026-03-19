@@ -14,25 +14,24 @@ export default router.post(
   async (req, res) => {
     const { id } = req.body;
 
-    const scriptData = await u.db("t_script").where("projectId", id).select("id");
+    const scriptData = await u.db("o_script").where("projectId", id).select("id");
     const scriptIds = scriptData.map((item: any) => item.id);
 
-    const assetsData = await u.db("t_assets").where("projectId", id).select("id");
+    const assetsData = await u.db("o_assets").where("projectId", id).select("id");
     const assetsIds = assetsData.map((item: any) => item.id);
 
-    const videoData = await u.db("t_video").whereIn("scriptId", scriptIds).select("id");
+    const videoData = await u.db("o_video").whereIn("scriptId", scriptIds).select("id");
     const videoIds = videoData.map((item: any) => item.id);
 
-    await u.db("t_project").where("id", id).delete();
-    await u.db("t_novel").where("projectId", id).delete();
-    await u.db("t_storyline").where("projectId", id).delete();
-    await u.db("t_outline").where("projectId", id).delete();
-    // await u.db("t_myTasks").where("projectId", id).delete();
+    await u.db("o_project").where("id", id).delete();
+    await u.db("o_novel").where("projectId", id).delete();
+    await u.db("o_outline").where("projectId", id).delete();
+    await u.db("o_myTasks").where("projectId", id).delete();
 
-    await u.db("t_script").where("projectId", id).delete();
-    await u.db("t_assets").where("projectId", id).delete();
+    await u.db("o_script").where("projectId", id).delete();
+    await u.db("o_assets").where("projectId", id).delete();
 
-    const tempAssetsQuery = u.db("t_image").where("projectId", id);
+    const tempAssetsQuery = u.db("o_image").where("projectId", id);
     if (assetsIds.length > 0) {
       tempAssetsQuery.orWhereIn("assetsId", assetsIds);
     }
@@ -44,9 +43,9 @@ export default router.post(
     }
     await tempAssetsQuery.delete();
 
-    await u.db("t_video").whereIn("scriptId", scriptIds).delete();
+    await u.db("o_video").whereIn("scriptId", scriptIds).delete();
 
-    await u.db("t_chatHistory").where("projectId", id).delete();
+    await u.db("o_chatHistory").where("projectId", id).delete();
 
     try {
       await u.oss.deleteDirectory(`${id}/`);

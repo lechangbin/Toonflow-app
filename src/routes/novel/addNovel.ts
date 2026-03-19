@@ -23,7 +23,7 @@ export default router.post(
     const { projectId, data } = req.body;
 
     for (const item of data) {
-      await u.db("t_novel").insert({
+      await u.db("o_novel").insert({
         projectId,
         chapterIndex: item.index,
         reel: item.reel,

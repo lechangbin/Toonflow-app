@@ -18,7 +18,7 @@ export default router.post(
   async (req, res) => {
     const { id, index, reel, chapter, chapterData } = req.body;
 
-    await u.db("t_novel").where("id", id).update({
+    await u.db("o_novel").where("id", id).update({
       chapterIndex: index,
       reel,
       chapter,

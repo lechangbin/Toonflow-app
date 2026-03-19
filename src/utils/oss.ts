@@ -1,7 +1,7 @@
 import isPathInside from "is-path-inside";
+import getPath from "@/utils/getPath";
 import fs from "node:fs/promises";
 import path from "node:path";
-import u from "@/utils";
 
 // 规范化路径：去除前导斜杠，并将路径分隔符统一转换为系统分隔符
 function normalizeUserPath(userPath: string): string {
@@ -27,13 +27,7 @@ class OSS {
   private initPromise: Promise<void>;
 
   constructor() {
-    if (typeof process.versions?.electron !== "undefined") {
-      const { app } = require("electron");
-      const userDataDir: string = app.getPath("userData");
-      this.rootDir = path.join(userDataDir, "uploads");
-    } else {
-      this.rootDir = path.join(process.cwd(), "uploads");
-    }
+    this.rootDir = getPath("oss");
     // 初始化时自动创建根目录
     this.initPromise = fs.mkdir(this.rootDir, { recursive: true }).then(() => {});
   }
@@ -149,7 +143,9 @@ class OSS {
     await this.ensureInit();
     const absPath = resolveSafeLocalPath(userRelPath, this.rootDir);
     await fs.mkdir(path.dirname(absPath), { recursive: true });
-    await fs.writeFile(absPath, data);
+    // 如果 data 是 string，则视为 base64 编码，先解码再写入
+    const buffer = typeof data === "string" ? Buffer.from(data, "base64") : data;
+    await fs.writeFile(absPath, buffer);
   }
 
   /**
