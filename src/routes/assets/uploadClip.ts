@@ -50,7 +50,6 @@ export default router.post(
       filePath: savePath,
       type,
       assetsId: id,
-      projectId,
       state: "1",
     });
     await u.db("o_assets").where("id", id).update({
