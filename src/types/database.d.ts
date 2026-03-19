@@ -1,4 +1,4 @@
-// @db-hash ad26ece2cf8002d48518ba2b8cd908f8
+// @db-hash 2f9e6a9e9145cead00652858cafb9159
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -57,6 +57,11 @@ export interface o_eventChapter {
   'eventId'?: number | null;
   'id'?: number;
   'novelId'?: number | null;
+}
+export interface o_flowData {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
 }
 export interface o_image {
   'assetsId'?: number | null;
@@ -166,6 +171,17 @@ export interface o_storyboardScript {
   'scriptId'?: number | null;
   'storyboardId'?: number | null;
 }
+export interface o_tasks {
+  'describe'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'projectId'?: number | null;
+  'reason'?: string | null;
+  'relatedObjects'?: string | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'taskClass'?: string | null;
+}
 export interface o_user {
   'id'?: number;
   'name'?: string | null;
@@ -223,6 +239,7 @@ export interface DB {
   "o_chatHistory": o_chatHistory;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
+  "o_flowData": o_flowData;
   "o_image": o_image;
   "o_model": o_model;
   "o_myTasks": o_myTasks;
@@ -238,6 +255,7 @@ export interface DB {
   "o_skills": o_skills;
   "o_storyboard": o_storyboard;
   "o_storyboardScript": o_storyboardScript;
+  "o_tasks": o_tasks;
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;
   "o_video": o_video;

@@ -16,27 +16,27 @@ export default router.post(
     const { taskClass, state, page = 1, limit = 10 }: any = req.body;
     const offset = (page - 1) * limit;
     const data = await u
-      .db("o_myTasks")
-      .leftJoin("o_project", "o_project.id", "o_myTasks.projectId")
+      .db("o_tasks")
+      .leftJoin("o_project", "o_project.id", "o_tasks.projectId")
       .andWhere((qb) => {
         if (taskClass) {
-          qb.andWhere("o_myTasks.taskClass", taskClass);
+          qb.andWhere("o_tasks.taskClass", taskClass);
         }
         if (state) {
-          qb.andWhere("o_myTasks.state", state);
+          qb.andWhere("o_tasks.state", state);
         }
       })
-      .select("o_myTasks.*", "o_project.* ")
+      .select("o_tasks.*", "o_project.* ")
       .offset(offset)
       .limit(limit);
     const totalQuery = (await u
-      .db("o_myTasks")
+      .db("o_tasks")
       .andWhere((qb) => {
         if (taskClass) {
-          qb.andWhere("o_myTasks.taskClass", taskClass);
+          qb.andWhere("o_tasks.taskClass", taskClass);
         }
         if (state) {
-          qb.andWhere("o_myTasks.state", state);
+          qb.andWhere("o_tasks.state", state);
         }
       })
       .count("* as total")

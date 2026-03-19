@@ -38,7 +38,7 @@ export default async function taskRecord(
     }
   }
 
-  const [id] = await db("o_myTasks").insert({
+  const [id] = await db("o_tasks").insert({
     projectId,
     taskClass,
     relatedObjects: opteorContent,
@@ -50,7 +50,7 @@ export default async function taskRecord(
 
   /** 任务成功时调用 done(1)，失败时调用 done(-1, '原因') */
   return async function done(state: 1 | -1, reason?: string) {
-    await db("o_myTasks")
+    await db("o_tasks")
       .where("id", id)
       .update({
         state: taskStateMap[state],

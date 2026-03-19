@@ -9,7 +9,6 @@ import logger from "morgan";
 import cors from "cors";
 import buildRoute from "@/core";
 import fs from "fs";
-import path from "path";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";

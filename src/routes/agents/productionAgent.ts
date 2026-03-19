@@ -1,9 +1,8 @@
-import { tool } from "ai";
-import { z } from "zod";
 import express from "express";
 import { createAGUIStream } from "@/utils/agent/aguiTools";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
+import { useSkill } from "@/utils/agent/skillsTools";
 
 const router = express.Router();
 
@@ -14,19 +13,20 @@ function delay(ms: number) {
 export default router.post("/", async (req, res) => {
   const { prompt: text, projectId, episodesId } = req.body;
   const isolationKey = `${projectId}:${episodesId}`;
+
+  //记忆
   const memory = new Memory("productionAgent", isolationKey);
+  //skill
+  const skill = await useSkill("production-agent");
 
   const agui = createAGUIStream(res);
   agui.runStarted();
 
   // 存入用户消息
-  await memory.add( "user",text);
+  await memory.add("user", text);
 
-  // 获取记忆上下文
+    // 获取记忆上下文
   const mem = await memory.get(text);
-
-  console.log("======================================================");
-  // 构建记忆上下文文本（顺序：历史摘要 → 相关记忆 → 近期对话）
   const memoryContext = [
     mem.rag.length > 0 && `[相关记忆]\n${mem.rag.map((r) => r.content).join("\n")}`,
     mem.summaries.length > 0 && `[历史摘要]\n${mem.summaries.map((s, i) => `${i + 1}. ${s.content}`).join("\n")}`,
@@ -35,9 +35,10 @@ export default router.post("/", async (req, res) => {
     .filter(Boolean)
     .join("\n\n");
 
-  console.log("%c Line:27 🍏 memoryContext", "background:#3f7cff", memoryContext);
 
-  const systemPrompt = `You are a helpful assistant.${memoryContext ? `\n\n以下是你对用户的记忆，可作为参考：\n${memoryContext}` : ""}`;
+  const systemPrompt = [skill.prompt, memoryContext && `## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`]
+    .filter(Boolean)
+    .join("\n\n");
 
   const messages = [
     {
@@ -50,21 +51,12 @@ export default router.post("/", async (req, res) => {
     system: systemPrompt,
     messages,
     tools: {
-      deepRetrieve: tool({
-        description: "深度检索记忆：当你需要回忆与某个关键词相关的详细历史信息时使用此工具",
-        inputSchema: z.object({
-          keyword: z.string().describe("要检索的关键词"),
-        }),
-        execute: async ({ keyword }) => {
-          const results = await memory.deepRetrieve(keyword);
-          if (results.length === 0) return { found: false, message: "未找到相关记忆" };
-          return { found: true, memories: results.map((r) => r.content) };
-        },
-      }),
+      ...skill.tools,
+      ...memory.getTools(),
     },
     onFinish: async (completion) => {
       // 存入助手回复
-      await memory.add( "assistant",completion.text);
+      await memory.add("assistant", completion.text);
     },
   });
 
