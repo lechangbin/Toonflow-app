@@ -2,6 +2,8 @@ import u from "@/utils";
 import { v4 as uuidv4 } from "uuid";
 import { getEmbedding, cosineSimilarity } from "./embedding";
 import type { memories as MemoryRow } from "@/types/database";
+import { tool } from "ai";
+import { z } from "zod";
 
 // ── 可调配置 ──
 const messagesPerSummary = 3; // 每累积多少条message触发一次summary生成
@@ -156,6 +158,22 @@ class Memory {
     const messages = await u.db("memories").whereIn("id", messageIds).orderBy("createdAt", "asc");
 
     return messages.map((m) => ({ id: m.id, content: m.content, createdAt: m.createdAt }));
+  }
+
+  getTools() {
+    return {
+      deepRetrieve: tool({
+        description: "深度检索记忆：当你需要回忆与某个关键词相关的详细历史信息时使用此工具",
+        inputSchema: z.object({
+          keyword: z.string().describe("要检索的关键词"),
+        }),
+        execute: async ({ keyword }) => {
+          const results = await this.deepRetrieve(keyword);
+          if (results.length === 0) return { found: false, message: "未找到相关记忆" };
+          return { found: true, memories: results.map((r) => r.content) };
+        },
+      }),
+    };
   }
 }
 
