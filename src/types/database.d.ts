@@ -1,9 +1,9 @@
-// @db-hash feca77a2c2ec5b6a2989347f982558d5
+// @db-hash 3375b001172e37262e06bf0b798aa4ce
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
   'content': string;
-  'createTime': number;
+  'createdAt': number;
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
@@ -67,11 +67,10 @@ export interface o_image {
   'assetsId'?: number | null;
   'filePath'?: string | null;
   'id'?: number;
-  'projectId'?: number | null;
-  'scriptId'?: number | null;
+  'model'?: string | null;
+  'resolution'?: string | null;
   'state'?: string | null;
   'type'?: string | null;
-  'videoId'?: number | null;
 }
 export interface o_model {
   'apiKey'?: string | null;
