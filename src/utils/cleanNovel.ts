@@ -1,5 +1,6 @@
 import * as z from "zod";
-import { ModelMessage } from "ai";
+import { ModelMessage, Output } from "ai";
+
 import { o_novel } from "@/types/database";
 import ai from "@/utils/ai";
 import u from "@/utils";
@@ -56,7 +57,7 @@ class CleanNovel {
     let preData: Novel | null = null;
     //所有事件
     let totalEvent: EventType[] = [];
-    const intansce = await ai.create(1);
+    const intansce = u.Ai.Text("eventExtractAi");
 
     try {
       for (let gi = 0; gi < groups.length; gi++) {
@@ -82,12 +83,11 @@ class CleanNovel {
         });
         let resData;
         try {
-          resData = await intansce.text.invoke(
-            {
-              messages: [
-                {
-                  role: "system",
-                  content: `
+          resData = await intansce.invoke({
+            messages: [
+              {
+                role: "system",
+                content: `
 你是专业剧本结构分析师，负责将用户提供的章节文本拆分为标准情节单元。请严格遵循以下规则执行。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -116,10 +116,11 @@ class CleanNovel {
 - 单个章节拆分为多个情节单元；
 - 遗漏任何章节。
 `,
-                },
-                ...cleanText,
-              ],
-              output: {
+              },
+              ...cleanText,
+            ],
+            output: Output.object({
+              schema: z.object({
                 event: z.array(
                   z
                     .object({
@@ -133,17 +134,16 @@ class CleanNovel {
                     })
                     .describe("事件必须在100-200字说明起因经过结果，不可将单一章节或细小场景独立成事件，"),
                 ),
-              },
-            },
-            { modelName: "gpt-4.1" },
-          );
+              }),
+            }),
+          });
         } catch (e) {
           taskRecord(-1, u.error(e).message);
           throw e;
         }
         taskRecord(1);
 
-        preData = resData as Novel;
+        preData = JSON.parse(resData.text);
 
         const newEvents = preData?.event || [];
         newEvents.forEach((newItem) => {

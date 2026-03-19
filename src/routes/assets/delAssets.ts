@@ -12,6 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
+    console.log("%c Line:15 🍑 id", "background:#465975", id);
     const assetsData = await u.db("o_image").where("assetsId", id);
     await Promise.all(assetsData.map((i) => i.filePath && u.oss.deleteFile(i.filePath)));
     await u.db("o_assets").where({ id }).delete();

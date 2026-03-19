@@ -4,10 +4,10 @@ import axios from "axios";
 import { transform } from "sucrase";
 import u from "@/utils";
 
-type AiType = "scriptAgent" | "productionAgent" | "assetsAi" | "polishingAi" | "ttsDubbing" | "test";
+type AiType = "scriptAgent" | "productionAgent" | "assetsAi" | "polishingAi" | "ttsDubbing" | "eventExtractAi";
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
-const AiTypeValues: AiType[] = ["scriptAgent", "productionAgent", "assetsAi", "polishingAi", "ttsDubbing"];
+const AiTypeValues: AiType[] = ["scriptAgent", "productionAgent", "assetsAi", "polishingAi", "ttsDubbing", "eventExtractAi"];
 async function getVendorTemplateFn(fnName: FnName, value: AiType | `${number}:${string}`) {
   let id, modelName;
   const isAgent = AiTypeValues.includes(value as AiType);

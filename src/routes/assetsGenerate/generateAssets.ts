@@ -23,9 +23,9 @@ export default router.post(
     //获取风格
     const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
-    const role = await u.getPrompts("role-generateImage") ?? "";
-    const scene = await u.getPrompts("scene-generateImage") ?? "";
-    const tool = await u.getPrompts("tool-generateImage") ?? "";
+    const role = (await u.getPrompts("role-generateImage")) ?? "";
+    const scene = (await u.getPrompts("scene-generateImage")) ?? "";
+    const tool = (await u.getPrompts("tool-generateImage")) ?? "";
 
     let systemPrompt = "";
     let userPrompt = "";
@@ -111,11 +111,14 @@ export default router.post(
       });
       aiImage.save(imagePath!);
       const imageData = await u.db("o_image").where("id", imageId).select("*").first();
+      const modelData = model.split(":")[1];
       if (imageData) {
         await u.db("o_image").where("id", imageId).update({
           state: "生成成功",
           filePath: imagePath,
           type: insertType,
+          model: modelData,
+          resolution: resolution,
         });
         const path = await u.oss.getFileUrl(imagePath!);
         await u.db("o_assets").where("id", id).update({
