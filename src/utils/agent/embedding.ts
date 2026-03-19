@@ -1,33 +1,37 @@
 import { pipeline, env as transformersEnv, FeatureExtractionPipeline } from "@huggingface/transformers";
 import path from "path";
 import fs from "fs";
+import getPath from "@/utils/getPath";
+import db from "@/utils/db";
 
-const modelDir = path.join(
-  typeof process.versions?.electron !== "undefined" ? require("electron").app.getPath("userData") : process.cwd(),
-  "data",
-  "models",
-  "all-MiniLM-L6-v2",
-);
-
+// ── 模型配置 ──
+// const modelOnnxFile = ["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]; // 模型文件路径
+// const modelDtype = "fp16" as const; // 量化类型：fp32
 let extractor: FeatureExtractionPipeline | null = null;
 
 export async function initEmbedding(): Promise<void> {
   if (extractor) return;
 
-  const requiredFiles = ["config.json", "tokenizer.json", "onnx/model.onnx"];
-  for (const file of requiredFiles) {
-    const filePath = path.join(modelDir, file);
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`文件不存在: ${filePath}`);
-    }
+  //todo 模型配置放到这里
+  const modelConfigData = await db("o_setting").whereIn("key", ["modelOnnxFile", "modelDtype"]);
+  const modelObj: Record<string, string> = {};
+  Object.entries(modelConfigData).forEach(([key, value]) => {
+    modelObj[key] = value as string;
+  });
+  let modelOnnxFile = modelObj?.modelOnnxFile ? JSON.parse(modelObj.modelOnnxFile) : ["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]; // 模型文件路径
+  let modelDtype = modelObj?.modelDtype ?? ("fp16" as const); // 量化类型：fp32
+  const onnxPath = path.join(getPath("models"), ...modelOnnxFile);
+  if (!fs.existsSync(onnxPath)) {
+    throw new Error(`Embedding 模型文件不存在: ${onnxPath}`);
   }
 
   transformersEnv.allowRemoteModels = false;
   transformersEnv.allowLocalModels = true;
-  transformersEnv.localModelPath = path.dirname(modelDir).replace(/\\/g, "/") + "/";
+  transformersEnv.localModelPath = getPath("models").replace(/\\/g, "/") + "/";
 
-  // @ts-ignore
-  extractor = await pipeline("feature-extraction", path.basename(modelDir), { dtype: "fp32" });
+  const modelFolder = modelOnnxFile[0];
+  // @ts-ignore - pipeline 重载联合类型过于复杂
+  extractor = await pipeline("feature-extraction", modelFolder, { dtype: modelDtype });
 }
 
 export async function getEmbedding(text: string): Promise<number[]> {

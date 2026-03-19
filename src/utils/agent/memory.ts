@@ -2,6 +2,8 @@ import u from "@/utils";
 import { v4 as uuidv4 } from "uuid";
 import { getEmbedding, cosineSimilarity } from "./embedding";
 import type { memories as MemoryRow } from "@/types/database";
+import { tool } from "ai";
+import { z } from "zod";
 
 // ── 可调配置 ──
 const messagesPerSummary = 3; // 每累积多少条message触发一次summary生成
@@ -56,7 +58,6 @@ class Memory {
   async add( role: string = "user",content: string) {
     const id = uuidv4();
     const embedding = await getEmbedding(content);
-    const now = Date.now();
     const isolationKey = this.isolationKey;
 
     await u.db("memories").insert({
@@ -68,11 +69,11 @@ class Memory {
       embedding: JSON.stringify(embedding),
       relatedMessageIds: null,
       summarized: 0,
-      createdAt: now,
+      createTime: Date.now(),
     } as any);
 
     // 检查未总结消息数量
-    const unsummarized = await u.db("memories").where({ isolationKey, type: "message", summarized: 0 }).orderBy("createdAt", "asc");
+    const unsummarized = await u.db("memories").where({ isolationKey, type: "message", summarized: 0 }).orderBy("createTime", "asc");
 
     if (unsummarized.length >= messagesPerSummary) {
       const batch = unsummarized.slice(0, messagesPerSummary);
@@ -91,7 +92,7 @@ class Memory {
         embedding: JSON.stringify(summaryEmbedding),
         relatedMessageIds: JSON.stringify(batchIds),
         summarized: 0,
-        createdAt: Date.now(),
+        createTime: Date.now(),
       });
 
       // 标记已总结
@@ -105,12 +106,12 @@ class Memory {
     const shortTerm = await u
       .db("memories")
       .where({ isolationKey, type: "message", summarized: 0 })
-      .orderBy("createdAt", "desc")
+      .orderBy("createTime", "desc")
       .limit(shortTermLimit);
     shortTerm.reverse(); // 最旧在前
 
     // summaries: 最近的 summary
-    const summaries = await u.db("memories").where({ isolationKey, type: "summary" }).orderBy("createdAt", "desc").limit(summaryLimit);
+    const summaries = await u.db("memories").where({ isolationKey, type: "summary" }).orderBy("createTime", "desc").limit(summaryLimit);
     summaries.reverse();
 
     // rag: 向量搜索所有 messages
@@ -119,12 +120,12 @@ class Memory {
     const ragResults = vectorSearch(allMessages, queryEmbedding, ragLimit);
 
     return {
-      shortTerm: shortTerm.map((m: any) => ({ id: m.id, role: m.role, content: m.content, createdAt: m.createdAt })),
+      shortTerm: shortTerm.map((m: any) => ({ id: m.id, role: m.role, content: m.content, createTime: m.createTime })),
       summaries: summaries.map((s) => ({
         id: s.id,
         content: s.content,
         relatedMessageIds: JSON.parse(s.relatedMessageIds || "[]"),
-        createdAt: s.createdAt,
+        createTime: s.createTime,
       })),
       rag: ragResults.map((r) => ({ id: r.id, content: r.content, similarity: r.similarity })),
     };
@@ -153,9 +154,25 @@ class Memory {
 
     if (messageIds.length === 0) return [];
 
-    const messages = await u.db("memories").whereIn("id", messageIds).orderBy("createdAt", "asc");
+    const messages = await u.db("memories").whereIn("id", messageIds).orderBy("createTime", "asc");
 
-    return messages.map((m) => ({ id: m.id, content: m.content, createdAt: m.createdAt }));
+    return messages.map((m) => ({ id: m.id, content: m.content, createTime: m.createTime }));
+  }
+
+  getTools() {
+    return {
+      deepRetrieve: tool({
+        description: "深度检索记忆：当你需要回忆与某个关键词相关的详细历史信息时使用此工具",
+        inputSchema: z.object({
+          keyword: z.string().describe("要检索的关键词"),
+        }),
+        execute: async ({ keyword }) => {
+          const results = await this.deepRetrieve(keyword);
+          if (results.length === 0) return { found: false, message: "未找到相关记忆" };
+          return { found: true, memories: results.map((r) => r.content) };
+        },
+      }),
+    };
   }
 }
 

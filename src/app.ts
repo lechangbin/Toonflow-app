@@ -2,25 +2,18 @@ import "./logger";
 import "./err";
 import "./env";
 import express, { Request, Response, NextFunction } from "express";
-import { Server } from "socket.io";
-import http from "node:http";
 import expressWs from "express-ws";
 import logger from "morgan";
 import cors from "cors";
 import buildRoute from "@/core";
 import fs from "fs";
-import path from "path";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
-import socketInit from "@/socket/index";
 
 const app = express();
-const server = http.createServer(app);
+let server: ReturnType<typeof app.listen> | null = null;
 
 export default async function startServe(randomPort: Boolean = false) {
-  const io = new Server(server, { cors: { origin: "*" } });
-  socketInit(io);
-
   if (process.env.NODE_ENV == "dev") await buildRoute();
 
   expressWs(app);
@@ -78,8 +71,8 @@ export default async function startServe(randomPort: Boolean = false) {
 
   const port = randomPort ? 0 : parseInt(process.env.PORT || "60000");
   return await new Promise((resolve) => {
-    server.listen(port, async () => {
-      const address = server.address();
+    server = app.listen(port, async (v) => {
+      const address = server?.address();
       const realPort = typeof address === "string" ? address : address?.port;
       console.log(`[服务启动成功]: http://localhost:${realPort}`);
       resolve(realPort);

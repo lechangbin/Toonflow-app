@@ -1,9 +1,9 @@
-// @db-hash 381c57f959d9ba09321e35a1c20674fa
+// @db-hash feca77a2c2ec5b6a2989347f982558d5
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
   'content': string;
-  'createdAt': number;
+  'createTime': number;
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
@@ -58,14 +58,20 @@ export interface o_eventChapter {
   'id'?: number;
   'novelId'?: number | null;
 }
+export interface o_flowData {
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+}
 export interface o_image {
   'assetsId'?: number | null;
   'filePath'?: string | null;
   'id'?: number;
-  'model'?: string | null;
-  'resolution'?: string | null;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
   'state'?: string | null;
   'type'?: string | null;
+  'videoId'?: number | null;
 }
 export interface o_model {
   'apiKey'?: string | null;
@@ -165,6 +171,17 @@ export interface o_storyboardScript {
   'scriptId'?: number | null;
   'storyboardId'?: number | null;
 }
+export interface o_tasks {
+  'describe'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'projectId'?: number | null;
+  'reason'?: string | null;
+  'relatedObjects'?: string | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'taskClass'?: string | null;
+}
 export interface o_user {
   'id'?: number;
   'name'?: string | null;
@@ -222,6 +239,7 @@ export interface DB {
   "o_chatHistory": o_chatHistory;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
+  "o_flowData": o_flowData;
   "o_image": o_image;
   "o_model": o_model;
   "o_myTasks": o_myTasks;
@@ -237,6 +255,7 @@ export interface DB {
   "o_skills": o_skills;
   "o_storyboard": o_storyboard;
   "o_storyboardScript": o_storyboardScript;
+  "o_tasks": o_tasks;
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;
   "o_video": o_video;

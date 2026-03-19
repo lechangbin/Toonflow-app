@@ -9,21 +9,37 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    shortTermMemoryLength: z.number(), //短期记忆长度
-    searchTopK: z.number(), //搜索记忆条数
-    similarityThreshold: z.number(), //记忆相似度阈值
+    messagesPerSummary: z.number(),
+    shortTermLimit: z.number(),
+    summaryMaxLength: z.number(),
+    summaryLimit: z.number(),
+    ragLimit: z.number(),
+    deepRetrieveSummaryLimit: z.number(),
+    modelOnnxFile: z.array(z.string()),
+    modelDtype: z.string(),
   }),
   async (req, res) => {
-    const { shortTermMemoryLength, searchTopK, similarityThreshold } = req.body;
-    await u.db("o_setting").where("key", "shortTermMemoryLength").update({
-      value: shortTermMemoryLength,
-    });
-    await u.db("o_setting").where("key", "searchTopK").update({
-      value: searchTopK,
-    });
-    await u.db("o_setting").where("key", "similarityThreshold").update({
-      value: similarityThreshold,
-    });
+    const { messagesPerSummary, shortTermLimit, summaryMaxLength, summaryLimit, ragLimit, deepRetrieveSummaryLimit, modelOnnxFile, modelDtype } =
+      req.body;
+
+    const upsert = async (key: string, value: string) => {
+      const exists = await u.db("o_setting").where("key", key).first();
+      if (exists) {
+        await u.db("o_setting").where("key", key).update({ value });
+      } else {
+        await u.db("o_setting").insert({ key, value });
+      }
+    };
+
+    await upsert("messagesPerSummary", messagesPerSummary);
+    await upsert("shortTermLimit", shortTermLimit);
+    await upsert("summaryMaxLength", summaryMaxLength);
+    await upsert("summaryLimit", summaryLimit);
+    await upsert("ragLimit", ragLimit);
+    await upsert("deepRetrieveSummaryLimit", deepRetrieveSummaryLimit);
+    await upsert("modelOnnxFile", JSON.stringify(modelOnnxFile));
+    await upsert("modelDtype", modelDtype);
+
     res.status(200).send(success("保存设置成功"));
   },
 );
