@@ -34,10 +34,14 @@ async function getVendorTemplateFn(fnName: FnName, modelName: `${number}:${strin
 async function withTaskRecord<T>(
   modelKey: AiType | `${number}:${string}`,
   taskClass: string,
+  describe: string,
+  relatedObjects: string,
+  projectId: number,
   fn: (modelName: `${number}:${string}`) => Promise<T>,
 ): Promise<T> {
   const modelName = await resolveModelName(modelKey);
-  const taskRecord = await u.task(1, taskClass, modelName, { describe: "", content: "" });
+  const [id, model] = modelName.split(":");
+  const taskRecord = await u.task(projectId, taskClass, model, { describe: describe, content: relatedObjects });
   try {
     const result = await fn(modelName);
     taskRecord(1);
@@ -60,22 +64,20 @@ class AiText {
     this.AiType = AiType;
   }
   async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
-    return withTaskRecord(this.AiType, "TaskClass", async (modelName) =>
-      generateText({
-        ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 5) }),
-        ...input,
-        model: await getVendorTemplateFn("textRequest", modelName),
-      } as Parameters<typeof generateText>[0]),
-    );
+    const modelName = await resolveModelName(this.AiType);
+    return generateText({
+      ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 5) }),
+      ...input,
+      model: await getVendorTemplateFn("textRequest", modelName),
+    } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
-    return withTaskRecord(this.AiType, "TaskClass", async (modelName) =>
-      streamText({
-        ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 5) }),
-        ...input,
-        model: await getVendorTemplateFn("textRequest", modelName),
-      } as Parameters<typeof streamText>[0]),
-    );
+    const modelName = await resolveModelName(this.AiType);
+    return streamText({
+      ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 5) }),
+      ...input,
+      model: await getVendorTemplateFn("textRequest", modelName),
+    } as Parameters<typeof streamText>[0]);
   }
 }
 
@@ -85,6 +87,10 @@ interface ImageConfig {
   imageBase64: string[]; //输入的图片提示词
   size: "1K" | "2K" | "4K"; // 图片尺寸
   aspectRatio: `${number}:${number}`; // 长宽比
+  taskClass: string; // 任务分类
+  describe: string; // 任务描述
+  relatedObjects: string; // 相关对象信息，便于后续分析和追踪
+  projectId: number; // 项目ID
 }
 
 class AiImage {
@@ -94,7 +100,7 @@ class AiImage {
     this.key = key;
   }
   async run(input: ImageConfig) {
-    return withTaskRecord(this.key, "TaskClass", async (modelName) => {
+    return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("imageRequest", modelName);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
@@ -113,7 +119,7 @@ class AiVideo {
     this.key = key;
   }
   async run(input: ImageConfig) {
-    return withTaskRecord(this.key, "TaskClass", async (modelName) => {
+    return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("videoRequest", modelName);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
@@ -132,7 +138,7 @@ class AiAudio {
     this.key = key;
   }
   async run(input: ImageConfig) {
-    return withTaskRecord(this.key, "TaskClass", async (modelName) => {
+    return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("ttsRequest", modelName);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);

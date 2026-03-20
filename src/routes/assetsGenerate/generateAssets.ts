@@ -87,18 +87,38 @@ export default router.post(
     try {
       let imagePath;
       let insertType;
+      let describe;
+      let relatedObjects = {};
 
       if (type == "role") {
         insertType = "role";
         imagePath = `/${projectId}/role/${uuidv4()}.jpg`;
+        describe = `生成角色图，名称：${name}，提示词：${prompt}`;
+        relatedObjects = {
+          id: id,
+          projectId,
+          type: "角色",
+        };
       }
       if (type == "scene") {
         insertType = "scene";
         imagePath = `/${projectId}/scene/${uuidv4()}.jpg`;
+        describe = `生成场景图，名称：${name}，提示词：${prompt}`;
+        relatedObjects = {
+          id: id,
+          projectId,
+          type: "场景",
+        };
       }
       if (type == "tool") {
         insertType = "tool";
         imagePath = `/${projectId}/props/${uuidv4()}.jpg`;
+        describe = `生成道具图，名称：${name}，提示词：${prompt}`;
+        relatedObjects = {
+          id: id,
+          projectId,
+          type: "道具",
+        };
       }
 
       const aiImage = u.Ai.Image(model);
@@ -108,6 +128,10 @@ export default router.post(
         imageBase64: base64 ? [base64] : [],
         size: resolution,
         aspectRatio: "16:9",
+        taskClass,
+        describe: describe ?? "", // 描述
+        projectId,
+        relatedObjects: JSON.stringify(relatedObjects), // 相关对象信息，便于后续分析和追踪
       });
       aiImage.save(imagePath!);
       const imageData = await u.db("o_image").where("id", imageId).select("*").first();
