@@ -129,19 +129,27 @@ function createSkillTools(skills: SkillRecord[]) {
       }),
       execute: async ({ name }) => {
         const skill = skills.find((s) => s.name === name);
-        if (!skill) return { error: `Skill '${name}' not found` };
-        if (activated.has(name)) return { already_active: true, message: `技能 "${name}" 已激活，无需重复加载` };
+        if (!skill) {
+          console.log(`[Skill] ❌ 激活失败：未找到技能 "${name}"`);
+          return { error: `Skill '${name}' not found` };
+        }
+        if (activated.has(name)) {
+          console.log(`[Skill] ℹ️ 技能 "${name}" 已在当前会话中激活，跳过重复注入`);
+          return { already_active: true, message: `技能 "${name}" 已激活，无需重复加载` };
+        }
 
         let content: string;
         try {
           content = await fs.readFile(skill.location, "utf-8");
         } catch {
+          console.log(`[Skill] ❌ 激活失败：无法读取 ${skill.location}`);
           return { error: `Failed to read SKILL.md for '${name}'` };
         }
 
         const body = stripFrontmatter(content);
         const resources = await listResources(skill.baseDir);
         activated.add(name);
+        console.log(`[Skill] 📖 已激活技能：${skill.name}（${body.length} 字符，${resources.length} 个资源文件）`);
 
         const resourcesXml =
           resources.length > 0 ? `\n<skill_resources>\n${resources.map((f) => `  <file>${f}</file>`).join("\n")}\n</skill_resources>` : "";
@@ -166,14 +174,23 @@ ${resourcesXml}
       }),
       execute: async ({ skillName, filePath: relPath }) => {
         const skill = skills.find((s) => s.name === skillName);
-        if (!skill) return { error: `Skill '${skillName}' not found` };
+        if (!skill) {
+          console.log(`[Skill] ❌ 读取失败：未找到技能 "${skillName}"`);
+          return { error: `Skill '${skillName}' not found` };
+        }
 
         const fullPath = path.resolve(path.join(skill.baseDir, relPath));
-        if (!isPathInside(fullPath, skill.baseDir)) return { error: "Access denied: path is outside skill directory" };
+        if (!isPathInside(fullPath, skill.baseDir)) {
+          console.log(`[Skill] 🚫 路径越界已拦截："${relPath}" 超出技能目录范围`);
+          return { error: "Access denied: path is outside skill directory" };
+        }
 
         try {
-          return { content: await fs.readFile(fullPath, "utf-8") };
+          const fileContent = await fs.readFile(fullPath, "utf-8");
+          console.log(`[Skill] 📄 已读取文件：${skillName}/${relPath}（${fileContent.length} 字符）`);
+          return { content: fileContent };
         } catch {
+          console.log(`[Skill] ❌ 读取失败：未找到文件 "${relPath}"`);
           return { error: `File not found: ${relPath}` };
         }
       },

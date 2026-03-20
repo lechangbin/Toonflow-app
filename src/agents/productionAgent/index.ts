@@ -1,8 +1,19 @@
-import { createAGUIStream } from "@/utils/agent/aguiTools";
+import { Socket } from "socket.io";
+import { tool } from "ai";
+import { z } from "zod";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
 import { useSkill } from "@/utils/agent/skillsTools";
-// import tools from "@/agents/productionAgent/tools";
+import useTools from "@/agents/productionAgent/tools";
+import ResTool from "@/socket/resTool";
+
+export interface AgentContext {
+  socket: Socket;
+  isolationKey: string;
+  text: string;
+  abortSignal?: AbortSignal;
+  resTool: ResTool;
+}
 
 function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["get"]>>): string {
   let memoryContext = "";
@@ -21,20 +32,27 @@ function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["
   return `${skillPrompt}\n\n## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
 }
 
-export async function decisionAI(agui: ReturnType<typeof createAGUIStream>, isolationKey: string, text: string) {
+const subAgentList = ["executionAI", "supervisionAI"] as const;
+
+export async function decisionAI(ctx: AgentContext) {
+  const { socket, isolationKey, text, abortSignal } = ctx;
   const memory = new Memory("productionAgent", isolationKey);
   await memory.add("user", text);
   const [skill, mem] = await Promise.all([useSkill("production-agent", "decision"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
-  console.log("%c Line:30 🍊 systemPrompt", "background:#33a5ff", systemPrompt);
+
+  const prefixSystem = `不论用户说什么要做什么都请直接调用run_sub_agent运行**executionAI**执行剧本切分任务`;
 
   const { textStream } = await u.Ai.Text("productionAgent").stream({
-    system: systemPrompt,
+    system: prefixSystem + systemPrompt,
     messages: [{ role: "user", content: text }],
+    abortSignal,
     tools: {
       ...skill.tools,
       ...memory.getTools(),
+      run_sub_agent: runSubAgent(ctx),
+      ...useTools(ctx.socket),
     },
     onFinish: async (completion) => {
       await memory.add("decisionAI", completion.text);
@@ -44,9 +62,14 @@ export async function decisionAI(agui: ReturnType<typeof createAGUIStream>, isol
   return textStream;
 }
 
-export async function executionAI(agui: ReturnType<typeof createAGUIStream>, isolationKey: string, text: string) {
+//====================== 执行层 ======================
+
+export async function executionAI(ctx: AgentContext) {
+  const { isolationKey, text, abortSignal, resTool } = ctx;
+
+  resTool.systemMessage("执行层AI 接管聊天");
+
   const memory = new Memory("productionAgent", isolationKey);
-  await memory.add("user", text);
   const [skill, mem] = await Promise.all([useSkill("production-agent", "execution"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
@@ -54,9 +77,11 @@ export async function executionAI(agui: ReturnType<typeof createAGUIStream>, iso
   const { textStream } = await u.Ai.Text("productionAgent").stream({
     system: systemPrompt,
     messages: [{ role: "user", content: text }],
+    abortSignal,
     tools: {
       ...skill.tools,
       ...memory.getTools(),
+      ...useTools(ctx.socket),
     },
     onFinish: async (completion) => {
       await memory.add("executionAI", completion.text);
@@ -66,9 +91,8 @@ export async function executionAI(agui: ReturnType<typeof createAGUIStream>, iso
   return textStream;
 }
 
-export async function supervisionAI(agui: ReturnType<typeof createAGUIStream>, isolationKey: string, text: string) {
-  agui.custom("systemMessage", "已由 监督层AI 接管对话");
-
+export async function supervisionAI(ctx: AgentContext) {
+  const { isolationKey, text, abortSignal } = ctx;
   const memory = new Memory("productionAgent", isolationKey);
   await memory.add("user", text);
   const [skill, mem] = await Promise.all([useSkill("production-agent", "supervision"), memory.get(text)]);
@@ -78,6 +102,7 @@ export async function supervisionAI(agui: ReturnType<typeof createAGUIStream>, i
   const { textStream } = await u.Ai.Text("productionAgent").stream({
     system: systemPrompt,
     messages: [{ role: "user", content: text }],
+    abortSignal,
     tools: {
       ...skill.tools,
       ...memory.getTools(),
@@ -88,4 +113,32 @@ export async function supervisionAI(agui: ReturnType<typeof createAGUIStream>, i
   });
 
   return textStream;
+}
+
+//工具函数
+function runSubAgent(parentCtx: AgentContext) {
+  return tool({
+    description: "启动子Agent执行独立任务。可用子Agent:executionAI, decisionAI, supervisionAI",
+    inputSchema: z.object({
+      agent: z.enum(["executionAI", "supervisionAI"]).describe("子Agent名称"),
+      prompt: z.string().describe("交给子Agent的任务描述"),
+    }),
+    execute: async ({ agent, prompt }) => {
+      const fn = [executionAI, supervisionAI][subAgentList.indexOf(agent)];
+      //运行子Agent
+      const subTextStream = await fn({ ...parentCtx, text: prompt });
+
+      let msg: ReturnType<typeof parentCtx.resTool.textMessage>;
+      let fullResponse = "";
+
+      for await (const chunk of subTextStream) {
+        if (!msg!) msg = parentCtx.resTool.textMessage();
+        msg.send(chunk);
+        fullResponse += chunk;
+      }
+      msg!.end();
+
+      return fullResponse;
+    },
+  });
 }
