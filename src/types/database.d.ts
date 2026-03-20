@@ -1,9 +1,9 @@
-// @db-hash feca77a2c2ec5b6a2989347f982558d5
+// @db-hash 2f9e6a9e9145cead00652858cafb9159
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
   'content': string;
-  'createTime': number;
+  'createdAt': number;
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
