@@ -98,13 +98,14 @@ export class AGUIStream {
       role,
     } satisfies TextMessageStartEvent);
 
-    return {
-      content: (delta: string) => {
+    const handle = {
+      send: (delta: string) => {
         this.send({
           type: EventType.TEXT_MESSAGE_CONTENT,
           messageId,
           delta,
         } satisfies TextMessageContentEvent);
+        return handle;
       },
       end: () => {
         this.send({
@@ -113,12 +114,13 @@ export class AGUIStream {
         } satisfies TextMessageEndEvent);
       },
     };
+    return handle;
   }
 
   /** 一次性发送完整文本消息 */
   textMessageFull(content: string, role: Role = "assistant") {
     const msg = this.textMessage(role);
-    msg.content(content);
+    msg.send(content);
     msg.end();
     return this;
   }

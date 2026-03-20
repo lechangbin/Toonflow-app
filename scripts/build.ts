@@ -19,7 +19,20 @@ if (!fs.existsSync(envFile)) {
   console.log(`📄 已自动创建环境变量文件: ${envFile}`);
 }
 
-const external = ["electron", "sqlite3", "better-sqlite3", "mysql", "mysql2", "pg", "pg-query-stream", "oracledb", "tedious", "mssql"];
+const external = [
+  "electron",
+  "@huggingface/transformers",
+  "vm2",
+  "sqlite3",
+  "better-sqlite3",
+  "mysql",
+  "mysql2",
+  "pg",
+  "pg-query-stream",
+  "oracledb",
+  "tedious",
+  "mssql",
+];
 
 // 后端服务打包配置
 const appBuildConfig: esbuild.BuildOptions = {
