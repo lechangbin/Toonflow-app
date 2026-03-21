@@ -276,7 +276,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("remark");
         table.text("type");
         table.text("describe");
-        table.integer("scriptId");//剧本id
+        table.integer("scriptId"); //剧本id
         table.integer("imageId").unsigned().references("id").inTable("o_image");
         table.integer("sonId");
         table.integer("projectId");
@@ -307,7 +307,11 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_storyboard",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
+        table.text("name");
+        table.text("detail");
+        table.text("prompt");
+        table.text("seconds");
+        table.integer("imageId");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);
@@ -418,6 +422,17 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.index(["isolationKey", "type"]);
         table.index(["isolationKey", "summarized"]);
+      },
+    },
+    //分镜工作流表
+    {
+      name: "o_storyboardFlow",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.text("flowData").notNullable();
+        table.integer("stroryboardId").notNullable();
+        table.primary(["id"]);
+        table.unique(["id"]);
       },
     },
   ];

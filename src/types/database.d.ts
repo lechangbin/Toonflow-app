@@ -1,9 +1,9 @@
-// @db-hash 04e1150a9773602183de5f660a52b092
+// @db-hash 85366ab7662bd484810dcec778054957
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
   'content': string;
-  'createTime': number;
+  'createdAt': number;
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
@@ -35,10 +35,16 @@ export interface o_assets {
   'projectId'?: number | null;
   'prompt'?: string | null;
   'remark'?: string | null;
-  'scriptId'?: number | null;
   'sonId'?: number | null;
   'startTime'?: number | null;
   'state'?: string | null;
+  'type'?: string | null;
+}
+export interface o_chatHistory {
+  'data'?: string | null;
+  'id'?: number;
+  'novel'?: string | null;
+  'projectId'?: number | null;
   'type'?: string | null;
 }
 export interface o_event {
@@ -61,10 +67,33 @@ export interface o_image {
   'assetsId'?: number | null;
   'filePath'?: string | null;
   'id'?: number;
-  'model'?: string | null;
-  'resolution'?: string | null;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
   'state'?: string | null;
   'type'?: string | null;
+  'videoId'?: number | null;
+}
+export interface o_model {
+  'apiKey'?: string | null;
+  'baseUrl'?: string | null;
+  'createTime'?: number | null;
+  'id'?: number;
+  'index'?: number | null;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'modelType'?: string | null;
+  'type'?: string | null;
+}
+export interface o_myTasks {
+  'describe'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'projectId'?: number | null;
+  'reason'?: string | null;
+  'relatedObjects'?: string | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'taskClass'?: string | null;
 }
 export interface o_novel {
   'chapter'?: string | null;
@@ -97,6 +126,15 @@ export interface o_project {
   'userId'?: number | null;
   'videoRatio'?: string | null;
 }
+export interface o_prompts {
+  'code'?: string | null;
+  'customValue'?: string | null;
+  'defaultValue'?: string | null;
+  'id'?: number;
+  'name'?: string | null;
+  'parentCode'?: string | null;
+  'type'?: string | null;
+}
 export interface o_script {
   'content'?: string | null;
   'createTime'?: number | null;
@@ -104,14 +142,43 @@ export interface o_script {
   'name'?: string | null;
   'projectId'?: number | null;
 }
+export interface o_scriptAssets {
+  'assetsId'?: number | null;
+  'id'?: number;
+  'scriptId'?: number | null;
+}
+export interface o_scriptOutline {
+  'id'?: number;
+  'outlineId'?: number | null;
+  'scriptId'?: number | null;
+}
 export interface o_setting {
   'key'?: string | null;
   'value'?: string | null;
 }
-export interface o_storyboard {
-  'createTime'?: number | null;
+export interface o_skills {
   'id'?: number;
   'name'?: string | null;
+  'startTime'?: number | null;
+}
+export interface o_storyboard {
+  'createTime'?: number | null;
+  'detail'?: string | null;
+  'id'?: number;
+  'imageId'?: number | null;
+  'name'?: string | null;
+  'prompt'?: string | null;
+  'seconds'?: string | null;
+}
+export interface o_storyboardFlow {
+  'flowData': string;
+  'id'?: string;
+  'stroryboardId': string;
+}
+export interface o_storyboardScript {
+  'id'?: number;
+  'scriptId'?: number | null;
+  'storyboardId'?: number | null;
 }
 export interface o_tasks {
   'describe'?: string | null;
@@ -178,17 +245,26 @@ export interface DB {
   "o_agentDeploy": o_agentDeploy;
   "o_artStyle": o_artStyle;
   "o_assets": o_assets;
+  "o_chatHistory": o_chatHistory;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_flowData": o_flowData;
   "o_image": o_image;
+  "o_model": o_model;
+  "o_myTasks": o_myTasks;
   "o_novel": o_novel;
   "o_outline": o_outline;
   "o_outlineNovel": o_outlineNovel;
   "o_project": o_project;
+  "o_prompts": o_prompts;
   "o_script": o_script;
+  "o_scriptAssets": o_scriptAssets;
+  "o_scriptOutline": o_scriptOutline;
   "o_setting": o_setting;
+  "o_skills": o_skills;
   "o_storyboard": o_storyboard;
+  "o_storyboardFlow": o_storyboardFlow;
+  "o_storyboardScript": o_storyboardScript;
   "o_tasks": o_tasks;
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;
