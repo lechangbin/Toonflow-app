@@ -11,14 +11,21 @@ export default router.post(
     edges: z.any(),
     nodes: z.any(),
     id: z.number(),
-    imageUrl: z.number(),
+    imageUrl: z.string(),
   }),
   async (req, res) => {
     const { edges, nodes, id, imageUrl } = req.body;
     if (!imageUrl.includes("http")) {
       return res.status(400).send({ message: "图片地址不合法" });
     }
-    // if
+    nodes.forEach((node: any) => {
+      if (node.type == "upload") {
+        node.data.image = node.data.image ? new URL(node.data.image).pathname : "";
+      }
+      if (node.type == "generated") {
+        node.data.generatedImage = node.data.generatedImage ? new URL(node.data.generatedImage).pathname : "";
+      }
+    });
     await u
       .db("o_storyboard")
       .where("id", id)

@@ -96,11 +96,6 @@ export default router.post(
     await imageClass.save(savePath);
 
     const url = await u.oss.getFileUrl(savePath);
-    const [imageId] = await u.db("o_image").insert({
-      filePath: savePath,
-      state: "1",
-      type: "storyFlow",
-    });
-    return res.status(200).send(success({ imageId, url }));
+    return res.status(200).send(success({ url }));
   },
 );
