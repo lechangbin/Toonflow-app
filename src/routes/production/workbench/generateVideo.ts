@@ -13,15 +13,79 @@ export default router.post(
     projectId: z.number(),
     storyboardId: z.number(),
     prompt: z.string(),
-    data: z.array(z.string()).optional(),
+    data: z
+      .array(
+        z.object({
+          id: z.number(),
+          type: z.string(),
+        }),
+      )
+      .optional(),
     model: z.string(),
-    duration: z.number(),
+    duration: z.string(),
     resolution: z.string(),
     audio: z.boolean().optional(),
-    modeData: z.string(),
+    mode: z.string(),
   }),
   async (req, res) => {
-    const { scriptId, projectId, storyboardId, prompt, data, model, duration, resolution, audio, modeData } = req.body;
+    const { scriptId, projectId, storyboardId, prompt, data, model, duration, resolution, audio, mode } = req.body;
+    const videoPath = `/${projectId}/video/${uuidv4()}.mp4`; //视频保存路径
+    //新增
+    const [videoId] = await u.db("o_video").insert({
+      filePath: videoPath,
+      time: Date.now(),
+      state: "生成中",
+      scriptId,
+      storyboardId,
+    });
+    //查询分镜是否已有配置
+    const config = await u.db("o_videoConfig").where({ storyboardId }).first();
+    //保存配置
+    if (config) {
+      await u
+        .db("o_videoConfig")
+        .update({ audio, model, mode, data: JSON.stringify(data), resolution, duration, prompt, updateTime: Date.now() })
+        .where({ id: config.id });
+    } else {
+      await u.db("o_videoConfig").insert({
+        storyboardId,
+        audio,
+        model,
+        mode,
+        data: JSON.stringify(data),
+        resolution,
+        duration,
+        prompt,
+        createTime: Date.now(),
+        updateTime: Date.now(),
+      });
+    }
+    //查询出图片数据
+    const images = await Promise.all(
+      data.map(async (item: { id: number; type: string }) => {
+        if (item.type === "storyboard") {
+          const filePath = await u.db("o_storyboard").where("id", item.id).select("filePath").first();
+          return filePath?.filePath;
+        }
+        if (item.type === "assets") {
+          const filePath = await u
+            .db("o_assets")
+            .where("o_assets.id", item.id)
+            .leftJoin("o_image", "o_assets.imageId", "o_image.id")
+            .select("o_image.filePath")
+            .first();
+          return filePath?.filePath;
+        }
+      }),
+    );
+    //把images里面的图片转成base64格式
+    const base64 = await Promise.all(
+      images.map(async (item) => {
+        if (!item) return null;
+        return await u.oss.getImageBase64(item);
+      }),
+    );
+    //开始生成
     try {
       const relatedObjects = {
         id: storyboardId,
@@ -34,44 +98,33 @@ export default router.post(
 3. 视频风格应与用户指定的模式数据相匹配，包括色彩、音乐、特效等元素。
 4. 视频中应包含用户提供的图片，并在视频中适当展示，以增强视频的视觉效果。
 5. 如果用户指定了音频，请确保视频中的音频与视频内容相匹配，符合用户的创意意图。`;
-      const videoPath = `/${projectId}/video/${uuidv4()}.mp4`;
+
       const aiVideo = u.Ai.Video(model);
       await aiVideo.run({
-        systemPrompt, // 系统提示词
-        projectId: projectId,
-        storyboardId: storyboardId,
-        prompt: prompt,
-        data: data,
-        modeData: modeData,
-        duration: duration,
-        resolution: resolution,
-        audio: audio,
+        systemPrompt,
+        projectId,
+        storyboardId,
+        prompt,
+        imageBase64: base64.filter((item) => item !== null) as string[],
+        mode,
+        duration,
+        resolution,
+        audio,
         taskClass: "视频生成",
         describe: "根据提示词生成视频",
         relatedObjects: JSON.stringify(relatedObjects),
       });
-      await aiVideo.save(videoPath); // 保存视频
-      //保存视频信息到数据库
-    //   await u.db("o_video").insert({
-    //     resolution,
-    //     prompt,
-    //     filePath: videoPath,
-    //     model,
-    //     time: Date.now(),
-    //     state: "生成成功",
-    //     scriptId: scriptId,
-    //   });
-      res.status(200).send(success("视频生成成功"));
-    } catch (error) {
-    //   await u.db("o_video").insert({
-    //     resolution,
-    //     prompt,
-    //     model,
-    //     time: Date.now(),
-    //     state: "生成失败",
-    //     scriptId: scriptId,
-    //     errorReason: error instanceof Error ? error.message : "未知错误",
-    //   });
+      await aiVideo.save(videoPath);
+      await u.db("o_video").where("id", videoId).update({ state: "生成成功" });
+      res.status(200).send(success({ videoId, message: "视频生成成功" }));
+    } catch (error: any) {
+      await u
+        .db("o_video")
+        .where("id", videoId)
+        .update({
+          state: "生成失败",
+          errorReason: error instanceof Error ? error.message : "未知错误",
+        });
       res.status(500).send({ error: "视频生成失败" });
     }
   },

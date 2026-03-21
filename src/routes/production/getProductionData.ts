@@ -4,15 +4,82 @@ import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
-
-// 获取生产数据
 export default router.post(
-    "/",
-    validateFields({
-        projectId: z.number(),
-    }),
-    async (req, res) => {
-        const { projectId } = req.body;
-        res.status(200).send(success("123"));
+  "/",
+  validateFields({
+    scriptId: z.number(),
+  }),
+  async (req, res) => {
+    const { scriptId } = req.body;
+
+    // 1. 查出该剧本下所有分镜
+    const storyboards = await u
+      .db("o_storyboard")
+      .where("o_storyboard.scriptId", scriptId)
+      .select(
+        "o_storyboard.id",
+        "o_storyboard.name",
+        "o_storyboard.detail",
+        "o_storyboard.prompt",
+        "o_storyboard.seconds",
+        "o_storyboard.filePath",
+        "o_storyboard.frameType",
+        "o_storyboard.scriptId",
+      )
+      .orderBy("o_storyboard.createTime", "asc");
+
+    if (storyboards.length === 0) {
+      return res.status(200).send(success([]));
     }
+
+    const storyboardIds = storyboards.map((s) => s.id as number);
+
+    // 2. 批量查出所有相关视频
+    const videos = await u
+      .db("o_video")
+      .whereIn("o_video.storyboardId", storyboardIds)
+      .select("o_video.id", "o_video.storyboardId", "o_video.filePath", "o_video.state", "o_video.errorReason")
+      .orderBy("o_video.time", "desc");
+
+    // 3. 批量查出所有相关配置
+    const configs = await u
+      .db("o_videoConfig")
+      .whereIn("o_videoConfig.storyboardId", storyboardIds)
+      .select(
+        "o_videoConfig.id",
+        "o_videoConfig.storyboardId",
+        "o_videoConfig.videoId",
+        "o_videoConfig.prompt",
+        "o_videoConfig.model",
+        "o_videoConfig.mode",
+        "o_videoConfig.resolution",
+        "o_videoConfig.duration",
+        "o_videoConfig.audio",
+        "o_videoConfig.data",
+      );
+
+    // 4. 按 storyboardId 建立 Map 方便聚合
+    const videoMap = new Map<number, typeof videos>();
+    for (const video of videos) {
+      const sid = video.storyboardId as number;
+      if (!videoMap.has(sid)) videoMap.set(sid, []);
+      videoMap.get(sid)!.push(video);
+    }
+    const configMap = new Map(configs.map((c) => [c.storyboardId as number, c]));
+
+    // 5. 组装结果：分镜平铺 + config 对象 + videos 数组
+    const data = await Promise.all(
+      storyboards.map(async (storyboard) => {
+        const sid = storyboard.id as number;
+        return {
+          ...storyboard,
+          filePath: storyboard.filePath && (await u.oss.getFileUrl(storyboard.filePath!)),
+          config: configMap.get(sid) ?? null,
+          videos: videoMap.get(sid) ?? [],
+        };
+      }),
+    );
+
+    return res.status(200).send(success(data));
+  },
 );
