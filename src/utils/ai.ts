@@ -112,13 +112,28 @@ class AiImage {
     return this;
   }
 }
+interface VideoConfig {
+  projectId: number; // 项目ID
+  storyboardId: number; // 关联的分镜ID
+  systemPrompt?: string; // 系统提示词
+  prompt: string; //视频提示词
+  data: string[]; //输入的图片提示词
+  modeData: string; //模式
+  duration: number; // 视频时长，单位秒
+  resolution: string; // 视频分辨率
+  audio: boolean; // 是否需要配音
+  taskClass: string; // 任务分类
+  describe: string; // 任务描述
+  relatedObjects: string; // 相关对象信息，便于后续分析和追踪
+}
+
 class AiVideo {
   private key: `${number}:${string}`;
   private result: string = "";
   constructor(key: `${number}:${string}`) {
     this.key = key;
   }
-  async run(input: ImageConfig) {
+  async run(input: VideoConfig) {
     return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("videoRequest", modelName);
       this.result = await fn(input);
@@ -137,7 +152,7 @@ class AiAudio {
   constructor(key: `${number}:${string}`) {
     this.key = key;
   }
-  async run(input: ImageConfig) {
+  async run(input: VideoConfig) {
     return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("ttsRequest", modelName);
       this.result = await fn(input);

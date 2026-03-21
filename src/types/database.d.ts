@@ -1,4 +1,4 @@
-// @db-hash feca77a2c2ec5b6a2989347f982558d5
+// @db-hash bd46e7c381481a74efedc662a4f9049f
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -166,6 +166,11 @@ export interface o_storyboard {
   'id'?: number;
   'name'?: string | null;
 }
+export interface o_storyboardFlow {
+  'flowData': string;
+  'id'?: number;
+  'stroryboardId': number;
+}
 export interface o_storyboardScript {
   'id'?: number;
   'scriptId'?: number | null;
@@ -254,6 +259,7 @@ export interface DB {
   "o_setting": o_setting;
   "o_skills": o_skills;
   "o_storyboard": o_storyboard;
+  "o_storyboardFlow": o_storyboardFlow;
   "o_storyboardScript": o_storyboardScript;
   "o_tasks": o_tasks;
   "o_user": o_user;

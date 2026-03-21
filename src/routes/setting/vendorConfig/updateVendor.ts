@@ -40,16 +40,9 @@ const vendorConfigSchema = z.object({
         modelName: z.string(),
         type: z.literal("video"),
         mode: z.array(
-          z.enum([
-            "singleImage",
-            "multiImage",
-            "gridImage",
-            "startEndRequired",
-            "endFrameOptional",
-            "startFrameOptional",
-            "text",
-            "audioReference",
-            "videoReference",
+          z.union([
+            z.enum(["singleImage", "multiImage", "gridImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text"]),
+            z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
           ]),
         ),
         audio: z.union([z.literal("optional"), z.boolean()]),
@@ -100,16 +93,9 @@ export default router.post(
           modelName: z.string(),
           type: z.literal("video"),
           mode: z.array(
-            z.enum([
-              "singleImage",
-              "multiImage",
-              "gridImage",
-              "startEndRequired",
-              "endFrameOptional",
-              "startFrameOptional",
-              "text",
-              "audioReference",
-              "videoReference",
+            z.union([
+              z.enum(["singleImage", "multiImage", "gridImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text"]),
+              z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
             ]),
           ),
           audio: z.union([z.literal("optional"), z.boolean()]),
