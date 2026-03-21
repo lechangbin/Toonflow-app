@@ -89,13 +89,13 @@ class Logger {
       (console as any)[level] = (...args: unknown[]) => {
         this.writing = true;
         try {
-          // this.write(level, args);
+          this.write(level, args);
         } catch (err) {
           this.originalConsole.error?.("[Logger Error]", err);
         }
+        this.writing = false;
 
         this.originalConsole[level]!(...args);
-        this.writing = false;
       };
     }
 

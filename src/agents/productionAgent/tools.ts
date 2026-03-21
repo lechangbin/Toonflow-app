@@ -5,11 +5,27 @@ import { Socket } from "socket.io";
 
 const deriveSchema = z.object({ name: z.string().min(1).max(20), desc: z.string().min(1).max(100) });
 const assetSchema = z.object({ assetsId: z.string(), name: z.string(), desc: z.string(), src: z.string(), derive: z.array(deriveSchema).optional() });
-const flowDataSchema = z.object({ script: z.string(), assets: z.array(assetSchema) });
+const storyboardTableSchema = z.array(
+  z.object({
+    id: z.number(),
+    title: z.string(),
+    description: z.string(),
+    camera: z.string(),
+    duration: z.number(),
+    frameMode: z.enum(["firstFrame", "endFrame", "linesSoundEffects"]),
+    lines: z.string().nullable(),
+    sound: z.string().nullable(),
+    associateAssetsIds: z.array(z.number()),
+  }),
+);
+const flowDataSchema = z.object({ script: z.string(), assets: z.array(assetSchema), storyboardTable: storyboardTableSchema });
+
 type FlowData = z.infer<typeof flowDataSchema>;
 
-const keySchema = z.object({ key: z.enum(["script", "assets"]).describe("script=剧本,assets=资产列表") });
-const valueSchema = z.union([z.string(), z.array(assetSchema), assetSchema, z.array(deriveSchema)]).describe("路径对应的值");
+const keySchema = z.object({ key: z.enum(["script", "assets", "storyboardTable"]).describe("script=剧本,assets=资产列表,storyboardTable=分镜表") });
+const valueSchema = z
+  .union([z.string(), z.array(assetSchema), assetSchema, z.array(deriveSchema), z.array(storyboardTableSchema)])
+  .describe("路径对应的值");
 
 export default (socket: Socket, toolsNames?: string[]) => {
   const tools: Record<string, Tool> = {
@@ -48,6 +64,22 @@ export default (socket: Socket, toolsNames?: string[]) => {
         }
         socket.emit("setFlowData", { key, value });
         return true;
+      },
+    }),
+    generate_assets_images: tool({
+      description: "生成衍生资产的图片",
+      inputSchema: z.object({ ids: z.array(z.string()).describe("需要生成的资产id列表") }),
+      execute: async ({ ids }) => {
+        console.log("[tools] generated_assets", ids);
+        return new Promise((resolve) => socket.emit("generatedAssets", { ids }, (res: any) => resolve(res)));
+      },
+    }),
+    generate_storyboard_images: tool({
+      description: "生成分镜图",
+      inputSchema: z.object({ script: z.string().describe("剧本文本") }),
+      execute: async ({ script }) => {
+        console.log("[tools] generate_storyboard_images", script);
+        return new Promise((resolve) => socket.emit("generateStoryboardImages", { script }, (res: any) => resolve(res)));
       },
     }),
   };
