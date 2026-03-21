@@ -15,13 +15,19 @@ export default router.post(
     console.log("%c Line:15 🥤 id", "background:#e41a6a", id);
     const storyboardFlowData = await u.db("o_storyboardFlow").where("stroryboardId", id).first();
     if (storyboardFlowData?.flowData) {
-      return res.status(200).send(success(JSON.parse(storyboardFlowData?.flowData)));
+      const parseFlow = JSON.parse(storyboardFlowData.flowData);
+      await Promise.all(
+        parseFlow.nodes.map(async (node: any) => {
+          if (node.type === "upload") {
+            node.data.image = node.data.image ? await u.oss.getFileUrl(node.data.image) : "";
+          } else if (node.type === "generated") {
+            node.data.generatedImage = node.data.generatedImage ? await u.oss.getFileUrl(node.data.generatedImage) : "";
+          }
+        }),
+      );
+      return res.status(200).send(success(parseFlow));
     }
-    return res.status(200).send(
-      success({
-        nodes: [],
-        edges: [],
-      }),
-    );
+
+    return res.status(200).send(success(null));
   },
 );
