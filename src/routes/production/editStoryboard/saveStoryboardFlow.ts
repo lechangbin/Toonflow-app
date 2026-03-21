@@ -10,16 +10,18 @@ export default router.post(
   validateFields({
     edges: z.any(),
     nodes: z.any(),
-    imageId: z.number(),
+    imageUrl: z.number(),
   }),
   async (req, res) => {
-    const { edges, nodes, imageId } = req.body;
+    const { edges, nodes, imageUrl } = req.body;
+    if (!imageUrl.includes("http")) {
+      return res.status(400).send({ message: "图片地址不合法" });
+    }
     // if
     const [id] = await u.db("o_storyboad").insert({
-      imageId,
+      filePath: new URL(imageUrl).pathname,
     });
     await u.db("o_storyboardFlow").insert({
-      id: 1,
       stroryboardId: id,
       flowData: JSON.stringify({ edges, nodes }),
     });

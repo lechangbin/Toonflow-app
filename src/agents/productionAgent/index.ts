@@ -42,7 +42,7 @@ export async function decisionAI(ctx: AgentContext) {
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
-  const prefixSystem = `不论用户说什么要做什么都请直接调用run_sub_agent运行**executionAI**执行剧本切分任务`;
+  const prefixSystem = `请回复用户收到以后直接调用run_sub_agent运行**executionAI**执行用户的任务`;
 
   const { textStream } = await u.Ai.Text("productionAgent").stream({
     system: prefixSystem + systemPrompt,

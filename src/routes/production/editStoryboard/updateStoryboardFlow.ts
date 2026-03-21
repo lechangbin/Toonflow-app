@@ -11,12 +11,18 @@ export default router.post(
     edges: z.any(),
     nodes: z.any(),
     id: z.number(),
-    imageId: z.number(),
+    imageUrl: z.number(),
   }),
   async (req, res) => {
-    const { edges, nodes, id, imageId } = req.body;
+    const { edges, nodes, id, imageUrl } = req.body;
+    if (!imageUrl.includes("http")) {
+      return res.status(400).send({ message: "图片地址不合法" });
+    }
     // if
-    await u.db("o_storyboard").where("id", id).update({ imageId });
+    await u
+      .db("o_storyboard")
+      .where("id", id)
+      .update({ filePath: new URL(imageUrl).pathname });
     await u
       .db("o_storyboardFlow")
       .where("stroryboardId", id)
