@@ -97,11 +97,11 @@ class Memory {
       embedding: JSON.stringify(embedding),
       relatedMessageIds: null,
       summarized: 0,
-      createdAt: Date.now(),
+      createTime: Date.now(),
     } as any);
 
     // 检查未总结消息数量
-    const unsummarized = await u.db("memories").where({ isolationKey, type: "message", summarized: 0 }).orderBy("createdAt", "asc");
+    const unsummarized = await u.db("memories").where({ isolationKey, type: "message", summarized: 0 }).orderBy("createTime", "asc");
 
     if (unsummarized.length >= Number(messagesPerSummary)) {
       const batch = unsummarized.slice(0, Number(messagesPerSummary));
@@ -120,7 +120,7 @@ class Memory {
         embedding: JSON.stringify(summaryEmbedding),
         relatedMessageIds: JSON.stringify(batchIds),
         summarized: 0,
-        createdAt: Date.now(),
+        createTime: Date.now(),
       } as any);
 
       // 标记已总结
@@ -140,12 +140,12 @@ class Memory {
     const shortTerm = await u
       .db("memories")
       .where({ isolationKey, type: "message", summarized: 0 })
-      .orderBy("createdAt", "desc")
+      .orderBy("createTime", "desc")
       .limit(Number(shortTermLimit));
     shortTerm.reverse(); // 最旧在前
 
     // summaries: 最近的 summary
-    const summaries = await u.db("memories").where({ isolationKey, type: "summary" }).orderBy("createdAt", "desc").limit(Number(summaryLimit));
+    const summaries = await u.db("memories").where({ isolationKey, type: "summary" }).orderBy("createTime", "desc").limit(Number(summaryLimit));
     summaries.reverse();
 
     // rag: 向量搜索所有 messages
@@ -154,12 +154,12 @@ class Memory {
     const ragResults = vectorSearch(allMessages, queryEmbedding, Number(ragLimit));
 
     return {
-      shortTerm: shortTerm.map((m: any) => ({ id: m.id, role: m.role, content: m.content, createdAt: m.createdAt })),
+      shortTerm: shortTerm.map((m: any) => ({ id: m.id, role: m.role, content: m.content, createTime: m.createTime })),
       summaries: summaries.map((s) => ({
         id: s.id,
         content: s.content,
         relatedMessageIds: JSON.parse(s.relatedMessageIds || "[]"),
-        createdAt: (s as any).createdAt,
+        createTime: (s as any).createTime,
       })),
       rag: ragResults.map((r) => ({ id: r.id, content: r.content, similarity: r.similarity })),
     };
@@ -190,9 +190,9 @@ class Memory {
 
     if (messageIds.length === 0) return [];
 
-    const messages = await u.db("memories").whereIn("id", messageIds).orderBy("createdAt", "asc");
+    const messages = await u.db("memories").whereIn("id", messageIds).orderBy("createTime", "asc");
 
-    return messages.map((m) => ({ id: m.id, content: m.content, createdAt: m.createdAt }));
+    return messages.map((m) => ({ id: m.id, content: m.content, createTime: m.createTime }));
   }
 
   getTools() {
