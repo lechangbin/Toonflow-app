@@ -307,7 +307,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_storyboard",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
+        table.text("name");
+        table.text("detail");
+        table.text("prompt");
+        table.text("seconds");
+        table.text("filePath");
+        table.text("frameType");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);
@@ -412,6 +417,17 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.index(["isolationKey", "type"]);
         table.index(["isolationKey", "summarized"]);
+      },
+    },
+    //分镜工作流表
+    {
+      name: "o_storyboardFlow",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.text("flowData").notNullable();
+        table.integer("stroryboardId").notNullable();
+        table.primary(["id"]);
+        table.unique(["id"]);
       },
     },
   ];
