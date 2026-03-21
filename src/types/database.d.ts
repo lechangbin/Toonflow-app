@@ -1,4 +1,4 @@
-// @db-hash f67609654b5467393c4809a3921d8fa4
+// @db-hash f8ab3a7aee659c729c770f3555728f1b
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -110,8 +110,19 @@ export interface o_setting {
 }
 export interface o_storyboard {
   'createTime'?: number | null;
+  'detail'?: string | null;
+  'filePath'?: string | null;
+  'frameType'?: string | null;
   'id'?: number;
   'name'?: string | null;
+  'prompt'?: string | null;
+  'scriptId'?: number | null;
+  'seconds'?: string | null;
+}
+export interface o_storyboardFlow {
+  'flowData': string;
+  'id'?: number;
+  'stroryboardId': number;
 }
 export interface o_tasks {
   'describe'?: string | null;
@@ -144,10 +155,6 @@ export interface o_video {
   'errorReason'?: string | null;
   'filePath'?: string | null;
   'id'?: number;
-  'mode'?: string | null;
-  'model'?: string | null;
-  'prompt'?: string | null;
-  'resolution'?: string | null;
   'scriptId'?: number | null;
   'state'?: string | null;
   'storyboardId'?: number | null;
@@ -163,6 +170,7 @@ export interface o_videoConfig {
   'model'?: string | null;
   'prompt'?: string | null;
   'resolution'?: string | null;
+  'storyboardId'?: number | null;
   'updateTime'?: number | null;
   'videoId'?: number | null;
 }
@@ -183,6 +191,7 @@ export interface DB {
   "o_script": o_script;
   "o_setting": o_setting;
   "o_storyboard": o_storyboard;
+  "o_storyboardFlow": o_storyboardFlow;
   "o_tasks": o_tasks;
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;

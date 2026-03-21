@@ -307,6 +307,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_storyboard",
       builder: (table) => {
         table.integer("id").notNullable();
+        table.integer("scriptId");
         table.text("name");
         table.text("detail");
         table.text("prompt");
@@ -334,11 +335,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_video",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.text("resolution");
-        table.text("prompt");
         table.text("filePath");
-        table.text("model");
-        table.text("mode");
         table.text("errorReason");
         table.integer("time");
         table.text("state");
@@ -348,15 +345,15 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["id"]);
       },
     },
-    //视频配置
     {
       name: "o_videoConfig",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.integer("videoId"); //视频Id
-        table.integer("audio"); //声音
-        table.text("model"); //模型
-        table.text("mode"); // 模式：startEnd/multi/single
+        table.integer("storyboardId");
+        table.integer("videoId"); 
+        table.integer("audio"); // 声音
+        table.text("model"); // 模型
+        table.text("mode"); // 模式：
         table.text("data"); // 所选数据集图片 JSON
         table.text("resolution"); // 分辨率
         table.integer("duration"); // 时长
