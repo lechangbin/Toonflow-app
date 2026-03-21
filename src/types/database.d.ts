@@ -1,6 +1,16 @@
-// @db-hash 8af8e41e3ca0cb5ee554944515d72ba8
+// @db-hash 4e0fc4daee764ea1a80bacd64b0cac2b
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_storyboard_old_20260321 {
+  'createTime'?: number | null;
+  'detail'?: string | null;
+  'filePath'?: string | null;
+  'frameType'?: string | null;
+  'id'?: number;
+  'name'?: string | null;
+  'prompt'?: string | null;
+  'seconds'?: string | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -162,6 +172,8 @@ export interface o_skills {
   'startTime'?: number | null;
 }
 export interface o_storyboard {
+  'associateAssetsIds'?: string | null;
+  'camera'?: string | null;
   'createTime'?: number | null;
   'detail'?: string | null;
   'filePath'?: string | null;
@@ -170,6 +182,8 @@ export interface o_storyboard {
   'name'?: string | null;
   'prompt'?: string | null;
   'seconds'?: string | null;
+  'sound'?: string | null;
+  'TEXT'?: any | null;
 }
 export interface o_storyboardFlow {
   'flowData': string;
@@ -242,6 +256,7 @@ export interface o_videoConfig {
 }
 
 export interface DB {
+  "_o_storyboard_old_20260321": _o_storyboard_old_20260321;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_artStyle": o_artStyle;
