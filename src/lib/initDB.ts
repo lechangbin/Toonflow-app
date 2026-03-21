@@ -337,14 +337,13 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("resolution");
         table.text("prompt");
         table.text("filePath");
-        table.text("firstFrame");
-        table.text("storyboardImgs");
         table.text("model");
+        table.text("mode");
         table.text("errorReason");
         table.integer("time");
-        table.integer("state");
+        table.text("state");
         table.integer("scriptId");
-        table.integer("configId"); // 关联的视频配置ID
+        table.integer("storyboardId");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -354,19 +353,14 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_videoConfig",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.integer("scriptId"); // 关联的脚本ID
-        table.integer("projectId"); // 关联的项目ID
-        table.integer("aiConfigId"); //ai配置ID
-        table.integer("audioEnabled"); //声音
-        table.text("manufacturer"); // 厂商：volcengine/runninghub/openAi
+        table.integer("videoId"); //视频Id
+        table.integer("audio"); //声音
+        table.text("model"); //模型
         table.text("mode"); // 模式：startEnd/multi/single
-        table.text("startFrame"); // 首帧图片信息 JSON
-        table.text("endFrame"); // 尾帧图片信息 JSON
-        table.text("images"); // 多图模式的图片列表 JSON
+        table.text("data"); // 所选数据集图片 JSON
         table.text("resolution"); // 分辨率
         table.integer("duration"); // 时长
         table.text("prompt"); // 提示词
-        table.integer("selectedResultId"); // 选中的生成结果ID
         table.integer("createTime"); // 创建时间
         table.integer("updateTime"); // 更新时间
         table.primary(["id"]);

@@ -117,7 +117,7 @@ interface VideoConfig {
   storyboardId: number; // 关联的分镜ID
   systemPrompt?: string; // 系统提示词
   prompt: string; //视频提示词
-  imageData: string[]; //输入的图片提示词
+  data: string[]; //输入的图片提示词
   modeData: string; //模式
   duration: number; // 视频时长，单位秒
   resolution: string; // 视频分辨率

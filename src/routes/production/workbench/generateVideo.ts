@@ -13,7 +13,7 @@ export default router.post(
     projectId: z.number(),
     storyboardId: z.number(),
     prompt: z.string(),
-    imageData: z.array(z.string()).optional(),
+    data: z.array(z.string()).optional(),
     model: z.string(),
     duration: z.number(),
     resolution: z.string(),
@@ -21,8 +21,7 @@ export default router.post(
     modeData: z.string(),
   }),
   async (req, res) => {
-    const { scriptId, projectId, storyboardId, prompt, imageData, model, duration, resolution, audio, modeData } = req.body;
-    console.log("%c Line:24 🍡 req.body", "background:#b03734", req.body);
+    const { scriptId, projectId, storyboardId, prompt, data, model, duration, resolution, audio, modeData } = req.body;
     try {
       const relatedObjects = {
         id: storyboardId,
@@ -42,7 +41,7 @@ export default router.post(
         projectId: projectId,
         storyboardId: storyboardId,
         prompt: prompt,
-        imageData: imageData,
+        data: data,
         modeData: modeData,
         duration: duration,
         resolution: resolution,
@@ -58,12 +57,21 @@ export default router.post(
     //     prompt,
     //     filePath: videoPath,
     //     model,
-    //     time: new Date(),
+    //     time: Date.now(),
     //     state: "生成成功",
     //     scriptId: scriptId,
     //   });
       res.status(200).send(success("视频生成成功"));
     } catch (error) {
+    //   await u.db("o_video").insert({
+    //     resolution,
+    //     prompt,
+    //     model,
+    //     time: Date.now(),
+    //     state: "生成失败",
+    //     scriptId: scriptId,
+    //     errorReason: error instanceof Error ? error.message : "未知错误",
+    //   });
       res.status(500).send({ error: "视频生成失败" });
     }
   },
