@@ -311,7 +311,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("detail");
         table.text("prompt");
         table.text("seconds");
-        table.integer("imageId");
+        table.text("filePath");
+        table.text("frameType");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);
