@@ -13,20 +13,7 @@ export default router.post(
     const { scriptId } = req.body;
 
     // 1. 查出该剧本下所有分镜
-    const storyboards = await u
-      .db("o_storyboard")
-      .where("o_storyboard.scriptId", scriptId)
-      .select(
-        "o_storyboard.id",
-        "o_storyboard.name",
-        "o_storyboard.detail",
-        "o_storyboard.prompt",
-        "o_storyboard.seconds",
-        "o_storyboard.filePath",
-        "o_storyboard.frameType",
-        "o_storyboard.scriptId",
-      )
-      .orderBy("o_storyboard.createTime", "asc");
+    const storyboards = await u.db("o_storyboard").where("o_storyboard.scriptId", scriptId).select("*").orderBy("o_storyboard.createTime", "asc");
 
     if (storyboards.length === 0) {
       return res.status(200).send(success([]));

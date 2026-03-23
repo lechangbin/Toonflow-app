@@ -1,4 +1,4 @@
-// @db-hash 18bcc156a22196f0e296ee2b33700879
+// @db-hash bea1bd617996a9e12ad951edcce03880
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -109,9 +109,12 @@ export interface o_setting {
   'value'?: string | null;
 }
 export interface o_storyboard {
+  'associateAssetsIds'?: string | null;
+  'camera'?: string | null;
   'createTime'?: number | null;
   'duration'?: string | null;
   'filePath'?: string | null;
+  'frameType'?: string | null;
   'id'?: number;
   'mode'?: string | null;
   'model'?: string | null;
@@ -119,6 +122,7 @@ export interface o_storyboard {
   'prompt'?: string | null;
   'resolution'?: string | null;
   'scriptId'?: number | null;
+  'sound'?: string | null;
 }
 export interface o_storyboardFlow {
   'flowData': string;

@@ -12,7 +12,6 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-    console.log("%c Line:15 🥤 id", "background:#e41a6a", id);
     const storyboardFlowData = await u.db("o_storyboardFlow").where("stroryboardId", id).first();
     if (storyboardFlowData?.flowData) {
       const parseFlow = JSON.parse(storyboardFlowData.flowData);

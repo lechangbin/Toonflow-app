@@ -315,6 +315,10 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("mode");
         table.text("duration");
         table.text("resolution");
+        table.text("frameType");
+        table.text("camera");
+        table.text("sound");
+        table.text("associateAssetsIds");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);
