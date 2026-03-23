@@ -32,6 +32,16 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         return planData[key];
       },
     }),
+    get_novel_text: tool({
+      description: "获取小说章节原始文本内容",
+      inputSchema: z.object({
+        id: z.string().describe("章节id"),
+      }),
+      execute: async ({ id }) => {
+        console.log(id);
+        return "";
+      },
+    }),
     set_planData_event: tool({
       description: "保存章节事件到工作区",
       inputSchema: z.object({ value: planData.shape.event }),

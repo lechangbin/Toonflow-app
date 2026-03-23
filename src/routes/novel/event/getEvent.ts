@@ -6,10 +6,6 @@ import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
-// CREATE TABLE `o_event` (`id` integer not null, `name` varchar(255), `detail` varchar(255), `createTime` integer, primary key (`id`));
-// CREATE TABLE `o_eventChapter` (`id` integer not null, `eventId` integer, `novelId` integer, foreign key(`eventId`) references `o_event`(`id`), foreign key(`novelId`) references `o_novel`(`id`), primary key (`id`));
-// CREATE TABLE `o_novel` (`id` integer not null, `chapterIndex` integer, `reel` text, `chapter` text, `chapterData` text, `projectId` integer, `createTime` integer, primary key (`id`));
-
 export default router.post(
   "/",
   validateFields({
@@ -43,13 +39,7 @@ export default router.post(
     // 分页查询：每个事件对应多个 chapterIndex，用 GROUP_CONCAT 聚合
     const rows = await baseQuery
       .clone()
-      .select(
-        "e.id",
-        "e.name as eventName",
-        "e.detail",
-        "e.createTime",
-        db.raw("GROUP_CONCAT(n.chapterIndex) as chapterIndexes"),
-      )
+      .select("e.id", "e.name as eventName", "e.detail", "e.createTime", db.raw("GROUP_CONCAT(n.chapterIndex) as chapterIndexes"))
       .groupBy("e.id")
       .limit(limit)
       .offset(offset);

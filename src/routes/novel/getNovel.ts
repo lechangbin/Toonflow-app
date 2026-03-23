@@ -13,7 +13,6 @@ export default router.post(
     page: z.number(),
     limit: z.number(),
     search: z.string().optional(),
-
   }),
   async (req, res) => {
     const { projectId, page, limit, search } = req.body;
@@ -21,7 +20,7 @@ export default router.post(
     const data = await u
       .db("o_novel")
       .where("projectId", projectId)
-      .select("id", "chapterIndex as index", "reel", "chapter", "chapterData")
+      .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState")
       .andWhere((qb) => {
         if (search) {
           qb.where("chapter", "like", `%${search}%`);
@@ -30,6 +29,7 @@ export default router.post(
       .orderBy("chapterIndex", "asc")
       .limit(limit)
       .offset(offset);
+
     // 统计总数
     const totalQuery = (await u
       .db("o_novel")
@@ -43,5 +43,5 @@ export default router.post(
       .first()) as any;
 
     res.status(200).send(success({ data, total: totalQuery.total }));
-  }
+  },
 );
