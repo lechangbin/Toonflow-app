@@ -4,6 +4,17 @@ import { z } from "zod";
 import _ from "lodash";
 import ResTool from "@/socket/resTool";
 
+export const AssetSchema = z.object({
+  id: z.number().describe("衍生资产ID,如果新增则为空").optional(),
+  assetsId: z.string().describe("关联的资产ID"),
+  prompt: z.string().describe("生成提示词"),
+  name: z.string().describe("衍生资产名称"),
+  desc: z.string().describe("衍生资产描述"),
+  src: z.string().describe("衍生资产资源路径").optional(),
+  state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态，新增默认未生成"),
+  type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
+});
+
 export const planData = z.object({
   storySkeleton: z.string().describe("故事骨架"),
   adaptationStrategy: z.string().describe("改编策略"),
@@ -26,6 +37,8 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         ids: z.array(z.number()).describe("章节id"),
       }),
       execute: async ({ ids }) => {
+        resTool.systemMessage(`正在阅读 章节事件 数据...`);
+        console.log("[tools] get_novel_events", ids);
         const data = await u
           .db("o_novel")
           .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState")
@@ -76,13 +89,23 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         return true;
       },
     }),
-    set_planData_script: tool({
-      description: "保存剧本内容到工作区",
-      inputSchema: z.object({ value: planData.shape.script }),
-      execute: async ({ value }) => {
-        console.log("[tools] set_planData script", value);
-        resTool.systemMessage("正在保存 剧本 数据");
-        socket.emit("setPlanData", { key: "script", value });
+    insert_script_to_sqlite: tool({
+      description: "将剧本内容插入sqlite数据库，供后续业务使用",
+      inputSchema: z.object({
+        list: z.array(AssetSchema),
+      }),
+      execute: async ({ list }) => {
+        console.log("[tools] insert_script_to_sqlite", list);
+        await u.db("o_assets").insert(
+          list.map((i) => ({
+            name: i.name,
+            prompt: i.prompt,
+            type: i.type,
+            describe: i.desc,
+            projectId: resTool.data.projectId,
+            state: "未生成",
+          })),
+        );
         return true;
       },
     }),

@@ -6,10 +6,12 @@ import ResTool from "@/socket/resTool";
 export const deriveAssetSchema = z.object({
   id: z.number().describe("衍生资产ID,如果新增则为空").optional(),
   assetsId: z.string().describe("关联的资产ID"),
+  prompt: z.string().describe("生成提示词"),
   name: z.string().describe("衍生资产名称"),
   desc: z.string().describe("衍生资产描述"),
   src: z.string().describe("衍生资产资源路径"),
   state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态"),
+  type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
 });
 export const assetItemSchema = z.object({
   assetsId: z.string().describe("资产唯一标识"),

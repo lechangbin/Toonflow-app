@@ -52,10 +52,11 @@
 ```
 输入：事件表（get_novel_events） + planData.storySkeleton + planData.adaptationStrategy
 处理：按集编写（可并行或逐集）
-输出：planData.script
-工具：get_novel_events + get_planData + get_novel_text → set_planData_script
+输出：SQLite 中的剧本记录
+工具：get_novel_events + get_planData + get_novel_text → insert_script_to_sqlite
 质量门：时长合规、台词字数、画面可执行、资产一致
 前置条件：阶段3通过审核
+附加前置条件：用户已明确确认写入 SQL
 ```
 
 ## 阶段间交互协议
