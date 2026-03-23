@@ -13,6 +13,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { scriptId, specifyIds } = req.body;
+    console.log("%c Line:16 🍡", "background:#465975");
     const data = await u.db("o_video").where("scriptId", scriptId).whereIn("id", specifyIds).select("*");
     res.status(200).send(success(data));
   },
