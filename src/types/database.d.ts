@@ -1,4 +1,4 @@
-// @db-hash db6e8dfe8be75f6c605991904268fd8d
+// @db-hash d0e44c9c923897d847cded0a28012baf
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -40,6 +40,10 @@ export interface o_assets {
   'startTime'?: number | null;
   'state'?: string | null;
   'type'?: string | null;
+}
+export interface o_assets2Storyboard {
+  'assetId'?: number;
+  'storyboardId': number;
 }
 export interface o_event {
   'createTime'?: number | null;
@@ -189,6 +193,7 @@ export interface DB {
   "o_agentDeploy": o_agentDeploy;
   "o_artStyle": o_artStyle;
   "o_assets": o_assets;
+  "o_assets2Storyboard": o_assets2Storyboard;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_flowData": o_flowData;
