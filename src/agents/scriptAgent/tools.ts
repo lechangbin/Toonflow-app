@@ -1,10 +1,10 @@
 import { tool, Tool } from "ai";
+import u from "@/utils";
 import { z } from "zod";
 import _ from "lodash";
 import ResTool from "@/socket/resTool";
 
 export const planData = z.object({
-  event: z.string().describe("章节事件"),
   storySkeleton: z.string().describe("故事骨架"),
   adaptationStrategy: z.string().describe("改编策略"),
   script: z.string().describe("剧本内容"),
@@ -20,6 +20,20 @@ const planDataKeyLabels = Object.fromEntries(
 export default (resTool: ResTool, toolsNames?: string[]) => {
   const { socket } = resTool;
   const tools: Record<string, Tool> = {
+    get_novel_events: tool({
+      description: "获取章节事件",
+      inputSchema: z.object({
+        ids: z.array(z.number()).describe("章节id"),
+      }),
+      execute: async ({ ids }) => {
+        const data = await u
+          .db("o_novel")
+          .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState")
+          .whereIn("id", ids);
+        const eventString = data.map((i: any) => [`第${i.index}章，标题：${i.chapter}，事件：${i.event}`].join("\n")).join("\n");
+        return eventString;
+      },
+    }),
     get_planData: tool({
       description: "获取工作区数据",
       inputSchema: z.object({
@@ -40,16 +54,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       execute: async ({ id }) => {
         console.log(id);
         return "";
-      },
-    }),
-    set_planData_event: tool({
-      description: "保存章节事件到工作区",
-      inputSchema: z.object({ value: planData.shape.event }),
-      execute: async ({ value }) => {
-        console.log("[tools] set_planData event", value);
-        resTool.systemMessage("正在保存 章节事件 数据");
-        socket.emit("setPlanData", { key: "event", value });
-        return true;
       },
     }),
     set_planData_storySkeleton: tool({

@@ -3,7 +3,7 @@ name: execution
 description: >-
   短剧改编执行层Agent技能。负责接收决策层派发的具体任务并执行，涵盖事件提取、
   故事骨架搭建、改编策略制定、剧本编写四大任务类型。使用 get_novel_text 读取原著，
-  使用 get_planData 获取工作区状态，使用 set_planData 系列工具保存产出物。
+   使用 get_novel_events 获取章节事件数据，使用 get_planData 获取工作区状态，使用 set_planData 系列工具保存产出物。
   当收到决策层的 run_sub_agent 调用时激活。
 ---
 
@@ -16,7 +16,6 @@ description: >-
 
 ```typescript
 const planData = {
-  event: string,              // 章节事件表
   storySkeleton: string,      // 故事骨架
   adaptationStrategy: string, // 改编策略
   script: string,             // 剧本内容
@@ -24,7 +23,8 @@ const planData = {
 ```
 
 - 读取：`get_planData` → 返回完整 planData 对象
-- 写入：`set_planData_event` / `set_planData_storySkeleton` / `set_planData_adaptationStrategy` / `set_planData_script`
+- 事件读取：`get_novel_events(ids:number[])` → 返回指定章节ID的事件数据
+- 写入：`set_planData_storySkeleton` / `set_planData_adaptationStrategy` / `set_planData_script`
 
 ## 项目背景
 
@@ -52,7 +52,8 @@ const planData = {
 
 **执行流程**：
 
-1. 调用 `get_novel_text` 获取指定章节范围的原著文本
+1. 根据决策层传入的章节ID，构建 `ids:number[]`
+2. 调用 `get_novel_events(ids:number[])` 获取结构化事件数据
 2. 逐章分析，提取以下维度：
 
 | 字段 | 说明 | 示例 |
@@ -66,7 +67,7 @@ const planData = {
 | 情绪强度 | 情绪标签 | 冲突+恐怖 |
 
 3. 生成汇总统计（总章节、强主线章节数、可压缩章节、预估总时长、目标时长、压缩比）
-4. 调用 `set_planData_event` 保存 Markdown 表格格式的事件表
+4. 输出 Markdown 表格格式的事件表，作为后续任务上下文（不写入 planData）
 
 **输出格式**：参考 [event-format.md](references/event-format.md)
 
@@ -83,7 +84,7 @@ const planData = {
 
 **执行流程**：
 
-1. 调用 `get_planData` 获取已有事件表
+1. 调用 `get_novel_events(ids:number[])` 获取已有事件表
 2. 确定故事核（一句话总结整部剧的核心吸引力）
 3. 提炼隐线（人物弧：主角的内在成长轨迹）
 4. 设计三幕结构：
@@ -122,7 +123,7 @@ const planData = {
 
 **执行流程**：
 
-1. 调用 `get_planData` 获取事件表和故事骨架
+1. 调用 `get_novel_events(ids:number[])` 获取事件表，并调用 `get_planData` 获取故事骨架
 2. 制定核心改编原则（3-5条），每条原则必须：
    - 明确优先级
    - 给出正面指导（"应该做什么"）和负面边界（"不应该做什么"）
@@ -152,7 +153,7 @@ const planData = {
 
 **执行流程**：
 
-1. 调用 `get_planData` 获取全部工作区数据（事件表、骨架、改编策略）
+1. 调用 `get_novel_events(ids:number[])` 获取事件表，并调用 `get_planData` 获取骨架与改编策略
 2. 根据指定集数，从骨架中获取该集的：
    - 覆盖章节范围
    - 戏剧功能
@@ -181,7 +182,7 @@ const planData = {
 
 ## 通用执行规范
 
-1. **先读后写**：执行任何任务前，先调用 `get_planData` 了解当前工作区状态
+1. **先读后写**：执行任何任务前，先调用 `get_planData` 了解工作区状态，并按需调用 `get_novel_events(ids:number[])` 获取事件数据
 2. **增量更新**：如果工作区已有内容，在其基础上修改而非全部覆盖（除非指令明确要求重写）
 3. **格式一致**：严格按照对应的输出格式规范，使用 Markdown 格式
 4. **任务边界**：只执行指令中明确要求的任务，不越权执行其他阶段
