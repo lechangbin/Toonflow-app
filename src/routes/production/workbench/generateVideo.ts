@@ -118,6 +118,7 @@ export default router.post(
         });
         await aiVideo.save(videoPath);
         await u.db("o_video").where("id", videoId).update({ state: "生成成功" });
+        await u.db("o_videoConfig").where("storyboardId", storyboardId).update({ videoId, updateTime: Date.now() });
       } catch (error: any) {
         await u
           .db("o_video")
