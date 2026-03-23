@@ -4,7 +4,7 @@ import { z } from "zod";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
 import { useSkill } from "@/utils/agent/skillsTools";
-import useTools from "@/agents/productionAgent/tools";
+import useTools from "@/agents/scriptAgent/tools";
 import ResTool from "@/socket/resTool";
 
 export interface AgentContext {
@@ -36,15 +36,15 @@ const subAgentList = ["executionAI", "supervisionAI"] as const;
 
 export async function decisionAI(ctx: AgentContext) {
   const { isolationKey, text, abortSignal } = ctx;
-  const memory = new Memory("productionAgent", isolationKey);
+  const memory = new Memory("scriptAgent", isolationKey);
   await memory.add("user", text);
-  const [skill, mem] = await Promise.all([useSkill("production-agent", "decision"), memory.get(text)]);
+  const [skill, mem] = await Promise.all([useSkill("script-agent", "decision"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
-  const prefixSystem = `以用户当前指令为最终目标。默认直接推进执行；仅当用户明确要求新增或修改拍摄计划时，才调用set_flowData更新scriptPlan并与用户确认。需要执行任务时调用run_sub_agent运行**executionAI**。`;
+  const prefixSystem = `请调用run_sub_agent完成任务`;
 
-  const { textStream } = await u.Ai.Text("productionAgent").stream({
+  const { textStream } = await u.Ai.Text("scriptAgent").stream({
     system: prefixSystem + systemPrompt,
     messages: [{ role: "user", content: text }],
     abortSignal,
@@ -69,12 +69,12 @@ export async function executionAI(ctx: AgentContext) {
 
   resTool.systemMessage("执行层AI 接管聊天");
 
-  const memory = new Memory("productionAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("production-agent", "execution"), memory.get(text)]);
+  const memory = new Memory("scriptAgent", isolationKey);
+  const [skill, mem] = await Promise.all([useSkill("script-agent", "execution"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
-  const { textStream } = await u.Ai.Text("productionAgent").stream({
+  const { textStream } = await u.Ai.Text("scriptAgent").stream({
     system: systemPrompt,
     messages: [{ role: "user", content: text }],
     abortSignal,
@@ -93,12 +93,12 @@ export async function executionAI(ctx: AgentContext) {
 
 export async function supervisionAI(ctx: AgentContext) {
   const { isolationKey, text, abortSignal } = ctx;
-  const memory = new Memory("productionAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("production-agent", "supervision"), memory.get(text)]);
+  const memory = new Memory("scriptAgent", isolationKey);
+  const [skill, mem] = await Promise.all([useSkill("script-agent", "supervision"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
-  const { textStream } = await u.Ai.Text("productionAgent").stream({
+  const { textStream } = await u.Ai.Text("scriptAgent").stream({
     system: systemPrompt,
     messages: [{ role: "user", content: text }],
     abortSignal,

@@ -9,19 +9,12 @@ export default router.post(
   "/",
   validateFields({
     scriptId: z.number(),
+    specifyIds: z.array(z.number()),
   }),
   async (req, res) => {
-    const { scriptId } = req.body;
-    const storyboardData = await u.db("o_storyboard").where({ scriptId });
-    const data = await Promise.all(
-      storyboardData.map(async (i) => {
-        return {
-          ...i,
-          title: i.title,
-          filePath: i.filePath ? await u.oss.getFileUrl(i.filePath!) : "",
-        };
-      }),
-    );
+    const { scriptId, specifyIds } = req.body;
+    console.log("%c Line:16 🍡", "background:#465975");
+    const data = await u.db("o_video").where("scriptId", scriptId).whereIn("id", specifyIds).select("*");
     res.status(200).send(success(data));
   },
 );

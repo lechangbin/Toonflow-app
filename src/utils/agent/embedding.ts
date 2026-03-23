@@ -12,7 +12,6 @@ let extractor: FeatureExtractionPipeline | null = null;
 export async function initEmbedding(): Promise<void> {
   if (extractor) return;
 
-  //todo 模型配置放到这里
   const modelConfigData = await db("o_setting").whereIn("key", ["modelOnnxFile", "modelDtype"]);
   const modelObj: Record<string, string> = {};
   Object.entries(modelConfigData).forEach(([key, value]) => {

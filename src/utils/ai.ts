@@ -1,5 +1,5 @@
-import { generateText, streamText, Output, stepCountIs, ModelMessage, LanguageModel, Tool, GenerateTextResult } from "ai";
-import { parse } from "best-effort-json-parser";
+import { generateText, streamText, wrapLanguageModel, stepCountIs } from "ai";
+import { devToolsMiddleware } from "@ai-sdk/devtools";
 import axios from "axios";
 import { transform } from "sucrase";
 import u from "@/utils";
@@ -76,7 +76,10 @@ class AiText {
     return streamText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 5) }),
       ...input,
-      model: await getVendorTemplateFn("textRequest", modelName),
+      model: wrapLanguageModel({
+        model: await getVendorTemplateFn("textRequest", modelName),
+        middleware: devToolsMiddleware(),
+      }),
     } as Parameters<typeof streamText>[0]);
   }
 }

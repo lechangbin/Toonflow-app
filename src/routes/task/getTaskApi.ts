@@ -28,7 +28,8 @@ export default router.post(
       })
       .select("o_tasks.*", "o_project.* ")
       .offset(offset)
-      .limit(limit);
+      .limit(limit)
+      .orderBy("o_tasks.id", "desc");
     const totalQuery = (await u
       .db("o_tasks")
       .andWhere((qb) => {

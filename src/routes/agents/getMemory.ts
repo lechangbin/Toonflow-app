@@ -5,29 +5,40 @@ import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
+function normalizeRole(role?: string | null): "user" | "assistant" {
+  return role?.startsWith("assistant") ? "assistant" : "user";
+}
+
+function getAssistantName(role?: string | null): string | undefined {
+  if (!role?.startsWith("assistant:")) return undefined;
+  return role.split(":")[1] || "assistant";
+}
+
 export default router.post(
   "/",
   validateFields({
     projectId: z.number(),
+    agentType: z.enum(["scriptAgent", "productionAgent"]),
     episodesId: z.number().optional(),
   }),
   async (req, res) => {
-    const { projectId, episodesId } = req.body;
-    const isolationKey = `${projectId}:${episodesId ?? ""}`;
+    const { projectId, agentType, episodesId } = req.body;
+    const isolationKey = `${projectId}:${agentType}${episodesId ? `:${episodesId}` : ""}`;
 
     const rows = await u
       .db("memories")
       .where({ isolationKey, type: "message" })
       .orderBy("createTime", "asc")
-      .select("id", "content", "createTime");
+      .select("id", "role", "content", "createTime");
 
     const history = rows.map((row) => ({
       id: row.id,
-      role: "user",
-      content: [{ type: "text", status: "complete", data: row.content }],
+      role: normalizeRole(row.role),
+      name: getAssistantName(row.role),
+      content: [{ type: "markdown", status: "complete", data: row.content }],
       createTime: row.createTime,
     }));
 
-    res.status(200).send(success({ history }));
+    res.status(200).send(success(history));
   },
 );

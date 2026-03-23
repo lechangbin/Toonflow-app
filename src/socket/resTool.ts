@@ -1,10 +1,8 @@
 import u from "@/utils";
 import { Socket } from "socket.io";
 
-type Role = "developer" | "system" | "assistant" | "user";
-
 class ResTool {
-  constructor(private socket: Socket) {}
+  constructor(public socket: Socket) {}
 
   textMessage(name: string = "AI") {
     const messageId = u.uuid();
