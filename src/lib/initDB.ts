@@ -202,6 +202,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("chapter");
         table.text("chapterData");
         table.integer("projectId");
+        table.integer("eventState");
+        table.text("event");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);

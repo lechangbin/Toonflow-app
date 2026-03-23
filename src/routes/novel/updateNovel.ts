@@ -14,15 +14,17 @@ export default router.post(
     reel: z.string(),
     chapter: z.string(),
     chapterData: z.string(),
+    event: z.string(),
   }),
   async (req, res) => {
-    const { id, index, reel, chapter, chapterData } = req.body;
+    const { id, index, reel, chapter, chapterData, event } = req.body;
 
     await u.db("o_novel").where("id", id).update({
       chapterIndex: index,
       reel,
       chapter,
       chapterData,
+      event: event,
     });
 
     res.status(200).send(success({ message: "更新原文成功" }));
