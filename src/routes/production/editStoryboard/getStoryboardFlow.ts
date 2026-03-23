@@ -12,7 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-    const storyboardFlowData = await u.db("o_storyboardFlow").where("stroryboardId", id).first();
+    const storyboardFlowData = await u.db("o_storyboardFlow").where("storyboardId", id).first();
     if (storyboardFlowData?.flowData) {
       const parseFlow = JSON.parse(storyboardFlowData.flowData);
       await Promise.all(
