@@ -308,17 +308,17 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("id").notNullable();
         table.integer("scriptId");
-        table.text("name");
+        table.text("title");
         table.text("prompt");
+        table.text("description");
         table.text("filePath");
         table.text("model");
         table.text("mode");
         table.text("duration");
         table.text("resolution");
-        table.text("frameType");
+        table.text("frameMode");
         table.text("camera");
         table.text("sound");
-        table.text("associateAssetsIds");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);
@@ -427,7 +427,16 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("id").notNullable();
         table.text("flowData").notNullable();
-        table.integer("stroryboardId").notNullable();
+        table.integer("storyboardId").notNullable();
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+    },
+    {
+      name: "o_assets2Storyboard",
+      builder: (table) => {
+        table.integer("storyboardId").notNullable();
+        table.integer("assetId").notNullable();
         table.primary(["id"]);
         table.unique(["id"]);
       },
