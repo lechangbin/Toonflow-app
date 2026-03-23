@@ -37,11 +37,10 @@ export default router.post(
     const chapterAllList = await u.db("o_novel").where("projectId", projectId).whereIn("id", totalNovelId);
     const novelClass = new u.cleanNovel();
     novelClass.emitter.on("item", async (item) => {
-      if (item.event)
-        await u
-          .db("o_novel")
-          .where("id", item.id)
-          .update({ event: item.event, eventState: item.event ? 1 : -1 });
+      await u
+        .db("o_novel")
+        .where("id", item.id)
+        .update({ event: item.event, eventState: item.event ? 1 : -1 });
     });
     novelClass.start(chapterAllList, projectId);
 

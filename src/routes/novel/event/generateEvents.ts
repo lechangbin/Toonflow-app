@@ -23,11 +23,10 @@ export default router.post(
 
     await u.db("o_novel").where("projectId", projectId).update({ eventState: 0, event: null });
     novel.emitter.on("item", async (item) => {
-      if (item.event)
-        await u
-          .db("o_novel")
-          .where("id", item.id)
-          .update({ event: item.event, eventState: item.event ? 1 : -1 });
+      await u
+        .db("o_novel")
+        .where("id", item.id)
+        .update({ event: item.event, eventState: item.event ? 1 : -1 });
     });
     novel.start(allChapters, projectId);
 
