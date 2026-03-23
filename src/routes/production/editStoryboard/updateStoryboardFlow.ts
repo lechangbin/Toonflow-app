@@ -32,7 +32,7 @@ export default router.post(
       .update({ filePath: new URL(imageUrl).pathname });
     await u
       .db("o_storyboardFlow")
-      .where("stroryboardId", id)
+      .where("storyboardId", id)
       .update({
         flowData: JSON.stringify({ edges, nodes }),
       });

@@ -1,6 +1,30 @@
-// @db-hash bea1bd617996a9e12ad951edcce03880
+// @db-hash 307e7d70184bd3663540410a66e5c54d
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_storyboard_old_20260321 {
+  'createTime'?: number | null;
+  'detail'?: string | null;
+  'filePath'?: string | null;
+  'frameType'?: string | null;
+  'id'?: number;
+  'name'?: string | null;
+  'prompt'?: string | null;
+  'seconds'?: string | null;
+}
+export interface _o_storyboard_old_20260321_1 {
+  'associateAssetsIds'?: string | null;
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'detail'?: string | null;
+  'filePath'?: string | null;
+  'frameType'?: string | null;
+  'id'?: number;
+  'name'?: string | null;
+  'prompt'?: string | null;
+  'seconds'?: string | null;
+  'sound'?: string | null;
+  'TEXT'?: any | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -35,10 +59,20 @@ export interface o_assets {
   'projectId'?: number | null;
   'prompt'?: string | null;
   'remark'?: string | null;
-  'scriptId'?: number | null;
   'sonId'?: number | null;
   'startTime'?: number | null;
   'state'?: string | null;
+  'type'?: string | null;
+}
+export interface o_assets2Storyboard {
+  'assetId'?: number;
+  'storyboardId': number;
+}
+export interface o_chatHistory {
+  'data'?: string | null;
+  'id'?: number;
+  'novel'?: string | null;
+  'projectId'?: number | null;
   'type'?: string | null;
 }
 export interface o_event {
@@ -61,10 +95,33 @@ export interface o_image {
   'assetsId'?: number | null;
   'filePath'?: string | null;
   'id'?: number;
-  'model'?: string | null;
-  'resolution'?: string | null;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
   'state'?: string | null;
   'type'?: string | null;
+  'videoId'?: number | null;
+}
+export interface o_model {
+  'apiKey'?: string | null;
+  'baseUrl'?: string | null;
+  'createTime'?: number | null;
+  'id'?: number;
+  'index'?: number | null;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'modelType'?: string | null;
+  'type'?: string | null;
+}
+export interface o_myTasks {
+  'describe'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'projectId'?: number | null;
+  'reason'?: string | null;
+  'relatedObjects'?: string | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'taskClass'?: string | null;
 }
 export interface o_novel {
   'chapter'?: string | null;
@@ -97,6 +154,15 @@ export interface o_project {
   'userId'?: number | null;
   'videoRatio'?: string | null;
 }
+export interface o_prompts {
+  'code'?: string | null;
+  'customValue'?: string | null;
+  'defaultValue'?: string | null;
+  'id'?: number;
+  'name'?: string | null;
+  'parentCode'?: string | null;
+  'type'?: string | null;
+}
 export interface o_script {
   'content'?: string | null;
   'createTime'?: number | null;
@@ -104,30 +170,47 @@ export interface o_script {
   'name'?: string | null;
   'projectId'?: number | null;
 }
+export interface o_scriptAssets {
+  'assetsId'?: number | null;
+  'id'?: number;
+  'scriptId'?: number | null;
+}
+export interface o_scriptOutline {
+  'id'?: number;
+  'outlineId'?: number | null;
+  'scriptId'?: number | null;
+}
 export interface o_setting {
   'key'?: string | null;
   'value'?: string | null;
+}
+export interface o_skills {
+  'id'?: number;
+  'name'?: string | null;
+  'startTime'?: number | null;
 }
 export interface o_storyboard {
   'associateAssetsIds'?: string | null;
   'camera'?: string | null;
   'createTime'?: number | null;
-  'duration'?: string | null;
+  'detail'?: string | null;
   'filePath'?: string | null;
   'frameType'?: string | null;
   'id'?: number;
-  'mode'?: string | null;
-  'model'?: string | null;
   'name'?: string | null;
   'prompt'?: string | null;
-  'resolution'?: string | null;
-  'scriptId'?: number | null;
+  'seconds'?: string | null;
   'sound'?: string | null;
 }
 export interface o_storyboardFlow {
   'flowData': string;
   'id'?: number;
-  'stroryboardId': number;
+  'storyboardId': number;
+}
+export interface o_storyboardScript {
+  'id'?: number;
+  'scriptId'?: number | null;
+  'storyboardId'?: number | null;
 }
 export interface o_tasks {
   'describe'?: string | null;
@@ -157,46 +240,66 @@ export interface o_vendorConfig {
   'version'?: string | null;
 }
 export interface o_video {
+  'configId'?: number | null;
   'errorReason'?: string | null;
   'filePath'?: string | null;
+  'firstFrame'?: string | null;
   'id'?: number;
-  'scriptId'?: number | null;
-  'state'?: string | null;
-  'storyboardId'?: number | null;
-  'time'?: number | null;
-}
-export interface o_videoConfig {
-  'audio'?: number | null;
-  'createTime'?: number | null;
-  'data'?: string | null;
-  'duration'?: number | null;
-  'id'?: number;
-  'mode'?: string | null;
   'model'?: string | null;
   'prompt'?: string | null;
   'resolution'?: string | null;
-  'storyboardId'?: number | null;
+  'scriptId'?: number | null;
+  'state'?: number | null;
+  'storyboardImgs'?: string | null;
+  'time'?: number | null;
+}
+export interface o_videoConfig {
+  'aiConfigId'?: number | null;
+  'audioEnabled'?: number | null;
+  'createTime'?: number | null;
+  'duration'?: number | null;
+  'endFrame'?: string | null;
+  'id'?: number;
+  'images'?: string | null;
+  'manufacturer'?: string | null;
+  'mode'?: string | null;
+  'projectId'?: number | null;
+  'prompt'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'selectedResultId'?: number | null;
+  'startFrame'?: string | null;
   'updateTime'?: number | null;
-  'videoId'?: number | null;
 }
 
 export interface DB {
+  "_o_storyboard_old_20260321": _o_storyboard_old_20260321;
+  "_o_storyboard_old_20260321_1": _o_storyboard_old_20260321_1;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_artStyle": o_artStyle;
   "o_assets": o_assets;
+  "o_assets2Storyboard": o_assets2Storyboard;
+  "o_chatHistory": o_chatHistory;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_flowData": o_flowData;
   "o_image": o_image;
+  "o_model": o_model;
+  "o_myTasks": o_myTasks;
   "o_novel": o_novel;
   "o_outline": o_outline;
   "o_outlineNovel": o_outlineNovel;
   "o_project": o_project;
+  "o_prompts": o_prompts;
   "o_script": o_script;
+  "o_scriptAssets": o_scriptAssets;
+  "o_scriptOutline": o_scriptOutline;
   "o_setting": o_setting;
+  "o_skills": o_skills;
   "o_storyboard": o_storyboard;
   "o_storyboardFlow": o_storyboardFlow;
+  "o_storyboardScript": o_storyboardScript;
   "o_tasks": o_tasks;
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;

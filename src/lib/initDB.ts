@@ -437,8 +437,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("storyboardId").notNullable();
         table.integer("assetId").notNullable();
-        table.primary(["id"]);
-        table.unique(["id"]);
+        table.primary(["assetId", "assetId"]);
+        table.unique(["storyboardId", "assetId"]);
       },
     },
   ];

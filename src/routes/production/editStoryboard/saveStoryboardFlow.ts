@@ -30,7 +30,7 @@ export default router.post(
       createTime: Date.now(),
     });
     await u.db("o_storyboardFlow").insert({
-      stroryboardId: id,
+      storyboardId: id,
       flowData: JSON.stringify({ edges, nodes }),
     });
     return res.status(200).send(success());
