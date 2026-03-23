@@ -160,7 +160,7 @@ export default router.post(
       `;
     }
     async function generatePrompt() {
-      const result = await u.Ai.Text("assetsAi").invoke(
+      const result = await u.Ai.Text("assetsAgent").invoke(
         {
           messages: [
             {

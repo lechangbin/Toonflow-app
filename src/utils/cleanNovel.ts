@@ -25,7 +25,7 @@ class CleanNovel {
   async start(allChapters: o_novel[], projectId: number): Promise<EventType[]> {
     //所有事件
     let totalEvent: EventType[] = [];
-    const intansce = u.Ai.Text("eventExtractAi");
+    const intansce = u.Ai.Text("eventExtractAgent");
 
     try {
       for (let gi = 0; gi < allChapters.length; gi++) {
