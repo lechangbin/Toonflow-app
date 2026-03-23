@@ -31,13 +31,14 @@ export default router.post(
     const { scriptId, projectId, storyboardId, prompt, data, model, duration, resolution, audio, mode } = req.body;
     const videoPath = `/${projectId}/video/${uuidv4()}.mp4`; //视频保存路径
     //新增
-    const [videoId] = await u.db("o_video").insert({
+    const videoData = {
       filePath: videoPath,
       time: Date.now(),
       state: "生成中",
       scriptId,
       storyboardId,
-    });
+    };
+    const [videoId] = await u.db("o_video").insert(videoData);
     //查询分镜是否已有配置
     const config = await u.db("o_videoConfig").where({ storyboardId }).first();
     //保存配置
@@ -85,47 +86,47 @@ export default router.post(
         return await u.oss.getImageBase64(item);
       }),
     );
-    //开始生成
-    try {
-      const relatedObjects = {
-        id: storyboardId,
-        projectId,
-        type: "视频",
-      };
-      const systemPrompt = `你是一个专业的视频生成引擎，能够根据用户提供的提示词、图片和参数生成高质量的视频内容。请严格按照用户的需求进行视频创作，确保输出的视频符合以下要求：
+    res.status(200).send(success(videoId));
+    (async () => {
+      try {
+        const relatedObjects = {
+          id: storyboardId,
+          projectId,
+          type: "视频",
+        };
+        const systemPrompt = `你是一个专业的视频生成引擎，能够根据用户提供的提示词、图片和参数生成高质量的视频内容。请严格按照用户的需求进行视频创作，确保输出的视频符合以下要求：
 1. 视频内容必须与用户提供的提示词和图片相关联，准确反映用户的创意意图。
 2. 视频质量应达到专业水平，画面清晰、流畅，符合用户指定的分辨率和时长要求。
 3. 视频风格应与用户指定的模式数据相匹配，包括色彩、音乐、特效等元素。
 4. 视频中应包含用户提供的图片，并在视频中适当展示，以增强视频的视觉效果。
 5. 如果用户指定了音频，请确保视频中的音频与视频内容相匹配，符合用户的创意意图。`;
 
-      const aiVideo = u.Ai.Video(model);
-      await aiVideo.run({
-        systemPrompt,
-        projectId,
-        storyboardId,
-        prompt,
-        imageBase64: base64.filter((item) => item !== null) as string[],
-        mode,
-        duration,
-        resolution,
-        audio,
-        taskClass: "视频生成",
-        describe: "根据提示词生成视频",
-        relatedObjects: JSON.stringify(relatedObjects),
-      });
-      await aiVideo.save(videoPath);
-      await u.db("o_video").where("id", videoId).update({ state: "生成成功" });
-      res.status(200).send(success({ videoId, message: "视频生成成功" }));
-    } catch (error: any) {
-      await u
-        .db("o_video")
-        .where("id", videoId)
-        .update({
-          state: "生成失败",
-          errorReason: error instanceof Error ? error.message : "未知错误",
+        const aiVideo = u.Ai.Video(model);
+        await aiVideo.run({
+          systemPrompt,
+          projectId,
+          storyboardId,
+          prompt,
+          imageBase64: base64.filter((item) => item !== null) as string[],
+          mode,
+          duration,
+          resolution,
+          audio,
+          taskClass: "视频生成",
+          describe: "根据提示词生成视频",
+          relatedObjects: JSON.stringify(relatedObjects),
         });
-      res.status(500).send({ error: "视频生成失败" });
-    }
+        await aiVideo.save(videoPath);
+        await u.db("o_video").where("id", videoId).update({ state: "生成成功" });
+      } catch (error: any) {
+        await u
+          .db("o_video")
+          .where("id", videoId)
+          .update({
+            state: "生成失败",
+            errorReason: error instanceof Error ? error.message : "未知错误",
+          });
+      }
+    })();
   },
 );
