@@ -1267,11 +1267,6 @@ basic-auth@~2.0.1:
   dependencies:
     safe-buffer "5.1.2"
 
-best-effort-json-parser@^1.2.1:
-  version "1.2.1"
-  resolved "https://registry.npmmirror.com/best-effort-json-parser/-/best-effort-json-parser-1.2.1.tgz#e8d0b8355a0c268d918681faa0e3cf6aa192ea00"
-  integrity sha512-UICSLibQdzS1f+PBsi3u2YE3SsdXcWicHUg3IMvfuaePS2AYnZJdJeKhGv5OM8/mqJwPt79aDrEJ1oa84tELvw==
-
 better-sqlite3@^12.6.2:
   version "12.6.2"
   resolved "https://registry.npmmirror.com/better-sqlite3/-/better-sqlite3-12.6.2.tgz#770649f28a62e543a360f3dfa1afe4cc944b1937"

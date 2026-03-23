@@ -18,11 +18,12 @@ export default router.post(
   "/",
   validateFields({
     projectId: z.number(),
+    agentType: z.enum(["scriptAgent", "productionAgent"]),
     episodesId: z.number().optional(),
   }),
   async (req, res) => {
-    const { projectId, episodesId } = req.body;
-    const isolationKey = `${projectId}:${episodesId ?? ""}`;
+    const { projectId, agentType, episodesId } = req.body;
+    const isolationKey = `${projectId}:${agentType}${episodesId ? `:${episodesId}` : ""}`;
 
     const rows = await u
       .db("memories")

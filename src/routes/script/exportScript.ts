@@ -2,7 +2,7 @@ import express from "express";
 import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
-import compressing from 'compressing';
+import compressing from "compressing";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 

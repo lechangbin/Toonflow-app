@@ -10,11 +10,12 @@ export default router.post(
   validateFields({
     projectId: z.number(),
     episodesId: z.number().optional(),
+    agentType: z.enum(["scriptAgent", "productionAgent"]),
     type: z.enum(["message", "summary", "all"]).optional(),
   }),
   async (req, res) => {
-    const { projectId, episodesId, type = "all" } = req.body;
-    const isolationKey = `${projectId}:${episodesId ?? ""}`;
+    const { projectId, episodesId,agentType, type = "all" } = req.body;
+    const isolationKey = `${projectId}:${agentType}${episodesId ? `:${episodesId}` : ""}`;
 
     if (type === "all") {
       await u.db("memories").where({ isolationKey }).del();

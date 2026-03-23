@@ -112,15 +112,15 @@ Repository: https://github.com/axios/axios
 
 -----------------------------
 
-Name: best-effort-json-parser
-License: BSD-2-Clause
-Repository: https://github.com/beenotung/best-effort-json-parser
-
------------------------------
-
 Name: better-sqlite3
 License: MIT
 Repository: https://github.com/WiseLibs/better-sqlite3
+
+-----------------------------
+
+Name: compressing
+License: MIT
+Repository: https://github.com/node-modules/compressing
 
 -----------------------------
 
