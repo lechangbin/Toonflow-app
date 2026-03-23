@@ -3,7 +3,7 @@ import { z } from "zod";
 import _ from "lodash";
 import ResTool from "@/socket/resTool";
 
-const deriveAssetSchema = z.object({
+export const deriveAssetSchema = z.object({
   id: z.number().describe("衍生资产ID,如果新增则为空").optional(),
   assetsId: z.string().describe("关联的资产ID"),
   name: z.string().describe("衍生资产名称"),
@@ -11,14 +11,14 @@ const deriveAssetSchema = z.object({
   src: z.string().describe("衍生资产资源路径"),
   state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态"),
 });
-const assetItemSchema = z.object({
+export const assetItemSchema = z.object({
   assetsId: z.string().describe("资产唯一标识"),
   name: z.string().describe("资产名称"),
   desc: z.string().describe("资产描述"),
   src: z.string().describe("资产资源路径"),
   derive: z.array(deriveAssetSchema).describe("衍生资产列表"),
 });
-const storyboardSchema = z.object({
+export const storyboardSchema = z.object({
   id: z.number().describe("分镜ID"),
   title: z.string().describe("分镜标题"),
   description: z.string().describe("分镜描述"),
@@ -31,7 +31,7 @@ const storyboardSchema = z.object({
   associateAssetsIds: z.array(z.number()).describe("关联资产ID列表"),
   src: z.string().nullable().describe("分镜资源路径"),
 });
-const workbenchDataSchema = z.object({
+export const workbenchDataSchema = z.object({
   name: z.string().describe("项目名称"),
   duration: z.string().describe("视频时长"),
   resolution: z.string().describe("分辨率"),
@@ -39,11 +39,11 @@ const workbenchDataSchema = z.object({
   cover: z.string().optional().describe("封面图片路径"),
   gradient: z.string().optional().describe("渐变色配置"),
 });
-const posterItemSchema = z.object({
+export const posterItemSchema = z.object({
   id: z.number().describe("海报ID"),
   image: z.string().describe("海报图片路径"),
 });
-const flowDataSchema = z.object({
+export const flowDataSchema = z.object({
   script: z.string().describe("剧本内容"),
   scriptPlan: z.string().describe("拍摄计划"),
   assets: z.array(assetItemSchema).describe("衍生资产"),
@@ -57,7 +57,7 @@ const flowDataSchema = z.object({
     .describe("海报配置"),
 });
 
-type FlowData = z.infer<typeof flowDataSchema>;
+export type FlowData = z.infer<typeof flowDataSchema>;
 
 const keySchema = z.enum(Object.keys(flowDataSchema.shape) as [keyof FlowData, ...Array<keyof FlowData>]);
 const flowDataKeyLabels = Object.fromEntries(

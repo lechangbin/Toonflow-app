@@ -329,8 +329,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_flowData",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
+        table.integer("projectId");
+        table.integer("espisodeId");
+        table.string("key"); //用户其他方式索引
+        table.string("data");
         table.integer("createTime");
+        table.integer("updateTime");
         table.primary(["id"]);
         table.unique(["id"]);
       },

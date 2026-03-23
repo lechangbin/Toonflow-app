@@ -34,7 +34,6 @@
     "license": "bun run scripts/license.ts"
   },
   "dependencies": {
-    "@ag-ui/core": "^0.0.47",
     "@ai-sdk/anthropic": "^3.0.35",
     "@ai-sdk/deepseek": "^2.0.17",
     "@ai-sdk/devtools": "^0.0.11",
