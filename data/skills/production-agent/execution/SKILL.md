@@ -22,7 +22,7 @@ description: >
 
 1. 调用 `get_flowData` 分别获取 `script`（剧本）和 `assets`（现有资产列表）
 2. 根据[衍生资产提取](references/derive-assets-extraction.md)文档中的提取原则，分析剧本内容，为每个角色资产识别出关联的衍生资产（道具、服饰、法器、座驾、场景物件等）
-3. 对每个有衍生状态的资产调用 `set_flowData({ key: "assets[N].derive", value: derive数组 })` 逐个保存
+3. 对每个有衍生状态的资产调用 `set_flowData_assets` 保存
 4. 告知用户提取完成，列出为每个角色提取的衍生资产概要
 5. **询问用户是否需要生成衍生资产图片**：
    - 如果用户确认需要，收集所有需要生成图片的资产 id，调用 `generate_assets_images({ ids: [资产id列表] })` 生成图片

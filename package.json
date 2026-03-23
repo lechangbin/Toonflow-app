@@ -34,7 +34,6 @@
     "license": "bun run scripts/license.ts"
   },
   "dependencies": {
-    "@ag-ui/core": "^0.0.47",
     "@ai-sdk/anthropic": "^3.0.35",
     "@ai-sdk/deepseek": "^2.0.17",
     "@ai-sdk/devtools": "^0.0.11",
@@ -49,6 +48,7 @@
     "axios-retry": "^4.5.0",
     "best-effort-json-parser": "^1.2.1",
     "better-sqlite3": "^12.6.2",
+    "compressing": "^2.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",

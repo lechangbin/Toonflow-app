@@ -40,6 +40,12 @@ Repository: https://github.com/vercel/ai
 
 -----------------------------
 
+Name: @huggingface/transformers
+License: Apache-2.0
+Repository: https://github.com/huggingface/transformers.js
+
+-----------------------------
+
 Name: @rmp135/sql-ts
 License: MIT
 Repository: https://github.com/rmp135/sql-ts
@@ -71,6 +77,12 @@ Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
 -----------------------------
 
 Name: @types/license-checker
+License: MIT
+Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+
+-----------------------------
+
+Name: @types/lodash
 License: MIT
 Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
 
@@ -178,6 +190,12 @@ Repository: https://github.com/form-data/form-data
 
 -----------------------------
 
+Name: graphlib
+License: MIT
+Repository: https://github.com/dagrejs/graphlib
+
+-----------------------------
+
 Name: is-path-inside
 License: MIT
 Repository: https://github.com/sindresorhus/is-path-inside
@@ -208,6 +226,12 @@ Repository: https://github.com/davglass/license-checker
 
 -----------------------------
 
+Name: lodash
+License: MIT
+Repository: https://github.com/lodash/lodash
+
+-----------------------------
+
 Name: morgan
 License: MIT
 Repository: https://github.com/expressjs/morgan
@@ -220,9 +244,9 @@ Repository: https://github.com/remy/nodemon
 
 -----------------------------
 
-Name: qwen-ai-provider
+Name: qwen-ai-provider-v5
 License: Apache-2.0
-Repository: https://github.com/Younis-Ahmed/qwen-ai-provider
+Repository: https://github.com/bolechen/qwen-ai-provider-v5
 
 -----------------------------
 
@@ -244,9 +268,21 @@ Repository: https://github.com/lovell/sharp
 
 -----------------------------
 
+Name: socket.io
+License: MIT
+Repository: https://github.com/socketio/socket.io
+
+-----------------------------
+
 Name: sqlite3
 License: BSD-3-Clause
 Repository: https://github.com/TryGhost/node-sqlite3
+
+-----------------------------
+
+Name: sucrase
+License: MIT
+Repository: https://github.com/alangpierce/sucrase
 
 -----------------------------
 
@@ -265,6 +301,12 @@ Repository: https://github.com/microsoft/TypeScript
 Name: uuid
 License: MIT
 Repository: https://github.com/uuidjs/uuid
+
+-----------------------------
+
+Name: vm2
+License: MIT
+Repository: https://github.com/patriksimek/vm2
 
 -----------------------------
 

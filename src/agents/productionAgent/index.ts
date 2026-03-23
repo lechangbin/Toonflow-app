@@ -35,7 +35,7 @@ function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["
 const subAgentList = ["executionAI", "supervisionAI"] as const;
 
 export async function decisionAI(ctx: AgentContext) {
-  const { socket, isolationKey, text, abortSignal } = ctx;
+  const { isolationKey, text, abortSignal } = ctx;
   const memory = new Memory("productionAgent", isolationKey);
   await memory.add("user", text);
   const [skill, mem] = await Promise.all([useSkill("production-agent", "decision"), memory.get(text)]);
@@ -52,10 +52,10 @@ export async function decisionAI(ctx: AgentContext) {
       ...skill.tools,
       ...memory.getTools(),
       run_sub_agent: runSubAgent(ctx),
-      ...useTools(ctx.socket),
+      ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
-      await memory.add("decisionAI", completion.text);
+      await memory.add("assistant:decision", completion.text);
     },
   });
 
@@ -81,10 +81,10 @@ export async function executionAI(ctx: AgentContext) {
     tools: {
       ...skill.tools,
       ...memory.getTools(),
-      ...useTools(ctx.socket),
+      ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
-      await memory.add("executionAI", completion.text);
+      await memory.add("assistant:execution", completion.text);
     },
   });
 
@@ -94,7 +94,6 @@ export async function executionAI(ctx: AgentContext) {
 export async function supervisionAI(ctx: AgentContext) {
   const { isolationKey, text, abortSignal } = ctx;
   const memory = new Memory("productionAgent", isolationKey);
-  await memory.add("user", text);
   const [skill, mem] = await Promise.all([useSkill("production-agent", "supervision"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
@@ -108,7 +107,7 @@ export async function supervisionAI(ctx: AgentContext) {
       ...memory.getTools(),
     },
     onFinish: async (completion) => {
-      await memory.add("supervisionAI", completion.text);
+      await memory.add("assistant:supervision", completion.text);
     },
   });
 

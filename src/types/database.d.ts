@@ -1,4 +1,4 @@
-// @db-hash 481efc498b16db66100914dff7c6aab5
+// @db-hash d0e44c9c923897d847cded0a28012baf
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -58,8 +58,12 @@ export interface o_eventChapter {
 }
 export interface o_flowData {
   'createTime'?: number | null;
+  'data'?: string | null;
+  'episodesId'?: number | null;
   'id'?: number;
-  'name'?: string | null;
+  'key'?: string | null;
+  'projectId'?: number | null;
+  'updateTime'?: number | null;
 }
 export interface o_image {
   'assetsId'?: number | null;
