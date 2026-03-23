@@ -4,7 +4,7 @@ import startServe, { closeServe } from "src/app";
 import { number } from "zod";
 
 // 默认端口配置
-const defaultPort = 60000;
+const defaultPort = 10588;
 
 function createMainWindow(port: any): void {
   const win = new BrowserWindow({
@@ -35,7 +35,7 @@ function createMainWindow(port: any): void {
 app.whenReady().then(async () => {
   try {
     const port = await startServe(false);
-    createMainWindow(60000);
+    createMainWindow(10588);
   } catch (err) {
     console.error("[服务启动失败]:", err);
     // 如果服务启动失败，使用默认端口创建窗口

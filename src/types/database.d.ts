@@ -1,4 +1,4 @@
-// @db-hash 8af8e41e3ca0cb5ee554944515d72ba8
+// @db-hash bd46e7c381481a74efedc662a4f9049f
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -163,13 +163,8 @@ export interface o_skills {
 }
 export interface o_storyboard {
   'createTime'?: number | null;
-  'detail'?: string | null;
-  'filePath'?: string | null;
-  'frameType'?: string | null;
   'id'?: number;
   'name'?: string | null;
-  'prompt'?: string | null;
-  'seconds'?: string | null;
 }
 export interface o_storyboardFlow {
   'flowData': string;

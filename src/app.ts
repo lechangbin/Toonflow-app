@@ -1,4 +1,4 @@
-import "./logger";
+// import "./logger";
 import "./err";
 import "./env";
 import express, { Request, Response, NextFunction } from "express";
@@ -75,7 +75,7 @@ export default async function startServe(randomPort: Boolean = false) {
     res.status(err.status || 500).send(err);
   });
 
-  const port = randomPort ? 0 : parseInt(process.env.PORT || "60000");
+  const port = randomPort ? 0 : parseInt(process.env.PORT || "10588");
   return await new Promise((resolve) => {
     server.listen(port, async () => {
       const address = server.address();

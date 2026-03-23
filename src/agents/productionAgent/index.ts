@@ -42,7 +42,7 @@ export async function decisionAI(ctx: AgentContext) {
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
-  const prefixSystem = `请回复用户收到以后直接调用run_sub_agent运行**executionAI**执行用户的任务`;
+  const prefixSystem = `以用户当前指令为最终目标。默认直接推进执行；仅当用户明确要求新增或修改拍摄计划时，才调用set_flowData更新scriptPlan并与用户确认。需要执行任务时调用run_sub_agent运行**executionAI**。`;
 
   const { textStream } = await u.Ai.Text("productionAgent").stream({
     system: prefixSystem + systemPrompt,

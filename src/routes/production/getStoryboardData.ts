@@ -13,7 +13,6 @@ export default router.post(
   async (req, res) => {
     const { projectId } = req.body;
     const storyboardData = await u.db("o_storyboard");
-    console.log("%c Line:16 🍖 storyboardData", "background:#ed9ec7", storyboardData);
     const data = await Promise.all(
       storyboardData.map(async (i) => {
         return {

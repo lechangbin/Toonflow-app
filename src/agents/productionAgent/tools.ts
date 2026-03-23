@@ -5,24 +5,16 @@ import { Socket } from "socket.io";
 
 const deriveSchema = z.object({ name: z.string().min(1).max(20), desc: z.string().min(1).max(100) });
 const assetSchema = z.object({ assetsId: z.string(), name: z.string(), desc: z.string(), src: z.string(), derive: z.array(deriveSchema).optional() });
-const storyboardTableSchema = z.array(
-  z.object({
-    id: z.number(),
-    title: z.string(),
-    description: z.string(),
-    camera: z.string(),
-    duration: z.number(),
-    frameMode: z.enum(["firstFrame", "endFrame", "linesSoundEffects"]),
-    lines: z.string().nullable(),
-    sound: z.string().nullable(),
-    associateAssetsIds: z.array(z.number()),
-  }),
-);
-const flowDataSchema = z.object({ script: z.string(), assets: z.array(assetSchema), storyboardTable: storyboardTableSchema });
+const storyboardTableSchema = z.string().describe("分镜表的markdown文本");
+const flowDataSchema = z.object({ script: z.string(), scriptPlan: z.string(), assets: z.array(assetSchema), storyboardTable: storyboardTableSchema });
 
 type FlowData = z.infer<typeof flowDataSchema>;
 
-const keySchema = z.object({ key: z.enum(["script", "assets", "storyboardTable"]).describe("script=剧本,assets=资产列表,storyboardTable=分镜表") });
+const keySchema = z.object({
+  key: z
+    .enum(["script", "scriptPlan", "assets", "storyboardTable"])
+    .describe("script=剧本,scriptPlan=拍摄计划,assets=资产列表,storyboardTable=分镜表"),
+});
 const valueSchema = z
   .union([z.string(), z.array(assetSchema), assetSchema, z.array(deriveSchema), z.array(storyboardTableSchema)])
   .describe("路径对应的值");
@@ -66,20 +58,48 @@ export default (socket: Socket, toolsNames?: string[]) => {
         return true;
       },
     }),
-    generate_assets_images: tool({
-      description: "生成衍生资产的图片",
-      inputSchema: z.object({ ids: z.array(z.string()).describe("需要生成的资产id列表") }),
-      execute: async ({ ids }) => {
-        console.log("[tools] generated_assets", ids);
-        return new Promise((resolve) => socket.emit("generatedAssets", { ids }, (res: any) => resolve(res)));
+
+    generate_storyboard_images: tool({
+      description: `生成一组图片任务，支持图片间的依赖关系（以图生图）。
+
+参数说明：
+- images: 图片任务数组
+  - id: 图片唯一标识符
+  - prompt: 图片生成提示词
+  - referenceIds: 依赖的参考图id数组，无依赖填空数组[]
+  - assetIds: 参考的资产图id数组（可选）
+
+依赖规则：
+1. referenceIds中的id必须存在于images数组中
+2. 禁止循环依赖（如A依赖B，B依赖A）
+3. 被依赖的图片会先生成，其结果作为参考图传入
+
+示例：生成猫图，再以猫图为参考生成狗图
+images: [
+  {id: "cat", prompt: "一只橘猫", referenceIds: [], assetIds: []},
+  {id: "dog", prompt: "风格相同的金毛犬", referenceIds: ["cat"], assetIds: []}
+]`,
+      inputSchema: z.object({
+        images: z.array(
+          z.object({
+            id: z.string().describe("图片唯一标识符"),
+            prompt: z.string().describe("图片生成提示词"),
+            referenceIds: z.array(z.string()).describe("依赖的参考图id数组，无依赖填空数组[]"),
+            assetIds: z.array(z.number()).optional().describe("参考的资产图"),
+          }),
+        ),
+      }),
+      execute: async ({ images }) => {
+        console.log("[tools] generated_assets", images);
+        return new Promise((resolve) => socket.emit("generatedAssets", { images }, (res: any) => resolve(res)));
       },
     }),
-    generate_storyboard_images: tool({
+    generate_assets_images: tool({
       description: "生成分镜图",
-      inputSchema: z.object({ script: z.string().describe("剧本文本") }),
-      execute: async ({ script }) => {
-        console.log("[tools] generate_storyboard_images", script);
-        return new Promise((resolve) => socket.emit("generateStoryboardImages", { script }, (res: any) => resolve(res)));
+      inputSchema: z.object({ images: z.array(z.object({ assetId: z.number(), prompt: z.string() })) }),
+      execute: async ({ images }) => {
+        console.log("[tools] generate_assets_images", images);
+        return new Promise((resolve) => socket.emit("generateAssetsImages", { images }, (res: any) => resolve(res)));
       },
     }),
   };
