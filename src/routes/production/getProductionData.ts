@@ -71,11 +71,39 @@ export default router.post(
     const data = await Promise.all(
       storyboards.map(async (storyboard) => {
         const sid = storyboard.id as number;
+        const config = configMap.get(sid) ?? null;
+        let configDataWithFilePath: any[] = [];
+        if (config?.data) {
+          const parsedData: { id: number; type: string }[] = JSON.parse(config.data);
+          configDataWithFilePath = await Promise.all(
+            parsedData.map(async (item) => {
+              if (item.type === "storyboard") {
+                const row = await u.db("o_storyboard").where("id", item.id).select("filePath").first();
+                return row?.filePath ? await u.oss.getFileUrl(row.filePath) : null;
+              }
+              if (item.type === "assets") {
+                const row = await u
+                  .db("o_assets")
+                  .where("o_assets.id", item.id)
+                  .leftJoin("o_image", "o_assets.imageId", "o_image.id")
+                  .select("o_image.filePath")
+                  .first();
+                return row?.filePath ? await u.oss.getFileUrl(row.filePath) : null;
+              }
+              return null;
+            }),
+          );
+        }
         return {
           ...storyboard,
           filePath: storyboard.filePath && (await u.oss.getFileUrl(storyboard.filePath!)),
-          config: configMap.get(sid) ?? null,
-          videos: videoMap.get(sid) ?? [],
+          config: config ? { ...config, data: configDataWithFilePath } : null,
+          videos: await Promise.all(
+            (videoMap.get(sid) ?? []).map(async (video) => ({
+              ...video,
+              filePath: video.filePath ? await u.oss.getFileUrl(video.filePath) : null,
+            })),
+          ),
         };
       }),
     );

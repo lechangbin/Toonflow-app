@@ -309,11 +309,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("id").notNullable();
         table.integer("scriptId");
         table.text("name");
-        table.text("detail");
         table.text("prompt");
-        table.text("seconds");
         table.text("filePath");
-        table.text("frameType");
+        table.text("model");
+        table.text("mode");
+        table.text("duration");
+        table.text("resolution");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);
@@ -350,7 +351,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("id").notNullable();
         table.integer("storyboardId");
-        table.integer("videoId"); 
+        table.integer("videoId");
         table.integer("audio"); // 声音
         table.text("model"); // 模型
         table.text("mode"); // 模式：
