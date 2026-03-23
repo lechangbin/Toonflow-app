@@ -448,6 +448,15 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["storyboardId", "assetId"]);
       },
     },
+    {
+      name: "o_scriptAssets",
+      builder: (table) => {
+        table.integer("scriptId").notNullable();
+        table.integer("assetId").notNullable();
+        table.primary(["scriptId", "assetId"]);
+        table.unique(["scriptId", "assetId"]);
+      },
+    },
   ];
 
   for (const t of tables) {
