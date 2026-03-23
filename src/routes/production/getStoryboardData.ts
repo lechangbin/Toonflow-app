@@ -17,7 +17,8 @@ export default router.post(
       storyboardData.map(async (i) => {
         return {
           ...i,
-          image: i.filePath ? await u.oss.getFileUrl(i.filePath!) : "",
+          title: i.name,
+          src: i.filePath ? await u.oss.getFileUrl(i.filePath!) : "",
         };
       }),
     );

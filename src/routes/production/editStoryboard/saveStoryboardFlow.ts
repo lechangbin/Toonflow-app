@@ -27,6 +27,7 @@ export default router.post(
     });
     const [id] = await u.db("o_storyboard").insert({
       filePath: new URL(imageUrl).pathname,
+      createTime: Date.now(),
     });
     await u.db("o_storyboardFlow").insert({
       stroryboardId: id,

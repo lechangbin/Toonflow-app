@@ -13,20 +13,7 @@ export default router.post(
     const { scriptId } = req.body;
 
     // 1. 查出该剧本下所有分镜
-    const storyboards = await u
-      .db("o_storyboard")
-      .where("o_storyboard.scriptId", scriptId)
-      .select(
-        "o_storyboard.id",
-        "o_storyboard.name",
-        "o_storyboard.detail",
-        "o_storyboard.prompt",
-        "o_storyboard.seconds",
-        "o_storyboard.filePath",
-        "o_storyboard.frameType",
-        "o_storyboard.scriptId",
-      )
-      .orderBy("o_storyboard.createTime", "asc");
+    const storyboards = await u.db("o_storyboard").where("o_storyboard.scriptId", scriptId).select("*").orderBy("o_storyboard.createTime", "asc");
 
     if (storyboards.length === 0) {
       return res.status(200).send(success([]));
@@ -71,11 +58,39 @@ export default router.post(
     const data = await Promise.all(
       storyboards.map(async (storyboard) => {
         const sid = storyboard.id as number;
+        const config = configMap.get(sid) ?? null;
+        let configDataWithFilePath: any[] = [];
+        if (config?.data) {
+          const parsedData: { id: number; type: string }[] = JSON.parse(config.data);
+          configDataWithFilePath = await Promise.all(
+            parsedData.map(async (item) => {
+              if (item.type === "storyboard") {
+                const row = await u.db("o_storyboard").where("id", item.id).select("filePath").first();
+                return row?.filePath ? await u.oss.getFileUrl(row.filePath) : null;
+              }
+              if (item.type === "assets") {
+                const row = await u
+                  .db("o_assets")
+                  .where("o_assets.id", item.id)
+                  .leftJoin("o_image", "o_assets.imageId", "o_image.id")
+                  .select("o_image.filePath")
+                  .first();
+                return row?.filePath ? await u.oss.getFileUrl(row.filePath) : null;
+              }
+              return null;
+            }),
+          );
+        }
         return {
           ...storyboard,
           filePath: storyboard.filePath && (await u.oss.getFileUrl(storyboard.filePath!)),
-          config: configMap.get(sid) ?? null,
-          videos: videoMap.get(sid) ?? [],
+          config: config ? { ...config, data: configDataWithFilePath } : null,
+          videos: await Promise.all(
+            (videoMap.get(sid) ?? []).map(async (video) => ({
+              ...video,
+              filePath: video.filePath ? await u.oss.getFileUrl(video.filePath) : null,
+            })),
+          ),
         };
       }),
     );

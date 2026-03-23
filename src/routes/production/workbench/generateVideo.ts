@@ -22,7 +22,7 @@ export default router.post(
       )
       .optional(),
     model: z.string(),
-    duration: z.string(),
+    duration: z.number(),
     resolution: z.string(),
     audio: z.boolean().optional(),
     mode: z.string(),
