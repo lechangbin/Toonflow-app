@@ -1,4 +1,4 @@
-// @db-hash 2e39d6c2e0f11467eb8a669c22a4f771
+// @db-hash c0bedac3bd0316e4716f38f6abb585a3
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_novel_old_20260323 {
@@ -127,7 +127,7 @@ export interface o_script {
   'projectId'?: number | null;
 }
 export interface o_scriptAssets {
-  'assetsId'?: number;
+  'assetId'?: number;
   'scriptId'?: number;
 }
 export interface o_setting {

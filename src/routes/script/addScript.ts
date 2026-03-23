@@ -22,15 +22,20 @@ export default router.post(
       projectId,
       createTime: Date.now(),
     });
-    const assetsData = await u.db("o_assets").whereIn("id", assets).select();
-    const assetsIds = assetsData.map((item) => item.id);
-    const insertData = assetsIds.map((i) => {
-      return {
-        scriptId,
-        assetId: i,
-      };
-    });
-    await u.db("o_scriptAssets").insert(insertData);
+    if (assets.length) {
+      const assetsData = await u.db("o_assets").whereIn("id", assets).select();
+      if (assetsData.length) {
+        const assetsIds = assetsData.map((item) => item.id);
+        const insertData = assetsIds.map((i) => {
+          return {
+            scriptId,
+            assetId: i,
+          };
+        });
+        await u.db("o_scriptAssets").insert(insertData);
+      }
+    }
+
     res.status(200).send(success({ message: "添加剧本成功" }));
   },
 );
