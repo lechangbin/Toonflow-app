@@ -52,7 +52,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...skill.tools,
       ...memory.getTools(),
       run_sub_agent: runSubAgent(ctx),
-      ...useTools(ctx.socket),
+      ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
       await memory.add("decisionAI", completion.text);
@@ -81,7 +81,7 @@ export async function executionAI(ctx: AgentContext) {
     tools: {
       ...skill.tools,
       ...memory.getTools(),
-      ...useTools(ctx.socket),
+      ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
       await memory.add("executionAI", completion.text);
