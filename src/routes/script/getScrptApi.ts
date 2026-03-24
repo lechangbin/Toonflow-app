@@ -41,7 +41,7 @@ export default router.post(
       name: i.name,
       content: i.content,
       createTime: i.createTime,
-      assets: scriptAssetsMap[i.id!] || [],
+      relatedAssets: scriptAssetsMap[i.id!] || [],
     }));
     res.status(200).send(success(returnData));
   },

@@ -1,4 +1,4 @@
-// @routes-hash a1ebcce277ce90155e2edf126144b986
+// @routes-hash 5a08bddffb3b0f7c62f76b6d862f1459
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -63,23 +63,24 @@ import route59 from "./routes/script/getScrptApi";
 import route60 from "./routes/script/updateScript";
 import route61 from "./routes/scriptAgent/getPlanData";
 import route62 from "./routes/scriptAgent/setPlanData";
-import route63 from "./routes/setting/agentDeploy/deployAgentModel";
-import route64 from "./routes/setting/agentDeploy/getAgentDeploy";
-import route65 from "./routes/setting/dbConfig/clearData";
-import route66 from "./routes/setting/getTextModel";
-import route67 from "./routes/setting/loginConfig/getUser";
-import route68 from "./routes/setting/loginConfig/updateUserPwd";
-import route69 from "./routes/setting/memoryConfig/getMemory";
-import route70 from "./routes/setting/memoryConfig/sureMemory";
-import route71 from "./routes/setting/vendorConfig/addVendor";
-import route72 from "./routes/setting/vendorConfig/deleteVendor";
-import route73 from "./routes/setting/vendorConfig/getVendorList";
-import route74 from "./routes/setting/vendorConfig/modelTest";
-import route75 from "./routes/setting/vendorConfig/updateVendor";
-import route76 from "./routes/task/getTaskApi";
-import route77 from "./routes/task/getTaskCategories";
-import route78 from "./routes/task/taskDetails";
-import route79 from "./routes/test/test";
+import route63 from "./routes/setting/agentDeploy/agentSetKey";
+import route64 from "./routes/setting/agentDeploy/deployAgentModel";
+import route65 from "./routes/setting/agentDeploy/getAgentDeploy";
+import route66 from "./routes/setting/dbConfig/clearData";
+import route67 from "./routes/setting/getTextModel";
+import route68 from "./routes/setting/loginConfig/getUser";
+import route69 from "./routes/setting/loginConfig/updateUserPwd";
+import route70 from "./routes/setting/memoryConfig/getMemory";
+import route71 from "./routes/setting/memoryConfig/sureMemory";
+import route72 from "./routes/setting/vendorConfig/addVendor";
+import route73 from "./routes/setting/vendorConfig/deleteVendor";
+import route74 from "./routes/setting/vendorConfig/getVendorList";
+import route75 from "./routes/setting/vendorConfig/modelTest";
+import route76 from "./routes/setting/vendorConfig/updateVendor";
+import route77 from "./routes/task/getTaskApi";
+import route78 from "./routes/task/getTaskCategories";
+import route79 from "./routes/task/taskDetails";
+import route80 from "./routes/test/test";
 
 export default async (app: Express) => {
   app.use("/api/agents/clearMemory", route1);
@@ -144,21 +145,22 @@ export default async (app: Express) => {
   app.use("/api/script/updateScript", route60);
   app.use("/api/scriptAgent/getPlanData", route61);
   app.use("/api/scriptAgent/setPlanData", route62);
-  app.use("/api/setting/agentDeploy/deployAgentModel", route63);
-  app.use("/api/setting/agentDeploy/getAgentDeploy", route64);
-  app.use("/api/setting/dbConfig/clearData", route65);
-  app.use("/api/setting/getTextModel", route66);
-  app.use("/api/setting/loginConfig/getUser", route67);
-  app.use("/api/setting/loginConfig/updateUserPwd", route68);
-  app.use("/api/setting/memoryConfig/getMemory", route69);
-  app.use("/api/setting/memoryConfig/sureMemory", route70);
-  app.use("/api/setting/vendorConfig/addVendor", route71);
-  app.use("/api/setting/vendorConfig/deleteVendor", route72);
-  app.use("/api/setting/vendorConfig/getVendorList", route73);
-  app.use("/api/setting/vendorConfig/modelTest", route74);
-  app.use("/api/setting/vendorConfig/updateVendor", route75);
-  app.use("/api/task/getTaskApi", route76);
-  app.use("/api/task/getTaskCategories", route77);
-  app.use("/api/task/taskDetails", route78);
-  app.use("/api/test/test", route79);
+  app.use("/api/setting/agentDeploy/agentSetKey", route63);
+  app.use("/api/setting/agentDeploy/deployAgentModel", route64);
+  app.use("/api/setting/agentDeploy/getAgentDeploy", route65);
+  app.use("/api/setting/dbConfig/clearData", route66);
+  app.use("/api/setting/getTextModel", route67);
+  app.use("/api/setting/loginConfig/getUser", route68);
+  app.use("/api/setting/loginConfig/updateUserPwd", route69);
+  app.use("/api/setting/memoryConfig/getMemory", route70);
+  app.use("/api/setting/memoryConfig/sureMemory", route71);
+  app.use("/api/setting/vendorConfig/addVendor", route72);
+  app.use("/api/setting/vendorConfig/deleteVendor", route73);
+  app.use("/api/setting/vendorConfig/getVendorList", route74);
+  app.use("/api/setting/vendorConfig/modelTest", route75);
+  app.use("/api/setting/vendorConfig/updateVendor", route76);
+  app.use("/api/task/getTaskApi", route77);
+  app.use("/api/task/getTaskCategories", route78);
+  app.use("/api/task/taskDetails", route79);
+  app.use("/api/test/test", route80);
 }

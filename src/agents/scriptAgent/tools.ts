@@ -117,7 +117,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
               type: i.type,
               describe: i.desc,
               projectId: resTool.data.projectId,
-              state: "未生成",
             });
             assetId.push(id);
           }
