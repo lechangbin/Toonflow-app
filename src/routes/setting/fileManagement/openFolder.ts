@@ -4,6 +4,8 @@ import { exec } from "child_process";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { isEletron } from "@/utils/getPath";
+import u from "@/utils";
+import path from "path";
 const router = express.Router();
 
 export default router.post(
@@ -17,7 +19,9 @@ export default router.post(
     }
     const { path: folderPath } = req.body;
     const platform = process.platform;
-    const cmd = platform === "win32" ? `explorer "${folderPath}"` : platform === "darwin" ? `open "${folderPath}"` : `xdg-open "${folderPath}"`;
+    const target = u.getPath(folderPath);
+    console.log("%c Line:23 🎂 target", "background:#fca650", target);
+    const cmd = platform === "win32" ? `explorer "${target}"` : platform === "darwin" ? `open "${target}"` : `xdg-open "${target}"`;
     exec(cmd, (err) => {
       if (err) {
         return res.status(200).send(error(err.message));

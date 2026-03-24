@@ -12,6 +12,7 @@ const defaultPort = 10588;
 function initializeData(): void {
   const srcDir = path.join(process.resourcesPath, "data");
   const destDir = path.join(app.getPath("userData"), "data");
+  if (fs.existsSync(destDir)) return;
   copyDirRecursive(srcDir, destDir);
 }
 
@@ -34,20 +35,12 @@ function getNodeModulesPaths(): string[] {
   const paths: string[] = [];
   if (app.isPackaged) {
     // external 依赖（原生模块）在 unpacked 目录
-    const unpackedNodeModules = path.join(
-      process.resourcesPath,
-      "app.asar.unpacked",
-      "node_modules"
-    );
+    const unpackedNodeModules = path.join(process.resourcesPath, "app.asar.unpacked", "node_modules");
     if (fs.existsSync(unpackedNodeModules)) {
       paths.push(unpackedNodeModules);
     }
     // 普通依赖在 asar 内
-    const asarNodeModules = path.join(
-      process.resourcesPath,
-      "app.asar",
-      "node_modules"
-    );
+    const asarNodeModules = path.join(process.resourcesPath, "app.asar", "node_modules");
     paths.push(asarNodeModules);
   } else {
     paths.push(path.join(process.cwd(), "node_modules"));
@@ -89,10 +82,16 @@ function createMainWindow(port: any): void {
     show: true,
     autoHideMenuBar: true,
   });
-  // 开发环境和生产环境使用不同的路径
+  win.webContents.on("did-start-loading", () => {
+    void win.webContents.executeJavaScript(`window.$electron = true; window.$port = ${port};`);
+  });
   const isDev = process.env.NODE_ENV === "dev" || !app.isPackaged;
-  const htmlPath = isDev ? path.join(process.cwd(), "data", "web", "index.html") : path.join(app.getPath("userData"), "data", "web", "index.html");
-  void win.loadFile(htmlPath);
+  if (process.env.VITE_DEV) {
+    void win.loadURL("http://localhost:50188");
+  } else {
+    const htmlPath = isDev ? path.join(process.cwd(), "data", "web", "index.html") : path.join(app.getPath("userData"), "data", "web", "index.html");
+    void win.loadFile(htmlPath);
+  }
 }
 
 let closeServeFn: (() => Promise<void>) | undefined;
@@ -111,8 +110,8 @@ app.whenReady().then(async () => {
     // 使用自定义路径加载模块
     const mod = requireWithCustomPaths(servePath);
     closeServeFn = mod.closeServe;
-    const port = await mod.default(false);
-    console.log("%c Line:37 🍺 port", "background:#e41a6a", port);
+    const port = await mod.default(true);
+    console.log("%c Line:112 🍇 port", "background:#2eafb0", port);
     createMainWindow(port);
   } catch (err) {
     console.error("[服务启动失败]:", err);

@@ -1,7 +1,4 @@
 import * as ONNX_WEB from "onnxruntime-web";
-// 强制 @huggingface/transformers 使用 onnxruntime-web 而非 onnxruntime-node
-(globalThis as any)[Symbol.for("onnxruntime")] = ONNX_WEB;
-
 import { pipeline, env as transformersEnv, FeatureExtractionPipeline } from "@huggingface/transformers";
 import path from "path";
 import fs from "fs";
