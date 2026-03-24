@@ -1,9 +1,6 @@
-import * as z from "zod";
-import { ModelMessage, Output } from "ai";
 import { EventEmitter } from "events";
-
 import { o_novel } from "@/types/database";
-import ai from "@/utils/ai";
+import { useSkill } from "@/utils/agent/skillsTools";
 import u from "@/utils";
 export interface EventType {
   id: number;
@@ -25,34 +22,24 @@ class CleanNovel {
   async start(allChapters: o_novel[], projectId: number): Promise<EventType[]> {
     //所有事件
     let totalEvent: EventType[] = [];
-    const intansce = u.Ai.Text("eventExtractAgent");
+    const intansce = u.Ai.Text("universalAgent");
 
     try {
       for (let gi = 0; gi < allChapters.length; gi++) {
         const novel = allChapters[gi];
         let resData;
         try {
+          const skill = await useSkill("universal-agent");
+
           resData = await intansce.invoke({
+            system: skill.prompt,
             messages: [
               {
-                role: "system",
-                content: `
-你是一位专业的叙事结构分析师。
-请阅读以下小说章节，用**一段话**提炼本章的情节单元摘要。
-## 要求
-- 按事件发生顺序，串联本章核心情节节点
-- 突出人物行为、关键转折、因果关系
-- 语言简洁紧凑，100-150字以内
-- 不加主观评价，只陈述"发生了什么"
----
-【章节内容】：
-`,
-              },
-              {
                 role: "user",
-                content: novel.chapterData!,
+                content: "请根据以下小说章节生成事件摘要：\n" + novel.chapterData!,
               },
             ],
+            tools: skill.tools,
           });
 
           const preData = resData.text;

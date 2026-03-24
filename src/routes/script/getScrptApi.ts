@@ -22,8 +22,9 @@ export default router.post(
     const assetsData = await u
       .db("o_assets")
       .leftJoin("o_scriptAssets", "o_assets.id", "o_scriptAssets.assetId")
-      .whereIn(
+      .where(
         "o_scriptAssets.scriptId",
+        "in",
         data.map((i) => i.id),
       )
       .select("o_assets.id", "o_assets.name", "o_scriptAssets.scriptId");

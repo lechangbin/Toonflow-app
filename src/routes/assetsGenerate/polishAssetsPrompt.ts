@@ -3,6 +3,7 @@ import u from "@/utils";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { useSkill } from "@/utils/agent/skillsTools";
 const router = express.Router();
 interface OutlineItem {
   description: string;
@@ -84,108 +85,45 @@ export default router.post(
 
     const result: ResultItem[] = Object.values(itemMap);
 
-    const role = (await u.getPrompts("role-polish")) ?? "";
-    const scene = (await u.getPrompts("scene-polish")) ?? "";
-    const tool = (await u.getPrompts("tool-polish")) ?? "";
-    let systemPrompt = "";
-    let userPrompt = "";
-    if (type == "role") {
-      const data = findItemByName(result, name, "characters");
-      const chapterRange = Array.isArray(data?.chapterRange) ? data.chapterRange : [data?.chapterRange];
-      const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
-      const results: string = mergeNovelText(novelData);
-      systemPrompt = role;
-      userPrompt = `
-      请根据以下参数生成角色标准四视图提示词：
-  
-      **基础参数：**
-      - 风格: ${project?.artStyle || "未指定"}
-      - 小说原文：${results || "未提供"}
-      - 小说类型: ${project?.type || "未指定"}
-      - 小说背景: ${project?.intro || "未指定"}
-  
-      **角色设定：**
-      - 角色名称:${name},
-      - 角色描述:${describe},
-  
-      请严格按照系统规范生成人物角色四视图提示词。
-  
-      `;
-    }
-    if (type == "scene") {
-      const data = findItemByName(result, name, "scenes");
+    const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string }> = {
+      role: { promptKey: "role-polish", itemType: "characters", label: "角色标准四视图", nameLabel: "角色" },
+      scene: { promptKey: "scene-polish", itemType: "scenes", label: "场景图", nameLabel: "场景" },
+      tool: { promptKey: "tool-polish", itemType: "props", label: "道具图", nameLabel: "道具" },
+    };
 
-      const chapterRange = Array.isArray(data?.chapterRange) ? data.chapterRange : [data?.chapterRange];
-      const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
-      const results: string = mergeNovelText(novelData);
-      systemPrompt = scene;
-      userPrompt = `
-      请根据以下参数生成场景图提示词：
-  
-      **基础参数：**
-      - 风格: ${project?.artStyle || "未指定"}
-      - 小说原文：${results || "未提供"}
-      - 小说类型: ${project?.type || "未指定"}
-      - 小说背景: ${project?.intro || "未指定"}
-  
-      **场景设定：**
-      - 场景名称:${name},
-      - 场景描述:${describe},
-  
-      请严格按照系统规范生成场景图提示词。
-  
-      `;
-    }
-    if (type == "tool") {
-      const data = findItemByName(result, name, "props");
-      const chapterRange = Array.isArray(data?.chapterRange) ? data.chapterRange : [data?.chapterRange];
-      const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
-      const results: string = mergeNovelText(novelData);
-      systemPrompt = tool;
-      userPrompt = `
-      请根据以下参数生成道具图提示词：
-  
-      **基础参数：**
-      - 风格: ${project?.artStyle || "未指定"}
-      - 小说原文：${results || "未提供"}
-      - 小说类型: ${project?.type || "未指定"}
-      - 小说背景: ${project?.intro || "未指定"}
-  
-      **道具设定：**
-      - 道具名称:${name},
-      - 道具描述:${describe},
-  
-      请严格按照系统规范生成道具图提示词。
-  
-      `;
-    }
-    async function generatePrompt() {
-      const result = await u.Ai.Text("assetsAgent").invoke(
-        {
-          messages: [
-            {
-              role: "system",
-              content: systemPrompt,
-            },
-            {
-              role: "user",
-              content: userPrompt,
-            },
-          ],
-        },
-      )
-      return result;
+    const config = typeConfig[type];
+    if (!config) return res.status(500).send(error("不支持的类型"));
 
-    }
+    findItemByName(result, name, config.itemType);
+    const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
+    const novelText = mergeNovelText(novelData);
+
+    const skill = await useSkill("universal-agent");
+
+    const systemPrompt = `${skill.prompt}
+
+      请根据以下参数生成${config.label}提示词：
+  
+      **基础参数：**
+      - 风格: ${project?.artStyle || "未指定"}
+      - 小说类型: ${project?.type || "未指定"}
+      - 小说背景: ${project?.intro || "未指定"}
+  
+      **${config.nameLabel}设定：**
+      - ${config.nameLabel}名称:${name},
+      - ${config.nameLabel}描述:${describe},
+  
+      请严格按照skill规范生成${type === "role" ? "人物角色四视图" : config.label}提示词。
+      `;
+
     try {
-      //添加到任务
-      const { _output } = (await generatePrompt()) as any;
-      if (_output) {
-        await u.db("o_assets").where("id", assetsId).update({
-          prompt: _output,
-        });
-      }
+      const { _output } = (await u.Ai.Text("universalAgent").invoke({
+        system: systemPrompt,
+        messages: [{ role: "user", content: "小说原文" + novelText }],
+        tools: skill.tools,
+      })) as any;
       if (!_output) return res.status(500).send("失败");
+      await u.db("o_assets").where("id", assetsId).update({ prompt: _output });
 
       res.status(200).send(success({ prompt: _output, assetsId }));
     } catch (e: any) {

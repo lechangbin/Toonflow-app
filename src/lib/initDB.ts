@@ -89,18 +89,9 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             model: "",
             modelName: "",
             vendorId: null,
-            key: "assetsAgent",
-            name: "资产Agent",
-            desc: "根据角色和场景要素，生成精准的素材提示词，可以选择轻量化模型",
-            disabled: false,
-          },
-          {
-            model: "",
-            modelName: "",
-            vendorId: null,
-            key: "eventExtractAgent",
-            name: "清洗Agent",
-            desc: "从小说原文中提取事件，生成事件列表和事件关系，可以选择轻量化模型",
+            key: "universalAgent",
+            name: "通用Agent",
+            desc: "用于小说时间提取、资产提示词生成、台词提取等边缘功能，建议使用具备较强文本处理能力的模型",
             disabled: false,
           },
           {
@@ -324,7 +315,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("id").notNullable();
         table.integer("projectId");
-        table.integer("espisodeId");
+        table.integer("episodesId");
         table.string("key"); //用户其他方式索引
         table.string("data");
         table.integer("createTime");
