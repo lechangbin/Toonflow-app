@@ -73,7 +73,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             vendorId: null,
             key: "scriptAgent",
             name: "剧本Agent",
-            desc: "根据剧本自动生成分镜描述，将文字转化为画面指令",
+            desc: "用于读取原文生成故事骨架、改编策略，建议使用具备强大文本理解和生成能力的模型",
             disabled: false,
           },
           {
@@ -82,7 +82,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             vendorId: null,
             key: "productionAgent",
             name: "生产Agent",
-            desc: "从小说原文提取关键情节，生成结构化剧本大纲",
+            desc: "对工作流进行调度和管理，建议使用具备较强的逻辑推理和任务管理能力的模型",
             disabled: false,
           },
           {
@@ -91,16 +91,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             vendorId: null,
             key: "assetsAgent",
             name: "资产Agent",
-            desc: "根据角色和场景要素，生成精准的素材提示词",
-            disabled: false,
-          },
-          {
-            model: "",
-            modelName: "",
-            vendorId: null,
-            key: "polishingAgent",
-            name: "润色Agent",
-            desc: "将大纲扩展为完整剧本脚本，包含对话和场景描写",
+            desc: "根据角色和场景要素，生成精准的素材提示词，可以选择轻量化模型",
             disabled: false,
           },
           {
@@ -108,8 +99,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             modelName: "",
             vendorId: null,
             key: "eventExtractAgent",
-            name: "事件提取Agent",
-            desc: "从小说原文中提取事件，生成事件列表和事件关系",
+            name: "清洗Agent",
+            desc: "从小说原文中提取事件，生成事件列表和事件关系，可以选择轻量化模型",
             disabled: false,
           },
           {
