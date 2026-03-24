@@ -35,14 +35,30 @@ function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["
 const subAgentList = ["executionAI", "supervisionAI"] as const;
 
 export async function decisionAI(ctx: AgentContext) {
-  const { isolationKey, text, abortSignal } = ctx;
+  const { isolationKey, text, abortSignal, resTool } = ctx;
+
+  resTool.systemMessage("决策层AI 接管聊天");
+
   const memory = new Memory("scriptAgent", isolationKey);
   await memory.add("user", text);
   const [skill, mem] = await Promise.all([useSkill("script-agent", "decision"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
-  const prefixSystem = `请调用run_sub_agent完成任务`;
+  const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
+  const novelData = await u.db("o_novel").select("id", "chapterIndex as index");
+
+  const projectInfo = [
+    "## 项目信息",
+    `小说名称：${projectData?.name ?? "未知"}`,
+    `小说类型：${projectData?.type ?? "未知"}`,
+    `小说简介：${projectData?.intro ?? "无"}`,
+    `目标改编影视画风：${projectData?.artStyle ?? "无"}`,
+    `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
+  ].join("\n");
+
+  const prefixSystem = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- ${i.id}: 第${i.index}章`).join("\n")}\n\n`;
+  console.log("%c Line:57 🍧 prefixSystem", "background:#ea7e5c", prefixSystem);
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
     system: prefixSystem + systemPrompt,
@@ -92,7 +108,10 @@ export async function executionAI(ctx: AgentContext) {
 }
 
 export async function supervisionAI(ctx: AgentContext) {
-  const { isolationKey, text, abortSignal } = ctx;
+  const { isolationKey, text, abortSignal, resTool } = ctx;
+
+  resTool.systemMessage("监督层AI 接管聊天");
+
   const memory = new Memory("scriptAgent", isolationKey);
   const [skill, mem] = await Promise.all([useSkill("script-agent", "supervision"), memory.get(text)]);
 
@@ -127,11 +146,10 @@ function runSubAgent(parentCtx: AgentContext) {
       //运行子Agent
       const subTextStream = await fn({ ...parentCtx, text: prompt });
 
-      let msg: ReturnType<typeof parentCtx.resTool.textMessage>;
+      let msg = parentCtx.resTool.textMessage();
       let fullResponse = "";
 
       for await (const chunk of subTextStream) {
-        if (!msg!) msg = parentCtx.resTool.textMessage();
         msg.send(chunk);
         fullResponse += chunk;
       }

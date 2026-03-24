@@ -15,16 +15,16 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, episodesId } = req.body;
-    const sqlData = await u.db("o_flowData").where({ projectId, episodesId }).first();
+    const sqlData = await u.db("o_agentWorkData").where({ projectId, episodesId }).first();
     if (!sqlData) {
-      await u.db("o_flowData").insert({
+      await u.db("o_agentWorkData").insert({
         projectId,
         episodesId,
         data: JSON.stringify(req.body.data),
       });
     } else {
       await u
-        .db("o_flowData")
+        .db("o_agentWorkData")
         .where({ projectId, episodesId })
         .update({
           data: JSON.stringify(req.body.data),

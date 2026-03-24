@@ -18,17 +18,17 @@
 ### 阶段1：事件提取
 
 ```
-输入：原著小说文本（第1-35章）
-处理：逐章提取结构化事件
-输出：planData.event（Markdown事件表）
-工具：get_novel_text → set_planData_event
+输入：章节ID数组 ids:number[]（由系统提示词中的章节映射表提供）
+处理：调用事件检索工具并整理为标准事件表
+输出：事件表（Markdown，作为后续阶段上下文，不写入 planData）
+工具：get_novel_events(ids:number[])
 质量门：章节覆盖率100%、角色名统一、强主线≥20章
 ```
 
 ### 阶段2：故事骨架
 
 ```
-输入：planData.event
+输入：事件表（通过 get_novel_events(ids:number[]) 获取）
 处理：三幕分割、按项目配置分集、删减决策、钩子设计
 输出：planData.storySkeleton
 工具：get_planData → set_planData_storySkeleton
@@ -39,7 +39,7 @@
 ### 阶段3：改编策略
 
 ```
-输入：planData.event + planData.storySkeleton
+输入：事件表（get_novel_events） + planData.storySkeleton
 处理：提炼改编原则、确定删减依据、世界观呈现策略
 输出：planData.adaptationStrategy
 工具：get_planData → set_planData_adaptationStrategy
@@ -50,12 +50,13 @@
 ### 阶段4：剧本编写
 
 ```
-输入：planData.event + planData.storySkeleton + planData.adaptationStrategy
+输入：事件表（get_novel_events） + planData.storySkeleton + planData.adaptationStrategy
 处理：按集编写（可并行或逐集）
-输出：planData.script
-工具：get_planData + get_novel_text → set_planData_script
+输出：SQLite 中的剧本记录
+工具：get_novel_events + get_planData + get_novel_text → insert_script_to_sqlite
 质量门：时长合规、台词字数、画面可执行、资产一致
 前置条件：阶段3通过审核
+附加前置条件：用户已明确确认写入 SQL
 ```
 
 ## 阶段间交互协议

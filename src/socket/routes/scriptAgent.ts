@@ -35,7 +35,9 @@ export default (nsp: Namespace) => {
 
     console.log("[scriptAgent] 已连接:", socket.id);
 
-    const resTool = new ResTool(socket);
+    const resTool = new ResTool(socket, {
+      projectId: socket.handshake.auth.projectId,
+    });
     let abortController: AbortController | null = null;
 
     socket.on("message", async (text: string) => {

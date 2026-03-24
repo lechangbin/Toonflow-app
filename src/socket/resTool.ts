@@ -2,7 +2,12 @@ import u from "@/utils";
 import { Socket } from "socket.io";
 
 class ResTool {
-  constructor(public socket: Socket) {}
+  public socket: Socket;
+  public data: Record<string, any>;
+  constructor(socket: Socket, data: Record<string, any> = {}) {
+    this.socket = socket;
+    this.data = data;
+  }
 
   textMessage(name: string = "AI") {
     const messageId = u.uuid();

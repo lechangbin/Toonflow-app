@@ -1,4 +1,4 @@
-// @db-hash 5c0247c298d78d118c90ddfde129e6e6
+// @db-hash 5ea1f1cf9926d08390093d10da66e6ae
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -21,6 +21,15 @@ export interface o_agentDeploy {
   'modelName'?: string | null;
   'name'?: string | null;
   'vendorId'?: number | null;
+}
+export interface o_agentWorkData {
+  'createTime'?: number | null;
+  'data'?: string | null;
+  'espisodeId'?: number | null;
+  'id'?: number;
+  'key'?: string | null;
+  'projectId'?: number | null;
+  'updateTime'?: number | null;
 }
 export interface o_artStyle {
   'id'?: number;
@@ -195,6 +204,7 @@ export interface o_videoConfig {
 export interface DB {
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
+  "o_agentWorkData": o_agentWorkData;
   "o_artStyle": o_artStyle;
   "o_assets": o_assets;
   "o_assets2Storyboard": o_assets2Storyboard;
