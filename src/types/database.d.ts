@@ -1,4 +1,4 @@
-// @db-hash f6a9a8164252ce954394431079615459
+// @db-hash 47c0e014bdbd44b60c4ebc95f4d99e0e
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -32,11 +32,14 @@ export interface o_agentWorkData {
   'updateTime'?: number | null;
 }
 export interface o_artStyle {
+  'fileUrl'?: string | null;
   'id'?: number;
+  'label'?: string | null;
   'name'?: string | null;
-  'styles'?: string | null;
+  'prompt'?: string | null;
 }
 export interface o_assets {
+  'assetsId'?: number | null;
   'describe'?: string | null;
   'id'?: number;
   'imageId'?: number | null;
@@ -45,9 +48,7 @@ export interface o_assets {
   'prompt'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
-  'sonId'?: number | null;
   'startTime'?: number | null;
-  'state'?: string | null;
   'type'?: string | null;
 }
 export interface o_assets2Storyboard {

@@ -41,12 +41,14 @@ class CleanNovel {
             ],
             tools: skill.tools,
           });
+          console.log("%c Line:35 🍆 resData", "background:#fca650", resData);
 
           const preData = resData.text;
 
           this.emitter.emit("item", { id: novel.id, event: preData });
           totalEvent.push({ id: novel.id!, event: preData });
         } catch (e) {
+          console.log("%c Line:51 🍩 e", "background:#93c0a4", e);
           this.emitter.emit("item", { id: novel.id, event: null, errorReason: u.error(e).message });
         }
       }

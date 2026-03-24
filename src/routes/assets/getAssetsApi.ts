@@ -28,7 +28,7 @@ export default router.post(
       query = query.andWhere("name", "like", `%${name}%`);
     }
     // 分页查询
-    const parentAssets = await query.where("o_assets.assetId", null).offset(offset).limit(limit);
+    const parentAssets = await query.where("o_assets.assetsId", null).offset(offset).limit(limit);
 
     // 获取所有子资产供关联使用
     let childQuery = u
@@ -37,7 +37,7 @@ export default router.post(
       .select("o_assets.*", "o_image.filePath")
       .where("o_assets.projectId", projectId)
       .andWhere("o_assets.type", type)
-      .whereNotNull("o_assets.assetId");
+      .whereNotNull("o_assets.assetsId");
     if (name) {
       childQuery = childQuery.andWhere("o_assets.name", "like", `%${name}%`);
     }
@@ -47,7 +47,7 @@ export default router.post(
     const result = await Promise.all(
       parentAssets.map(async (parent) => ({
         ...parent,
-        sonAssets: childAssets.filter((child) => child.assetId === parent.id),
+        sonAssets: childAssets.filter((child) => child.assetsId === parent.id),
         src: parent.filePath && (await u.oss.getFileUrl(parent.filePath!)),
       })),
     );
@@ -57,7 +57,7 @@ export default router.post(
       .db("o_assets")
       .where("projectId", projectId)
       .andWhere("type", type)
-      .andWhere("assetId", null)
+      .andWhere("assetsId", null)
       .andWhere((qb) => {
         if (name) {
           qb.andWhere("name", "like", `%${name}%`);
