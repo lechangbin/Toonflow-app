@@ -11,14 +11,14 @@ export default router.post(
     modelId: z.string(),
   }),
   async (req, res) => {
-    const { modelId, type = "video" } = req.body;
+    const { modelId } = req.body;
     const [id, name] = modelId.split(":");
     const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
     if (!data) {
       return res.status(404).send({ error: "模型未找到" });
     }
     const models = JSON.parse(data.models!);
-    const findData = models.find((i) => i.modelName == name);
+    const findData = models.find((i: any) => i.modelName == name);
     res.status(200).send(success(findData));
   },
 );

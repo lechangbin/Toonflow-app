@@ -1,4 +1,4 @@
-// @db-hash c57fab383d85c473ba9ca06566b33680
+// @db-hash f6a9a8164252ce954394431079615459
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -25,7 +25,7 @@ export interface o_agentDeploy {
 export interface o_agentWorkData {
   'createTime'?: number | null;
   'data'?: string | null;
-  'espisodeId'?: number | null;
+  'episodesId'?: number | null;
   'id'?: number;
   'key'?: string | null;
   'projectId'?: number | null;
