@@ -29,6 +29,8 @@ export default router.post(
   }),
   async (req, res) => {
     const { scriptId, projectId, storyboardId, prompt, data, model, duration, resolution, audio, mode } = req.body;
+    console.log("%c Line:32 🥤 req.body", "background:#465975", req.body);
+
     const videoPath = `/${projectId}/video/${uuidv4()}.mp4`; //视频保存路径
     //新增
     const videoData = {

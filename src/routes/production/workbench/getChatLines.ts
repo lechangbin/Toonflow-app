@@ -7,11 +7,30 @@ import { validateFields } from "@/middleware/middleware";
 import { Output } from "ai";
 const router = express.Router();
 
-export default router.post("/", validateFields({}), async (req, res) => {
-  const {} = req.body;
-});
+export default router.post(
+  "/",
+  validateFields({
+    list: z.array(
+      z.object({
+        prompt: z.string(),
+        videoId: z.number(),
+      }),
+    ),
+  }),
+  async (req, res) => {
+    const { list } = req.body;
+    const data = await Promise.all(
+      list.map(async (item: any) => {
+        const output = await getLines(item.prompt);
+        return { ...item, prompt: output };
+      }),
+    );
+    console.log("%c Line:23 🍅 data", "background:#f5ce50", data);
+    res.status(200).send(success(data));
+  },
+);
 
-async function getLines() {
+async function getLines(prompt: string) {
   const resText = await u.Ai.Text("eventExtractAgent").invoke({
     messages: [
       {
@@ -32,9 +51,7 @@ async function getLines() {
       },
       {
         role: "user",
-        content: `
-          
-          `,
+        content: prompt,
       },
     ],
     output: Output.array({
@@ -44,6 +61,6 @@ async function getLines() {
     }),
   });
   const parseLines = JSON.parse(resText.text);
-  const chatLines = parseLines.elements.map((i) => i.lines);
+  const chatLines = parseLines.elements.map((i: any) => i.lines);
   return chatLines;
 }
