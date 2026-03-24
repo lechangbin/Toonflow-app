@@ -1,4 +1,4 @@
-// @routes-hash d482a1b197a774825d3bc1c4ca8b70c5
+// @routes-hash 060ac05250962088b128ef8200ab0471
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -65,7 +65,7 @@ import route61 from "./routes/scriptAgent/getPlanData";
 import route62 from "./routes/scriptAgent/setPlanData";
 import route63 from "./routes/setting/agentDeploy/deployAgentModel";
 import route64 from "./routes/setting/agentDeploy/getAgentDeploy";
-import route65 from "./routes/setting/agentDeploy/updateKey";
+import route65 from "./routes/setting/agentDeploy/oneClickToFillIn";
 import route66 from "./routes/setting/dbConfig/clearData";
 import route67 from "./routes/setting/getTextModel";
 import route68 from "./routes/setting/loginConfig/getUser";
@@ -147,7 +147,7 @@ export default async (app: Express) => {
   app.use("/api/scriptAgent/setPlanData", route62);
   app.use("/api/setting/agentDeploy/deployAgentModel", route63);
   app.use("/api/setting/agentDeploy/getAgentDeploy", route64);
-  app.use("/api/setting/agentDeploy/updateKey", route65);
+  app.use("/api/setting/agentDeploy/oneClickToFillIn", route65);
   app.use("/api/setting/dbConfig/clearData", route66);
   app.use("/api/setting/getTextModel", route67);
   app.use("/api/setting/loginConfig/getUser", route68);

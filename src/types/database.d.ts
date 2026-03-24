@@ -1,45 +1,6 @@
-// @db-hash 25c88b2cb37f9deac8b2bb8354113537
+// @db-hash f6a9a8164252ce954394431079615459
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_assets_old_20260324 {
-  'describe'?: string | null;
-  'id'?: number;
-  'imageId'?: number | null;
-  'name'?: string | null;
-  'projectId'?: number | null;
-  'prompt'?: string | null;
-  'remark'?: string | null;
-  'scriptId'?: number | null;
-  'sonId'?: number | null;
-  'startTime'?: number | null;
-  'state'?: string | null;
-  'type'?: string | null;
-}
-export interface _o_assets_old_20260324_1 {
-  'assetId'?: number | null;
-  'describe'?: string | null;
-  'id'?: number;
-  'imageId'?: number | null;
-  'name'?: string | null;
-  'projectId'?: number | null;
-  'prompt'?: string | null;
-  'remark'?: string | null;
-  'scriptId'?: number | null;
-  'startTime'?: number | null;
-  'state'?: string | null;
-  'type'?: string | null;
-}
-export interface _o_novel_old_20260323 {
-  'chapter'?: string | null;
-  'chapterData'?: string | null;
-  'chapterIndex'?: number | null;
-  'createTime'?: number | null;
-  'event'?: string | null;
-  'eventState'?: number | null;
-  'id'?: number;
-  'projectId'?: number | null;
-  'reel'?: string | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -64,7 +25,7 @@ export interface o_agentDeploy {
 export interface o_agentWorkData {
   'createTime'?: number | null;
   'data'?: string | null;
-  'espisodeId'?: number | null;
+  'episodesId'?: number | null;
   'id'?: number;
   'key'?: string | null;
   'projectId'?: number | null;
@@ -76,7 +37,6 @@ export interface o_artStyle {
   'styles'?: string | null;
 }
 export interface o_assets {
-  'assetsId'?: number | null;
   'describe'?: string | null;
   'id'?: number;
   'imageId'?: number | null;
@@ -85,6 +45,7 @@ export interface o_assets {
   'prompt'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
+  'sonId'?: number | null;
   'startTime'?: number | null;
   'state'?: string | null;
   'type'?: string | null;
@@ -103,15 +64,6 @@ export interface o_eventChapter {
   'eventId'?: number | null;
   'id'?: number;
   'novelId'?: number | null;
-}
-export interface o_flowData {
-  'createTime'?: number | null;
-  'data'?: string | null;
-  'espisodeId'?: number | null;
-  'id'?: number;
-  'key'?: string | null;
-  'projectId'?: number | null;
-  'updateTime'?: number | null;
 }
 export interface o_image {
   'assetsId'?: number | null;
@@ -244,9 +196,6 @@ export interface o_videoConfig {
 }
 
 export interface DB {
-  "_o_assets_old_20260324": _o_assets_old_20260324;
-  "_o_assets_old_20260324_1": _o_assets_old_20260324_1;
-  "_o_novel_old_20260323": _o_novel_old_20260323;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
@@ -255,7 +204,6 @@ export interface DB {
   "o_assets2Storyboard": o_assets2Storyboard;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
-  "o_flowData": o_flowData;
   "o_image": o_image;
   "o_novel": o_novel;
   "o_outline": o_outline;

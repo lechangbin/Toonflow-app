@@ -42,20 +42,21 @@ export default router.post(
                   .select("o_image.filePath as imageFilePath")
                   .first();
                 if (row?.imageFilePath) {
-                  return await u.oss.getFileUrl(row.imageFilePath);
+                  return { id: d.id, type: "assets", url: await u.oss.getFileUrl(row.imageFilePath) };
                 }
                 return null;
               }
               if (d.type === "storyboard" && d.id) {
                 const row = await u.db("o_storyboard").where("id", d.id).select("filePath").first();
                 if (row?.filePath) {
-                  return await u.oss.getFileUrl(row.filePath);
+                  return { id: d.id, type: "storyboard", url: await u.oss.getFileUrl(row.filePath) };
                 }
                 return null;
               }
               return null;
             }),
           );
+
           return {
             ...item,
             data: dataWithFilePath,
