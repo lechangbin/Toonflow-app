@@ -13,7 +13,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId } = req.body;
-    const parentAssetsData = await u.db("o_assets").where("projectId", projectId).whereNotNull("assetId");
+    const parentAssetsData = await u.db("o_assets").where("projectId", projectId).whereNotNull("assetsId");
     const parentIds = parentAssetsData.map((i) => i.id);
     const sonAssetsData = await u.db("o_assets").whereIn("assetsId", parentIds);
     const sonAssetsMap: Record<number, o_assets[]> = {};

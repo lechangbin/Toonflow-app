@@ -28,7 +28,6 @@ export default router.post(
         data.map((i) => i.id),
       )
       .select("o_assets.id", "o_assets.name", "o_scriptAssets.scriptId");
-    console.log("%c Line:23 🍷 assetsData", "background:#ffdd4d", assetsData);
     const scriptAssetsMap: Record<number, { id: number; name: string }[]> = {};
     assetsData.forEach((i) => {
       if (scriptAssetsMap[i.scriptId]) {

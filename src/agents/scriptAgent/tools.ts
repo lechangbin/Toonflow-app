@@ -124,7 +124,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
 
           await u.db("o_script_assets").insert(assetId.map((i) => ({ scriptId, assetId: i })));
         }
-
+        socket.emit("setPlanData", { key: "script", value: scriptId });
         return true;
       },
     }),
