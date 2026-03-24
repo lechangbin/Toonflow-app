@@ -1,6 +1,24 @@
-// @db-hash f6a9a8164252ce954394431079615459
+// @db-hash 1ce1a8f10cb90caac306536b78942cb3
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_storyboard_old_20260324 {
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'duration'?: string | null;
+  'filePath'?: string | null;
+  'frameMode'?: string | null;
+  'id'?: number;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'reason'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'sound'?: string | null;
+  'state'?: string | null;
+  'title'?: string | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -32,11 +50,14 @@ export interface o_agentWorkData {
   'updateTime'?: number | null;
 }
 export interface o_artStyle {
+  'fileUrl'?: string | null;
   'id'?: number;
+  'label'?: string | null;
   'name'?: string | null;
-  'styles'?: string | null;
+  'prompt'?: string | null;
 }
 export interface o_assets {
+  'assetsId'?: number | null;
   'describe'?: string | null;
   'id'?: number;
   'imageId'?: number | null;
@@ -45,9 +66,7 @@ export interface o_assets {
   'prompt'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
-  'sonId'?: number | null;
   'startTime'?: number | null;
-  'state'?: string | null;
   'type'?: string | null;
 }
 export interface o_assets2Storyboard {
@@ -131,12 +150,15 @@ export interface o_storyboard {
   'filePath'?: string | null;
   'frameMode'?: string | null;
   'id'?: number;
+  'lines'?: string | null;
   'mode'?: string | null;
   'model'?: string | null;
   'prompt'?: string | null;
+  'reason'?: string | null;
   'resolution'?: string | null;
   'scriptId'?: number | null;
   'sound'?: string | null;
+  'state'?: string | null;
   'title'?: string | null;
 }
 export interface o_storyboardFlow {
@@ -196,6 +218,7 @@ export interface o_videoConfig {
 }
 
 export interface DB {
+  "_o_storyboard_old_20260324": _o_storyboard_old_20260324;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;

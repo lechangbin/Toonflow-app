@@ -35,6 +35,7 @@ async function getLines(prompt: string) {
   const resText = await u.Ai.Text("universalAgent").invoke({
     system: skill.prompt,
     messages: [{ role: "user", content: prompt }],
+    tools: skill.tools,
     output: Output.array({
       element: z.object({
         lines: z.string().describe("台词内容"),

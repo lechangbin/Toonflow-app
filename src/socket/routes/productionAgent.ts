@@ -26,7 +26,7 @@ export default (nsp: Namespace) => {
       socket.disconnect();
       return;
     }
-    const isolationKey = socket.handshake.auth.isolationKey;
+    let isolationKey = socket.handshake.auth.isolationKey;
     if (!isolationKey) {
       console.log("[productionAgent] 连接失败，缺少 isolationKey");
       socket.disconnect();
@@ -35,13 +35,17 @@ export default (nsp: Namespace) => {
 
     console.log("[productionAgent] 已连接:", socket.id);
 
-    const resTool = new ResTool(socket);
+    const resTool = new ResTool(socket, {
+      projectId: socket.handshake.auth.projectId,
+      scriptId: socket.handshake.auth.scriptId,
+    });
     let abortController: AbortController | null = null;
 
     socket.on("message", async (text: string) => {
       abortController?.abort();
       abortController = new AbortController();
       const currentController = abortController;
+      console.log("%c Line:30 🍑 isolationKey", "background:#e41a6a", isolationKey);
 
       const textStream = await agent.decisionAI({ socket, isolationKey, text, abortSignal: currentController.signal, resTool });
 
@@ -60,7 +64,13 @@ export default (nsp: Namespace) => {
         }
       }
     });
-
+    socket.on("setModelData", async (data: any) => {
+      resTool.data.imageModel = data;
+    });
+    socket.on("setKeyScript", async (data: any) => {
+      isolationKey = data.key;
+      resTool.data.scriptId = data.scriptId;
+    });
     socket.on("stop", () => {
       abortController?.abort();
       abortController = null;

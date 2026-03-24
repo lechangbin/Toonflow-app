@@ -109,7 +109,7 @@ export default router.post(
                         if (tableName === 't_outline') { }
                         //迁移脚本表
                         if (tableName === 't_script') { }
-                        //迁移分镜表
+                        //迁移分镜面板
                         if (tableName === 't_storyboard') { }
                         //迁移视频表
                         if (tableName === 't_video') { }
