@@ -1,4 +1,4 @@
-// @db-hash 83c8dadf13c2aee689597b709a690870
+// @db-hash 47c0e014bdbd44b60c4ebc95f4d99e0e
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -32,9 +32,11 @@ export interface o_agentWorkData {
   'updateTime'?: number | null;
 }
 export interface o_artStyle {
+  'fileUrl'?: string | null;
   'id'?: number;
+  'label'?: string | null;
   'name'?: string | null;
-  'styles'?: string | null;
+  'prompt'?: string | null;
 }
 export interface o_assets {
   'assetsId'?: number | null;
