@@ -8,13 +8,13 @@ const router = express.Router();
 
 // 批量删除资产
 export default router.post(
-    "/",
-    validateFields({
-        id: z.array(z.number()),
-    }),
-    async (req, res) => {
-        const { id } = req.body;
-        await u.db("o_assets").whereIn("id", id).delete();
-        res.status(200).send(success({ message: "删除资产成功" }));
-    },
+  "/",
+  validateFields({
+    id: z.array(z.number()),
+  }),
+  async (req, res) => {
+    const { id } = req.body;
+    await u.db("o_assets").whereIn("id", id).delete();
+    res.status(200).send(success({ message: "删除资产成功" }));
+  },
 );

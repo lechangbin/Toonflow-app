@@ -281,10 +281,9 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("describe");
         table.integer("scriptId"); //剧本id
         table.integer("imageId").unsigned().references("id").inTable("o_image");
-        table.integer("sonId");
+        table.integer("assetsId");
         table.integer("projectId");
         table.integer("startTime");
-        table.text("state");
         table.primary(["id"]);
         table.unique(["id"]);
       },

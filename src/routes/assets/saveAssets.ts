@@ -36,15 +36,21 @@ export default router.post(
         state: "生成成功",
       });
       // 更新资产表图片为新图片
-      await u.db("o_assets").where("id", id).update({
-        prompt: prompt ?? "",
-        imageId: idData,
-      });
+      await u
+        .db("o_assets")
+        .where("id", id)
+        .update({
+          prompt: prompt ?? "",
+          imageId: idData,
+        });
     } else {
-      await u.db("o_assets").where("id", id).update({
-        prompt: prompt ?? "",
-        imageId: imageId,
-      });
+      await u
+        .db("o_assets")
+        .where("id", id)
+        .update({
+          prompt: prompt ?? "",
+          imageId: imageId,
+        });
     }
     res.status(200).send(success({ message: "保存资产图片成功" }));
   },

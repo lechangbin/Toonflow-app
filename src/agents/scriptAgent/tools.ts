@@ -14,7 +14,11 @@ export const AssetSchema = z.object({
   state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态，新增默认未生成"),
   type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
 });
-
+export const ScriptSchema = z.object({
+  id: z.number().describe("剧本ID,如果新增则为空").optional(),
+  name: z.string().describe("剧本名称"),
+  content: z.string().describe("剧本内容"),
+});
 export const planData = z.object({
   storySkeleton: z.string().describe("故事骨架"),
   adaptationStrategy: z.string().describe("改编策略"),
@@ -92,20 +96,35 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
     insert_script_to_sqlite: tool({
       description: "将剧本内容插入sqlite数据库，供后续业务使用",
       inputSchema: z.object({
-        list: z.array(AssetSchema),
+        script: ScriptSchema,
+        assetsList: z.array(AssetSchema).describe("剧本所使用资产列表"),
       }),
-      execute: async ({ list }) => {
-        console.log("[tools] insert_script_to_sqlite", list);
-        await u.db("o_assets").insert(
-          list.map((i) => ({
-            name: i.name,
-            prompt: i.prompt,
-            type: i.type,
-            describe: i.desc,
-            projectId: resTool.data.projectId,
-            state: "未生成",
-          })),
-        );
+      execute: async ({ assetsList, script }) => {
+        console.log("%c Line:103 🍷 script", "background:#42b983", script);
+        console.log("[tools] insert_script_to_sqlite", assetsList);
+        const [scriptId] = await u.db("o_script").insert({
+          name: script.name,
+          content: script.content,
+          projectId: resTool.data.projectId,
+          createTime: Date.now(),
+        });
+        if (assetsList && assetsList.length) {
+          const assetId = [];
+          for (const i of assetsList) {
+            const [id] = await u.db("o_assets").insert({
+              name: i.name,
+              prompt: i.prompt,
+              type: i.type,
+              describe: i.desc,
+              projectId: resTool.data.projectId,
+              state: "未生成",
+            });
+            assetId.push(id);
+          }
+
+          await u.db("o_script_assets").insert(assetId.map((i) => ({ scriptId, assetId: i })));
+        }
+
         return true;
       },
     }),

@@ -40,6 +40,7 @@ export async function decisionAI(ctx: AgentContext) {
   resTool.systemMessage("决策层AI 接管聊天");
 
   const memory = new Memory("scriptAgent", isolationKey);
+  
   await memory.add("user", text);
   const [skill, mem] = await Promise.all([useSkill("script-agent", "decision"), memory.get(text)]);
 
@@ -57,8 +58,10 @@ export async function decisionAI(ctx: AgentContext) {
     `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
   ].join("\n");
 
-  const prefixSystem = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- ${i.id}: 第${i.index}章`).join("\n")}\n\n`;
+  // const prefixSystem = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- ${i.id}: 第${i.index}章`).join("\n")}\n\n`;
+  const prefixSystem = `不管说什么直接调用 insert_script_to_sqlite 工具`
   console.log("%c Line:57 🍧 prefixSystem", "background:#ea7e5c", prefixSystem);
+  
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
     system: prefixSystem + systemPrompt,

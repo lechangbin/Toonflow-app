@@ -13,10 +13,9 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId } = req.body;
-    const parentAssetsData = await u.db("o_assets").where("projectId", projectId).whereNotNull("sonId");
+    const parentAssetsData = await u.db("o_assets").where("projectId", projectId).whereNotNull("assetId");
     const parentIds = parentAssetsData.map((i) => i.id);
-    const parnetIdsMap: Record<number, number> = {};
-    const sonAssetsData = await u.db("o_assets").whereIn("sonId", parentIds);
+    const sonAssetsData = await u.db("o_assets").whereIn("assetsId", parentIds);
     const sonAssetsMap: Record<number, o_assets[]> = {};
 
     const imageIds = [...parentAssetsData.map((i) => i.imageId).concat(sonAssetsData.map((i) => i.imageId))].filter(Boolean);
@@ -34,8 +33,8 @@ export default router.post(
       imageUrlMap[i.id!] = i.src;
     });
     sonAssetsData.forEach((i) => {
-      if (!sonAssetsMap[i.sonId!]) {
-        sonAssetsMap[i.sonId!] = [];
+      if (!sonAssetsMap[i.assetsId!]) {
+        sonAssetsMap[i.assetsId!] = [];
       }
       const obj = {
         assetsId: i.id,
@@ -44,7 +43,7 @@ export default router.post(
         src: imageUrlMap[i.imageId!] ?? null,
         derive: sonAssetsMap[i.id!] ?? [],
       };
-      sonAssetsMap[i.sonId!].push(obj);
+      sonAssetsMap[i.assetsId!].push(obj);
     });
     const returnData = parentAssetsData.map((i) => {
       return {

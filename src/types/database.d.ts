@@ -1,6 +1,45 @@
-// @db-hash b6146b9f91d8b9853e0f6fcb41c3145b
+// @db-hash 25c88b2cb37f9deac8b2bb8354113537
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_assets_old_20260324 {
+  'describe'?: string | null;
+  'id'?: number;
+  'imageId'?: number | null;
+  'name'?: string | null;
+  'projectId'?: number | null;
+  'prompt'?: string | null;
+  'remark'?: string | null;
+  'scriptId'?: number | null;
+  'sonId'?: number | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'type'?: string | null;
+}
+export interface _o_assets_old_20260324_1 {
+  'assetId'?: number | null;
+  'describe'?: string | null;
+  'id'?: number;
+  'imageId'?: number | null;
+  'name'?: string | null;
+  'projectId'?: number | null;
+  'prompt'?: string | null;
+  'remark'?: string | null;
+  'scriptId'?: number | null;
+  'startTime'?: number | null;
+  'state'?: string | null;
+  'type'?: string | null;
+}
+export interface _o_novel_old_20260323 {
+  'chapter'?: string | null;
+  'chapterData'?: string | null;
+  'chapterIndex'?: number | null;
+  'createTime'?: number | null;
+  'event'?: string | null;
+  'eventState'?: number | null;
+  'id'?: number;
+  'projectId'?: number | null;
+  'reel'?: string | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -37,6 +76,7 @@ export interface o_artStyle {
   'styles'?: string | null;
 }
 export interface o_assets {
+  'assetsId'?: number | null;
   'describe'?: string | null;
   'id'?: number;
   'imageId'?: number | null;
@@ -45,7 +85,6 @@ export interface o_assets {
   'prompt'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
-  'sonId'?: number | null;
   'startTime'?: number | null;
   'state'?: string | null;
   'type'?: string | null;
@@ -88,6 +127,7 @@ export interface o_novel {
   'chapterData'?: string | null;
   'chapterIndex'?: number | null;
   'createTime'?: number | null;
+  'errorReason'?: string | null;
   'event'?: string | null;
   'eventState'?: number | null;
   'id'?: number;
@@ -204,6 +244,9 @@ export interface o_videoConfig {
 }
 
 export interface DB {
+  "_o_assets_old_20260324": _o_assets_old_20260324;
+  "_o_assets_old_20260324_1": _o_assets_old_20260324_1;
+  "_o_novel_old_20260323": _o_novel_old_20260323;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
