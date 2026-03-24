@@ -22,6 +22,7 @@ if (!fs.existsSync(envFile)) {
 const external = [
   "electron",
   "@huggingface/transformers",
+  "onnxruntime-node",
   "vm2",
   "sqlite3",
   "better-sqlite3",
@@ -41,7 +42,7 @@ const appBuildConfig: esbuild.BuildOptions = {
   minify: false,
   format: "cjs",
   allowOverwrite: true,
-  outfile: `build/app.js`,
+  outfile: `data/serve/app.js`,
   platform: "node",
   target: "esnext",
   tsconfig: "./tsconfig.json",

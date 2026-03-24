@@ -42,7 +42,7 @@ export default router.post(
             }
             //连接旧数据库
             db2 = knex({
-                client: "sqlite3",
+                client: "better-sqlite3",
                 connection: {
                     filename: db2Path,
                 },

@@ -18,3 +18,12 @@ export default (fileName?: string[] | string) => {
   }
   return dbPath;
 };
+
+export function isEletron() {
+  if (typeof process.versions?.electron !== "undefined") {
+    const { app } = require("electron");
+    return true;
+  } else {
+    return false;
+  }
+}

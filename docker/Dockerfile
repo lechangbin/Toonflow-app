@@ -58,6 +58,7 @@ RUN apk add --no-cache nginx supervisor && \
 
 # 复制后端文件
 COPY --from=builder /app/build ./build
+COPY --from=builder /app/data/serve ./data/serve
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/yarn.lock ./
 
@@ -100,7 +101,7 @@ stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 
 [program:app]
-command=pm2-runtime start build/app.js --name app
+command=pm2-runtime start data/serve/app.js --name app
 directory=/app
 autostart=true
 autorestart=true
