@@ -52,7 +52,7 @@ export const flowDataSchema = z.object({
   script: z.string().describe("剧本内容"),
   scriptPlan: z.string().describe("拍摄计划"),
   assets: z.array(assetItemSchema).describe("衍生资产"),
-  storyboardTable: z.string().describe("分镜表"),
+  storyboardTable: z.string().describe("分镜面板"),
   storyboard: z.array(storyboardSchema).describe("分镜列表"),
   workbench: workbenchDataSchema.describe("工作台配置"),
   poster: z
@@ -104,6 +104,39 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         return true;
       },
     }),
+    // add_flowData_assets: tool({
+    //   description: "新增对应衍生资产列表到工作区，严禁包含 不需要新增的数据",
+    //   inputSchema: z.object({ value: z.array(deriveAssetSchema).describe("需要新增的资产列表") }),
+    //   execute: async ({ value }) => {
+    //     console.log("[tools] set_flowData add_flowData_assets", value);
+    //     resTool.systemMessage("正在保存 衍生资产 数据");
+    //     const addAssetsData = [];
+    //     if (value && Array.isArray(value) && value.length) {
+    //       for (const i of value) {
+    //         const [insertedId] = await u.db("o_assets").insert({
+    //           assetsId: +i.assetsId || null,
+    //           projectId: resTool.data.projectId,
+    //           name: i.name,
+    //           type: i.type,
+    //           prompt: i.prompt,
+    //           describe: i.desc,
+    //           startTime: Date.now(),
+    //         });
+    //         console.log("%c Line:141 🍑 resTool.data.scriptId", "background:#ea7e5c", resTool.data.scriptId);
+    //         await u.db("o_scriptAssets").insert({
+    //           scriptId: resTool.data.scriptId,
+    //           assetId: insertedId,
+    //         });
+    //         addAssetsData.push({
+    //           ...i,
+    //           id: insertedId,
+    //         });
+    //       }
+    //     }
+    //     socket.emit("setFlowData", { key: "addAssets", value: addAssetsData });
+    //     return true;
+    //   },
+    // }),
     set_flowData_assets: tool({
       description: "保存衍生资产列表到工作区",
       inputSchema: z.object({ value: flowDataSchema.shape.assets }),
@@ -128,11 +161,17 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
                 if (sub.id) continue;
                 const [insertedId] = await u.db("o_assets").insert({
                   assetsId: +i.id || null,
+                  projectId: resTool.data.projectId,
                   name: sub.name,
                   type: sub.type,
                   prompt: sub.prompt,
                   describe: sub.desc,
                   startTime: Date.now(),
+                });
+                console.log("%c Line:141 🍑 resTool.data.scriptId", "background:#ea7e5c", resTool.data.scriptId);
+                await u.db("o_scriptAssets").insert({
+                  scriptId: resTool.data.scriptId,
+                  assetId: insertedId,
                 });
                 sub.id = insertedId;
               }
@@ -144,11 +183,11 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       },
     }),
     set_flowData_storyboardTable: tool({
-      description: "保存分镜表到工作区",
+      description: "保存分镜模板到工作区",
       inputSchema: z.object({ value: flowDataSchema.shape.storyboardTable }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData storyboardTable", value);
-        resTool.systemMessage("正在保存 分镜表 数据...");
+        resTool.systemMessage("正在保存 分镜面板 数据...");
         socket.emit("setFlowData", { key: "storyboardTable", value });
         return true;
       },
@@ -179,8 +218,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             item.id = insertedId;
           }
         }
-        console.log("%c Line:181 🍏 value", "background:#93c0a4", value);
-
         socket.emit("setFlowData", { key: "storyboard", value });
         return true;
       },
@@ -206,6 +243,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       },
     }),
 
+    //todo referenceIds 图片未使用  提示词待调
     generate_storyboard_images: tool({
       description: `生成一组图片任务，支持图片间的依赖关系（以图生图）。
 
@@ -242,16 +280,20 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         const skill = await useSkill("universal-agent");
         for (const item of images) {
           resTool.systemMessage(`生在生成分镜 id:${item.id} 图片`);
+          //更新对应分镜状态
           await u.db("o_storyboard").where("id", item.id).update({ state: "生成中" });
-          u.Ai.Image("1:doubao-seedream-4-5-251128")
+          // 异步生成
+          const imageModel = resTool.data.imageModel;
+
+          u.Ai.Image(imageModel?.modelId)
             .run({
               systemPrompt: skill.prompt,
               prompt: item.prompt,
               imageBase64: await getAssetsImageBase64(item.assetIds ?? []),
-              size: "2K",
-              aspectRatio: "16:9",
-              taskClass: "资产图片生成",
-              describe: "生成图片",
+              size: imageModel?.quality,
+              aspectRatio: imageModel?.ratio,
+              taskClass: "生成图片",
+              describe: "分镜图片生成",
               relatedObjects: "hhhh",
               projectId: resTool.data.projectId,
             })
@@ -264,16 +306,21 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
                 src: await u.oss.getFileUrl(savePath),
                 state: "已完成",
               };
+              // 更新对应分镜状态
               await u.db("o_storyboard").where("id", item.id).update({ state: "已完成", filePath: savePath });
+              // 前端对话框提示
               resTool.systemMessage(`分镜 id:${item.id} 图片生成完成`);
+              // 更新前端界面展示
               socket.emit("setFlowData", { key: "setStoryboardImage", value: obj });
             });
-
+          //更新前端为生成中
           socket.emit("setFlowData", { key: "setStoryboardImage", value: { ...item, id: item.id, src: "", state: "生成中" } });
         }
         return "分镜图片生成中";
       },
     }),
+
+    //todo 图片是否需要参考 原资产  提示词待调
     generate_assets_images: tool({
       description: `
       生成 资产图片 不区分原资产于衍生资产
@@ -289,22 +336,25 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ images: z.array(z.object({ assetId: z.number(), prompt: z.string() })) }),
       execute: async ({ images }) => {
         const skill = await useSkill("universal-agent");
+        //获取所设置模型
+        const imageModel = resTool.data.imageModel;
         for (const item of images) {
           const [imageId] = await u.db("o_image").insert({
+            // 数据库插入图片记录
             assetsId: item.assetId,
-            model: "1:doubao-seedream-4-5-251128",
+            model: imageModel?.modelId,
             state: "生成中",
-            resolution: "2K",
+            resolution: imageModel?.quality,
           });
-          u.Ai.Image("1:doubao-seedream-4-5-251128")
+          u.Ai.Image(imageModel?.modelId)
             .run({
               systemPrompt: skill.prompt,
               prompt: item.prompt,
               imageBase64: [],
-              size: "2K",
-              aspectRatio: "16:9",
-              taskClass: "资产图片生成",
-              describe: "生成图片",
+              size: imageModel?.quality,
+              aspectRatio: imageModel?.ratio,
+              taskClass: "生成图片",
+              describe: "资产图片生成",
               relatedObjects: "hhhh",
               projectId: resTool.data.projectId,
             })
@@ -315,12 +365,15 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
                 ...item,
                 id: item.assetId,
                 src: await u.oss.getFileUrl(savePath),
-                state: "生成成功",
+                state: "已完成",
               };
+              //更新对应数据库
+              await u.db("o_assets").where("id", item.assetId).update({ imageId: imageId });
               await u.db("o_image").where({ id: imageId }).update({ state: "已完成", filePath: savePath });
+              //通知前端更新
               socket.emit("setFlowData", { key: "setAssetsImage", value: obj });
             });
-
+          //通知前端更新状态
           socket.emit("setFlowData", { key: "setAssetsImage", value: { ...item, id: item.assetId, src: "", state: "生成中" } });
         }
         console.log("[tools] generate_assets_images", images);

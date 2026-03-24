@@ -5,14 +5,11 @@ import _ from "lodash";
 import ResTool from "@/socket/resTool";
 
 export const AssetSchema = z.object({
-  id: z.number().describe("衍生资产ID,如果新增则为空").optional(),
-  assetsId: z.string().describe("关联的资产ID"),
+  id: z.number().describe("资产ID,如果新增则为空").optional(),
   prompt: z.string().describe("生成提示词"),
-  name: z.string().describe("衍生资产名称"),
-  desc: z.string().describe("衍生资产描述"),
-  src: z.string().describe("衍生资产资源路径").optional(),
-  state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态，新增默认未生成"),
-  type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
+  name: z.string().describe("资产名称"),
+  desc: z.string().describe("资产描述"),
+  type: z.enum(["role", "tool", "scene", "clip"]).describe("资产类型"),
 });
 export const ScriptSchema = z.object({
   id: z.number().describe("剧本ID,如果新增则为空").optional(),
@@ -97,7 +94,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       description: "将剧本内容插入sqlite数据库，供后续业务使用",
       inputSchema: z.object({
         script: ScriptSchema,
-        assetsList: z.array(AssetSchema).describe("剧本所使用资产列表"),
+        assetsList: z.array(AssetSchema).describe("剧本所使用资产列表,注意不要包含剧本内容,仅为所使用到的 道具、人物、场景、素材"),
       }),
       execute: async ({ assetsList, script }) => {
         console.log("%c Line:103 🍷 script", "background:#42b983", script);
