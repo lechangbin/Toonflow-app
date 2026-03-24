@@ -329,7 +329,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
     },
     //flowData-剧本
     {
-      name: "o_flowData",
+      name: "o_agentWorkData",
       builder: (table) => {
         table.integer("id").notNullable();
         table.integer("projectId");

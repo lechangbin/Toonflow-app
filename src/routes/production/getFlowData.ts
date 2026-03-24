@@ -14,7 +14,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, episodesId } = req.body;
-    const sqlData = await u.db("o_flowData").where({ projectId, episodesId }).first();
+    const sqlData = await u.db("o_agentWorkData").where({ projectId, episodesId }).first();
 
     const scriptData = await u.db("o_script").where("projectId", projectId).first();
 

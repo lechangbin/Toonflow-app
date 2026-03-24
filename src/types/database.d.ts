@@ -1,17 +1,6 @@
-// @db-hash c0bedac3bd0316e4716f38f6abb585a3
+// @db-hash b6146b9f91d8b9853e0f6fcb41c3145b
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_novel_old_20260323 {
-  'chapter'?: string | null;
-  'chapterData'?: string | null;
-  'chapterIndex'?: number | null;
-  'createTime'?: number | null;
-  'event'?: string | null;
-  'eventState'?: number | null;
-  'id'?: number;
-  'projectId'?: number | null;
-  'reel'?: string | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -32,6 +21,15 @@ export interface o_agentDeploy {
   'modelName'?: string | null;
   'name'?: string | null;
   'vendorId'?: number | null;
+}
+export interface o_agentWorkData {
+  'createTime'?: number | null;
+  'data'?: string | null;
+  'espisodeId'?: number | null;
+  'id'?: number;
+  'key'?: string | null;
+  'projectId'?: number | null;
+  'updateTime'?: number | null;
 }
 export interface o_artStyle {
   'id'?: number;
@@ -90,7 +88,6 @@ export interface o_novel {
   'chapterData'?: string | null;
   'chapterIndex'?: number | null;
   'createTime'?: number | null;
-  'errorReason'?: string | null;
   'event'?: string | null;
   'eventState'?: number | null;
   'id'?: number;
@@ -207,9 +204,9 @@ export interface o_videoConfig {
 }
 
 export interface DB {
-  "_o_novel_old_20260323": _o_novel_old_20260323;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
+  "o_agentWorkData": o_agentWorkData;
   "o_artStyle": o_artStyle;
   "o_assets": o_assets;
   "o_assets2Storyboard": o_assets2Storyboard;
