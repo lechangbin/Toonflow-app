@@ -1,4 +1,4 @@
-// @db-hash f73a46df6ee14425a01df5c1ff88fcb2
+// @db-hash b6146b9f91d8b9853e0f6fcb41c3145b
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -123,6 +123,10 @@ export interface o_script {
   'name'?: string | null;
   'projectId'?: number | null;
 }
+export interface o_scriptAssets {
+  'assetId'?: number;
+  'scriptId'?: number;
+}
 export interface o_setting {
   'key'?: string | null;
   'value'?: string | null;
@@ -215,6 +219,7 @@ export interface DB {
   "o_outlineNovel": o_outlineNovel;
   "o_project": o_project;
   "o_script": o_script;
+  "o_scriptAssets": o_scriptAssets;
   "o_setting": o_setting;
   "o_storyboard": o_storyboard;
   "o_storyboardFlow": o_storyboardFlow;

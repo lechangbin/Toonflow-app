@@ -204,6 +204,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("projectId");
         table.integer("eventState");
         table.text("event");
+        table.text("errorReason");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);
@@ -445,6 +446,15 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("assetId").notNullable();
         table.primary(["assetId", "assetId"]);
         table.unique(["storyboardId", "assetId"]);
+      },
+    },
+    {
+      name: "o_scriptAssets",
+      builder: (table) => {
+        table.integer("scriptId").notNullable();
+        table.integer("assetId").notNullable();
+        table.primary(["scriptId", "assetId"]);
+        table.unique(["scriptId", "assetId"]);
       },
     },
   ];

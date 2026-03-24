@@ -60,7 +60,7 @@ class CleanNovel {
           this.emitter.emit("item", { id: novel.id, event: preData });
           totalEvent.push({ id: novel.id!, event: preData });
         } catch (e) {
-          this.emitter.emit("item", { id: novel.id, event: null });
+          this.emitter.emit("item", { id: novel.id, event: null, errorReason: u.error(e).message });
         }
       }
     } catch (e) {

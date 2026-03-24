@@ -26,7 +26,7 @@ export default router.post(
       await u
         .db("o_novel")
         .where("id", item.id)
-        .update({ event: item.event, eventState: item.event ? 1 : -1 });
+        .update({ event: item.event, eventState: item.event ? 1 : -1, errorReason: item?.errorReason ?? null });
     });
     novel.start(allChapters, projectId);
 

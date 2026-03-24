@@ -7,20 +7,35 @@ const router = express.Router();
 
 // 新增剧本
 export default router.post(
-    "/",
-    validateFields({
-        name: z.string(),
-        content: z.string(),
-        projectId: z.number(),
-    }),
-    async (req, res) => {
-        const { name, content, projectId } = req.body;
-        await u.db("o_script").insert({
-            name,
-            content,
-            projectId,
-            createTime: Date.now(),
+  "/",
+  validateFields({
+    name: z.string(),
+    content: z.string(),
+    projectId: z.number(),
+    assets: z.array(z.number()),
+  }),
+  async (req, res) => {
+    const { name, content, projectId, assets } = req.body;
+    const [scriptId] = await u.db("o_script").insert({
+      name,
+      content,
+      projectId,
+      createTime: Date.now(),
+    });
+    if (assets.length) {
+      const assetsData = await u.db("o_assets").whereIn("id", assets).select();
+      if (assetsData.length) {
+        const assetsIds = assetsData.map((item) => item.id);
+        const insertData = assetsIds.map((i) => {
+          return {
+            scriptId,
+            assetId: i,
+          };
         });
-        res.status(200).send(success({ message: "添加剧本成功" }));
-    },
+        await u.db("o_scriptAssets").insert(insertData);
+      }
+    }
+
+    res.status(200).send(success({ message: "添加剧本成功" }));
+  },
 );
