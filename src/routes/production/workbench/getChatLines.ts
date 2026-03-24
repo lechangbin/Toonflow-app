@@ -25,7 +25,6 @@ export default router.post(
         return { ...item, prompt: output };
       }),
     );
-    console.log("%c Line:23 🍅 data", "background:#f5ce50", data);
     res.status(200).send(success(data));
   },
 );
