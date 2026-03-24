@@ -1,4 +1,4 @@
-// @db-hash 5ea1f1cf9926d08390093d10da66e6ae
+// @db-hash c57fab383d85c473ba9ca06566b33680
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -65,15 +65,6 @@ export interface o_eventChapter {
   'id'?: number;
   'novelId'?: number | null;
 }
-export interface o_flowData {
-  'createTime'?: number | null;
-  'data'?: string | null;
-  'espisodeId'?: number | null;
-  'id'?: number;
-  'key'?: string | null;
-  'projectId'?: number | null;
-  'updateTime'?: number | null;
-}
 export interface o_image {
   'assetsId'?: number | null;
   'filePath'?: string | null;
@@ -88,6 +79,9 @@ export interface o_novel {
   'chapterData'?: string | null;
   'chapterIndex'?: number | null;
   'createTime'?: number | null;
+  'errorReason'?: string | null;
+  'event'?: string | null;
+  'eventState'?: number | null;
   'id'?: number;
   'projectId'?: number | null;
   'reel'?: string | null;
@@ -210,7 +204,6 @@ export interface DB {
   "o_assets2Storyboard": o_assets2Storyboard;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
-  "o_flowData": o_flowData;
   "o_image": o_image;
   "o_novel": o_novel;
   "o_outline": o_outline;
