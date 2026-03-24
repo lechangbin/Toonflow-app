@@ -33,7 +33,7 @@ export default router.post(
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .select("o_assets.*", "o_image.filePath")
       .where("o_assets.projectId", projectId)
-      .whereNotNull("o_assets.assetId");
+      .whereNotNull("o_assets.assetsId");
 
     if (!sqlData) {
       const flowData: FlowData = {
@@ -47,7 +47,7 @@ export default router.post(
             src: item.filePath && (await u.oss.getFileUrl(item.filePath!)),
             derive: await Promise.all(
               childAssetsData
-                .filter((child) => child.assetId === item.id)
+                .filter((child) => child.assetsId === item.id)
                 .map(async (child) => ({
                   id: child.id,
                   assetsId: item.id,

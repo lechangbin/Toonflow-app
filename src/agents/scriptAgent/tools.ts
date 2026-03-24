@@ -117,14 +117,13 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
               type: i.type,
               describe: i.desc,
               projectId: resTool.data.projectId,
-              state: "未生成",
             });
             assetId.push(id);
           }
 
-          await u.db("o_script_assets").insert(assetId.map((i) => ({ scriptId, assetId: i })));
+          await u.db("o_scriptAssets").insert(assetId.map((i) => ({ scriptId, assetId: i })));
         }
-
+        socket.emit("setPlanData", { key: "script", value: scriptId });
         return true;
       },
     }),
