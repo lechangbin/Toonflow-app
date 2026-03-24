@@ -9,10 +9,20 @@ export default router.post(
   "/",
   validateFields({
     id: z.number(),
+    type: z.enum(["assets", "storyboard"]),
   }),
   async (req, res) => {
-    const { id } = req.body;
-    const storyboardFlowData = await u.db("o_storyboardFlow").where("storyboardId", id).first();
+    const { id, type } = req.body;
+    const storyboardFlowData = await u
+      .db("o_imageFlow")
+      .modify((qb) => {
+        if (type === "assets") {
+          qb.where("assetsId", id);
+        } else if (type === "storyboard") {
+          qb.where("storyboardId", id);
+        }
+      })
+      .first();
     if (storyboardFlowData?.flowData) {
       const parseFlow = JSON.parse(storyboardFlowData.flowData);
       await Promise.all(

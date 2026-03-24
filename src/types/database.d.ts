@@ -1,4 +1,4 @@
-// @db-hash 1ce1a8f10cb90caac306536b78942cb3
+// @db-hash e7f6b28afeff91fb2a3544abed8c4a73
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_storyboard_old_20260324 {
@@ -92,6 +92,12 @@ export interface o_image {
   'resolution'?: string | null;
   'state'?: string | null;
   'type'?: string | null;
+}
+export interface o_imageFlow {
+  'assetsId'?: number | null;
+  'flowData': string;
+  'id'?: number;
+  'storyboardId'?: number | null;
 }
 export interface o_novel {
   'chapter'?: string | null;
@@ -228,6 +234,7 @@ export interface DB {
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_image": o_image;
+  "o_imageFlow": o_imageFlow;
   "o_novel": o_novel;
   "o_outline": o_outline;
   "o_outlineNovel": o_outlineNovel;
