@@ -91,7 +91,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             vendorId: null,
             key: "universalAgent",
             name: "通用Agent",
-            desc: "用于小说时间提取、资产提示词生成、台词提取等边缘功能，建议使用具备较强文本处理能力的模型",
+            desc: "用于小说事件提取、资产提示词生成、台词提取等边缘功能，建议使用具备较强文本处理能力的模型",
             disabled: false,
           },
           {
