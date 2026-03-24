@@ -1,4 +1,4 @@
-// @db-hash b6146b9f91d8b9853e0f6fcb41c3145b
+// @db-hash 5ea1f1cf9926d08390093d10da66e6ae
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -88,8 +88,6 @@ export interface o_novel {
   'chapterData'?: string | null;
   'chapterIndex'?: number | null;
   'createTime'?: number | null;
-  'event'?: string | null;
-  'eventState'?: number | null;
   'id'?: number;
   'projectId'?: number | null;
   'reel'?: string | null;
