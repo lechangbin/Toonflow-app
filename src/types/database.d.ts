@@ -1,6 +1,39 @@
-// @db-hash 83c8dadf13c2aee689597b709a690870
+// @db-hash 08cfec7bed045942e10f27f6d3f34623
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_storyboard_old_20260324 {
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'duration'?: string | null;
+  'filePath'?: string | null;
+  'frameMode'?: string | null;
+  'id'?: number;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'sound'?: string | null;
+  'title'?: string | null;
+}
+export interface _o_storyboard_old_20260324_1 {
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'duration'?: string | null;
+  'filePath'?: string | null;
+  'frameMode'?: string | null;
+  'id'?: number;
+  'lines'?: string | null;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'sound'?: string | null;
+  'title'?: string | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -130,12 +163,15 @@ export interface o_storyboard {
   'filePath'?: string | null;
   'frameMode'?: string | null;
   'id'?: number;
+  'lines'?: string | null;
   'mode'?: string | null;
   'model'?: string | null;
   'prompt'?: string | null;
+  'reason'?: string | null;
   'resolution'?: string | null;
   'scriptId'?: number | null;
   'sound'?: string | null;
+  'state'?: string | null;
   'title'?: string | null;
 }
 export interface o_storyboardFlow {
@@ -195,6 +231,8 @@ export interface o_videoConfig {
 }
 
 export interface DB {
+  "_o_storyboard_old_20260324": _o_storyboard_old_20260324;
+  "_o_storyboard_old_20260324_1": _o_storyboard_old_20260324_1;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;

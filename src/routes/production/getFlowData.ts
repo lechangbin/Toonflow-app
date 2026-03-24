@@ -21,17 +21,21 @@ export default router.post(
       .select("data")
       .first();
 
-    const scriptData = await u.db("o_script").where("projectId", projectId).first();
-
+    const scriptData = await u.db("o_script").where("projectId", projectId).where("id", episodesId).first();
+    const scriptAssets = await u.db("o_scriptAssets").where("scriptId", episodesId);
+    const assetIds = scriptAssets.map((i) => i.assetId);
     const assetsData = await u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .select("o_assets.*", "o_image.filePath")
+      .where("o_assets.id", "in", assetIds)
+      .whereNull("o_assets.assetsId")
       .where("o_assets.projectId", projectId);
     let childAssetsData = await u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .select("o_assets.*", "o_image.filePath")
+      .where("o_assets.id", "in", assetIds)
       .where("o_assets.projectId", projectId)
       .whereNotNull("o_assets.assetsId");
 
@@ -43,6 +47,8 @@ export default router.post(
           assetsData.map(async (item) => ({
             assetsId: item.id,
             name: item.name ?? "",
+            type: item.type ?? "",
+            prompt: item.prompt ?? "",
             desc: item.describe ?? "",
             src: item.filePath && (await u.oss.getFileUrl(item.filePath!)),
             derive: await Promise.all(
