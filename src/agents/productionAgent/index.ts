@@ -38,7 +38,7 @@ export async function decisionAI(ctx: AgentContext) {
   const { isolationKey, text, abortSignal } = ctx;
   const memory = new Memory("productionAgent", isolationKey);
   await memory.add("user", text);
-  const [skill, mem] = await Promise.all([useSkill("production-agent", "decision"), memory.get(text)]);
+  const [skill, mem] = await Promise.all([useSkill("production_agent_decision.md"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
@@ -70,7 +70,7 @@ export async function executionAI(ctx: AgentContext) {
   resTool.systemMessage("执行层AI 接管聊天");
 
   const memory = new Memory("productionAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("production-agent", "execution"), memory.get(text)]);
+  const [skill, mem] = await Promise.all([useSkill("production_agent_execution.md"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
@@ -94,7 +94,7 @@ export async function executionAI(ctx: AgentContext) {
 export async function supervisionAI(ctx: AgentContext) {
   const { isolationKey, text, abortSignal } = ctx;
   const memory = new Memory("productionAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("production-agent", "supervision"), memory.get(text)]);
+  const [skill, mem] = await Promise.all([useSkill("production_agent_supervision.md"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 

@@ -595,7 +595,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         ),
       }),
       execute: async ({ images }) => {
-        const skill = await useSkill("universal-agent");
+        const skill = await useSkill("universal_agent.md");
         console.log("[tools] generate_assets_images", images);
         //先获取到前端资产数据
         const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "assets" }, (res: any) => resolve(res)));

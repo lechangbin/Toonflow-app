@@ -42,7 +42,7 @@ export async function decisionAI(ctx: AgentContext) {
   const memory = new Memory("scriptAgent", isolationKey);
   console.log("%c Line:43 🥟 isolationKey", "background:#4fff4B", isolationKey);
   await memory.add("user", text);
-  const [skill, mem] = await Promise.all([useSkill("script-agent", "decision"), memory.get(text)]);
+  const [skill, mem] = await Promise.all([useSkill("script_agent_decision.md"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
@@ -87,7 +87,7 @@ export async function executionAI(ctx: AgentContext) {
   resTool.systemMessage("执行层AI 接管聊天");
 
   const memory = new Memory("scriptAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("script-agent", "execution"), memory.get(text)]);
+  const [skill, mem] = await Promise.all([useSkill("script_agent_execution.md"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
@@ -114,7 +114,7 @@ export async function supervisionAI(ctx: AgentContext) {
   resTool.systemMessage("监督层AI 接管聊天");
 
   const memory = new Memory("scriptAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("script-agent", "supervision"), memory.get(text)]);
+  const [skill, mem] = await Promise.all([useSkill("script_agent_supervision.md"), memory.get(text)]);
 
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
