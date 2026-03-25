@@ -38,7 +38,6 @@ export default router.post(
       .where("o_assets.projectId", projectId)
       .where("o_assets.id", "in", assetIds)
       .whereNotNull("o_assets.assetsId");
-    console.log("%c Line:35 🥚 childAssetsData", "background:#f5ce50", childAssetsData);
 
     if (!sqlData) {
       const flowData: FlowData = {
@@ -86,34 +85,123 @@ export default router.post(
       return res.status(200).send(success(flowData));
     } else {
       try {
-        const flowData = JSON.parse(sqlData!.data ?? "{}");
-        flowData.assets = await Promise.all(
-          assetsData.map(async (item) => ({
-            id: item.id,
-            name: item.name ?? "",
-            type: item.type ?? "",
-            prompt: item.prompt ?? "",
-            desc: item.describe ?? "",
-            src: item.filePath && (await u.oss.getFileUrl(item.filePath!)),
-            derive: await Promise.all(
-              childAssetsData
-                .filter((child) => child.assetsId === item.id)
-                .map(async (child) => ({
-                  id: child.id,
-                  assetsId: item.id,
-                  name: child.name ?? "",
-                  prompt: child.prompt,
-                  type: child.type,
-                  desc: child.describe ?? "",
-                  src: child.filePath && (await u.oss.getFileUrl(child.filePath!)),
-                  state: child.state ?? "未生成", //todo：矫正状态值
-                })),
-            ),
-          })),
+        const storyboardData = await u.db("o_storyboard").where("scriptId", episodesId);
+        console.log("%c Line:90 🍡 storyboardData", "background:#ed9ec7", storyboardData.length);
+        await Promise.all(
+          storyboardData.map(async (i) => {
+            if (i.filePath) {
+              try {
+                i.filePath = await u.oss.getFileUrl(i.filePath);
+              } catch {
+                i.filePath = "";
+              }
+            } else {
+              i.filePath = "";
+            }
+          }),
         );
+        const storyboardIds = storyboardData.map((i) => i.id);
+        const assetsIds = await u.db("o_assets2Storyboard").whereIn("storyboardId", storyboardIds);
+        const assets2StoryboardMap: Record<number, number[]> = {};
+        assetsIds.forEach((i) => {
+          if (!assets2StoryboardMap[i.storyboardId!]) {
+            assets2StoryboardMap[i.storyboardId!] = [];
+          }
+          assets2StoryboardMap[i.storyboardId!].push(i.assetId!);
+        });
+        const flowData = JSON.parse(sqlData!.data ?? "{}");
+        // 将原有 flowData.assets 按 id 建立索引，以便后续合并保留旧字段
+        const existingAssetsMap: Record<number, any> = {};
+        if (Array.isArray(flowData.assets)) {
+          flowData.assets.forEach((a: any) => {
+            existingAssetsMap[a.id] = a;
+          });
+        }
+        flowData.assets = await Promise.all(
+          assetsData.map(async (item) => {
+            const existing = existingAssetsMap[item.id] ?? {};
+            // 将原有 derive 按 id 建立索引
+            const existingDeriveMap: Record<number, any> = {};
+            if (Array.isArray(existing.derive)) {
+              existing.derive.forEach((d: any) => {
+                existingDeriveMap[d.id] = d;
+              });
+            }
+            return {
+              ...existing,
+              id: item.id,
+              name: item.name ?? "",
+              type: item.type ?? "",
+              prompt: item.prompt ?? "",
+              desc: item.describe ?? "",
+              src: item.filePath && (await u.oss.getFileUrl(item.filePath!)),
+              derive: await Promise.all(
+                childAssetsData
+                  .filter((child) => child.assetsId === item.id)
+                  .map(async (child) => ({
+                    ...(existingDeriveMap[child.id] ?? {}),
+                    id: child.id,
+                    assetsId: item.id,
+                    name: child.name ?? "",
+                    prompt: child.prompt,
+                    type: child.type,
+                    desc: child.describe ?? "",
+                    src: child.filePath && (await u.oss.getFileUrl(child.filePath!)),
+                    state: child.state ?? "未生成", //todo：矫正状态值
+                  })),
+              ),
+            };
+          }),
+        );
+        // 将数据库 storyboardData 按 id 建立索引
+        const dbStoryboardMap: Record<number, (typeof storyboardData)[number]> = {};
+        storyboardData.forEach((i) => {
+          dbStoryboardMap[i.id!] = i;
+        });
+
+        // 用于构造单条 storyboard 的辅助函数
+        const buildStoryboardItem = (i: (typeof storyboardData)[number], existing: any = {}) => ({
+          ...existing,
+          id: i.id,
+          title: i.title,
+          description: i.description,
+          camera: i.camera,
+          duration: i.duration ? +i.duration : 0,
+          frameMode: i.frameMode,
+          prompt: i.prompt,
+          lines: i.lines,
+          sound: i.sound,
+          associateAssetsIds: assets2StoryboardMap[i.id!] ?? [],
+          src: i.filePath,
+          state: i.state,
+        });
+
+        // 保持旧数据顺序，新增的追加到最后
+        const usedIds = new Set<number>();
+        const orderedStoryboard: any[] = [];
+
+        // 1. 按旧数据顺序遍历，若数据库中仍存在则合并更新
+        if (Array.isArray(flowData.storyboard)) {
+          flowData.storyboard.forEach((s: any) => {
+            const dbItem = dbStoryboardMap[s.id];
+            if (dbItem) {
+              orderedStoryboard.push(buildStoryboardItem(dbItem, s));
+              usedIds.add(s.id);
+            }
+          });
+        }
+
+        // 2. 数据库中新增的（旧数据中没有的）追加到最后
+        storyboardData.forEach((i) => {
+          if (!usedIds.has(i.id!)) {
+            orderedStoryboard.push(buildStoryboardItem(i));
+          }
+        });
+
+        flowData.storyboard = orderedStoryboard;
         res.status(200).send(success(flowData));
       } catch (err) {
-        res.status(200).send(error());
+        res.status(400).send(error());
       }
     }
   },

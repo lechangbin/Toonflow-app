@@ -42,6 +42,8 @@ async function getLines(prompt: string) {
       }),
     }),
   });
+  console.log("%c Line:36 🍉 resText", "background:#e41a6a", resText);
+
   const parseLines = JSON.parse(resText.text);
   const chatLines = parseLines.elements.map((i: any) => i.lines);
   return chatLines;

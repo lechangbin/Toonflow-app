@@ -108,6 +108,10 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         if (assetsList && assetsList.length) {
           const assetId = [];
           for (const i of assetsList) {
+            if (i.id) {
+              assetId.push(i.id);
+              continue;
+            }
             const [id] = await u.db("o_assets").insert({
               name: i.name,
               prompt: i.prompt,

@@ -30,6 +30,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("id");
         table.string("projectType");
+        table.string("model");
         table.text("name");
         table.text("intro");
         table.text("type");
@@ -310,6 +311,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("lines");
         table.text("state");
         table.text("reason");
+        table.text("index");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);
@@ -415,7 +417,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("storyboardId").notNullable();
         table.integer("assetId").notNullable();
-        table.primary(["assetId", "assetId"]);
+        table.primary(["storyboardId", "assetId"]);
         table.unique(["storyboardId", "assetId"]);
       },
     },

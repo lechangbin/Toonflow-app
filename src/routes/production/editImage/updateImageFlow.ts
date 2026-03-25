@@ -14,9 +14,10 @@ export default router.post(
     imageUrl: z.string(),
     type: z.enum(["role", "scene", "storyboard", "clip", "tool"]),
     flowId: z.number(),
+    episodesId: z.number(),
   }),
   async (req, res) => {
-    const { edges, nodes, id, imageUrl, flowId, type } = req.body;
+    const { edges, nodes, id, imageUrl, flowId, type, episodesId } = req.body;
     nodes.forEach((node: any) => {
       if (node.type == "upload") {
         node.data.image = node.data.image ? new URL(node.data.image).pathname : "";
@@ -30,7 +31,6 @@ export default router.post(
       imagePath = new URL(imageUrl).pathname;
     } catch (e) {}
     if (imagePath) {
-      console.log("%c Line:34 🍰", "background:#33a5ff");
       if (type == "storyboard") {
         await u.db("o_storyboard").where("id", id).update({
           filePath: imagePath,
