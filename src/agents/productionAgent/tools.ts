@@ -11,7 +11,7 @@ export const deriveAssetSchema = z.object({
   prompt: z.string().describe("生成提示词"),
   name: z.string().describe("衍生资产名称"),
   desc: z.string().describe("衍生资产描述"),
-  src: z.string().describe("衍生资产资源路径"),
+  src: z.string().nullable().describe("衍生资产资源路径"),
   state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态"),
   type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
 });
@@ -168,7 +168,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
                   describe: sub.desc,
                   startTime: Date.now(),
                 });
-                console.log("%c Line:141 🍑 resTool.data.scriptId", "background:#ea7e5c", resTool.data.scriptId);
                 await u.db("o_scriptAssets").insert({
                   scriptId: resTool.data.scriptId,
                   assetId: insertedId,

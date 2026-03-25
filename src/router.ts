@@ -1,4 +1,4 @@
-// @routes-hash 074af9af2c664d3497c2c676a3423399
+// @routes-hash bf3c43509342cfaa6f58c3551570331d
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -40,10 +40,10 @@ import route36 from "./routes/novel/updateNovel";
 import route37 from "./routes/other/deleteAllData";
 import route38 from "./routes/other/getCaptcha";
 import route39 from "./routes/production/assets/getAssetsData";
-import route40 from "./routes/production/editStoryboard/generateStoryboardImage";
-import route41 from "./routes/production/editStoryboard/getStoryboardFlow";
-import route42 from "./routes/production/editStoryboard/saveStoryboardFlow";
-import route43 from "./routes/production/editStoryboard/updateStoryboardFlow";
+import route40 from "./routes/production/editImage/generateFlowImage";
+import route41 from "./routes/production/editImage/getImageFlow";
+import route42 from "./routes/production/editImage/saveImageFlow";
+import route43 from "./routes/production/editImage/updateImageFlow";
 import route44 from "./routes/production/exportImage";
 import route45 from "./routes/production/getFlowData";
 import route46 from "./routes/production/getProductionData";
@@ -126,10 +126,10 @@ export default async (app: Express) => {
   app.use("/api/other/deleteAllData", route37);
   app.use("/api/other/getCaptcha", route38);
   app.use("/api/production/assets/getAssetsData", route39);
-  app.use("/api/production/editStoryboard/generateStoryboardImage", route40);
-  app.use("/api/production/editStoryboard/getStoryboardFlow", route41);
-  app.use("/api/production/editStoryboard/saveStoryboardFlow", route42);
-  app.use("/api/production/editStoryboard/updateStoryboardFlow", route43);
+  app.use("/api/production/editImage/generateFlowImage", route40);
+  app.use("/api/production/editImage/getImageFlow", route41);
+  app.use("/api/production/editImage/saveImageFlow", route42);
+  app.use("/api/production/editImage/updateImageFlow", route43);
   app.use("/api/production/exportImage", route44);
   app.use("/api/production/getFlowData", route45);
   app.use("/api/production/getProductionData", route46);
