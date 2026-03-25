@@ -1,24 +1,6 @@
-// @db-hash 1ce1a8f10cb90caac306536b78942cb3
+// @db-hash ae9ddbb1e0746c8b2524ce28d3cd4cfa
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_storyboard_old_20260324 {
-  'camera'?: string | null;
-  'createTime'?: number | null;
-  'description'?: string | null;
-  'duration'?: string | null;
-  'filePath'?: string | null;
-  'frameMode'?: string | null;
-  'id'?: number;
-  'mode'?: string | null;
-  'model'?: string | null;
-  'prompt'?: string | null;
-  'reason'?: string | null;
-  'resolution'?: string | null;
-  'scriptId'?: number | null;
-  'sound'?: string | null;
-  'state'?: string | null;
-  'title'?: string | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -218,7 +200,6 @@ export interface o_videoConfig {
 }
 
 export interface DB {
-  "_o_storyboard_old_20260324": _o_storyboard_old_20260324;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
