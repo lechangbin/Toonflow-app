@@ -6,7 +6,7 @@ import u from "@/utils";
 import { useSkill } from "@/utils/agent/skillsTools";
 import { urlToBase64 } from "@/utils/vm";
 export const deriveAssetSchema = z.object({
-  id: z.number().describe("衍生资产ID,如果新增则为空").optional(),
+  id: z.number().describe("衍生资产ID,如果新增则为空"),
   assetsId: z.number().describe("关联的资产ID"),
   prompt: z.string().describe("生成提示词"),
   name: z.string().describe("衍生资产名称"),
@@ -24,7 +24,7 @@ export const assetItemSchema = z.object({
   derive: z.array(deriveAssetSchema).describe("衍生资产列表"),
 });
 export const storyboardSchema = z.object({
-  id: z.number().optional().describe("分镜ID,未从工作区获得的分镜面板视为需要新增;如需新增则为空"),
+  id: z.number().describe("分镜ID，必须为真实id"),
   title: z.string().describe("分镜标题"),
   description: z.string().describe("分镜描述"),
   camera: z.string().describe("镜头信息"),
@@ -104,83 +104,156 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         return true;
       },
     }),
-    // add_flowData_assets: tool({
-    //   description: "新增对应衍生资产列表到工作区，严禁包含 不需要新增的数据",
-    //   inputSchema: z.object({ value: z.array(deriveAssetSchema).describe("需要新增的资产列表") }),
-    //   execute: async ({ value }) => {
-    //     console.log("[tools] set_flowData add_flowData_assets", value);
-    //     resTool.systemMessage("正在保存 衍生资产 数据");
-    //     const addAssetsData = [];
-    //     if (value && Array.isArray(value) && value.length) {
-    //       for (const i of value) {
-    //         const [insertedId] = await u.db("o_assets").insert({
-    //           assetsId: +i.assetsId || null,
-    //           projectId: resTool.data.projectId,
-    //           name: i.name,
-    //           type: i.type,
-    //           prompt: i.prompt,
-    //           describe: i.desc,
-    //           startTime: Date.now(),
-    //         });
-    //         console.log("%c Line:141 🍑 resTool.data.scriptId", "background:#ea7e5c", resTool.data.scriptId);
-    //         await u.db("o_scriptAssets").insert({
-    //           scriptId: resTool.data.scriptId,
-    //           assetId: insertedId,
-    //         });
-    //         addAssetsData.push({
-    //           ...i,
-    //           id: insertedId,
-    //         });
-    //       }
-    //     }
-    //     socket.emit("setFlowData", { key: "addAssets", value: addAssetsData });
-    //     return true;
-    //   },
-    // }),
-    set_flowData_assets: tool({
-      description: "保存衍生资产列表到工作区",
-      inputSchema: z.object({ value: flowDataSchema.shape.assets }),
+    add_flowData_assets: tool({
+      description: "新增对应衍生资产列表到工作区，严禁包含 不需要新增的数据",
+      inputSchema: z.object({ value: z.array(deriveAssetSchema.omit({ id: true })).describe("需要新增的衍生资产列表") }),
       execute: async ({ value }) => {
-        console.log("[tools] set_flowData assets", value);
+        console.log("[tools] set_flowData add_flowData_assets", value);
         resTool.systemMessage("正在保存 衍生资产 数据");
-        if (value && Array.isArray(value) && value.length) {
-          for (const i of value) {
-            if (!i?.id) {
-              const [insertedId] = await u.db("o_assets").insert({
-                assetsId: null,
-                name: i.name,
-                type: i.type,
-                prompt: i.prompt,
-                describe: i.desc,
-                startTime: Date.now(),
-              });
-              i.id = insertedId;
-            }
-            if (i.derive && Array.isArray(i.derive) && i.derive.length) {
-              for (const sub of i.derive) {
-                if (sub.id) continue;
-                const [insertedId] = await u.db("o_assets").insert({
-                  assetsId: +i.id || null,
-                  projectId: resTool.data.projectId,
-                  name: sub.name,
-                  type: sub.type,
-                  prompt: sub.prompt,
-                  describe: sub.desc,
-                  startTime: Date.now(),
-                });
-                await u.db("o_scriptAssets").insert({
-                  scriptId: resTool.data.scriptId,
-                  assetId: insertedId,
-                });
-                sub.id = insertedId;
-              }
-            }
+        const setData = [...value] as z.infer<typeof deriveAssetSchema>[];
+        const { projectId, scriptId } = resTool.data;
+        const startTime = Date.now();
+
+        // 并行插入所有 o_assets 记录
+        await Promise.all(
+          setData.map(async (i) => {
+            const [insertedId] = await u.db("o_assets").insert({
+              assetsId: +i.assetsId || null,
+              projectId,
+              name: i.name,
+              type: i.type,
+              prompt: i.prompt,
+              describe: i.desc,
+              startTime,
+            });
+            i.id = insertedId;
+          }),
+        );
+
+        // 批量插入 o_scriptAssets
+        await u.db("o_scriptAssets").insert(setData.map((i) => ({ scriptId, assetId: i.id })));
+
+        const watiAddAssetsMap: Record<number, z.infer<typeof deriveAssetSchema>[]> = {};
+        setData.forEach((i) => {
+          if (watiAddAssetsMap[i.assetsId]) {
+            watiAddAssetsMap[i.assetsId].push(i);
+          } else {
+            watiAddAssetsMap[i.assetsId] = [i];
           }
-        }
-        socket.emit("setFlowData", { key: "assets", value });
+        });
+        const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "assets" }, (res: any) => resolve(res)));
+        const assetsData = flowData.assets;
+        assetsData.forEach((i) => {
+          if (watiAddAssetsMap[i.id]) {
+            i.derive = [...(i.derive || []), ...watiAddAssetsMap[i.id]];
+          }
+        });
+        socket.emit("setFlowData", { key: "assets", value: assetsData });
         return true;
       },
     }),
+    update_flowData_assets: tool({
+      description: "更新对应衍生资产列表到工作区",
+      inputSchema: z.object({ value: z.array(deriveAssetSchema).describe("需要更新的衍生资产列表") }),
+      execute: async ({ value }) => {
+        console.log("[tools] update_flowData update_flowData_assets", value);
+        resTool.systemMessage("正在保存 衍生资产 数据");
+        for (const i of value) {
+          await u
+            .db("o_assets")
+            .where("id", i.id)
+            .update({
+              assetsId: +i.assetsId || null,
+              projectId: resTool.data.projectId,
+              name: i.name,
+              type: i.type,
+              prompt: i.prompt,
+              describe: i.desc,
+            });
+        }
+        // 按 assetsId 分组，构建更新映射
+        const updateAssetsMap: Record<number, z.infer<typeof deriveAssetSchema>[]> = {};
+        value.forEach((i) => {
+          if (updateAssetsMap[i.assetsId]) {
+            updateAssetsMap[i.assetsId].push(i);
+          } else {
+            updateAssetsMap[i.assetsId] = [i];
+          }
+        });
+        const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "assets" }, (res: any) => resolve(res)));
+        const assetsData = flowData.assets;
+        // 将 derive 中已存在的条目替换为更新后的数据
+        assetsData.forEach((asset) => {
+          if (updateAssetsMap[asset.id]) {
+            const updatedMap = Object.fromEntries(updateAssetsMap[asset.id].map((d) => [d.id, d]));
+            asset.derive = (asset.derive || []).map((d) => updatedMap[d.id] ?? d);
+          }
+        });
+        socket.emit("setFlowData", { key: "assets", value: assetsData });
+        return true;
+      },
+    }),
+    delete_flowData_assets: tool({
+      description: "删除对应衍生资产",
+      inputSchema: z.object({ ids: z.array(z.number()).describe("需要删除的 衍生资产id ") }),
+      execute: async ({ ids }) => {
+        console.log("[tools] delete_flowData delete_flowData_assets", ids);
+        resTool.systemMessage("正在保存 衍生资产 数据");
+        await u.db("o_assets").whereIn("id", ids).delete();
+        const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "assets" }, (res: any) => resolve(res)));
+        const assetsData = flowData.assets;
+        assetsData.forEach((i) => {
+          i.derive = (i.derive || []).filter((d) => !ids.includes(d.id));
+        });
+        // 将 derive 中已存在的条目替换为更新后的数据
+        socket.emit("setFlowData", { key: "assets", value: assetsData });
+        return true;
+      },
+    }),
+    // set_flowData_assets: tool({
+    //   description: "保存衍生资产列表到工作区",
+    //   inputSchema: z.object({ value: flowDataSchema.shape.assets }),
+    //   execute: async ({ value }) => {
+    //     console.log("[tools] set_flowData assets", value);
+    //     resTool.systemMessage("正在保存 衍生资产 数据");
+    //     if (value && Array.isArray(value) && value.length) {
+    //       for (const i of value) {
+    //         if (!i?.id) {
+    //           const [insertedId] = await u.db("o_assets").insert({
+    //             assetsId: null,
+    //             name: i.name,
+    //             type: i.type,
+    //             prompt: i.prompt,
+    //             describe: i.desc,
+    //             startTime: Date.now(),
+    //           });
+    //           i.id = insertedId;
+    //         }
+    //         if (i.derive && Array.isArray(i.derive) && i.derive.length) {
+    //           for (const sub of i.derive) {
+    //             if (sub.id) continue;
+    //             const [insertedId] = await u.db("o_assets").insert({
+    //               assetsId: +i.id || null,
+    //               projectId: resTool.data.projectId,
+    //               name: sub.name,
+    //               type: sub.type,
+    //               prompt: sub.prompt,
+    //               describe: sub.desc,
+    //               startTime: Date.now(),
+    //             });
+    //             await u.db("o_scriptAssets").insert({
+    //               scriptId: resTool.data.scriptId,
+    //               assetId: insertedId,
+    //             });
+    //             sub.id = insertedId;
+    //           }
+    //         }
+    //       }
+    //     }
+    //     socket.emit("setFlowData", { key: "assets", value });
+    //     return true;
+    //   },
+    // }),
     set_flowData_storyboardTable: tool({
       description: "保存分镜表到工作区",
       inputSchema: z.object({ value: flowDataSchema.shape.storyboardTable }),
@@ -191,37 +264,130 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         return true;
       },
     }),
-    set_flowData_storyboard: tool({
-      description: "保存分镜面板到工作区",
+    add_flowData_storyboard: tool({
+      description: "新增分镜面板到工作区",
+      inputSchema: z.object({ value: z.array(storyboardSchema.omit({ id: true })) }),
+      execute: async ({ value }) => {
+        console.log("[tools] add_flowData storyboard", value);
+        resTool.systemMessage("正在新增 分镜面板 数据...");
+        const setData = [...value] as z.infer<typeof storyboardSchema>[];
+        for (const item of setData) {
+          item.src = "";
+          const [insertedId] = await u.db("o_storyboard").insert({
+            title: item.title,
+            prompt: item.prompt,
+            description: item.description,
+            frameMode: item.frameMode,
+            duration: String(item.duration),
+            camera: item.camera,
+            sound: item.sound,
+            lines: item.lines,
+            state: "未生成",
+            scriptId: resTool.data.scriptId,
+          });
+          if (item.associateAssetsIds.length) {
+            await u.db("o_assets2Storyboard").insert(item.associateAssetsIds.map((i) => ({ storyboardId: insertedId, assetId: i })));
+          }
+          item.id = insertedId;
+        }
+
+        const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "storyboard" }, (res: any) => resolve(res)));
+        const storyboardData = flowData["storyboard"].concat([...setData]);
+        socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
+        return true;
+      },
+    }),
+    update_flowData_storyboard: tool({
+      description: "更新指定分镜面板到工作区",
       inputSchema: z.object({ value: flowDataSchema.shape.storyboard }),
       execute: async ({ value }) => {
-        console.log("[tools] set_flowData storyboard", value);
-        resTool.systemMessage("正在保存 分镜面板 数据...");
+        console.log("[tools] update_flowData storyboard", value);
+        resTool.systemMessage("正在更新 分镜面板 数据...");
         for (const item of value) {
-          if (!item.id) {
-            const [insertedId] = await u.db("o_storyboard").insert({
+          await u
+            .db("o_storyboard")
+            .where("id", item.id)
+            .update({
               title: item.title,
               prompt: item.prompt,
               description: item.description,
-              filePath: item.src,
               frameMode: item.frameMode,
               duration: String(item.duration),
               camera: item.camera,
               sound: item.sound,
               lines: item.lines,
-              state: "未生成",
-              scriptId: resTool.data.scriptId,
             });
-            if (item.associateAssetsIds.length) {
-              await u.db("o_assets2Storyboard").insert(item.associateAssetsIds.map((i) => ({ storyboardId: insertedId, assetId: i })));
-            }
-            item.id = insertedId;
-          }
         }
-        socket.emit("setFlowData", { key: "storyboard", value });
+        const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "storyboard" }, (res: any) => resolve(res)));
+        const storyboardData = flowData["storyboard"].map((existing) => {
+          const updated = value.find((v) => v.id === existing.id);
+          if (!updated) return existing;
+          return {
+            ...existing,
+            title: updated.title,
+            prompt: updated.prompt,
+            description: updated.description,
+            frameMode: updated.frameMode,
+            duration: updated.duration,
+            camera: updated.camera,
+            sound: updated.sound,
+            lines: updated.lines,
+          };
+        });
+
+        socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
         return true;
       },
     }),
+    delete_flowData_storyboard: tool({
+      description: "删除指定分镜面板并更新工作区",
+      inputSchema: z.object({ ids: z.array(z.number()).describe("需要删除的 分镜id ") }),
+      execute: async ({ ids }) => {
+        console.log("[tools] delete_flowData storyboard", ids);
+        resTool.systemMessage("正在删除指定 分镜面板 数据...");
+        await u.db("o_storyboard").whereIn("id", ids).delete();
+        await u.db("o_assets2Storyboard").whereIn("storyboardId", ids).delete();
+        await u.db("o_storyboardFlow").whereIn("storyboardId", ids).delete();
+        const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "storyboard" }, (res: any) => resolve(res)));
+        const storyboardData = flowData["storyboard"].filter((item) => !ids.includes(item.id));
+
+        socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
+        return true;
+      },
+    }),
+    // set_flowData_storyboard: tool({
+    //   description: "保存分镜面板到工作区",
+    //   inputSchema: z.object({ value: flowDataSchema.shape.storyboard }),
+    //   execute: async ({ value }) => {
+    //     console.log("[tools] set_flowData storyboard", value);
+    //     resTool.systemMessage("正在保存 分镜面板 数据...");
+    //     for (const item of value) {
+    //       if (!item.id) {
+    //         const [insertedId] = await u.db("o_storyboard").insert({
+    //           title: item.title,
+    //           prompt: item.prompt,
+    //           description: item.description,
+    //           filePath: item.src,
+    //           frameMode: item.frameMode,
+    //           duration: String(item.duration),
+    //           camera: item.camera,
+    //           sound: item.sound,
+    //           lines: item.lines,
+    //           state: "未生成",
+    //           scriptId: resTool.data.scriptId,
+    //         });
+    //         console.log("%c Line:216 🥥 item.associateAssetsIds", "background:#6ec1c2", item.associateAssetsIds);
+
+    //         if (item.associateAssetsIds.length) {
+    //           await u.db("o_assets2Storyboard").insert(item.associateAssetsIds.map((i) => ({ storyboardId: insertedId, assetId: i })));
+    //         }
+    //         item.id = insertedId;
+    //       }
+    //     }
+    //     socket.emit("setFlowData", { key: "storyboard", value });
+    //     return true;
+    //   },
+    // }),
     set_flowData_workbench: tool({
       description: "保存工作台配置数据到工作区",
       inputSchema: z.object({ value: flowDataSchema.shape.workbench }),
@@ -269,8 +435,8 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
           z.object({
             id: z.number().describe("从工作区获取到的分镜id"),
             prompt: z.string().describe("图片生成提示词"),
-            referenceIds: z.array(z.string()).describe("依赖的参考图id数组，无依赖填空数组[]"),
-            assetIds: z.array(z.number()).optional().describe("参考的资产图"),
+            referenceIds: z.array(z.number()).describe("依赖的参考 分镜图id数组，无依赖填空数组[]"),
+            assetIds: z.array(z.number()).describe("参考的资产图"),
           }),
         ),
       }),
@@ -278,6 +444,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         console.log("[tools] generated_assets", images);
 
         const skill = await useSkill("universal-agent");
+        const projectData = await u.db("o_project").where("id", resTool.data.projectId).select("videoRatio").first();
         for (const item of images) {
           resTool.systemMessage(`生在生成分镜 id:${item.id} 图片`);
           //更新对应分镜状态
@@ -289,9 +456,9 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             .run({
               systemPrompt: skill.prompt,
               prompt: item.prompt,
-              imageBase64: await getAssetsImageBase64(item.assetIds ?? []),
+              imageBase64: [...(await getAssetsImageBase64(item.assetIds ?? [])), ...(await getStoryboardImageBase64(item.referenceIds))],
               size: imageModel?.quality,
-              aspectRatio: imageModel?.ratio,
+              aspectRatio: (projectData?.videoRatio as `${number}:${number}`) ?? "16:9",
               taskClass: "生成图片",
               describe: "分镜图片生成",
               relatedObjects: "hhhh",
@@ -333,7 +500,15 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         {assetId: 1, prompt: "一张猫的图片"}
       ]
       `,
-      inputSchema: z.object({ images: z.array(z.object({ assetId: z.number(), prompt: z.string() })) }),
+      inputSchema: z.object({
+        images: z.array(
+          z.object({
+            assetId: z.number().describe("衍生资产id"),
+            prompt: z.string().describe("提示词"),
+            refenceAssetsId: z.array(z.number()).describe("参考[资产]id，注意：资产和衍生资产为两种类型，衍生资产归类在资产下面"),
+          }),
+        ),
+      }),
       execute: async ({ images }) => {
         const skill = await useSkill("universal-agent");
         //获取所设置模型
@@ -348,11 +523,11 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
           });
           u.Ai.Image(imageModel?.modelId)
             .run({
-              systemPrompt: skill.prompt,
+              // systemPrompt: skill.prompt,
               prompt: item.prompt,
-              imageBase64: [],
+              imageBase64: await getAssetsImageBase64(item.refenceAssetsId ?? []),
               size: imageModel?.quality,
-              aspectRatio: imageModel?.ratio,
+              aspectRatio: "16:9",
               taskClass: "生成图片",
               describe: "资产图片生成",
               relatedObjects: "hhhh",
@@ -385,6 +560,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
   return toolsNames ? Object.fromEntries(Object.entries(tools).filter(([n]) => toolsNames.includes(n))) : tools;
 };
 
+// 获取资产图片base64
 async function getAssetsImageBase64(imageIds: number[]) {
   if (imageIds.length === 0) return [];
   const imagePaths = await u
@@ -396,7 +572,31 @@ async function getAssetsImageBase64(imageIds: number[]) {
   const imageUrls = await Promise.all(
     imagePaths.map(async (i) => {
       if (i.filePath) {
-        return await urlToBase64(await u.oss.getFileUrl(i.filePath));
+        try {
+          return await urlToBase64(await u.oss.getFileUrl(i.filePath));
+        } catch {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }),
+  );
+  return imageUrls.filter(Boolean) as string[];
+}
+
+//获取分镜图片base64
+async function getStoryboardImageBase64(imageIds: number[]) {
+  if (!imageIds.length) return [];
+  const storayboardData = await u.db("o_storyboard").whereIn("id", imageIds).select("id", "filePath");
+  const imageUrls = await Promise.all(
+    storayboardData.map(async (i) => {
+      if (i.filePath) {
+        try {
+          return await urlToBase64(await u.oss.getFileUrl(i.filePath));
+        } catch {
+          return null;
+        }
       } else {
         return null;
       }

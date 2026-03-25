@@ -83,6 +83,7 @@ export default router.post(
   async (req, res) => {
     const { model, references = {}, quality, ratio, prompt, projectId, type } = req.body;
     const { prompt: userPrompt, images: base64Images } = await convertDirectiveAndImages(references, prompt);
+    console.log("%c Line:86 🥒 base64Images", "background:#42b983", base64Images.map((s) => s.slice(0, 4)));
     const imageClass = await u.Ai.Image(model).run({
       prompt: userPrompt,
       imageBase64: base64Images,

@@ -120,7 +120,7 @@ function runSubAgent(parentCtx: AgentContext) {
     description: "启动子Agent执行独立任务。可用子Agent:executionAI, decisionAI, supervisionAI",
     inputSchema: z.object({
       agent: z.enum(["executionAI", "supervisionAI"]).describe("子Agent名称"),
-      prompt: z.string().describe("交给子Agent的任务描述"),
+      prompt: z.string().max(100).describe("交给子Agent的任务简约描述"),
     }),
     execute: async ({ agent, prompt }) => {
       const fn = [executionAI, supervisionAI][subAgentList.indexOf(agent)];

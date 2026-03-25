@@ -66,6 +66,6 @@ export default router.post(
       flowData: JSON.stringify({ edges, nodes }),
       ...(type == "assets" ? { assetsId: insertFlowId } : { storyboardId: insertFlowId }),
     });
-    return res.status(200).send(success());
+    return res.status(200).send(success({ id: insertFlowId }));
   },
 );
