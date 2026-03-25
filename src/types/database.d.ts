@@ -1,4 +1,4 @@
-// @db-hash a3673cf3a1d1c9cbf22ae3cfff196a71
+// @db-hash 2b2f9f6242d2d20e89412ba5117415df
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -109,6 +109,7 @@ export interface o_project {
   'createTime'?: number | null;
   'id'?: number | null;
   'intro'?: string | null;
+  'model'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
   'type'?: string | null;

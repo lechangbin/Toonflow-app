@@ -38,7 +38,6 @@ export default router.post(
       .where("o_assets.projectId", projectId)
       .where("o_assets.id", "in", assetIds)
       .whereNotNull("o_assets.assetsId");
-    console.log("%c Line:35 🥚 childAssetsData", "background:#f5ce50", childAssetsData);
 
     if (!sqlData) {
       const flowData: FlowData = {

@@ -28,6 +28,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("id");
         table.string("projectType");
+        table.string("model");
         table.text("name");
         table.text("intro");
         table.text("type");
