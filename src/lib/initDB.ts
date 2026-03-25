@@ -414,13 +414,14 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.index(["isolationKey", "summarized"]);
       },
     },
-    //分镜工作流表
+    //图片工作流表
     {
-      name: "o_storyboardFlow",
+      name: "o_imageFlow",
       builder: (table) => {
         table.integer("id").notNullable();
         table.text("flowData").notNullable();
-        table.integer("storyboardId").notNullable();
+        table.integer("storyboardId");
+        table.integer("assetsId");
         table.primary(["id"]);
         table.unique(["id"]);
       },

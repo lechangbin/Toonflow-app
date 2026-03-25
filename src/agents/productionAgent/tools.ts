@@ -11,7 +11,7 @@ export const deriveAssetSchema = z.object({
   prompt: z.string().describe("生成提示词"),
   name: z.string().describe("衍生资产名称"),
   desc: z.string().describe("衍生资产描述"),
-  src: z.string().describe("衍生资产资源路径"),
+  src: z.string().nullable().describe("衍生资产资源路径"),
   state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态"),
   type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
 });
@@ -24,7 +24,7 @@ export const assetItemSchema = z.object({
   derive: z.array(deriveAssetSchema).describe("衍生资产列表"),
 });
 export const storyboardSchema = z.object({
-  id: z.number().optional().describe("分镜ID,未从工作区获得的分镜列表视为需要新增;如需新增则为空"),
+  id: z.number().optional().describe("分镜ID,未从工作区获得的分镜面板视为需要新增;如需新增则为空"),
   title: z.string().describe("分镜标题"),
   description: z.string().describe("分镜描述"),
   camera: z.string().describe("镜头信息"),
@@ -52,8 +52,8 @@ export const flowDataSchema = z.object({
   script: z.string().describe("剧本内容"),
   scriptPlan: z.string().describe("拍摄计划"),
   assets: z.array(assetItemSchema).describe("衍生资产"),
-  storyboardTable: z.string().describe("分镜面板"),
-  storyboard: z.array(storyboardSchema).describe("分镜列表"),
+  storyboardTable: z.string().describe("分镜表"),
+  storyboard: z.array(storyboardSchema).describe("分镜面板"),
   workbench: workbenchDataSchema.describe("工作台配置"),
   poster: z
     .object({
@@ -168,7 +168,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
                   describe: sub.desc,
                   startTime: Date.now(),
                 });
-                console.log("%c Line:141 🍑 resTool.data.scriptId", "background:#ea7e5c", resTool.data.scriptId);
                 await u.db("o_scriptAssets").insert({
                   scriptId: resTool.data.scriptId,
                   assetId: insertedId,
@@ -183,21 +182,21 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       },
     }),
     set_flowData_storyboardTable: tool({
-      description: "保存分镜模板到工作区",
+      description: "保存分镜表到工作区",
       inputSchema: z.object({ value: flowDataSchema.shape.storyboardTable }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData storyboardTable", value);
-        resTool.systemMessage("正在保存 分镜面板 数据...");
+        resTool.systemMessage("正在保存 分镜表 数据...");
         socket.emit("setFlowData", { key: "storyboardTable", value });
         return true;
       },
     }),
     set_flowData_storyboard: tool({
-      description: "保存分镜列表到工作区",
+      description: "保存分镜面板到工作区",
       inputSchema: z.object({ value: flowDataSchema.shape.storyboard }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData storyboard", value);
-        resTool.systemMessage("正在保存 分镜列表 数据...");
+        resTool.systemMessage("正在保存 分镜面板 数据...");
         for (const item of value) {
           if (!item.id) {
             const [insertedId] = await u.db("o_storyboard").insert({
@@ -211,6 +210,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
               sound: item.sound,
               lines: item.lines,
               state: "未生成",
+              scriptId: resTool.data.scriptId,
             });
             if (item.associateAssetsIds.length) {
               await u.db("o_assets2Storyboard").insert(item.associateAssetsIds.map((i) => ({ storyboardId: insertedId, assetId: i })));

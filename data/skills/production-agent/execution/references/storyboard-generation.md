@@ -1,4 +1,4 @@
-# 分镜面板生成（从剧本 + 资产 → storyboardTable）
+# 分镜面板生成（从剧本 + 资产 → storyboard）
 
 本指南只做一件事：
 根据剧本内容和已有资产，将剧本拆分为一系列分镜，生成结构化的分镜面板。
@@ -18,7 +18,7 @@
 
 ```ts
 set_flowData({
-  key: "storyboardTable",
+  key: "storyboard",
   value: [
     {
       id: 1,
@@ -185,7 +185,7 @@ set_flowData({
 
 ```ts
 set_flowData({
-  key: "storyboardTable",
+  key: "storyboard",
   value: [
     {
       id: 1,
@@ -232,7 +232,7 @@ set_flowData({
 1. `get_flowData("script")` — 获取剧本内容
 2. `get_flowData("assets")` — 获取已有资产列表
 3. 分析剧本，按照拆分原则划分分镜，并为每条分镜填写所有字段
-4. 调用 `set_flowData({ key: "storyboardTable", value: 分镜数组 })` 一次性保存完整分镜面板
+4. 调用 `set_flowData({ key: "storyboard", value: 分镜数组 })` 一次性保存完整分镜面板
 5. 向用户汇报分镜面板概要（总共多少条分镜，覆盖的场景概括）
 6. **询问用户是否需要生成分镜图片**：
    - 如果用户确认，调用 `generate_storyboard_images({ script: 剧本文本 })` 生成分镜图

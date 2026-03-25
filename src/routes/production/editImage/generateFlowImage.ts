@@ -78,9 +78,10 @@ export default router.post(
     ratio: z.string(),
     prompt: z.string(),
     projectId: z.number(),
+    type: z.enum(["role", "scene", "storyboard", "clip", "tool"]),
   }),
   async (req, res) => {
-    const { model, references = {}, quality, ratio, prompt, projectId } = req.body;
+    const { model, references = {}, quality, ratio, prompt, projectId, type } = req.body;
     const { prompt: userPrompt, images: base64Images } = await convertDirectiveAndImages(references, prompt);
     const imageClass = await u.Ai.Image(model).run({
       prompt: userPrompt,
@@ -92,7 +93,7 @@ export default router.post(
       relatedObjects: JSON.stringify(req.body),
       projectId: projectId,
     });
-    const savePath = `${projectId}/storyboard/${u.uuid()}.jpg`;
+    const savePath = `${projectId}/${type}/${u.uuid()}.jpg`;
     await imageClass.save(savePath);
 
     const url = await u.oss.getFileUrl(savePath);

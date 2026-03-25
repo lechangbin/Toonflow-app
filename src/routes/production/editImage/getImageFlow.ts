@@ -9,12 +9,22 @@ export default router.post(
   "/",
   validateFields({
     id: z.number(),
+    type: z.enum(["role", "scene", "storyboard", "clip", "tool"]),
   }),
   async (req, res) => {
-    const { id } = req.body;
-    const storyboardFlowData = await u.db("o_storyboardFlow").where("storyboardId", id).first();
-    if (storyboardFlowData?.flowData) {
-      const parseFlow = JSON.parse(storyboardFlowData.flowData);
+    const { id, type } = req.body;
+    const imageFlowData = await u
+      .db("o_imageFlow")
+      .modify((qb) => {
+        if (type === "storyboard") {
+          qb.where("storyboardId", id);
+        } else {
+          qb.where("assetsId", id);
+        }
+      })
+      .first();
+    if (imageFlowData?.flowData) {
+      const parseFlow = JSON.parse(imageFlowData.flowData);
       await Promise.all(
         parseFlow.nodes.map(async (node: any) => {
           if (node.type === "upload") {
@@ -24,7 +34,7 @@ export default router.post(
           }
         }),
       );
-      return res.status(200).send(success(parseFlow));
+      return res.status(200).send(success({ ...parseFlow, id: imageFlowData.id }));
     }
 
     return res.status(200).send(success(null));

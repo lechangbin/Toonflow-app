@@ -33,7 +33,7 @@ description: >
 
 1. 调用 `get_flowData` 分别获取 `script`（剧本）和 `assets`（现有资产列表）
 2. 根据[分镜表生成](references/storyboard-generation.md)文档中的拆分原则和字段填写指引，将剧本拆分为分镜，填写每条分镜的所有字段（id、title、description、camera、duration、frameMode、prompt、lines、sound、associateAssetsIds）
-3. 调用 `set_flowData({ key: "storyboardTable", value: 分镜数组 })` 一次性保存完整分镜表
+3. 调用 `set_flowData({ key: "storyboard", value: 分镜数组 })` 一次性保存完整分镜表
 4. 告知用户分镜表生成完成，列出分镜概要（总条数、主要场景）
 5. **询问用户是否需要生成分镜图片**：
    - 如果用户确认需要，调用 `generate_storyboard_images({ script: 剧本文本 })` 生成分镜图
