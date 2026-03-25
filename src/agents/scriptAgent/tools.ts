@@ -118,6 +118,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
               type: i.type,
               describe: i.desc,
               projectId: resTool.data.projectId,
+              startTime: Date.now(),
             });
             assetId.push(id);
           }
