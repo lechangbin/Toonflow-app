@@ -30,7 +30,7 @@ export default router.post(
 );
 
 async function getLines(prompt: string) {
-  const skill = await useSkill("eventExtract-agent");
+  const skill = await useSkill("universal_agent.md");
 
   const resText = await u.Ai.Text("universalAgent").invoke({
     system: skill.prompt,
