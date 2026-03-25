@@ -309,6 +309,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("lines");
         table.text("state");
         table.text("reason");
+        table.text("index");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);

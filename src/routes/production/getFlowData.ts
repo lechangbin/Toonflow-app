@@ -153,31 +153,52 @@ export default router.post(
             };
           }),
         );
-        // 将原有 flowData.storyboard 按 id 建立索引，以便后续合并保留旧字段
-        const existingStoryboardMap: Record<number, any> = {};
+        // 将数据库 storyboardData 按 id 建立索引
+        const dbStoryboardMap: Record<number, (typeof storyboardData)[number]> = {};
+        storyboardData.forEach((i) => {
+          dbStoryboardMap[i.id!] = i;
+        });
+
+        // 用于构造单条 storyboard 的辅助函数
+        const buildStoryboardItem = (i: (typeof storyboardData)[number], existing: any = {}) => ({
+          ...existing,
+          id: i.id,
+          title: i.title,
+          description: i.description,
+          camera: i.camera,
+          duration: i.duration ? +i.duration : 0,
+          frameMode: i.frameMode,
+          prompt: i.prompt,
+          lines: i.lines,
+          sound: i.sound,
+          associateAssetsIds: assets2StoryboardMap[i.id!] ?? [],
+          src: i.filePath,
+          state: i.state,
+        });
+
+        // 保持旧数据顺序，新增的追加到最后
+        const usedIds = new Set<number>();
+        const orderedStoryboard: any[] = [];
+
+        // 1. 按旧数据顺序遍历，若数据库中仍存在则合并更新
         if (Array.isArray(flowData.storyboard)) {
           flowData.storyboard.forEach((s: any) => {
-            existingStoryboardMap[s.id] = s;
+            const dbItem = dbStoryboardMap[s.id];
+            if (dbItem) {
+              orderedStoryboard.push(buildStoryboardItem(dbItem, s));
+              usedIds.add(s.id);
+            }
           });
         }
-        flowData.storyboard = storyboardData.map((i) => {
-          const existing = existingStoryboardMap[i.id!] ?? {};
-          return {
-            ...existing,
-            id: i.id,
-            title: i.title,
-            description: i.description,
-            camera: i.camera,
-            duration: i.duration ? +i.duration : 0,
-            frameMode: i.frameMode,
-            prompt: i.prompt,
-            lines: i.lines,
-            sound: i.sound,
-            associateAssetsIds: assets2StoryboardMap[i.id!] ?? [],
-            src: i.filePath,
-            state: i.state,
-          };
+
+        // 2. 数据库中新增的（旧数据中没有的）追加到最后
+        storyboardData.forEach((i) => {
+          if (!usedIds.has(i.id!)) {
+            orderedStoryboard.push(buildStoryboardItem(i));
+          }
         });
+
+        flowData.storyboard = orderedStoryboard;
         res.status(200).send(success(flowData));
       } catch (err) {
         res.status(400).send(error());
