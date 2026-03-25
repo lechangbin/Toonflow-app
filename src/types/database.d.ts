@@ -1,4 +1,4 @@
-// @db-hash 62a748aea9d1ecee865c4cf05add24fc
+// @db-hash a3673cf3a1d1c9cbf22ae3cfff196a71
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -53,7 +53,7 @@ export interface o_assets {
 }
 export interface o_assets2Storyboard {
   'assetId'?: number;
-  'storyboardId': number;
+  'storyboardId'?: number;
 }
 export interface o_event {
   'createTime'?: number | null;
@@ -149,11 +149,6 @@ export interface o_storyboard {
   'state'?: string | null;
   'title'?: string | null;
 }
-export interface o_storyboardFlow {
-  'flowData': string;
-  'id'?: number;
-  'storyboardId': number;
-}
 export interface o_tasks {
   'describe'?: string | null;
   'id'?: number;
@@ -224,7 +219,6 @@ export interface DB {
   "o_scriptAssets": o_scriptAssets;
   "o_setting": o_setting;
   "o_storyboard": o_storyboard;
-  "o_storyboardFlow": o_storyboardFlow;
   "o_tasks": o_tasks;
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;

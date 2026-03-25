@@ -350,7 +350,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         await u.db("o_storyboardFlow").whereIn("storyboardId", ids).delete();
         const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "storyboard" }, (res: any) => resolve(res)));
         const storyboardData = flowData["storyboard"].filter((item) => !ids.includes(item.id));
-
         socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
         return true;
       },
@@ -408,27 +407,26 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         return true;
       },
     }),
-
-    //todo referenceIds 图片未使用  提示词待调
+    // todo 提示词待调
     generate_storyboard_images: tool({
-      description: `生成一组图片任务，支持图片间的依赖关系（以图生图）。
+      description: `生成一组图片任务，支持图片间的依赖关系（以图生图），基于有向无环图(DAG)拓扑排序执行。
 
     参数说明：
     - images: 图片任务数组
-      - id: 图片唯一标识符
+      - id: 图片唯一标识符（分镜id）
       - prompt: 图片生成提示词
       - referenceIds: 依赖的参考图id数组，无依赖填空数组[]
       - assetIds: 参考的资产图id数组（可选）
 
-    依赖规则：
+  依赖规则：
     1. referenceIds中的id必须存在于images数组中
     2. 禁止循环依赖（如A依赖B，B依赖A）
     3. 被依赖的图片会先生成，其结果作为参考图传入
 
     示例：生成猫图，再以猫图为参考生成狗图
     images: [
-      {id: "cat", prompt: "一只橘猫", referenceIds: [], assetIds: []},
-      {id: "dog", prompt: "风格相同的金毛犬", referenceIds: ["cat"], assetIds: []}
+      {id: 1, prompt: "一只橘猫", referenceIds: [], assetIds: []},
+      {id: 2, prompt: "风格相同的金毛犬", referenceIds: [1], assetIds: []}
     ]`,
       inputSchema: z.object({
         images: z.array(
@@ -441,53 +439,141 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         ),
       }),
       execute: async ({ images }) => {
-        console.log("[tools] generated_assets", images);
+        console.log("[tools] generate_storyboard_images", images);
 
+        // --- 构建任务id集合 ---
+        const taskIds = new Set(images.map((item) => item.id));
+        const imageMap = new Map(images.map((item) => [item.id, item]));
+
+        // --- 检测循环依赖 (Kahn算法拓扑排序) ---
+        // 将 referenceIds 分为：本批次内依赖 vs 外部已有依赖
+        // 只有本批次内的依赖才参与 DAG 调度，外部依赖直接从数据库获取
+        const inDegree = new Map<number, number>();
+        // adjacency: 被依赖者 -> 依赖它的节点列表
+        const adjacency = new Map<number, number[]>();
+
+        for (const item of images) {
+          // 只统计本批次内的依赖作为入度
+          const internalDeps = item.referenceIds.filter((refId) => taskIds.has(refId));
+          inDegree.set(item.id, internalDeps.length);
+          for (const depId of internalDeps) {
+            if (!adjacency.has(depId)) adjacency.set(depId, []);
+            adjacency.get(depId)!.push(item.id);
+          }
+        }
+
+        // 拓扑排序，按层级分组（同层可并行）
+        const levels: number[][] = [];
+        let queue = images.filter((item) => (inDegree.get(item.id) ?? 0) === 0).map((item) => item.id);
+
+        const visited = new Set<number>();
+        while (queue.length > 0) {
+          levels.push([...queue]);
+          const nextQueue: number[] = [];
+          for (const nodeId of queue) {
+            visited.add(nodeId);
+            for (const childId of adjacency.get(nodeId) ?? []) {
+              inDegree.set(childId, (inDegree.get(childId) ?? 1) - 1);
+              if (inDegree.get(childId) === 0) {
+                nextQueue.push(childId);
+              }
+            }
+          }
+          queue = nextQueue;
+        }
+        // 循环依赖检测
+        if (visited.size !== images.length) {
+          const cyclicIds = images.filter((item) => !visited.has(item.id)).map((item) => item.id);
+          resTool.systemMessage(`检测到循环依赖，涉及分镜id: ${cyclicIds.join(", ")}，请修正后重试`);
+          return `错误：检测到循环依赖，涉及分镜id: ${cyclicIds.join(", ")}`;
+        }
+
+        console.log("%c Line:496 🌶", "background:#ea7e5c");
+        resTool.systemMessage(`图片生成调度计划：共 ${levels.length} 层，${images.length} 张图片`);
+
+        // --- 准备公共数据 ---
         const skill = await useSkill("universal-agent");
         const projectData = await u.db("o_project").where("id", resTool.data.projectId).select("videoRatio").first();
-        for (const item of images) {
-          resTool.systemMessage(`生在生成分镜 id:${item.id} 图片`);
-          //更新对应分镜状态
-          await u.db("o_storyboard").where("id", item.id).update({ state: "生成中" });
-          // 异步生成
-          const imageModel = resTool.data.imageModel;
+        const imageModel = resTool.data.imageModel;
 
-          u.Ai.Image(imageModel?.modelId)
-            .run({
-              systemPrompt: skill.prompt,
-              prompt: item.prompt,
-              imageBase64: [...(await getAssetsImageBase64(item.assetIds ?? [])), ...(await getStoryboardImageBase64(item.referenceIds))],
-              size: imageModel?.quality,
-              aspectRatio: (projectData?.videoRatio as `${number}:${number}`) ?? "16:9",
-              taskClass: "生成图片",
-              describe: "分镜图片生成",
-              relatedObjects: "hhhh",
-              projectId: resTool.data.projectId,
-            })
-            .then(async (imageCls) => {
-              const savePath = `/${resTool.data.projectId}/storyboard/${u.uuid()}.jpg`;
-              await imageCls.save(savePath);
-              const obj = {
-                ...item,
-                id: item.id,
-                src: await u.oss.getFileUrl(savePath),
-                state: "已完成",
-              };
-              // 更新对应分镜状态
-              await u.db("o_storyboard").where("id", item.id).update({ state: "已完成", filePath: savePath });
-              // 前端对话框提示
-              resTool.systemMessage(`分镜 id:${item.id} 图片生成完成`);
-              // 更新前端界面展示
-              socket.emit("setFlowData", { key: "setStoryboardImage", value: obj });
-            });
-          //更新前端为生成中
-          socket.emit("setFlowData", { key: "setStoryboardImage", value: { ...item, id: item.id, src: "", state: "生成中" } });
+        // 生成单张图片的函数
+        const generateOneImage = async (item: (typeof images)[0]) => {
+          resTool.systemMessage(`正在生成分镜 id:${item.id} 图片`);
+          // 更新数据库状态为生成中
+          await u.db("o_storyboard").where("id", item.id).update({ state: "生成中" });
+          // 更新前端为生成中
+          socket.emit("setFlowData", {
+            key: "setStoryboardImage",
+            value: { ...item, id: item.id, src: "", state: "生成中", referenceIds: item.referenceIds },
+          });
+
+          // 获取参考图base64（包括资产图和已生成的分镜参考图）
+          const [assetsBase64, referenceBase64] = await Promise.all([
+            getAssetsImageBase64(item.assetIds ?? []),
+            getStoryboardImageBase64(item.referenceIds),
+          ]);
+
+          const imageCls = await u.Ai.Image(imageModel?.modelId).run({
+            systemPrompt: skill.prompt,
+            prompt: item.prompt,
+            imageBase64: [...assetsBase64, ...referenceBase64],
+            size: imageModel?.quality,
+            aspectRatio: (projectData?.videoRatio as `${number}:${number}`) ?? "16:9",
+            taskClass: "生成图片",
+            describe: "分镜图片生成",
+            relatedObjects: "hhhh",
+            projectId: resTool.data.projectId,
+          });
+
+          const savePath = `/${resTool.data.projectId}/storyboard/${u.uuid()}.jpg`;
+          await imageCls.save(savePath);
+
+          // 更新数据库状态为已完成
+          await u.db("o_storyboard").where("id", item.id).update({ state: "已完成", filePath: savePath });
+
+          const obj = {
+            ...item,
+            id: item.id,
+            src: await u.oss.getFileUrl(savePath),
+            state: "已完成",
+            referenceIds: item.referenceIds,
+          };
+          // 前端对话框提示
+          resTool.systemMessage(`分镜 id:${item.id} 图片生成完成`);
+          // 更新前端界面展示
+          socket.emit("setFlowData", { key: "setStoryboardImage", value: obj });
+        };
+
+        // --- 按层级顺序执行：同层并行，层间串行 ---
+        for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
+          const levelIds = levels[levelIndex];
+          const levelItems = levelIds.map((id) => imageMap.get(id)!);
+          resTool.systemMessage(`开始生成第 ${levelIndex + 1}/${levels.length} 层，共 ${levelItems.length} 张图片 (ids: ${levelIds.join(", ")})`);
+
+          // 同层内所有图片并行生成，使用 allSettled 确保不会因单张失败中断整层
+          const results = await Promise.allSettled(levelItems.map((item) => generateOneImage(item)));
+
+          // 处理失败的任务
+          for (let i = 0; i < results.length; i++) {
+            if (results[i].status === "rejected") {
+              const failedId = levelIds[i];
+              const reason = (results[i] as PromiseRejectedResult).reason;
+              console.error(`[tools] 分镜 id:${failedId} 图片生成失败`, reason);
+              resTool.systemMessage(`分镜 id:${failedId} 图片生成失败: ${reason?.message || reason}`);
+              await u.db("o_storyboard").where("id", failedId).update({ state: "生成失败" });
+              socket.emit("setFlowData", {
+                key: "setStoryboardImage",
+                value: { id: failedId, src: "", state: "生成失败" },
+              });
+            }
+          }
         }
-        return "分镜图片生成中";
+
+        return "分镜图片生成完成";
       },
     }),
 
-    //todo 图片是否需要参考 原资产  提示词待调
+    //todo 提示词待调
     generate_assets_images: tool({
       description: `
       生成 资产图片 不区分原资产于衍生资产
@@ -505,15 +591,29 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
           z.object({
             assetId: z.number().describe("衍生资产id"),
             prompt: z.string().describe("提示词"),
-            refenceAssetsId: z.array(z.number()).describe("参考[资产]id，注意：资产和衍生资产为两种类型，衍生资产归类在资产下面"),
           }),
         ),
       }),
       execute: async ({ images }) => {
         const skill = await useSkill("universal-agent");
+        console.log("[tools] generate_assets_images", images);
+        //先获取到前端资产数据
+        const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "assets" }, (res: any) => resolve(res)));
+        const assetsData = flowData["assets"];
+        const assetsImage: { assetId: number; prompt: string; id?: number }[] = [...images];
+        //获取对应的 原资产id
+        assetsImage.forEach((item) => {
+          for (const i of assetsData) {
+            const findData = i.derive.find((m) => m.id == item.assetId);
+            if (findData) {
+              item.id = findData.id;
+              break;
+            }
+          }
+        });
         //获取所设置模型
         const imageModel = resTool.data.imageModel;
-        for (const item of images) {
+        for (const item of assetsImage) {
           const [imageId] = await u.db("o_image").insert({
             // 数据库插入图片记录
             assetsId: item.assetId,
@@ -525,7 +625,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             .run({
               // systemPrompt: skill.prompt,
               prompt: item.prompt,
-              imageBase64: await getAssetsImageBase64(item.refenceAssetsId ?? []),
+              imageBase64: await getAssetsImageBase64(item.id ? [item.id] : []),
               size: imageModel?.quality,
               aspectRatio: "16:9",
               taskClass: "生成图片",
@@ -551,7 +651,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
           //通知前端更新状态
           socket.emit("setFlowData", { key: "setAssetsImage", value: { ...item, id: item.assetId, src: "", state: "生成中" } });
         }
-        console.log("[tools] generate_assets_images", images);
         return "资产生成中";
       },
     }),

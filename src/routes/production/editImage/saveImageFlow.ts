@@ -13,9 +13,10 @@ export default router.post(
     imageUrl: z.string(),
     id: z.number().nullable().optional(),
     type: z.enum(["role", "scene", "storyboard", "clip", "tool"]),
+    episodesId: z.number(),
   }),
   async (req, res) => {
-    const { edges, nodes, imageUrl, id, type } = req.body;
+    const { edges, nodes, imageUrl, id, type, episodesId } = req.body;
     let imagePath = "";
     try {
       imagePath = new URL(imageUrl).pathname;
@@ -56,6 +57,7 @@ export default router.post(
       } else {
         const [storyboardId] = await u.db("o_storyboard").insert({
           filePath: imagePath,
+          scriptId: episodesId,
           createTime: Date.now(),
         });
         insertFlowId = storyboardId;
