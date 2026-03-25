@@ -1,4 +1,4 @@
-// @routes-hash bf3c43509342cfaa6f58c3551570331d
+// @routes-hash 62dafbea4285d1f7bd1a6acf5ddbfacc
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -76,15 +76,22 @@ import route72 from "./routes/setting/loginConfig/getUser";
 import route73 from "./routes/setting/loginConfig/updateUserPwd";
 import route74 from "./routes/setting/memoryConfig/getMemory";
 import route75 from "./routes/setting/memoryConfig/sureMemory";
-import route76 from "./routes/setting/vendorConfig/addVendor";
-import route77 from "./routes/setting/vendorConfig/deleteVendor";
-import route78 from "./routes/setting/vendorConfig/getVendorList";
-import route79 from "./routes/setting/vendorConfig/modelTest";
-import route80 from "./routes/setting/vendorConfig/updateVendor";
-import route81 from "./routes/task/getTaskApi";
-import route82 from "./routes/task/getTaskCategories";
-import route83 from "./routes/task/taskDetails";
-import route84 from "./routes/test/test";
+import route76 from "./routes/setting/skillManagement/addSkill";
+import route77 from "./routes/setting/skillManagement/deleteSkill";
+import route78 from "./routes/setting/skillManagement/embeddingSkill";
+import route79 from "./routes/setting/skillManagement/generateDescription";
+import route80 from "./routes/setting/skillManagement/getSkillList";
+import route81 from "./routes/setting/skillManagement/scanSkills";
+import route82 from "./routes/setting/skillManagement/updateSkill";
+import route83 from "./routes/setting/vendorConfig/addVendor";
+import route84 from "./routes/setting/vendorConfig/deleteVendor";
+import route85 from "./routes/setting/vendorConfig/getVendorList";
+import route86 from "./routes/setting/vendorConfig/modelTest";
+import route87 from "./routes/setting/vendorConfig/updateVendor";
+import route88 from "./routes/task/getTaskApi";
+import route89 from "./routes/task/getTaskCategories";
+import route90 from "./routes/task/taskDetails";
+import route91 from "./routes/test/test";
 
 export default async (app: Express) => {
   app.use("/api/agents/clearMemory", route1);
@@ -162,13 +169,20 @@ export default async (app: Express) => {
   app.use("/api/setting/loginConfig/updateUserPwd", route73);
   app.use("/api/setting/memoryConfig/getMemory", route74);
   app.use("/api/setting/memoryConfig/sureMemory", route75);
-  app.use("/api/setting/vendorConfig/addVendor", route76);
-  app.use("/api/setting/vendorConfig/deleteVendor", route77);
-  app.use("/api/setting/vendorConfig/getVendorList", route78);
-  app.use("/api/setting/vendorConfig/modelTest", route79);
-  app.use("/api/setting/vendorConfig/updateVendor", route80);
-  app.use("/api/task/getTaskApi", route81);
-  app.use("/api/task/getTaskCategories", route82);
-  app.use("/api/task/taskDetails", route83);
-  app.use("/api/test/test", route84);
+  app.use("/api/setting/skillManagement/addSkill", route76);
+  app.use("/api/setting/skillManagement/deleteSkill", route77);
+  app.use("/api/setting/skillManagement/embeddingSkill", route78);
+  app.use("/api/setting/skillManagement/generateDescription", route79);
+  app.use("/api/setting/skillManagement/getSkillList", route80);
+  app.use("/api/setting/skillManagement/scanSkills", route81);
+  app.use("/api/setting/skillManagement/updateSkill", route82);
+  app.use("/api/setting/vendorConfig/addVendor", route83);
+  app.use("/api/setting/vendorConfig/deleteVendor", route84);
+  app.use("/api/setting/vendorConfig/getVendorList", route85);
+  app.use("/api/setting/vendorConfig/modelTest", route86);
+  app.use("/api/setting/vendorConfig/updateVendor", route87);
+  app.use("/api/task/getTaskApi", route88);
+  app.use("/api/task/getTaskCategories", route89);
+  app.use("/api/task/taskDetails", route90);
+  app.use("/api/test/test", route91);
 }

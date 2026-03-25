@@ -17,7 +17,6 @@ const app = express();
 const server = http.createServer(app);
 
 export default async function startServe(randomPort: Boolean = false) {
-  console.log("%c Line:20 🍰 randomPort", "background:#b03734", randomPort);
   const io = new Server(server, { cors: { origin: "*" } });
   socketInit(io);
 

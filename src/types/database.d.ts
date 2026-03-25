@@ -1,4 +1,4 @@
-// @db-hash 62a748aea9d1ecee865c4cf05add24fc
+// @db-hash d7bc24a5440e2cc7136872da7ed6c4c7
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -130,6 +130,22 @@ export interface o_setting {
   'key'?: string | null;
   'value'?: string | null;
 }
+export interface o_skillAttribution {
+  'attribution'?: string;
+  'skillId'?: string;
+}
+export interface o_skillList {
+  'createTime': number;
+  'description': string;
+  'embedding'?: string | null;
+  'id'?: string;
+  'md5': string;
+  'name': string;
+  'path': string;
+  'state': number;
+  'type': string;
+  'updateTime': number;
+}
 export interface o_storyboard {
   'camera'?: string | null;
   'createTime'?: number | null;
@@ -148,11 +164,6 @@ export interface o_storyboard {
   'sound'?: string | null;
   'state'?: string | null;
   'title'?: string | null;
-}
-export interface o_storyboardFlow {
-  'flowData': string;
-  'id'?: number;
-  'storyboardId': number;
 }
 export interface o_tasks {
   'describe'?: string | null;
@@ -223,8 +234,9 @@ export interface DB {
   "o_script": o_script;
   "o_scriptAssets": o_scriptAssets;
   "o_setting": o_setting;
+  "o_skillAttribution": o_skillAttribution;
+  "o_skillList": o_skillList;
   "o_storyboard": o_storyboard;
-  "o_storyboardFlow": o_storyboardFlow;
   "o_tasks": o_tasks;
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;

@@ -277,7 +277,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       execute: async ({ images }) => {
         console.log("[tools] generated_assets", images);
 
-        const skill = await useSkill("universal-agent");
+        const skill = await useSkill("universal_agent.md");
         for (const item of images) {
           resTool.systemMessage(`生在生成分镜 id:${item.id} 图片`);
           //更新对应分镜状态
@@ -335,7 +335,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       `,
       inputSchema: z.object({ images: z.array(z.object({ assetId: z.number(), prompt: z.string() })) }),
       execute: async ({ images }) => {
-        const skill = await useSkill("universal-agent");
+        const skill = await useSkill("universal_agent.md");
         //获取所设置模型
         const imageModel = resTool.data.imageModel;
         for (const item of images) {
