@@ -15,10 +15,11 @@ export default router.post(
     type: z.string(),
     artStyle: z.string(),
     videoRatio: z.string(),
-    model: z.string(),
+    imageModel: z.string(),
+    videoModel: z.string(),
   }),
   async (req, res) => {
-    const { projectType, name, intro, type, artStyle, videoRatio, model } = req.body;
+    const { projectType, name, intro, type, artStyle, videoRatio, imageModel, videoModel } = req.body;
 
     await u.db("o_project").insert({
       projectType,
@@ -28,7 +29,8 @@ export default router.post(
       artStyle,
       videoRatio,
       userId: 1,
-      model,
+      imageModel,
+      videoModel,
       createTime: Date.now(),
     });
 
