@@ -28,6 +28,7 @@ export default router.post(
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .select("o_assets.*", "o_image.filePath")
+      // @ts-ignore
       .where("o_assets.id", "in", assetIds)
       .whereNull("o_assets.assetsId")
       .where("o_assets.projectId", projectId);
@@ -36,9 +37,9 @@ export default router.post(
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .select("o_assets.*", "o_image.filePath")
       .where("o_assets.projectId", projectId)
+      // @ts-ignore
       .where("o_assets.id", "in", assetIds)
       .whereNotNull("o_assets.assetsId");
-    console.log("%c Line:35 🥚 childAssetsData", "background:#f5ce50", childAssetsData);
 
     if (!sqlData) {
       const flowData: FlowData = {

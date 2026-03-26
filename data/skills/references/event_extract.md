@@ -1,5 +1,5 @@
 ---
-name: universal-agent
+name: universal_agent
 description: 专注于从小说原文中提取结构化事件信息的助手。
 ---
 

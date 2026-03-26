@@ -29,7 +29,7 @@ class CleanNovel {
         const novel = allChapters[gi];
         let resData;
         try {
-          const skill = await useSkill("universal-agent");
+          const skill = await useSkill("universal_agent.md");
 
           resData = await intansce.invoke({
             system: skill.prompt,

@@ -1,5 +1,5 @@
 ---
-name: universal-agent
+name: universal_agent
 description: 专注于从小说原文中提取角色信息并生成视觉化角色描述的助手。
 ---
 

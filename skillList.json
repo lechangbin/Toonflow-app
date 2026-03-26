@@ -1,0 +1,58 @@
+[
+  {
+    "skillId": "52c51fa8655f899a1b7aae9b6aad7251",
+    "attribution": "universal_agent.md"
+  },
+  {
+    "skillId": "6d46cdca10b2f49e07e515885d1387a0",
+    "attribution": "universal_agent.md"
+  },
+  {
+    "skillId": "1864df75d1d65f76e275046649ecaef8",
+    "attribution": "universal_agent.md"
+  },
+  {
+    "skillId": "3e5efec258c8d8e6a39bcef12f8ee058",
+    "attribution": "universal_agent.md"
+  },
+  {
+    "skillId": "7fbce6f90d7d85496ba9817e9622e640",
+    "attribution": "universal_agent.md"
+  },
+  {
+    "skillId": "31fb5c5a1f514ec1e66b4eba9f22d4db",
+    "attribution": "script_agent_decision.md"
+  },
+  {
+    "skillId": "27dc2dfc901de2180227d0269217583a",
+    "attribution": "script_agent_execution.md"
+  },
+  {
+    "skillId": "d49fa09504fe784a8e6eb102756c6d56",
+    "attribution": "script_agent_execution.md"
+  },
+  {
+    "skillId": "797906c2ddf0750f050bcdeae23eae3d",
+    "attribution": "script_agent_execution.md"
+  },
+  {
+    "skillId": "1abd8675c0c3e62b20c0b151d2ec0fb1",
+    "attribution": "script_agent_execution.md"
+  },
+  {
+    "skillId": "0b7828d7a6ab458a4b201122f08d6c16",
+    "attribution": "script_agent_supervision.md"
+  },
+  {
+    "skillId": "5c1772b5f9c420d9eae9ca02914ba087",
+    "attribution": "production_agent_decision.md"
+  },
+  {
+    "skillId": "75a45cf996015ca819582873887ec301",
+    "attribution": "production_agent_execution.md"
+  },
+  {
+    "skillId": "fce75f69d704c19bebcb356bc1bd6e81",
+    "attribution": "production_agent_execution.md"
+  }
+]

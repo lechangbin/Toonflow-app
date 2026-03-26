@@ -1,5 +1,5 @@
 ---
-name: universal-agent
+name: universal_agent
 description: 专注于从小说原文中提取场景信息并生成视觉化场景描述的助手。
 ---
 

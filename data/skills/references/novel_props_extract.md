@@ -1,5 +1,5 @@
 ---
-name: universal-agent
+name: universal_agent
 description: 专注于从小说原文中提取道具物品信息并生成视觉化描述的助手。
 ---
 
