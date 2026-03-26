@@ -492,7 +492,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         resTool.systemMessage(`图片生成调度计划：共 ${levels.length} 层，${images.length} 张图片`);
 
         // --- 准备公共数据 ---
-        const skill = await useSkill("universal-agent");
+        const skill = await useSkill("universal_agent.md");
         const projectData = await u.db("o_project").where("id", resTool.data.projectId).select("videoRatio").first();
         const imageModel = resTool.data.imageModel;
 

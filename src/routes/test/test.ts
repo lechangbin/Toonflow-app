@@ -8,7 +8,7 @@ export default router.get("/", async (req, res) => {
   const skill = await useSkill("universal_agent.md");
   const result = await u.Ai.Text("universalAgent").invoke({
     system: "请直接调用activate_skill工具激活技能" + skill.prompt,
-    messages: [{ role: "user", content: `开始激活，然后随机使用read_skill_file调用一个技能` }],
+    messages: [{ role: "user", content: `如何烹饪龙肉` }],
     tools: skill.tools,
   });
 

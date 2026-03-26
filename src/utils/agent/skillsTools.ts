@@ -123,6 +123,8 @@ function createSkillTools(skill: SkillRecord, mainSkillName: string) {
           .where("o_skillList.state", 1)
           .andWhere("o_skillAttribution.attribution", mainSkillName);
 
+        console.log("%c Line:120 🌮 resources", "background:#b03734", resources);
+
         activated.add(name);
         console.log(`[Skill] 📖 已激活：${name}（${body.length} 字符，${resources.length} 资源）`);
         let content = "";

@@ -84,7 +84,7 @@ description: >-
 | 转场标注 | 节拍间转场方式明确 | 轻微 |
 | 情绪连贯 | 节拍间情绪过渡自然 | 中等 |
 
-详细审核标准请参考 [quality-criteria.md](references/quality-criteria.md)。
+详细审核标准请参考 [quality_criteria.md](references/quality_criteria.md)。
 
 ## 审核报告格式
 

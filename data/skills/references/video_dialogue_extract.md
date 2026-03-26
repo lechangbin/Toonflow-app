@@ -1,5 +1,5 @@
 ---
-name: universal-agent
+name: universal_agent
 description: 专注于从视频分镜提示词中提取结构化台词、旁白与音效信息的助手。
 ---
 

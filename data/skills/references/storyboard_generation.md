@@ -206,7 +206,7 @@ set_flowData({
       camera: "中景 · 缓慢推进",
       duration: 3,
       frameMode: "endFrame",
-      prompt: "A white-haired young man in white robes kneeling on the floor, spitting blood, trembling body, pale face, dramatic lighting, cinematic composition",
+      prompt: "A white_haired young man in white robes kneeling on the floor, spitting blood, trembling body, pale face, dramatic lighting, cinematic composition",
       lines: null,
       sound: "喷血声",
       associateAssetsIds: [0]
@@ -218,7 +218,7 @@ set_flowData({
       camera: "大特写",
       duration: 3,
       frameMode: "firstFrame",
-      prompt: "Close-up of a jade token with glowing runes fading, fine cracks appearing on the surface, dark moody lighting, cinematic detail shot",
+      prompt: "Close_up of a jade token with glowing runes fading, fine cracks appearing on the surface, dark moody lighting, cinematic detail shot",
       lines: null,
       sound: "玉石碎裂声",
       associateAssetsIds: [2]

@@ -77,7 +77,7 @@ const planData = {
 4. 生成汇总统计（总章节、强主线章节数、可压缩章节、预估总时长、目标时长、压缩比）
 5. 输出 Markdown 表格格式的事件表，作为后续任务上下文（不写入 planData）
 
-**输出格式**：参考 [event-format.md](references/event-format.md)
+**输出格式**：参考 [event_format.md](references/event_format.md)
 
 **关键原则**：
 - 核心事件描述必须包含**动作**和**结果**，不能只写状态
@@ -115,7 +115,7 @@ const planData = {
 7. 设计付费卡点（位置、内容、钩子类型）
 8. 调用 `set_planData_storySkeleton` 保存
 
-**输出格式**：参考 [skeleton-format.md](references/skeleton-format.md)
+**输出格式**：参考 [skeleton_format.md](references/skeleton_format.md)
 
 **关键约束**：
 - 总时长 = 【项目配置】中的集数 × 单集时长
@@ -145,7 +145,7 @@ const planData = {
    - 角色态度作为世界观锚点
 5. 调用 `set_planData_adaptationStrategy` 保存
 
-**输出格式**：参考 [adaptation-format.md](references/adaptation-format.md)
+**输出格式**：参考 [adaptation_format.md](references/adaptation_format.md)
 
 **关键原则**：
 - 故事核优先：主角是"被定义为疯子却选择活下去的人"，所有决策服务于此弧线
@@ -179,7 +179,7 @@ const planData = {
    - 表演指示（情绪、动作细节）
 6. 仅当指令中包含 `用户已确认写入SQL: 是` 时，调用 `insert_script_to_sqlite` 写入剧本
 
-**输出格式**：参考 [script-format.md](references/script-format.md)
+**输出格式**：参考 [script_format.md](references/script_format.md)
 
 **关键约束**：
 - 单集总时长严格控制在【项目配置】指定的单集时长 ±10秒
