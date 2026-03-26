@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, protocol,ipcMain  } from "electron";
 import path from "path";
 import fs from "fs";
 import Module from "module";
@@ -75,16 +75,28 @@ function requireWithCustomPaths(modulePath: string): any {
   }
 }
 
-function createMainWindow(port: any): void {
+let mainWindow: BrowserWindow | null = null;
+
+function createMainWindow(): void {
   const win = new BrowserWindow({
-    width: 900,
-    height: 600,
+    width: 1000,
+    height: 700,
+    minWidth: 800,
+    minHeight: 500,
+    frame: false,
     show: true,
     autoHideMenuBar: true,
+    resizable: true,
+    thickFrame: true,
   });
-  win.webContents.on("did-start-loading", () => {
-    void win.webContents.executeJavaScript(`window.$electron = true; window.$port = ${port};`);
+  mainWindow = win;
+  win.setMenuBarVisibility(false);
+  win.removeMenu();
+
+  win.on("closed", () => {
+    mainWindow = null;
   });
+
   const isDev = process.env.NODE_ENV === "dev" || !app.isPackaged;
   if (process.env.VITE_DEV) {
     void win.loadURL("http://localhost:50188");
@@ -95,6 +107,17 @@ function createMainWindow(port: any): void {
 }
 
 let closeServeFn: (() => Promise<void>) | undefined;
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "toonflow",
+    privileges: {
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
 
 app.whenReady().then(async () => {
   try {
@@ -111,12 +134,44 @@ app.whenReady().then(async () => {
     const mod = requireWithCustomPaths(servePath);
     closeServeFn = mod.closeServe;
     const port = await mod.default(true);
-    console.log("%c Line:112 🍇 port", "background:#2eafb0", port);
-    createMainWindow(port);
+    // 注册协议处理器
+    protocol.handle("toonflow", (request) => {
+      const url = new URL(request.url);
+      const pathname = url.hostname.toLowerCase();
+      const handlers: Record<string, () => object> = {
+        getport: () => ({ port: port }),
+        windowminimize: () => {
+          mainWindow?.minimize();
+          return { ok: true };
+        },
+        windowmaximize: () => {
+          if (mainWindow?.isMaximized()) {
+            mainWindow.unmaximize();
+          } else {
+            mainWindow?.maximize();
+          }
+          return { ok: true };
+        },
+        windowclose: () => {
+          app.exit(0);
+          return { ok: true };
+        },
+        windowismaximized: () => ({
+          maximized: mainWindow?.isMaximized() ?? false,
+        }),
+      };
+      const handler = handlers[pathname];
+      const responseData = handler ? handler() : { error: "未知接口" };
+      return new Response(JSON.stringify(responseData), {
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    createMainWindow();
   } catch (err) {
     console.error("[服务启动失败]:", err);
-    // 如果服务启动失败，使用默认端口创建窗口
-    createMainWindow(defaultPort);
+    // 如果服务启动失败，仍然创建窗口
+    createMainWindow();
   }
 });
 
@@ -126,8 +181,7 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    // 重新激活时使用默认端口
-    createMainWindow(defaultPort);
+    createMainWindow();
   }
 });
 
