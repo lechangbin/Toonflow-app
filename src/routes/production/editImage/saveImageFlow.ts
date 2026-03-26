@@ -62,7 +62,7 @@ export default router.post(
         });
         insertFlowId = storyboardId;
       }
-    }
+    } else insertFlowId = id;
 
     await u.db("o_imageFlow").insert({
       flowData: JSON.stringify({ edges, nodes }),
