@@ -14,6 +14,7 @@ export default router.post(
   async (req, res) => {
     const { scriptId, specifyIds } = req.body;
     const data = await u.db("o_video").where("scriptId", scriptId).whereIn("id", specifyIds).andWhere("state", "生成中").select("*");
+    console.log("%c Line:17 🧀 data", "background:#93c0a4", data.length);
     res.status(200).send(success(data));
   },
 );
