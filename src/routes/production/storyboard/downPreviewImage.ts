@@ -2,7 +2,6 @@ import express from "express";
 import u from "@/utils";
 import { z } from "zod";
 import sharp from "sharp";
-import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
@@ -23,6 +22,7 @@ export default router.post(
     const orderedFilePaths = storyboardIds.map((id: number) => filePathMap[id]);
 
     // 读取所有图片 buffer 并获取元数据
+    // sharp 底层 libvips 在 composite 时会将所有 input 解码为内存像素再合成，无需预转格式
     const loaded = await Promise.all(
       orderedFilePaths.map(async (filePath: string) => {
         if (!filePath) return null;
@@ -35,31 +35,17 @@ export default router.post(
     // 过滤掉无效图片
     const validImages = loaded.filter((img): img is NonNullable<typeof img> => img !== null && img.width > 0 && img.height > 0);
     if (validImages.length === 0) {
-      return res.status(200).send(success(null));
+      res.status(204).end();
+      return;
     }
 
-    // 将每张图片缩放到合理尺寸，单张最大宽度 512px
-    const maxThumbWidth = 512;
-    const resizedImages = await Promise.all(
-      validImages.map(async (img) => {
-        if (img.width <= maxThumbWidth) {
-          return img;
-        }
-        const scale = maxThumbWidth / img.width;
-        const newWidth = maxThumbWidth;
-        const newHeight = Math.round(img.height * scale);
-        const buffer = await sharp(img.buffer).resize(newWidth, newHeight).toBuffer();
-        return { buffer, width: newWidth, height: newHeight };
-      }),
-    );
-
     // 计算网格布局
-    const cols = Math.min(5, resizedImages.length);
-    const rows = Math.ceil(resizedImages.length / cols);
+    const cols = Math.min(5, validImages.length);
+    const rows = Math.ceil(validImages.length / cols);
 
     const colWidths: number[] = Array(cols).fill(0);
     const rowHeights: number[] = Array(rows).fill(0);
-    resizedImages.forEach((img, idx) => {
+    validImages.forEach((img, idx) => {
       const c = idx % cols;
       const r = Math.floor(idx / cols);
       colWidths[c] = Math.max(colWidths[c], img.width);
@@ -72,8 +58,8 @@ export default router.post(
     // 为每张图片生成带标号的合成层
     const compositeInputs: sharp.OverlayOptions[] = [];
 
-    for (let i = 0; i < resizedImages.length; i++) {
-      const img = resizedImages[i];
+    for (let i = 0; i < validImages.length; i++) {
+      const img = validImages[i];
       const c = i % cols;
       const r = Math.floor(i / cols);
       const x = colWidths.slice(0, c).reduce((a, b) => a + b, 0);
@@ -90,7 +76,6 @@ export default router.post(
       const label = `S${String(i + 1).padStart(2, "0")}`;
       const fontSize = Math.max(14, Math.min(img.width, img.height) * 0.06);
       const padding = Math.round(fontSize * 0.4);
-      // 估算文字宽度（等宽近似）
       const textWidth = Math.round(label.length * fontSize * 0.65);
       const bgW = textWidth + padding * 2;
       const bgH = Math.round(fontSize) + padding * 2;
@@ -109,7 +94,7 @@ export default router.post(
       });
     }
 
-    // 使用 sharp 创建画布并合成
+    // 使用 sharp 创建画布并合成，输出 PNG 无损格式避免压缩损耗
     const resultBuffer = await sharp({
       create: {
         width: canvasWidth,
@@ -119,12 +104,13 @@ export default router.post(
       },
     })
       .composite(compositeInputs)
-      .jpeg({ quality: 80 })
+      .png({ compressionLevel: 3 })
       .toBuffer();
 
-    const base64 = resultBuffer.toString("base64");
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-
-    return res.status(200).send(success(dataUrl));
+    // 以文件下载形式返回
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Content-Disposition", "attachment; filename=storyboard-preview.png");
+    res.setHeader("Content-Length", resultBuffer.length);
+    res.status(200).send(resultBuffer);
   },
 );
