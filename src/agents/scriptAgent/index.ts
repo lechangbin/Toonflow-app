@@ -46,7 +46,7 @@ export async function decisionAI(ctx: AgentContext) {
   const systemPrompt = buildSystemPrompt(skill.prompt, mem);
 
   const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
-  const novelData = await u.db("o_novel").select("id", "chapterIndex as index");
+  const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("id", "chapterIndex as index");
 
   const projectInfo = [
     "## 项目信息",
@@ -70,6 +70,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
+      console.log("%c Line:73 🍧 completion", "background:#93c0a4", completion);
       await memory.add("assistant:decision", completion.text);
     },
   });
@@ -99,6 +100,7 @@ export async function executionAI(ctx: AgentContext) {
       ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
+      console.log("%c Line:102 🍻 completion", "background:#fca650", completion);
       await memory.add("assistant:execution", completion.text);
     },
   });
@@ -125,6 +127,7 @@ export async function supervisionAI(ctx: AgentContext) {
       ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
+      console.log("%c Line:129 🍣 completion", "background:#3f7cff", completion);
       await memory.add("assistant:supervision", completion.text);
     },
   });
@@ -149,6 +152,7 @@ function runSubAgent(parentCtx: AgentContext) {
       let fullResponse = "";
 
       for await (const chunk of subTextStream) {
+        console.log("%c Line:155 🥛 chunk", "background:#fca650", chunk);
         msg.send(chunk);
         fullResponse += chunk;
       }

@@ -122,6 +122,7 @@ export default router.post(
         messages: [{ role: "user", content: "小说原文" + novelText }],
         tools: skill.tools,
       })) as any;
+
       if (!_output) return res.status(500).send("失败");
       await u.db("o_assets").where("id", assetsId).update({ prompt: _output });
 

@@ -12,7 +12,7 @@ export const AssetSchema = z.object({
   type: z.enum(["role", "tool", "scene", "clip"]).describe("资产类型"),
 });
 export const ScriptSchema = z.object({
-  id: z.number().describe("剧本ID,如果新增则为空").optional(),
+  id: z.number().describe("剧本ID"),
   name: z.string().describe("剧本名称"),
   content: z.string().describe("剧本内容"),
 });
@@ -42,7 +42,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         console.log("[tools] get_novel_events", ids);
         const data = await u
           .db("o_novel")
-          .where("projectId",resTool.data.projectId)
+          .where("projectId", resTool.data.projectId)
           .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState")
           .whereIn("id", ids);
         const eventString = data.map((i: any) => [`第${i.index}章，标题：${i.chapter}，事件：${i.event}`].join("\n")).join("\n");
@@ -91,41 +91,48 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         return true;
       },
     }),
-    insert_script_to_sqlite: tool({
-      description: "将剧本内容插入sqlite数据库，供后续业务使用",
+    update_script_to_sqlite: tool({
+      description: "更新剧本，修改数据库对应剧本，供后续业务使用",
       inputSchema: z.object({
         script: ScriptSchema,
-        // assetsList: z.array(AssetSchema).describe("剧本所使用资产列表,注意不要包含剧本内容,仅为所使用到的 道具、人物、场景、素材"),
       }),
       execute: async ({ script }) => {
         console.log("%c Line:103 🍷 script", "background:#42b983", script);
-        // console.log("[tools] insert_script_to_sqlite", assetsList);
+        await u.db("o_script").where({ id: script.id }).update({
+          name: script.name,
+          content: script.content,
+        });
+
+        socket.emit("setPlanData", { key: "script", value: script.id });
+        return true;
+      },
+    }),
+    insert_script_to_sqlite: tool({
+      description: "新增剧本,将剧本内容插入sqlite数据库，供后续业务使用",
+      inputSchema: z.object({
+        script: ScriptSchema.omit({ id: true }),
+      }),
+      execute: async ({ script }) => {
+        console.log("%c Line:103 🍷 script", "background:#42b983", script);
+
         const [scriptId] = await u.db("o_script").insert({
           name: script.name,
           content: script.content,
           projectId: resTool.data.projectId,
           createTime: Date.now(),
         });
-        // if (assetsList && assetsList.length) {
-        //   const assetId = [];
-        //   for (const i of assetsList) {
-        //     if (i.id) {
-        //       assetId.push(i.id);
-        //       continue;
-        //     }
-        //     const [id] = await u.db("o_assets").insert({
-        //       name: i.name,
-        //       prompt: i.prompt,
-        //       type: i.type,
-        //       describe: i.desc,
-        //       projectId: resTool.data.projectId,
-        //       startTime: Date.now(),
-        //     });
-        //     assetId.push(id);
-        //   }
-
-        //   await u.db("o_scriptAssets").insert(assetId.map((i) => ({ scriptId, assetId: i })));
-        // }
+        socket.emit("setPlanData", { key: "script", value: scriptId });
+        return true;
+      },
+    }),
+    delete_script_to_sqlite: tool({
+      description: "删除剧本,将剧本内容从sqlite数据库中删除",
+      inputSchema: z.object({
+        scriptId: z.string().describe("剧本id"),
+      }),
+      execute: async ({ scriptId }) => {
+        console.log("[tools] delete_script_to_sqlite", scriptId);
+        await u.db("o_script").where({ id: scriptId }).delete();
         socket.emit("setPlanData", { key: "script", value: scriptId });
         return true;
       },
