@@ -14,7 +14,7 @@ export default router.post(
   async (req, res) => {
     const { assetsId } = req.body;
 
-    const assets = await u.db("o_assets").where("id", assetsId).select("id", "imageId", "type", "state").first();
+    const assets = await u.db("o_assets").where("id", assetsId).select("id", "imageId", "type").first();
 
     const rawTempAssets = await u.db("o_image").where("assetsId", assetsId).select("id", "filePath", "assetsId", "type", "state");
 
@@ -28,10 +28,10 @@ export default router.post(
 
     const data = {
       id: assets!.id,
-      state: assets!.state,
       imageId: assets!.imageId ?? null,
       tempAssets,
     };
+      console.log("%c Line:30 🥤 data", "background:#465975", data);
     res.status(200).send(success(data));
   },
 );
