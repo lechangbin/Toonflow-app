@@ -43,7 +43,6 @@ export default function runCode(code: string) {
 
   return exports as Record<string, any>;
 }
-
 /**
  * 压缩图片，目标字节数不高于 size
  */

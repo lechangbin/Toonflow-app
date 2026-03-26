@@ -19,7 +19,7 @@ export default router.post(
     const { projectId, agentType, data } = req.body;
     await u
       .db("o_agentWorkData")
-      .where({ id: projectId, key: agentType })
+      .where({ projectId: projectId, key: agentType })
       .update({
         data: JSON.stringify(data),
       });

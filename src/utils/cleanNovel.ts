@@ -16,46 +16,68 @@ export interface EventType {
 
 class CleanNovel {
   emitter: EventEmitter;
-  constructor() {
+  /** 最大并发数 */
+  concurrency: number;
+
+  constructor(concurrency: number = 5) {
     this.emitter = new EventEmitter();
+    this.concurrency = concurrency;
   }
+
+  private async processChapter(novel: o_novel, intansce: ReturnType<typeof u.Ai.Text>): Promise<EventType | null> {
+    try {
+      const skill = await useSkill("universal_agent.md");
+
+      const resData = await intansce.invoke({
+        system: skill.prompt,
+        messages: [
+          {
+            role: "user",
+            content: "请根据以下小说章节生成事件摘要：\n" + novel.chapterData!,
+          },
+        ],
+        tools: skill.tools,
+      });
+
+      const preData = resData.text;
+
+      this.emitter.emit("item", { id: novel.id, event: preData });
+      return { id: novel.id!, event: preData };
+    } catch (e) {
+      this.emitter.emit("item", { id: novel.id, event: null, errorReason: u.error(e).message });
+      return null;
+    }
+  }
+
   async start(allChapters: o_novel[], projectId: number): Promise<EventType[]> {
-    //所有事件
-    let totalEvent: EventType[] = [];
+    const totalEvent: EventType[] = [];
     const intansce = u.Ai.Text("universalAgent");
 
-    try {
-      for (let gi = 0; gi < allChapters.length; gi++) {
-        const novel = allChapters[gi];
-        let resData;
-        try {
-          const skill = await useSkill("universal_agent.md");
+    // 并发控制：通过信号量限制同时执行的任务数
+    let running = 0;
+    let index = 0;
+    const results: Promise<void>[] = [];
 
-          resData = await intansce.invoke({
-            system: skill.prompt,
-            messages: [
-              {
-                role: "user",
-                content: "请根据以下小说章节生成事件摘要：\n" + novel.chapterData!,
-              },
-            ],
-            tools: skill.tools,
-          });
-          console.log("%c Line:35 🍆 resData", "background:#fca650", resData);
+    const runNext = (): Promise<void> => {
+      if (index >= allChapters.length) return Promise.resolve();
+      const novel = allChapters[index++];
+      running++;
 
-          const preData = resData.text;
+      return this.processChapter(novel, intansce).then((result) => {
+        if (result) totalEvent.push(result);
+        running--;
+        return runNext();
+      });
+    };
 
-          this.emitter.emit("item", { id: novel.id, event: preData });
-          totalEvent.push({ id: novel.id!, event: preData });
-        } catch (e) {
-          console.log("%c Line:51 🍩 e", "background:#93c0a4", e);
-          this.emitter.emit("item", { id: novel.id, event: null, errorReason: u.error(e).message });
-        }
-      }
-    } catch (e) {
-      console.error(e);
-      throw e;
-    }
+    // 启动最多 concurrency 个并发任务
+    const workers = Array.from(
+      { length: Math.min(this.concurrency, allChapters.length) },
+      () => runNext()
+    );
+
+    await Promise.all(workers);
+
     return totalEvent;
   }
 }

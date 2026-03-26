@@ -42,6 +42,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         console.log("[tools] get_novel_events", ids);
         const data = await u
           .db("o_novel")
+          .where("projectId",resTool.data.projectId)
           .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState")
           .whereIn("id", ids);
         const eventString = data.map((i: any) => [`第${i.index}章，标题：${i.chapter}，事件：${i.event}`].join("\n")).join("\n");
