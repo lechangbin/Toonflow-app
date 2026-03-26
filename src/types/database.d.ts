@@ -1,4 +1,4 @@
-// @db-hash a4883a3df3fda68054d467ee6dd26523
+// @db-hash f9f1fb9b0fc04331ecf65d34c1e4b6af
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -108,12 +108,13 @@ export interface o_project {
   'artStyle'?: string | null;
   'createTime'?: number | null;
   'id'?: number | null;
+  'imageModel'?: string | null;
   'intro'?: string | null;
-  'model'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
   'type'?: string | null;
   'userId'?: number | null;
+  'videoModel'?: string | null;
   'videoRatio'?: string | null;
 }
 export interface o_script {
@@ -155,7 +156,6 @@ export interface o_storyboard {
   'filePath'?: string | null;
   'frameMode'?: string | null;
   'id'?: number;
-  'index'?: string | null;
   'lines'?: string | null;
   'mode'?: string | null;
   'model'?: string | null;
