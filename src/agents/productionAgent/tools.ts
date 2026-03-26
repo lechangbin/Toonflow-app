@@ -488,7 +488,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
           return `错误：检测到循环依赖，涉及分镜id: ${cyclicIds.join(", ")}`;
         }
 
-        console.log("%c Line:496 🌶", "background:#ea7e5c");
         resTool.systemMessage(`图片生成调度计划：共 ${levels.length} 层，${images.length} 张图片`);
 
         // --- 准备公共数据 ---

@@ -123,8 +123,6 @@ function createSkillTools(skill: SkillRecord, mainSkillName: string) {
           .where("o_skillList.state", 1)
           .andWhere("o_skillAttribution.attribution", mainSkillName);
 
-        console.log("%c Line:120 🌮 resources", "background:#b03734", resources);
-
         activated.add(name);
         console.log(`[Skill] 📖 已激活：${name}（${body.length} 字符，${resources.length} 资源）`);
         let content = "";
@@ -144,7 +142,6 @@ function createSkillTools(skill: SkillRecord, mainSkillName: string) {
         content += "- discover_skill_docs：当上方资源不足以完成任务时，使用关键词检索更多相关文档。传入与当前任务相关的关键词列表即可获取推荐。\n";
         content += "</skill_tools_guide>\n";
         content += "</skill_content>";
-        console.log("%c Line:133 🍊 content", "background:#2eafb0", content);
         return { content };
       },
     }),
