@@ -35,7 +35,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
     get_novel_events: tool({
       description: "获取章节事件",
       inputSchema: z.object({
-        ids: z.array(z.number()).describe("章节id"),
+        ids: z.array(z.number()).describe("章节id，注意区分"),
       }),
       execute: async ({ ids }) => {
         resTool.systemMessage(`正在阅读 章节事件 数据...`);

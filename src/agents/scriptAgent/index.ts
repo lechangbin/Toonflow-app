@@ -47,6 +47,7 @@ export async function decisionAI(ctx: AgentContext) {
 
   const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
   const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("id", "chapterIndex as index");
+  console.log("%c Line:50 🥒 novelData", "background:#2eafb0", novelData);
 
   const projectInfo = [
     "## 项目信息",
@@ -57,7 +58,7 @@ export async function decisionAI(ctx: AgentContext) {
     `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
   ].join("\n");
 
-  const prefixSystem = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- ${i.id}: 第${i.index}章`).join("\n")}\n\n`;
+  const prefixSystem = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- 章节ID：${i.id}: 第${i.index}章`).join("\n")}\n\n`;
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
     system: prefixSystem + systemPrompt,
@@ -152,7 +153,6 @@ function runSubAgent(parentCtx: AgentContext) {
       let fullResponse = "";
 
       for await (const chunk of subTextStream) {
-        console.log("%c Line:155 🥛 chunk", "background:#fca650", chunk);
         msg.send(chunk);
         fullResponse += chunk;
       }
