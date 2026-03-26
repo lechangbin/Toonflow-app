@@ -66,7 +66,7 @@ class AiText {
   async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
     const modelName = await resolveModelName(this.AiType);
     return generateText({
-      ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 5) }),
+      ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await getVendorTemplateFn("textRequest", modelName),
     } as Parameters<typeof generateText>[0]);
@@ -74,7 +74,7 @@ class AiText {
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
     const modelName = await resolveModelName(this.AiType);
     return streamText({
-      ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 5) }),
+      ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: wrapLanguageModel({
         model: await getVendorTemplateFn("textRequest", modelName),

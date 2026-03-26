@@ -104,7 +104,6 @@ export async function supervisionAI(ctx: AgentContext) {
     abortSignal,
     tools: {
       ...skill.tools,
-      ...memory.getTools(),
     },
     onFinish: async (completion) => {
       await memory.add("assistant:supervision", completion.text);
