@@ -137,8 +137,6 @@ class AiVideo {
   async run(input: VideoConfig) {
     return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("videoRequest", modelName);
-
-      console.log("%c Line:142 🎂 input", "background:#42b983", input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;

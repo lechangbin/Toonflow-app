@@ -1,4 +1,4 @@
-// @routes-hash 8097a5206252be753261d3f059243260
+// @routes-hash 557dfd43a824a4bd4170d0e2c9a6b45c
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -94,10 +94,11 @@ import route90 from "./routes/setting/vendorConfig/deleteVendor";
 import route91 from "./routes/setting/vendorConfig/getVendorList";
 import route92 from "./routes/setting/vendorConfig/modelTest";
 import route93 from "./routes/setting/vendorConfig/updateVendor";
-import route94 from "./routes/task/getTaskApi";
-import route95 from "./routes/task/getTaskCategories";
-import route96 from "./routes/task/taskDetails";
-import route97 from "./routes/test/test";
+import route94 from "./routes/task/getProject";
+import route95 from "./routes/task/getTaskApi";
+import route96 from "./routes/task/getTaskCategories";
+import route97 from "./routes/task/taskDetails";
+import route98 from "./routes/test/test";
 
 export default async (app: Express) => {
   app.use("/api/agents/clearMemory", route1);
@@ -193,8 +194,9 @@ export default async (app: Express) => {
   app.use("/api/setting/vendorConfig/getVendorList", route91);
   app.use("/api/setting/vendorConfig/modelTest", route92);
   app.use("/api/setting/vendorConfig/updateVendor", route93);
-  app.use("/api/task/getTaskApi", route94);
-  app.use("/api/task/getTaskCategories", route95);
-  app.use("/api/task/taskDetails", route96);
-  app.use("/api/test/test", route97);
+  app.use("/api/task/getProject", route94);
+  app.use("/api/task/getTaskApi", route95);
+  app.use("/api/task/getTaskCategories", route96);
+  app.use("/api/task/taskDetails", route97);
+  app.use("/api/test/test", route98);
 }
