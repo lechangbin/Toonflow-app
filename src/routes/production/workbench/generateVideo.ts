@@ -104,9 +104,7 @@ export default router.post(
 
         const aiVideo = u.Ai.Video(model);
         await aiVideo.run({
-          systemPrompt,
           projectId,
-          storyboardId,
           prompt,
           imageBase64: base64.filter((item) => item !== null) as string[],
           mode,
