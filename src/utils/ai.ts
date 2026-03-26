@@ -116,8 +116,6 @@ class AiImage {
 }
 interface VideoConfig {
   projectId: number; // 项目ID
-  storyboardId: number; // 关联的分镜ID
-  systemPrompt?: string; // 系统提示词
   prompt: string; //视频提示词
   imageBase64: string[]; //输入的图片提示词
   mode: string; //模式
