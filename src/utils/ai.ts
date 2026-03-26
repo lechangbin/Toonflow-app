@@ -85,7 +85,6 @@ class AiText {
 }
 
 interface ImageConfig {
-  systemPrompt?: string; // 系统提示词
   prompt: string; //图片提示词
   imageBase64: string[]; //输入的图片提示词
   size: "1K" | "2K" | "4K"; // 图片尺寸
