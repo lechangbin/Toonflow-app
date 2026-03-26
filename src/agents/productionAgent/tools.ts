@@ -284,6 +284,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             lines: item.lines,
             state: "未生成",
             scriptId: resTool.data.scriptId,
+            createTime: Date.now(),
           });
           if (item.associateAssetsIds.length) {
             await u.db("o_assets2Storyboard").insert(item.associateAssetsIds.map((i) => ({ storyboardId: insertedId, assetId: i })));
