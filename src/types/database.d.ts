@@ -1,4 +1,4 @@
-// @db-hash f9f1fb9b0fc04331ecf65d34c1e4b6af
+// @db-hash d807205fbb27fc5ddb04cae060fb4430
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -156,6 +156,7 @@ export interface o_storyboard {
   'filePath'?: string | null;
   'frameMode'?: string | null;
   'id'?: number;
+  'index'?: string | null;
   'lines'?: string | null;
   'mode'?: string | null;
   'model'?: string | null;

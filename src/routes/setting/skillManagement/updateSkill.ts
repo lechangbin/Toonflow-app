@@ -6,6 +6,7 @@ import { validateFields } from "@/middleware/middleware";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { getEmbedding } from "@/utils/agent/embedding";
 
 const router = express.Router();
 
@@ -98,6 +99,14 @@ export default router.post(
           updateTime: now,
           state: resolveState(finalDescription, finalAttributions),
         });
+
+      if (finalDescription && !current.embedding) {
+        const embedding = await getEmbedding(finalDescription);
+        await u
+          .db("o_skillList")
+          .where("id", nextId)
+          .update({ embedding: JSON.stringify(embedding) });
+      }
 
       await u.db("o_skillAttribution").where("skillId", nextId).delete();
       if (finalAttributions.length > 0) {

@@ -443,7 +443,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("type").notNullable(); // "main" | "references"
         table.integer("createTime").notNullable();
         table.integer("updateTime").notNullable();
-        table.integer("state").notNullable(); // 1正常，0正在生成description，-1description为空。-2归属为空,-3md5变动
+        table.integer("state").notNullable(); // 1正常，0正在生成description，-1description为空。-2归属为空,-3md5变动，-4文件不存在
         table.primary(["id"]);
       },
       initData: async (knex) => {
