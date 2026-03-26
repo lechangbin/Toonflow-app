@@ -44,19 +44,19 @@ export default router.post("/", async (req, res) => {
   let updatedCount = 0;
   let removedCount = 0;
 
-  const scannedIds = new Set<string>();
+  const scannedPaths = new Set<string>();
   const existingRows = await u.db("o_skillList").whereIn("type", ["main", "references"]).select("id", "md5", "type", "path");
 
   for (const item of scanItems) {
-    const id = crypto.createHash("md5").update(item.relativePath).digest("hex");
-    const name = path.basename(item.entry, ".md");
+    scannedPaths.add(item.relativePath);
+
+    const existing = existingRows.find((row: any) => row.path === item.relativePath);
     const content = await fs.readFile(item.fullPath, "utf-8");
     const md5 = crypto.createHash("md5").update(content).digest("hex");
-    const existing = existingRows.find((row: any) => row.id === id);
-
-    scannedIds.add(id);
 
     if (!existing) {
+      const id = crypto.createHash("md5").update(item.relativePath).digest("hex");
+      const name = path.basename(item.entry, ".md");
       await u.db("o_skillList").insert({
         id,
         path: item.relativePath,
@@ -70,25 +70,19 @@ export default router.post("/", async (req, res) => {
         state: -1,
       });
       insertedCount++;
-      continue;
-    }
-
-    if (existing.md5 !== md5 || existing.path !== item.relativePath || existing.type !== item.type) {
-      await u.db("o_skillList").where("id", id).update({
-        path: item.relativePath,
-        name,
-        md5,
-        type: item.type,
-        updateTime: now,
-        state: -3,
-      });
+    } else {
+      const updateData: Record<string, any> = { md5, updateTime: now };
+      if (existing.md5 !== md5) {
+        updateData.state = -3;
+      }
+      await u.db("o_skillList").where("id", existing.id).update(updateData);
       updatedCount++;
     }
   }
 
-  const removedIds = existingRows.map((row: any) => row.id).filter((id: string) => !scannedIds.has(id));
+  const removedIds = existingRows.filter((row: any) => !scannedPaths.has(row.path)).map((row: any) => row.id);
   if (removedIds.length > 0) {
-    await u.db("o_skillList").whereIn("id", removedIds).delete();
+    await u.db("o_skillList").whereIn("id", removedIds).update({ state: -4, updateTime: now });
     removedCount = removedIds.length;
   }
 

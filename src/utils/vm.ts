@@ -30,13 +30,8 @@ export default function runCode(code: string) {
       urlToBase64,
       mergeImages,
       pollTask,
-
-      Response,
       exports,
-
-      fetch,
       axios,
-
       FormData,
     },
     compiler: "javascript",

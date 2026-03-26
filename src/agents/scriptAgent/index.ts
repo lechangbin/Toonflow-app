@@ -40,7 +40,6 @@ export async function decisionAI(ctx: AgentContext) {
   resTool.systemMessage("决策层AI 接管聊天");
 
   const memory = new Memory("scriptAgent", isolationKey);
-  console.log("%c Line:43 🥟 isolationKey", "background:#4fff4B", isolationKey);
   await memory.add("user", text);
   const [skill, mem] = await Promise.all([useSkill("script_agent_decision.md"), memory.get(text)]);
 
@@ -59,7 +58,6 @@ export async function decisionAI(ctx: AgentContext) {
   ].join("\n");
 
   const prefixSystem = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- ${i.id}: 第${i.index}章`).join("\n")}\n\n`;
-  console.log("%c Line:57 🍧 prefixSystem", "background:#ea7e5c", prefixSystem);
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
     system: prefixSystem + systemPrompt,

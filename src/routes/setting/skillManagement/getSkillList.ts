@@ -51,7 +51,16 @@ export default router.post(
       });
     }
 
-    const list = await query.select("*").orderBy("updateTime", "desc").orderBy("type", "desc").limit(limit).offset(offset);
+    const list = await query
+      .select("*")
+      .orderByRaw(`
+        CASE type WHEN 'main' THEN 1 ELSE 0 END ASC,
+        CASE WHEN id NOT IN (SELECT skillId FROM o_skillAttribution) THEN 0 ELSE 1 END ASC,
+        CASE WHEN state = 1 THEN 1 ELSE 0 END ASC,
+        updateTime DESC
+      `)
+      .limit(limit)
+      .offset(offset);
 
     // 查询每个技能的归属
     const skillIds = list.map((item: any) => item.id);
