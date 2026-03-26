@@ -4,7 +4,7 @@ import { success } from "@/lib/responseFormat";
 const router = express.Router();
 
 export default router.post("/", async (req, res) => {
-  const list = await u.db("o_tasks").select("taskClass").groupBy("taskClass");
-  const data = list.filter((item) => item.taskClass);
+  const list = await u.db("o_project").select("id", "name").groupBy("name");
+  const data = list.filter((item) => item.name);
   res.status(200).send(success(data));
 });

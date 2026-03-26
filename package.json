@@ -50,6 +50,7 @@
     "better-sqlite3": "^12.8.0",
     "compressing": "^2.1.0",
     "cors": "^2.8.5",
+    "custom-electron-titlebar": "^4.2.8",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-ws": "^5.0.2",

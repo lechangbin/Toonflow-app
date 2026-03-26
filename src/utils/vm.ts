@@ -30,6 +30,7 @@ export default function runCode(code: string) {
       urlToBase64,
       mergeImages,
       pollTask,
+      fetch,
       exports,
       axios,
       FormData,
