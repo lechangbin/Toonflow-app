@@ -94,37 +94,37 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       description: "将剧本内容插入sqlite数据库，供后续业务使用",
       inputSchema: z.object({
         script: ScriptSchema,
-        assetsList: z.array(AssetSchema).describe("剧本所使用资产列表,注意不要包含剧本内容,仅为所使用到的 道具、人物、场景、素材"),
+        // assetsList: z.array(AssetSchema).describe("剧本所使用资产列表,注意不要包含剧本内容,仅为所使用到的 道具、人物、场景、素材"),
       }),
-      execute: async ({ assetsList, script }) => {
+      execute: async ({ script }) => {
         console.log("%c Line:103 🍷 script", "background:#42b983", script);
-        console.log("[tools] insert_script_to_sqlite", assetsList);
+        // console.log("[tools] insert_script_to_sqlite", assetsList);
         const [scriptId] = await u.db("o_script").insert({
           name: script.name,
           content: script.content,
           projectId: resTool.data.projectId,
           createTime: Date.now(),
         });
-        if (assetsList && assetsList.length) {
-          const assetId = [];
-          for (const i of assetsList) {
-            if (i.id) {
-              assetId.push(i.id);
-              continue;
-            }
-            const [id] = await u.db("o_assets").insert({
-              name: i.name,
-              prompt: i.prompt,
-              type: i.type,
-              describe: i.desc,
-              projectId: resTool.data.projectId,
-              startTime: Date.now(),
-            });
-            assetId.push(id);
-          }
+        // if (assetsList && assetsList.length) {
+        //   const assetId = [];
+        //   for (const i of assetsList) {
+        //     if (i.id) {
+        //       assetId.push(i.id);
+        //       continue;
+        //     }
+        //     const [id] = await u.db("o_assets").insert({
+        //       name: i.name,
+        //       prompt: i.prompt,
+        //       type: i.type,
+        //       describe: i.desc,
+        //       projectId: resTool.data.projectId,
+        //       startTime: Date.now(),
+        //     });
+        //     assetId.push(id);
+        //   }
 
-          await u.db("o_scriptAssets").insert(assetId.map((i) => ({ scriptId, assetId: i })));
-        }
+        //   await u.db("o_scriptAssets").insert(assetId.map((i) => ({ scriptId, assetId: i })));
+        // }
         socket.emit("setPlanData", { key: "script", value: scriptId });
         return true;
       },

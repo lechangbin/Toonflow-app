@@ -86,9 +86,8 @@ function createMainWindow(): void {
     frame: false,
     show: true,
     autoHideMenuBar: true,
-    titleBarStyle: "hidden",
-    titleBarOverlay: false,
-    roundedCorners: true
+    resizable: true,
+    thickFrame: true,
   });
   mainWindow = win;
   win.setMenuBarVisibility(false);
@@ -154,7 +153,7 @@ app.whenReady().then(async () => {
           return { ok: true };
         },
         windowclose: () => {
-          mainWindow?.close();
+          app.exit(0);
           return { ok: true };
         },
         windowismaximized: () => ({
