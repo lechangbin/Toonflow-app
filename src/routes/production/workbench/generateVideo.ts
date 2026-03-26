@@ -29,7 +29,8 @@ export default router.post(
   }),
   async (req, res) => {
     const { scriptId, projectId, storyboardId, prompt, data, model, duration, resolution, audio, mode } = req.body;
-
+    //获取生成视频比例
+    const ratio = await u.db("o_project").select("videoRatio").where("id", projectId).first();
     const videoPath = `/${projectId}/video/${uuidv4()}.mp4`; //视频保存路径
     //新增
     const videoData = {
@@ -109,6 +110,7 @@ export default router.post(
           imageBase64: base64.filter((item) => item !== null) as string[],
           mode,
           duration,
+          aspectRatio: (ratio?.videoRatio as `${number}:${number}`) || "16:9",
           resolution,
           audio,
           taskClass: "视频生成",
