@@ -19,6 +19,8 @@ if (!fs.existsSync(envFile)) {
   console.log(`📄 已自动创建环境变量文件: ${envFile}`);
 }
 
+const pkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
+
 const external = [
   "electron",
   "@huggingface/transformers",
@@ -51,6 +53,9 @@ const appBuildConfig: esbuild.BuildOptions = {
   },
   sourcemap: false,
   external,
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
 };
 
 // Electron 主进程打包配置
@@ -69,6 +74,9 @@ const mainBuildConfig: esbuild.BuildOptions = {
   },
   sourcemap: false,
   external,
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
 };
 
 (async () => {

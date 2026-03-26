@@ -1,4 +1,4 @@
-// @routes-hash fd1b3ec2552be041f1b6e9582eb842b6
+// @routes-hash adf6a50cb14a1d93aea2983d0364e6a3
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -38,7 +38,7 @@ import route34 from "./routes/novel/getNovelEventState";
 import route35 from "./routes/novel/getNovelIndex";
 import route36 from "./routes/novel/updateNovel";
 import route37 from "./routes/other/deleteAllData";
-import route38 from "./routes/other/getCaptcha";
+import route38 from "./routes/other/getVersion";
 import route39 from "./routes/production/assets/getAssetsData";
 import route40 from "./routes/production/editImage/generateFlowImage";
 import route41 from "./routes/production/editImage/getImageFlow";
@@ -135,7 +135,7 @@ export default async (app: Express) => {
   app.use("/api/novel/getNovelIndex", route35);
   app.use("/api/novel/updateNovel", route36);
   app.use("/api/other/deleteAllData", route37);
-  app.use("/api/other/getCaptcha", route38);
+  app.use("/api/other/getVersion", route38);
   app.use("/api/production/assets/getAssetsData", route39);
   app.use("/api/production/editImage/generateFlowImage", route40);
   app.use("/api/production/editImage/getImageFlow", route41);
