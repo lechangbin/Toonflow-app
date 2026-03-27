@@ -11,8 +11,10 @@ export interface AgentContext {
   socket: Socket;
   isolationKey: string;
   text: string;
+  userMessageTime?: number;
   abortSignal?: AbortSignal;
   resTool: ResTool;
+  msg: ReturnType<ResTool["newMessage"]>;
 }
 
 function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["get"]>>): string {
@@ -52,7 +54,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...skill.tools,
       ...memory.getTools(),
       run_sub_agent: runSubAgent(ctx),
-      ...useTools(ctx.resTool),
+      ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
     },
     onFinish: async (completion) => {
       await memory.add("assistant:decision", completion.text);
@@ -65,78 +67,80 @@ export async function decisionAI(ctx: AgentContext) {
 //====================== 执行层 ======================
 
 export async function executionAI(ctx: AgentContext) {
-  const { isolationKey, text, abortSignal, resTool } = ctx;
+  const { text, abortSignal } = ctx;
 
-  resTool.systemMessage("执行层AI 接管聊天");
+  const skill = await useSkill("production_agent_execution.md");
 
-  const memory = new Memory("productionAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("production_agent_execution.md"), memory.get(text)]);
-
-  const systemPrompt = buildSystemPrompt(skill.prompt, mem);
+  const subMsg = ctx.resTool.newMessage("assistant", "执行导演");
 
   const { textStream } = await u.Ai.Text("productionAgent").stream({
-    system: systemPrompt,
+    system: skill.prompt,
     messages: [{ role: "user", content: text }],
     abortSignal,
     tools: {
       ...skill.tools,
-      ...memory.getTools(),
-      ...useTools(ctx.resTool),
-    },
-    onFinish: async (completion) => {
-      await memory.add("assistant:execution", completion.text);
+      ...useTools({ resTool: ctx.resTool, msg: subMsg }),
     },
   });
 
-  return textStream;
+  return { textStream, subMsg };
 }
 
 export async function supervisionAI(ctx: AgentContext) {
-  const { isolationKey, text, abortSignal } = ctx;
-  const memory = new Memory("productionAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("production_agent_supervision.md"), memory.get(text)]);
+  const { text, abortSignal } = ctx;
 
-  const systemPrompt = buildSystemPrompt(skill.prompt, mem);
+  const skill = await useSkill("production_agent_supervision.md");
+  const subMsg = ctx.resTool.newMessage("assistant", "编辑");
 
-  const { textStream } = await u.Ai.Text("productionAgent").stream({
-    system: systemPrompt,
+  const { textStream } = await u.Ai.Text("scriptAgent").stream({
+    system: skill.prompt,
     messages: [{ role: "user", content: text }],
     abortSignal,
     tools: {
       ...skill.tools,
-      ...useTools(ctx.resTool),
-    },
-    onFinish: async (completion) => {
-      await memory.add("assistant:supervision", completion.text);
+      ...useTools({
+        resTool: ctx.resTool,
+        msg: subMsg,
+      }),
     },
   });
 
-  return textStream;
+  return { textStream, subMsg };
 }
 
 //工具函数
 function runSubAgent(parentCtx: AgentContext) {
+  const memory = new Memory("scriptAgent", parentCtx.isolationKey);
   return tool({
     description: "启动子Agent执行独立任务。可用子Agent:executionAI, decisionAI, supervisionAI",
     inputSchema: z.object({
       agent: z.enum(["executionAI", "supervisionAI"]).describe("子Agent名称"),
-      prompt: z.string().max(100).describe("交给子Agent的任务简约描述"),
+      prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
     }),
     execute: async ({ agent, prompt }) => {
-      //todo 传入md有问题
       const fn = [executionAI, supervisionAI][subAgentList.indexOf(agent)];
-      //运行子Agent
-      const subTextStream = await fn({ ...parentCtx, text: prompt });
 
-      let msg: ReturnType<typeof parentCtx.resTool.textMessage>;
+      // 先完成主Agent当前的消息
+      parentCtx.msg.complete();
+      // 子Agent用新消息回复
+      const { textStream: subTextStream, subMsg } = await fn({ ...parentCtx, text: prompt });
+      let text = subMsg.text();
       let fullResponse = "";
-
       for await (const chunk of subTextStream) {
-        if (!msg!) msg = parentCtx.resTool.textMessage();
-        msg.send(chunk);
+        text.append(chunk);
         fullResponse += chunk;
       }
-      msg!.end();
+      text.complete();
+      subMsg.complete();
+      if (fullResponse.trim()) {
+        await memory.add(`assistant:${agent === "executionAI" ? "execution" : "supervision"}`, fullResponse, {
+          name: agent === "executionAI" ? "编剧" : "编辑",
+          createTime: new Date(subMsg.datetime).getTime(),
+        });
+      }
+
+      // 为主Agent后续输出创建新消息
+      parentCtx.msg = parentCtx.resTool.newMessage("assistant", "统筹");
 
       return fullResponse;
     },
