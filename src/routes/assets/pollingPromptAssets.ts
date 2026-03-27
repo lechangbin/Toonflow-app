@@ -12,7 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { ids } = req.body;
-    const data = await u.db("o_assets").whereIn("id", ids).select("*");
+    const data = await u.db("o_assets").whereIn("id", ids).whereNot("promptState", "生成中").select("*");
     res.status(200).send(success(data));
   },
 );

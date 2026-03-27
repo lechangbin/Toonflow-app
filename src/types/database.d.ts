@@ -1,4 +1,4 @@
-// @db-hash 8e5f2b7a28d4494b291d802b055b6399
+// @db-hash 05ecfd675f848d88631c1a546996caea
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -7,7 +7,6 @@ export interface memories {
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
-  'name'?: string | null;
   'relatedMessageIds'?: string | null;
   'role'?: string | null;
   'summarized'?: number | null;
@@ -47,6 +46,7 @@ export interface o_assets {
   'name'?: string | null;
   'projectId'?: number | null;
   'prompt'?: string | null;
+  'promptState'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
   'startTime'?: number | null;
@@ -121,11 +121,13 @@ export interface o_project {
 export interface o_prompt {
   'id'?: number;
   'name'?: string | null;
-  'rompt'?: string | null;
+  'prompt'?: string | null;
 }
 export interface o_script {
   'content'?: string | null;
   'createTime'?: number | null;
+  'errorReason'?: string | null;
+  'extractState'?: number | null;
   'id'?: number;
   'name'?: string | null;
   'projectId'?: number | null;

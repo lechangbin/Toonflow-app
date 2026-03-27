@@ -88,21 +88,18 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
       state: "生成中",
       assetsId: item.id,
     });
+    await u.db("o_assets").where("id", item.id).update({ imageId });
     totalNovelId.push(imageId);
   }
 
-  // 3. 按并发数限制并发生成
+  // 3. 后台异步并发生成，不阻塞响应
   const limit = pLimit(concurrentCount ?? 1);
-  const results: { assetsId: number; success: boolean; path?: string; message?: string }[] = [];
 
   const tasks = items.map((item: { id: number; type: string; name: string; prompt: string; base64: string | null | undefined }, index: number) =>
     limit(async () => {
       const imageId = totalNovelId[index];
       const cfg = assetTypeConfig[item.type as AssetType];
-      if (!cfg) {
-        results.push({ assetsId: item.id, success: false, message: `不支持的类型: ${item.type}` });
-        return;
-      }
+      if (!cfg) return;
 
       await u.db("o_assets").where("id", item.id).update({ imageId });
 
@@ -126,10 +123,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
         aiImage.save(imagePath);
 
         const imageData = await u.db("o_image").where("id", imageId).select("*").first();
-        if (!imageData) {
-          results.push({ assetsId: item.id, success: false, message: "资产已被删除" });
-          return;
-        }
+        if (!imageData) return;
 
         await u
           .db("o_image")
@@ -142,28 +136,15 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
             resolution,
           });
 
-        const path = await u.oss.getFileUrl(imagePath);
         await u.db("o_assets").where("id", item.id).update({ imageId });
-
-        results.push({ assetsId: item.id, success: true, path });
       } catch (e: any) {
         await u.db("o_image").where("id", imageId).update({ state: "生成失败" });
-        results.push({ assetsId: item.id, success: false, message: u.error(e).message || "图片生成失败" });
       }
     }),
   );
 
-  await Promise.all(tasks);
+  // 后台执行，不等待结果
+  Promise.all(tasks).catch(() => {});
 
-  const successCount = results.filter((r) => r.success).length;
-  const failCount = results.filter((r) => !r.success).length;
-
-  return res.status(200).send(
-    success({
-      total: items.length,
-      successCount,
-      failCount,
-      results,
-    }),
-  );
+  return res.status(200).send(success({ total: items.length }));
 });
