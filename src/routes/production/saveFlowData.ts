@@ -14,8 +14,13 @@ export default router.post(
     data: flowDataSchema,
   }),
   async (req, res) => {
-    const { projectId, episodesId } = req.body;
+    const { data, projectId, episodesId } = req.body;
     const sqlData = await u.db("o_agentWorkData").where("projectId", String(projectId)).andWhere("episodesId", String(episodesId)).first();
+    for (let item of data.storyboard) {
+      await u.db("o_storyboard").where("id", item.id).update({
+        index: item.id,
+      });
+    }
     if (!sqlData) {
       await u.db("o_agentWorkData").insert({
         projectId,

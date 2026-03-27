@@ -13,11 +13,11 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, agentType } = req.body;
-    const data = await u.db("o_agentWorkData").where({ id: projectId, key: agentType }).first();
+    const data = await u.db("o_agentWorkData").where({ projectId: projectId, key: agentType }).first();
 
     if (!data) {
       await u.db("o_agentWorkData").insert({
-        id: projectId,
+        projectId: projectId,
         key: agentType,
         data: JSON.stringify({
           storySkeleton: "",

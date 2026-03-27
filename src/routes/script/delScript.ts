@@ -7,13 +7,13 @@ const router = express.Router();
 
 // 删除剧本
 export default router.post(
-    "/",
-    validateFields({
-        id: z.number(),
-    }),
-    async (req, res) => {
-        const { id } = req.body;
-        await u.db("o_script").where({ id }).delete();
-        res.status(200).send(success({ message: "删除剧本成功" }));
-    },
+  "/",
+  validateFields({
+    id: z.array(z.number()),
+  }),
+  async (req, res) => {
+    const { id } = req.body;
+    await u.db("o_script").whereIn("id", id).delete();
+    res.status(200).send(success({ message: "删除剧本成功" }));
+  },
 );
