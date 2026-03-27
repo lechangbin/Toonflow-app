@@ -115,7 +115,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
     if (!imageData) return res.status(500).send("资产已被删除");
 
     await u.db("o_image").where("id", imageId).update({
-      state: "生成成功",
+      state: "已完成",
       filePath: imagePath,
       type,
       model: model.split(":")[1],

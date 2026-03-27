@@ -125,7 +125,7 @@ export default router.post(
       })) as any;
 
       if (!_output) return res.status(500).send("失败");
-      await u.db("o_assets").where("id", assetsId).update({ prompt: _output, promptState: "生成成功" });
+      await u.db("o_assets").where("id", assetsId).update({ prompt: _output, promptState: "已完成" });
 
       res.status(200).send(success({ prompt: _output, assetsId }));
     } catch (e: any) {
