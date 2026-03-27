@@ -789,6 +789,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("isolationKey").notNullable(); // 记忆隔离键
         table.text("type").notNullable(); // 'message' | 'summary'
         table.text("role"); // 'user' | 'assistant'
+        table.text("name");
         table.text("content").notNullable();
         table.text("embedding"); // 向量嵌入 JSON
         table.text("relatedMessageIds"); // summary关联的message id列表 JSON

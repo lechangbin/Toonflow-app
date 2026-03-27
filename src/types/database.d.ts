@@ -1,4 +1,4 @@
-// @db-hash 0041ea9843a4bb46f03412c516ec323b
+// @db-hash e933f0aef750ba14e50c72aab5b6eeb7
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -7,6 +7,7 @@ export interface memories {
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
+  'name'?: string | null;
   'relatedMessageIds'?: string | null;
   'role'?: string | null;
   'summarized'?: number | null;
