@@ -1,4 +1,4 @@
-// @routes-hash 57463134da0d81d65d10c163ee8a2b26
+// @routes-hash 4397feb795394ec5313dafe4f6a9aa67
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -96,12 +96,13 @@ import route92 from "./routes/setting/vendorConfig/addVendor";
 import route93 from "./routes/setting/vendorConfig/deleteVendor";
 import route94 from "./routes/setting/vendorConfig/getVendorList";
 import route95 from "./routes/setting/vendorConfig/modelTest";
-import route96 from "./routes/setting/vendorConfig/updateVendor";
-import route97 from "./routes/task/getProject";
-import route98 from "./routes/task/getTaskApi";
-import route99 from "./routes/task/getTaskCategories";
-import route100 from "./routes/task/taskDetails";
-import route101 from "./routes/test/test";
+import route96 from "./routes/setting/vendorConfig/updateCode";
+import route97 from "./routes/setting/vendorConfig/updateVendor";
+import route98 from "./routes/task/getProject";
+import route99 from "./routes/task/getTaskApi";
+import route100 from "./routes/task/getTaskCategories";
+import route101 from "./routes/task/taskDetails";
+import route102 from "./routes/test/test";
 
 export default async (app: Express) => {
   app.use("/api/agents/clearMemory", route1);
@@ -199,10 +200,11 @@ export default async (app: Express) => {
   app.use("/api/setting/vendorConfig/deleteVendor", route93);
   app.use("/api/setting/vendorConfig/getVendorList", route94);
   app.use("/api/setting/vendorConfig/modelTest", route95);
-  app.use("/api/setting/vendorConfig/updateVendor", route96);
-  app.use("/api/task/getProject", route97);
-  app.use("/api/task/getTaskApi", route98);
-  app.use("/api/task/getTaskCategories", route99);
-  app.use("/api/task/taskDetails", route100);
-  app.use("/api/test/test", route101);
+  app.use("/api/setting/vendorConfig/updateCode", route96);
+  app.use("/api/setting/vendorConfig/updateVendor", route97);
+  app.use("/api/task/getProject", route98);
+  app.use("/api/task/getTaskApi", route99);
+  app.use("/api/task/getTaskCategories", route100);
+  app.use("/api/task/taskDetails", route101);
+  app.use("/api/test/test", route102);
 }

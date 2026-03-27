@@ -23,11 +23,11 @@ export default router.post("/", async (req, res) => {
   const currentVersionList = APP_VERSION.split(".").map(Number);
   //对比Major
   if (taggerList[0] > currentVersionList[0]) {
-    return res.status(200).send(success({ needUpdate: true, latestVersion: tagger, reinstall: true }));
+    return res.status(200).send(success({ needUpdate: true, latestVersion: tagger, reinstall: false }));
   }
   //对比Minor
   if (taggerList[1] > currentVersionList[1]) {
-    return res.status(200).send(success({ needUpdate: true, latestVersion: tagger, reinstall: true }));
+    return res.status(200).send(success({ needUpdate: true, latestVersion: tagger, reinstall: false }));
   }
   //Patch
   if (taggerList[2] > currentVersionList[2]) {
