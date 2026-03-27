@@ -159,6 +159,10 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             key: "modelDtype",
             value: "fp16",
           },
+          {
+            key: "switchAiDevTool",
+            value: "0",
+          },
         ]);
       },
     },
@@ -371,26 +375,10 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
     {
       name: "o_vendorConfig",
       builder: (table) => {
-        table.integer("id").notNullable();
+        table.string("id").notNullable();
+        table.text("author");
+        table.text("description");
         table.text("name");
-        table.text("version");
-        table.text("icon");
-        table.text("inputs"); // 输入项配置 JSON
-        table.text("inputValues"); // 输入项值 JSON
-        table.text("models"); // 模型配置 JSON
-        table.text("code"); // 模型配置 JSON
-        table.integer("createTime");
-        table.primary(["id"]);
-        table.unique(["id"]);
-      },
-    },
-    //供应商配置表
-    {
-      name: "o_vendorConfig",
-      builder: (table) => {
-        table.integer("id").notNullable();
-        table.text("name");
-        table.text("version");
         table.text("icon");
         table.text("inputs"); // 输入项配置 JSON
         table.text("inputValues"); // 输入项值 JSON

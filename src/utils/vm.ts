@@ -34,6 +34,7 @@ export default function runCode(code: string) {
       exports,
       axios,
       FormData,
+      logger,
     },
     compiler: "javascript",
     eval: false,
@@ -43,6 +44,10 @@ export default function runCode(code: string) {
   vm.run(code);
 
   return exports as Record<string, any>;
+}
+
+export function logger(logstring: string) {
+  console.log("【VM】" + logstring);
 }
 /**
  * 压缩图片，目标字节数不高于 size

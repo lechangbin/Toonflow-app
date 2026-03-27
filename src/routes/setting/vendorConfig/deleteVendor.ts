@@ -7,7 +7,7 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    id: z.number(),
+    id: z.string(),
   }),
   async (req, res) => {
     const { id } = req.body;
