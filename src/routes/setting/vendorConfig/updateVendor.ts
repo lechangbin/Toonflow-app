@@ -158,14 +158,6 @@ export default router.post(
       return code.slice(0, valueStart) + newValue + code.slice(valueEnd + 1);
     };
 
-    // 替换 tsCode 中指定 key 的字符串/数字值（如 name: "xxx" 或 version: 1）
-    const replacePrimitiveValue = (code: string, key: string, newValue: string | number): string => {
-      return code.replace(
-        new RegExp(`(\\b${key}\\s*:\\s*)(?:"[^"]*"|'[^']*'|\\d+)`),
-        (_, prefix) => `${prefix}${typeof newValue === "string" ? JSON.stringify(newValue) : newValue}`,
-      );
-    };
-
     let updatedTsCode = tsCode;
     updatedTsCode = replaceBlockValue(updatedTsCode, "inputs", JSON.stringify(inputs ?? vendor.inputs, null, 2));
     updatedTsCode = replaceBlockValue(updatedTsCode, "inputValues", JSON.stringify(inputValues ?? vendor.inputValues, null, 2));

@@ -52,6 +52,7 @@
     "cors": "^2.8.5",
     "custom-electron-titlebar": "^4.2.8",
     "dotenv": "^17.2.3",
+    "electron-rebuild": "^3.2.9",
     "express": "^5.2.1",
     "express-ws": "^5.0.2",
     "fast-glob": "^3.3.3",

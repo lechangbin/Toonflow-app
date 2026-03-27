@@ -78,7 +78,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             modelName: "",
             vendorId: null,
             key: "scriptAgent",
-            name: "剧本Agent",
+            name: "剧本AI",
             desc: "用于读取原文生成故事骨架、改编策略，建议使用具备强大文本理解和生成能力的模型",
             disabled: false,
           },
@@ -87,7 +87,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             modelName: "",
             vendorId: null,
             key: "productionAgent",
-            name: "生产Agent",
+            name: "生产AI",
             desc: "对工作流进行调度和管理，建议使用具备较强的逻辑推理和任务管理能力的模型",
             disabled: false,
           },
@@ -96,7 +96,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             modelName: "",
             vendorId: null,
             key: "universalAgent",
-            name: "通用Agent",
+            name: "通用AI",
             desc: "用于小说事件提取、资产提示词生成、台词提取等边缘功能，建议使用具备较强文本处理能力的模型",
             disabled: false,
           },
@@ -179,6 +179,18 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.string("state");
         table.integer("startTime");
         table.text("reason");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+      initData: async (knex) => {},
+    },
+    //提示词表
+    {
+      name: "o_prompt",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.string("name");
+        table.text("rompt");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -276,6 +288,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("assetsId");
         table.integer("projectId");
         table.integer("startTime");
+        table.string("promptState");
         table.primary(["id"]);
         table.unique(["id"]);
       },

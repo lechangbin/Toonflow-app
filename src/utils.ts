@@ -8,6 +8,7 @@ import getPath from "@/utils/getPath";
 import vm from "@/utils/vm";
 import task from "@/utils/taskRecord";
 import Ai from "@/utils/ai";
+import { getPrompts } from "@/utils/getPrompts";
 
 export default {
   db,
@@ -20,4 +21,5 @@ export default {
   getPath,
   Ai,
   task,
+  getPrompts,
 };

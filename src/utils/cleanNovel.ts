@@ -26,21 +26,25 @@ class CleanNovel {
 
   private async processChapter(novel: o_novel, intansce: ReturnType<typeof u.Ai.Text>): Promise<EventType | null> {
     try {
-      const skill = await useSkill("universal_agent.md");
-
+      const prompt = await u.getPrompts("event");
       const resData = await intansce.invoke({
-        system: skill.prompt,
+        system: prompt,
         messages: [
           {
             role: "user",
-            content: "请根据以下小说章节生成事件摘要：\n" + novel.chapterData!,
+            content:
+              "请根据以下小说章节数：" +
+              novel.chapterIndex +
+              "小说章节券：" +
+              novel.reel +
+              "小说章节名称：" +
+              novel.chapter +
+              "、小说章节内容生成事件摘要：\n" +
+              novel.chapterData!,
           },
         ],
-        tools: skill.tools,
       });
-
       const preData = resData.text;
-
       this.emitter.emit("item", { id: novel.id, event: preData });
       return { id: novel.id!, event: preData };
     } catch (e) {
@@ -71,10 +75,7 @@ class CleanNovel {
     };
 
     // 启动最多 concurrency 个并发任务
-    const workers = Array.from(
-      { length: Math.min(this.concurrency, allChapters.length) },
-      () => runNext()
-    );
+    const workers = Array.from({ length: Math.min(this.concurrency, allChapters.length) }, () => runNext());
 
     await Promise.all(workers);
 
