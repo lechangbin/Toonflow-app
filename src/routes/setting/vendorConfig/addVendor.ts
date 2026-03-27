@@ -76,37 +76,33 @@ export default router.post(
     tsCode: z.string(),
   }),
   async (req, res) => {
-    try {
-      const { tsCode } = req.body;
-      const jsCode = transform(tsCode, { transforms: ["typescript"] }).code;
-      const exports = u.vm(jsCode);
-      if (!exports) return res.status(400).send(success("脚本文件必须导出对象"));
-      if (!exports.textRequest) return res.status(400).send(success("脚本文件必须导出文本请求对象"));
-      if (!exports.imageRequest) return res.status(400).send(success("脚本文件必须导出图像请求对象"));
-      if (!exports.videoRequest) return res.status(400).send(success("脚本文件必须导出视频请求对象"));
-      if (!exports.vendor) return res.status(400).send(success("脚本文件必须导出vendor对象"));
-      const vendor = exports.vendor;
-      const result = vendorConfigSchema.safeParse(vendor);
-      if (!result.success) {
-        const errorMsg = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join("; ");
-        return res.status(400).send(error(`vendor配置校验失败: ${errorMsg}`));
-      }
-      await u.db("o_vendorConfig").insert({
-        id: vendor.id,
-        author: vendor.author,
-        description: vendor.description || "",
-        name: vendor.name,
-        icon: vendor.icon || "",
-        inputs: JSON.stringify(vendor.inputs ?? []),
-        inputValues: JSON.stringify(vendor.inputValues ?? {}),
-        models: JSON.stringify(vendor.models ?? []),
-        code: tsCode,
-        createTime: Date.now(),
-      });
-      res.status(200).send(success(result.data));
-    } catch (err) {
-      console.log(err);
-      res.status(400).send(error(serializeError(err).message || "未知错误"));
+    const { tsCode } = req.body;
+    const jsCode = transform(tsCode, { transforms: ["typescript"] }).code;
+    const exports = u.vm(jsCode);
+    if (!exports) return res.status(400).send(success("脚本文件必须导出对象"));
+    if (!exports.textRequest) return res.status(400).send(success("脚本文件必须导出文本请求对象"));
+    if (!exports.imageRequest) return res.status(400).send(success("脚本文件必须导出图像请求对象"));
+    if (!exports.videoRequest) return res.status(400).send(success("脚本文件必须导出视频请求对象"));
+    if (!exports.vendor) return res.status(400).send(success("脚本文件必须导出vendor对象"));
+    const vendor = exports.vendor;
+    const result = vendorConfigSchema.safeParse(vendor);
+    if (!result.success) {
+      const errorMsg = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join("; ");
+      return res.status(400).send(error(`vendor配置校验失败: ${errorMsg}`));
     }
+    if (vendor.id.include(":")) return res.status(400).send(error("id不能包含英文冒号"));
+    await u.db("o_vendorConfig").insert({
+      id: vendor.id,
+      author: vendor.author,
+      description: vendor.description || "",
+      name: vendor.name,
+      icon: vendor.icon || "",
+      inputs: JSON.stringify(vendor.inputs ?? []),
+      inputValues: JSON.stringify(vendor.inputValues ?? {}),
+      models: JSON.stringify(vendor.models ?? []),
+      code: tsCode,
+      createTime: Date.now(),
+    });
+    res.status(200).send(success(result.data));
   },
 );

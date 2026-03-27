@@ -14,18 +14,32 @@ export default router.post(
     data: flowDataSchema,
   }),
   async (req, res) => {
-    const { data, projectId, episodesId } = req.body;
+    const {
+      data,
+      projectId,
+      episodesId,
+    }: {
+      data: z.infer<typeof flowDataSchema>;
+      projectId: number;
+      episodesId: number;
+    } = req.body;
     const sqlData = await u.db("o_agentWorkData").where("projectId", String(projectId)).andWhere("episodesId", String(episodesId)).first();
-    for (let item of data.storyboard) {
-      await u.db("o_storyboard").where("id", item.id).update({
-        index: item.id,
-      });
-    }
+    if (data.storyboard && data.storyboard.length)
+      await Promise.all(
+        data.storyboard.map(async (i, index) => {
+          await u
+            .db("o_storyboard")
+            .where("id", i.id)
+            .update({
+              index: index + 1,
+            });
+        }),
+      );
     if (!sqlData) {
       await u.db("o_agentWorkData").insert({
         projectId,
         episodesId,
-        data: JSON.stringify(req.body.data),
+        data: JSON.stringify(data),
       });
     } else {
       await u
@@ -33,7 +47,7 @@ export default router.post(
         .where("projectId", String(projectId))
         .andWhere("episodesId", String(episodesId))
         .update({
-          data: JSON.stringify(req.body.data),
+          data: JSON.stringify(data),
         });
     }
     return res.status(200).send(success());

@@ -120,7 +120,7 @@ export default router.post(
     ),
   }),
   async (req, res) => {
-    const { id, name, models, inputs, inputValues, icon } = req.body;
+    const { id, models, inputs, inputValues } = req.body;
 
     await u
       .db("o_vendorConfig")

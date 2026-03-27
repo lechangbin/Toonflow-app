@@ -32,7 +32,7 @@ async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${strin
 }
 
 async function withTaskRecord<T>(
-  modelKey: AiType | `${number}:${string}`,
+  modelKey: AiType | `${string}:${string}`,
   taskClass: string,
   describe: string,
   relatedObjects: string,
@@ -107,9 +107,9 @@ interface ImageConfig {
 }
 
 class AiImage {
-  private key: `${number}:${string}`;
+  private key: `${string}:${string}`;
   private result: string = "";
-  constructor(key: `${number}:${string}`) {
+  constructor(key: `${string}:${string}`) {
     this.key = key;
   }
   async run(input: ImageConfig) {
@@ -140,9 +140,9 @@ interface VideoConfig {
 }
 
 class AiVideo {
-  private key: `${number}:${string}`;
+  private key: `${string}:${string}`;
   private result: string = "";
-  constructor(key: `${number}:${string}`) {
+  constructor(key: `${string}:${string}`) {
     this.key = key;
   }
   async run(input: VideoConfig) {
@@ -159,9 +159,9 @@ class AiVideo {
   }
 }
 class AiAudio {
-  private key: `${number}:${string}`;
+  private key: `${string}:${string}`;
   private result: string = "";
-  constructor(key: `${number}:${string}`) {
+  constructor(key: `${string}:${string}`) {
     this.key = key;
   }
   async run(input: VideoConfig) {
@@ -180,7 +180,7 @@ class AiAudio {
 
 export default {
   Text: (AiType: AiType | `${string}:${string}`) => new AiText(AiType),
-  Image: (key: `${number}:${string}`) => new AiImage(key),
-  Video: (key: `${number}:${string}`) => new AiVideo(key),
-  Audio: (key: `${number}:${string}`) => new AiAudio(key),
+  Image: (key: `${string}:${string}`) => new AiImage(key),
+  Video: (key: `${string}:${string}`) => new AiVideo(key),
+  Audio: (key: `${string}:${string}`) => new AiAudio(key),
 };
