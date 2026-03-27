@@ -33,6 +33,12 @@ export const storyboardSchema = z.object({
   prompt: z.string().describe("生成提示词"),
   lines: z.string().nullable().describe("台词内容"),
   sound: z.string().nullable().describe("音效内容"),
+  mode: z
+    .union([
+      z.enum(["singleImage", "multiImage", "gridImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text"]),
+      z.array(z.enum(["video", "image", "audio", "text"])),
+    ])
+    .describe("视频模式"),
   associateAssetsIds: z.array(z.number()).describe("关联资产ID列表"),
   src: z.string().nullable().describe("分镜资源路径"),
 });
