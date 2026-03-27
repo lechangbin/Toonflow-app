@@ -33,7 +33,7 @@ export default router.post(
         assetsId: id,
         filePath: savePath,
         type: type,
-        state: "生成成功",
+        state: "已完成",
       });
       // 更新资产表图片为新图片
       await u

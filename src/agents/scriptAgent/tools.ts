@@ -38,7 +38,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         ids: z.array(z.number()).describe("章节id，注意区分"),
       }),
       execute: async ({ ids }) => {
-        resTool.systemMessage(`正在阅读 章节事件 数据...`);
+        resTool.newMessage('system').text(`正在获取章节事件，章节ID：${ids.join(",")}`).complete();
         console.log("[tools] get_novel_events", ids);
         const data = await u
           .db("o_novel")
@@ -55,7 +55,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         key: keySchema.describe("数据key"),
       }),
       execute: async ({ key }) => {
-        resTool.systemMessage(`正在阅读 ${planDataKeyLabels[key]} 数据...`);
+        resTool.newMessage('system').text(`正在阅读 ${planDataKeyLabels[key]} 数据...`).complete();
         console.log("[tools] get_planData", key);
         const planData: planData = await new Promise((resolve) => socket.emit("getPlanData", { key }, (res: any) => resolve(res)));
         return planData[key];
@@ -77,7 +77,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: planData.shape.storySkeleton }),
       execute: async ({ value }) => {
         console.log("[tools] set_planData storySkeleton", value);
-        resTool.systemMessage("正在保存 故事骨架 数据");
+        resTool.newMessage('system').text("正在保存 故事骨架 数据").complete();
         socket.emit("setPlanData", { key: "storySkeleton", value });
         return true;
       },
@@ -87,7 +87,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: planData.shape.adaptationStrategy }),
       execute: async ({ value }) => {
         console.log("[tools] set_planData adaptationStrategy", value);
-        resTool.systemMessage("正在保存 改编策略 数据");
+        resTool.newMessage('system').text("正在保存 改编策略 数据").complete();
         socket.emit("setPlanData", { key: "adaptationStrategy", value });
         return true;
       },

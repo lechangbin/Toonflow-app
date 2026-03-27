@@ -1,19 +1,13 @@
-// @db-hash 1af54b27110c54bf92390a017ee6b240
+// @db-hash 8e5f2b7a28d4494b291d802b055b6399
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_script_old_20260327 {
-  'content'?: string | null;
-  'createTime'?: number | null;
-  'id'?: number;
-  'name'?: string | null;
-  'projectId'?: number | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
+  'name'?: string | null;
   'relatedMessageIds'?: string | null;
   'role'?: string | null;
   'summarized'?: number | null;
@@ -124,11 +118,14 @@ export interface o_project {
   'videoModel'?: string | null;
   'videoRatio'?: string | null;
 }
+export interface o_prompt {
+  'id'?: number;
+  'name'?: string | null;
+  'rompt'?: string | null;
+}
 export interface o_script {
   'content'?: string | null;
   'createTime'?: number | null;
-  'errorReason'?: string | null;
-  'extractState'?: number | null;
   'id'?: number;
   'name'?: string | null;
   'projectId'?: number | null;
@@ -230,7 +227,6 @@ export interface o_videoConfig {
 }
 
 export interface DB {
-  "_o_script_old_20260327": _o_script_old_20260327;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
@@ -245,6 +241,7 @@ export interface DB {
   "o_outline": o_outline;
   "o_outlineNovel": o_outlineNovel;
   "o_project": o_project;
+  "o_prompt": o_prompt;
   "o_script": o_script;
   "o_scriptAssets": o_scriptAssets;
   "o_setting": o_setting;
