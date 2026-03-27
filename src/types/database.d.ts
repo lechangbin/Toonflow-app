@@ -1,6 +1,13 @@
-// @db-hash 8e5f2b7a28d4494b291d802b055b6399
+// @db-hash 662752a8a62a88e2dc636b6d985d3b87
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_script_old_20260327 {
+  'content'?: string | null;
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+  'projectId'?: number | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -126,6 +133,8 @@ export interface o_prompt {
 export interface o_script {
   'content'?: string | null;
   'createTime'?: number | null;
+  'errorReason'?: string | null;
+  'extractState'?: number | null;
   'id'?: number;
   'name'?: string | null;
   'projectId'?: number | null;
@@ -227,6 +236,7 @@ export interface o_videoConfig {
 }
 
 export interface DB {
+  "_o_script_old_20260327": _o_script_old_20260327;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;

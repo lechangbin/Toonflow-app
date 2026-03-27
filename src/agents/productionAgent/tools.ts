@@ -297,10 +297,11 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
           }
           item.id = insertedId;
         }
-
+        //为了防止丢失分镜其他数据，例如：依赖分镜Id、依赖资产idc
         const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "storyboard" }, (res: any) => resolve(res)));
         const storyboardData = flowData["storyboard"].concat([...setData]);
         socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
+
         return true;
       },
     }),
@@ -325,6 +326,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
               lines: item.lines,
             });
         }
+        //直接拉取前端数据，为了防止丢失分镜其他数据，例如：依赖分镜Id、依赖资产idc
         const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "storyboard" }, (res: any) => resolve(res)));
         const storyboardData = flowData["storyboard"].map((existing) => {
           const updated = value.find((v) => v.id === existing.id);
@@ -341,7 +343,6 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             lines: updated.lines,
           };
         });
-
         socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
         return true;
       },
