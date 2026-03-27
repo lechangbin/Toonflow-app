@@ -88,7 +88,6 @@ export default router.post(
     } else {
       try {
         const storyboardData = await u.db("o_storyboard").where("scriptId", episodesId);
-        console.log("%c Line:90 🍡 storyboardData", "background:#ed9ec7", storyboardData.length);
         await Promise.all(
           storyboardData.map(async (i) => {
             if (i.filePath) {
@@ -165,6 +164,7 @@ export default router.post(
         const buildStoryboardItem = (i: (typeof storyboardData)[number], existing: any = {}) => ({
           ...existing,
           id: i.id,
+          index: i.index,
           title: i.title,
           description: i.description,
           camera: i.camera,
@@ -199,8 +199,7 @@ export default router.post(
             orderedStoryboard.push(buildStoryboardItem(i));
           }
         });
-
-        flowData.storyboard = orderedStoryboard;
+        flowData.storyboard = orderedStoryboard.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
         res.status(200).send(success(flowData));
       } catch (err) {
         res.status(400).send(error());

@@ -12,7 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { scriptId } = req.body;
-    const storyboardData = await u.db("o_storyboard").where({ scriptId });
+    const storyboardData = await u.db("o_storyboard").where({ scriptId }).orderBy("index", "asc");
     const data = await Promise.all(
       storyboardData.map(async (i) => {
         return {
@@ -83,7 +83,6 @@ export default router.post(
         };
       }),
     );
-
     res.status(200).send(success(result));
   },
 );
