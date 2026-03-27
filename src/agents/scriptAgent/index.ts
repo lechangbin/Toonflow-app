@@ -67,7 +67,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...skill.tools,
       ...memory.getTools(),
       run_sub_agent: runSubAgent(ctx),
-      ...useTools(ctx.resTool),
+      ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
     },
   });
 
@@ -77,45 +77,50 @@ export async function decisionAI(ctx: AgentContext) {
 //====================== 执行层 ======================
 
 export async function executionAI(ctx: AgentContext) {
-  const { isolationKey, text, abortSignal, resTool } = ctx;
-  const memory = new Memory("scriptAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("script_agent_execution.md"), memory.get(text)]);
+  const { text, abortSignal } = ctx;
+  const skill = await useSkill("script_agent_execution.md");
 
-  const systemPrompt = buildSystemPrompt(skill.prompt, mem);
+  const subMsg = ctx.resTool.newMessage("assistant", "编剧");
+
+  const prefixSystem = `
+你可以使用如下XML格式写入工作区：
+<storySkeleton>故事骨架内容</storySkeleton>
+<adaptationStrategy>改编策略内容</adaptationStrategy>
+`;
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
-    system: systemPrompt,
+    system: prefixSystem + skill.prompt,
     messages: [{ role: "user", content: text }],
     abortSignal,
     tools: {
       ...skill.tools,
-      ...memory.getTools(),
-      ...useTools(ctx.resTool),
+      ...useTools({ resTool: ctx.resTool, msg: subMsg }),
     },
   });
 
-  return textStream;
+  return { textStream, subMsg };
 }
 
 export async function supervisionAI(ctx: AgentContext) {
-  const { isolationKey, text, abortSignal, resTool } = ctx;
+  const { text, abortSignal } = ctx;
 
-  const memory = new Memory("scriptAgent", isolationKey);
-  const [skill, mem] = await Promise.all([useSkill("script_agent_supervision.md"), memory.get(text)]);
-
-  const systemPrompt = buildSystemPrompt(skill.prompt, mem);
+  const skill = await useSkill("script_agent_supervision.md");
+  const subMsg = ctx.resTool.newMessage("assistant", "编辑");
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
-    system: systemPrompt,
+    system: skill.prompt,
     messages: [{ role: "user", content: text }],
     abortSignal,
     tools: {
       ...skill.tools,
-      ...useTools(ctx.resTool),
+      ...useTools({
+        resTool: ctx.resTool,
+        msg: subMsg,
+      }),
     },
   });
 
-  return textStream;
+  return { textStream, subMsg };
 }
 
 //工具函数
@@ -125,17 +130,15 @@ function runSubAgent(parentCtx: AgentContext) {
     description: "启动子Agent执行独立任务。可用子Agent:executionAI, decisionAI, supervisionAI",
     inputSchema: z.object({
       agent: z.enum(["executionAI", "supervisionAI"]).describe("子Agent名称"),
-      prompt: z.string().max(100).describe("交给子Agent的任务简约描述"),
+      prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
     }),
     execute: async ({ agent, prompt }) => {
       const fn = [executionAI, supervisionAI][subAgentList.indexOf(agent)];
 
-      const subMsg = parentCtx.resTool.newMessage("assistant", agent == "executionAI" ? "编剧" : "编辑");
-
       // 先完成主Agent当前的消息
       parentCtx.msg.complete();
       // 子Agent用新消息回复
-      const subTextStream = await fn({ ...parentCtx, text: prompt });
+      const { textStream: subTextStream, subMsg } = await fn({ ...parentCtx, text: prompt });
       let text = subMsg.text();
       let fullResponse = "";
       for await (const chunk of subTextStream) {
