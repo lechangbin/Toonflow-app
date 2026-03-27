@@ -50,7 +50,7 @@ export default router.post(
       filePath: savePath,
       type,
       assetsId: id,
-      state: '已完成',
+      state: "已完成",
     });
     await u.db("o_assets").where("id", id).update({
       imageId: imageId,

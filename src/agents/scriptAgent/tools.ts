@@ -81,14 +81,14 @@ export default (toolCpnfig: ToolConfig) => {
         id: z.string().describe("章节id"),
       }),
       execute: async ({ id }) => {
-        console.log("[tools] get_novel_text", id);
+        console.log("[tools] get_novel_text", "[tools] get_novel_text", id);
         const thinking = msg.thinking(`正在获取小说章节原文...`);
         const data = await u.db("o_novel").where({ id }).select("chapterData").first();
         const text = data && data?.chapterData ? data.chapterData : "";
         thinking.appendText(`获取到原文:\n` + text);
         thinking.updateTitle(`获取小说章节原文完成`);
         thinking.complete();
-        return text;
+        return data && data?.chapterData ? data.chapterData : text;
       },
     }),
     //======================

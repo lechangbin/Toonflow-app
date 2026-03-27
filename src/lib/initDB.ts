@@ -190,7 +190,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("id").notNullable();
         table.string("name");
-        table.text("rompt");
+        table.text("prompt");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -268,7 +268,9 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("name");
         table.text("content");
         table.integer("projectId");
+        table.integer("extractState");
         table.integer("createTime");
+        table.text("errorReason");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -329,7 +331,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("lines");
         table.text("state");
         table.text("reason");
-        table.text("index");
+        table.integer("index");
         table.integer("createTime");
         table.primary(["id"]);
         table.unique(["id"]);

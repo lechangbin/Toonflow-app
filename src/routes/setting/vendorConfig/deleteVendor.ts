@@ -11,7 +11,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-    if (id == 1) {
+    if (id == "toonflow" || id.includes("toonflow")) {
       return res.status(400).send(error("此配置无法删除"));
     }
     await u.db("o_vendorConfig").where("id", id).del();

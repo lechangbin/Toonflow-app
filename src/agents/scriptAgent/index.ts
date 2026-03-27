@@ -53,7 +53,7 @@ export async function decisionAI(ctx: AgentContext) {
     `小说名称：${projectData?.name ?? "未知"}`,
     `小说类型：${projectData?.type ?? "未知"}`,
     `小说简介：${projectData?.intro ?? "无"}`,
-    `目标改编影视画风：${projectData?.artStyle ?? "无"}`,
+    `目标改编影视视觉手册|画风：${projectData?.artStyle ?? "无"}`,
     `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
   ].join("\n");
 

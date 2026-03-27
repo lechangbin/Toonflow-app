@@ -61,18 +61,18 @@ function buildPrompt(cfg: AssetTypeConfig, artStyle: string, name: string, promp
 // ─── 生成资产图片 ────────────────────────────────────────────
 
 const requestSchema = {
-  id: z.number(),
-  type: z.enum(["role", "scene", "tool", "storyboard"]),
   projectId: z.number(),
-  name: z.string(),
-  base64: z.string().optional().nullable(),
-  prompt: z.string(),
   model: z.string(),
   resolution: z.string(),
+  id: z.number(),
+  type: z.enum(["role", "scene", "tool", "storyboard"]),
+  name: z.string(),
+  prompt: z.string(),
+  base64: z.string().optional().nullable(),
 };
 
 export default router.post("/", validateFields(requestSchema), async (req, res) => {
-  const { id, type, projectId, base64, prompt, name, model, resolution } = req.body;
+  const { projectId, model, resolution, id, type, name, prompt, base64 } = req.body;
 
   // 1. 查询项目 & 获取类型配置
   const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
@@ -87,7 +87,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
     state: "生成中",
     assetsId: id,
   });
-    await u.db("o_assets").where("id", id).update({ imageId });
+  await u.db("o_assets").where("id", id).update({ imageId });
 
   // 3. 准备生成参数
   const imagePath = `/${projectId}/${cfg.dir}/${uuidv4()}.jpg`;
@@ -107,20 +107,23 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
       describe,
       projectId,
       relatedObjects: JSON.stringify(relatedObjects),
-    })
+    });
     aiImage.save(imagePath);
 
     // 5. 更新记录 & 返回结果
     const imageData = await u.db("o_image").where("id", imageId).select("*").first();
     if (!imageData) return res.status(500).send("资产已被删除");
 
-    await u.db("o_image").where("id", imageId).update({
-      state: "已完成",
-      filePath: imagePath,
-      type,
-      model: model.split(":")[1],
-      resolution,
-    });
+    await u
+      .db("o_image")
+      .where("id", imageId)
+      .update({
+        state: "已完成",
+        filePath: imagePath,
+        type,
+        model: model.split(":")[1],
+        resolution,
+      });
 
     const path = await u.oss.getFileUrl(imagePath);
     await u.db("o_assets").where("id", id).update({ imageId });

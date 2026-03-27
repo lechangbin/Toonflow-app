@@ -20,8 +20,13 @@ export default router.post(
       u.db("o_novel").where("projectId", projectId).whereIn("id", novelIds),
       Promise.resolve(new u.cleanNovel()),
     ]);
-
-    await u.db("o_novel").where("projectId", projectId).update({ eventState: 0, event: null });
+    if (allChapters.length === 0) {
+      return res.status(400).send(success("没有对应章节"));
+    }
+    if (allChapters.filter((item) => item.eventState === 0).length) {
+      return res.status(400).send(success("存在未完成事件，请先等待事件完成"));
+    }
+    await u.db("o_novel").where("projectId", projectId).whereIn("id", novelIds).update({ eventState: 0, event: null });
     novel.emitter.on("item", async (item) => {
       await u
         .db("o_novel")
