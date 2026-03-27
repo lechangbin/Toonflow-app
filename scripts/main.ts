@@ -153,6 +153,14 @@ app.whenReady().then(async () => {
           app.exit(0);
           return { ok: true };
         },
+        apprestart: () => {
+          // 延迟执行，让响应先返回给前端
+          setTimeout(() => {
+            app.relaunch();
+            app.exit(0);
+          }, 500);
+          return { ok: true, message: "应用即将重启" };
+        },
         windowismaximized: () => ({
           maximized: mainWindow?.isMaximized() ?? false,
         }),
