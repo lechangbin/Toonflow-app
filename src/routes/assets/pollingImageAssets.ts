@@ -14,8 +14,9 @@ export default router.post(
     const { ids } = req.body;
     const data = await u
       .db("o_assets")
-      .leftJoin("o_image", "o_assets.id", "o_image.assetsId")
+      .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .whereIn("o_assets.id", ids)
+      .whereNot("o_image.state", "生成中")
       .select("o_image.state", "o_assets.id", "o_image.filePath");
     const result = await Promise.all(
       data.map(async (item: any) => ({

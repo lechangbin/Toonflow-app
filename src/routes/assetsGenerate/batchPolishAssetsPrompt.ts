@@ -99,17 +99,13 @@ export default router.post(
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);
     await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
 
-    // 按并发数限制并发生成
+    // 后台异步并发生成，不阻塞响应
     const limit = pLimit(concurrentCount ?? 1);
-    const results: { assetsId: number; success: boolean; prompt?: string; message?: string }[] = [];
 
     const tasks = items.map((item: { assetsId: number; type: string; name: string; describe: string }) =>
       limit(async () => {
         const config = typeConfig[item.type];
-        if (!config) {
-          results.push({ assetsId: item.assetsId, success: false, message: "不支持的类型" });
-          return;
-        }
+        if (!config) return;
 
         findItemByName(result, item.name, config.itemType);
 
@@ -137,25 +133,20 @@ export default router.post(
           })) as any;
 
           if (!_output) {
-            results.push({ assetsId: item.assetsId, success: false, message: "生成结果为空" });
             await u.db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败" });
             return;
           }
 
           await u.db("o_assets").where("id", item.assetsId).update({ prompt: _output, promptState: "已完成" });
-          results.push({ assetsId: item.assetsId, success: true, prompt: _output });
         } catch (e: any) {
           await u.db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败" });
-          results.push({ assetsId: item.assetsId, success: false, message: e?.data?.error?.message ?? e?.message ?? "生成失败" });
         }
       }),
     );
 
-    await Promise.all(tasks);
+    // 后台执行，不等待结果
+    Promise.all(tasks).catch(() => {});
 
-    const successCount = results.filter((r) => r.success).length;
-    const failCount = results.filter((r) => !r.success).length;
-
-    return res.status(200).send(success({ total: items.length, successCount, failCount, results }));
+    return res.status(200).send(success({ total: items.length }));
   },
 );
