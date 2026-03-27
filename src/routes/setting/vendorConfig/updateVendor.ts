@@ -73,7 +73,6 @@ export default router.post(
   "/",
   validateFields({
     id: z.string(),
-    tsCode: z.string(),
     inputValues: z.record(z.string(), z.string()),
     inputs: z.array(
       z.object({
@@ -121,57 +120,16 @@ export default router.post(
     ),
   }),
   async (req, res) => {
-    const { id, tsCode, name, models, inputs, inputValues, icon } = req.body;
-
-    const jsCode = transform(tsCode, { transforms: ["typescript"] }).code;
-    const exports = u.vm(jsCode);
-    if (!exports) return res.status(400).send(success("脚本文件必须导出对象"));
-    if (!exports.textRequest) return res.status(400).send(success("脚本文件必须导出文本请求对象"));
-    if (!exports.imageRequest) return res.status(400).send(success("脚本文件必须导出图像请求对象"));
-    if (!exports.videoRequest) return res.status(400).send(success("脚本文件必须导出视频请求对象"));
-    if (!exports.vendor) return res.status(400).send(success("脚本文件必须导出vendor对象"));
-    const vendor = exports.vendor;
-    const result = vendorConfigSchema.safeParse(vendor);
-    if (!result.success) {
-      const errorMsg = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join("; ");
-      return res.status(400).send(error(`vendor配置校验失败: ${errorMsg}`));
-    }
-    const replaceBlockValue = (code: string, key: string, newValue: string): string => {
-      const open = newValue.trimStart()[0] as "[" | "{";
-      const close = open === "[" ? "]" : "}";
-      const keyMatch = code.match(new RegExp(`\\b${key}\\s*:\\s*[\\[{]`));
-      if (!keyMatch || keyMatch.index === undefined) return code;
-      const valueStart = keyMatch.index + keyMatch[0].length - 1;
-      let depth = 0;
-      let valueEnd = -1;
-      for (let i = valueStart; i < code.length; i++) {
-        if (code[i] === open) depth++;
-        else if (code[i] === close) {
-          depth--;
-          if (depth === 0) {
-            valueEnd = i;
-            break;
-          }
-        }
-      }
-      if (valueEnd === -1) return code;
-      return code.slice(0, valueStart) + newValue + code.slice(valueEnd + 1);
-    };
-
-    let updatedTsCode = tsCode;
-    updatedTsCode = replaceBlockValue(updatedTsCode, "inputs", JSON.stringify(inputs ?? vendor.inputs, null, 2));
-    updatedTsCode = replaceBlockValue(updatedTsCode, "inputValues", JSON.stringify(inputValues ?? vendor.inputValues, null, 2));
-    updatedTsCode = replaceBlockValue(updatedTsCode, "models", JSON.stringify(models ?? vendor.models, null, 2));
+    const { id, name, models, inputs, inputValues, icon } = req.body;
 
     await u
       .db("o_vendorConfig")
       .where("id", id)
       .update({
-        inputs: inputs ? JSON.stringify(inputs) : JSON.stringify(vendor.inputs),
-        inputValues: inputValues ? JSON.stringify(inputValues) : JSON.stringify(vendor.inputValues),
-        models: models ? JSON.stringify(models) : JSON.stringify(vendor.models),
-        code: updatedTsCode,
+        inputs: JSON.stringify(inputs),
+        inputValues: JSON.stringify(inputValues),
+        models: JSON.stringify(models),
       });
-    res.status(200).send(success(result.data));
+    res.status(200).send(success("更新成功"));
   },
 );

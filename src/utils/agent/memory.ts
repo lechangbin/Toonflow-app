@@ -82,7 +82,8 @@ class Memory {
     }
     return result;
   }
-  async add(role: string = "user", content: string) {
+
+  async add(role: string = "user", content: string, options?: { name?: string; createTime?: number }) {
     const { messagesPerSummary } = await this.getConfigData({ messagesPerSummary: DEFAULTS.messagesPerSummary });
     const id = uuidv4();
     const embedding = await getEmbedding(content);
@@ -93,11 +94,12 @@ class Memory {
       isolationKey,
       type: "message",
       role,
+      name: options?.name,
       content,
       embedding: JSON.stringify(embedding),
       relatedMessageIds: null,
       summarized: 0,
-      createTime: Date.now(),
+      createTime: options?.createTime ?? Date.now(),
     } as any);
 
     // 检查未总结消息数量
@@ -154,7 +156,7 @@ class Memory {
     const ragResults = vectorSearch(allMessages, queryEmbedding, Number(ragLimit));
 
     return {
-      shortTerm: shortTerm.map((m: any) => ({ id: m.id, role: m.role, content: m.content, createTime: m.createTime })),
+      shortTerm: shortTerm.map((m: any) => ({ id: m.id, role: m.role, name: m.name, content: m.content, createTime: m.createTime })),
       summaries: summaries.map((s) => ({
         id: s.id,
         content: s.content,

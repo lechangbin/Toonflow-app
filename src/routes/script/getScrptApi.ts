@@ -22,8 +22,10 @@ export default router.post(
     const assetsData = await u
       .db("o_assets")
       .leftJoin("o_scriptAssets", "o_assets.id", "o_scriptAssets.assetId")
-      // @ts-ignore
-      .whereIn( "o_scriptAssets.scriptId", data.map((i) => i.id))
+      .whereIn(
+        "o_scriptAssets.scriptId",
+        data.map((i) => i.id!),
+      )
       .select("o_assets.id", "o_assets.name", "o_scriptAssets.scriptId");
     const scriptAssetsMap: Record<number, { id: number; name: string }[]> = {};
     assetsData.forEach((i) => {
@@ -37,6 +39,8 @@ export default router.post(
       id: i.id,
       name: i.name,
       content: i.content,
+      extractState: i.extractState,
+      errorReason: i.errorReason,
       createTime: i.createTime,
       relatedAssets: scriptAssetsMap[i.id!] || [],
     }));

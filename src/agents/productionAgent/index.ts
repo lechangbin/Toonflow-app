@@ -123,7 +123,7 @@ function runSubAgent(parentCtx: AgentContext) {
       prompt: z.string().max(100).describe("交给子Agent的任务简约描述"),
     }),
     execute: async ({ agent, prompt }) => {
-  //todo 传入md有问题
+      //todo 传入md有问题
       const fn = [executionAI, supervisionAI][subAgentList.indexOf(agent)];
       //运行子Agent
       const subTextStream = await fn({ ...parentCtx, text: prompt });
