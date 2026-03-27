@@ -8,7 +8,7 @@ type AiType = "scriptAgent" | "productionAgent" | "universalAgent";
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
 const AiTypeValues: AiType[] = ["scriptAgent", "productionAgent", "universalAgent"];
-async function resolveModelName(value: AiType | `${number}:${string}`): Promise<`${number}:${string}`> {
+async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {
   if (AiTypeValues.includes(value as AiType)) {
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
     if (!agentDeployData?.modelName) throw new Error(`${value}模型未配置`);
@@ -17,7 +17,7 @@ async function resolveModelName(value: AiType | `${number}:${string}`): Promise<
   return value as `${number}:${string}`;
 }
 
-async function getVendorTemplateFn(fnName: FnName, modelName: `${number}:${string}`) {
+async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${string}`) {
   const [id, name] = modelName.split(":");
   const vendorConfigData = await u.db("o_vendorConfig").where("id", id).first();
   if (!vendorConfigData) throw new Error(`未找到供应商配置 id=${id}`);
@@ -37,7 +37,7 @@ async function withTaskRecord<T>(
   describe: string,
   relatedObjects: string,
   projectId: number,
-  fn: (modelName: `${number}:${string}`) => Promise<T>,
+  fn: (modelName: `${string}:${string}`) => Promise<T>,
 ): Promise<T> {
   const modelName = await resolveModelName(modelKey);
   const [id, model] = modelName.split(":");
@@ -59,27 +59,38 @@ async function urlToBase64(url: string): Promise<string> {
 }
 
 class AiText {
-  private AiType: AiType | `${number}:${string}`;
-  constructor(AiType: AiType | `${number}:${string}`) {
+  private AiType: AiType | `${string}:${string}`;
+  constructor(AiType: AiType | `${string}:${string}`) {
     this.AiType = AiType;
   }
   async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
+    const switchAiDevTool = await u.db("o_setting").where("key", "switchAiDevTool").first();
     const modelName = await resolveModelName(this.AiType);
     return generateText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
-      model: await getVendorTemplateFn("textRequest", modelName),
+      model:
+        switchAiDevTool?.value === "1"
+          ? wrapLanguageModel({
+              model: await getVendorTemplateFn("textRequest", modelName),
+              middleware: devToolsMiddleware(),
+            })
+          : await getVendorTemplateFn("textRequest", modelName),
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
+    const switchAiDevTool = await u.db("o_setting").where("key", "switchAiDevTool").first();
     const modelName = await resolveModelName(this.AiType);
     return streamText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
-      model: wrapLanguageModel({
-        model: await getVendorTemplateFn("textRequest", modelName),
-        middleware: devToolsMiddleware(),
-      }),
+      model:
+        switchAiDevTool?.value == "1"
+          ? wrapLanguageModel({
+              model: await getVendorTemplateFn("textRequest", modelName),
+              middleware: devToolsMiddleware(),
+            })
+          : await getVendorTemplateFn("textRequest", modelName),
     } as Parameters<typeof streamText>[0]);
   }
 }
@@ -168,7 +179,7 @@ class AiAudio {
 }
 
 export default {
-  Text: (AiType: AiType | `${number}:${string}`) => new AiText(AiType),
+  Text: (AiType: AiType | `${string}:${string}`) => new AiText(AiType),
   Image: (key: `${number}:${string}`) => new AiImage(key),
   Video: (key: `${number}:${string}`) => new AiVideo(key),
   Audio: (key: `${number}:${string}`) => new AiAudio(key),

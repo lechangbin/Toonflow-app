@@ -164,6 +164,10 @@ app.whenReady().then(async () => {
         windowismaximized: () => ({
           maximized: mainWindow?.isMaximized() ?? false,
         }),
+        openDevTool: () => {
+          mainWindow?.webContents.openDevTools();
+          return { ok: true };
+        },
       };
       const handler = handlers[pathname];
       const responseData = handler ? handler() : { error: "未知接口" };

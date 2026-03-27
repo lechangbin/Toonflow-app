@@ -13,7 +13,7 @@ export default router.post(
     const { scriptId } = req.body;
 
     //查询分镜数据
-    const storyboards = await u.db("o_storyboard").where("o_storyboard.scriptId", scriptId).select("*").orderBy("o_storyboard.createTime", "asc");
+    const storyboards = await u.db("o_storyboard").where("o_storyboard.scriptId", scriptId).select("*").orderBy("index", "asc");
 
     const storyboardsList = await Promise.all(
       storyboards.map(async (item) => {

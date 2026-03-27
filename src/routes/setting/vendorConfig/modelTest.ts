@@ -11,12 +11,11 @@ export default router.post(
   "/",
   validateFields({
     modelName: z.string(),
-    apiKey: z.string(),
     type: z.enum(["text", "video", "image"]),
-    id: z.number(),
+    id: z.string(),
   }),
   async (req, res) => {
-    const { modelName, apiKey, type, id } = req.body;
+    const { modelName, type, id } = req.body;
 
     try {
       const requestFn: Record<string, { fnName: string; modelData?: any }> = {
@@ -69,12 +68,16 @@ export default router.post(
       });
 
       if (type == "text") {
-        const resTextData = await u.Ai.Text(`${id}:${modelName}`).invoke({
+        const { textStream } = await u.Ai.Text(`${id}:${modelName}`).stream({
           prompt: "请调用工具获取火星的天气，并回答我多少气温",
           tools: { getWeatherTool },
         });
-
-        res.status(200).send(success(resTextData.text));
+        let fullResponse = "";
+        for await (const chunk of textStream) {
+          fullResponse += chunk;
+        }
+        console.log("%c Line:78 🥝 fullResponse", "background:#ea7e5c", fullResponse);
+        res.status(200).send(success(fullResponse));
       } else {
         const aiTypeFn = {
           image: "Image",

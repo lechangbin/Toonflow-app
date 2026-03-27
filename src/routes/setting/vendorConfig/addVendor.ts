@@ -8,9 +8,11 @@ import { transform } from "sucrase";
 const router = express.Router();
 
 const vendorConfigSchema = z.object({
-  version: z.number(),
-  icon: z.string().optional(),
+  id: z.string(),
+  author: z.string(),
+  description: z.string().optional(),
   name: z.string(),
+  icon: z.string().optional(),
   inputs: z.array(
     z.object({
       key: z.string(),
@@ -41,16 +43,19 @@ const vendorConfigSchema = z.object({
         modelName: z.string(),
         type: z.literal("video"),
         mode: z.array(
-          z.enum([
-            "singleImage",
-            "multiImage",
-            "gridImage",
-            "startEndRequired",
-            "endFrameOptional",
-            "startFrameOptional",
-            "text",
-            "audioReference",
-            "videoReference",
+          z.union([
+            z.enum([
+              "singleImage",
+              "multiImage",
+              "gridImage",
+              "startEndRequired",
+              "endFrameOptional",
+              "startFrameOptional",
+              "text",
+              "audioReference",
+              "videoReference",
+            ]),
+            z.array(z.enum(["video", "image", "audio", "text"])),
           ]),
         ),
         audio: z.union([z.literal("optional"), z.boolean()]),
@@ -87,12 +92,14 @@ export default router.post(
         return res.status(400).send(error(`vendor配置校验失败: ${errorMsg}`));
       }
       await u.db("o_vendorConfig").insert({
+        id: vendor.id,
+        author: vendor.author,
+        description: vendor.description || "",
         name: vendor.name,
-        version: vendor.version.toString(),
         icon: vendor.icon || "",
-        inputs: JSON.stringify(vendor.inputs),
-        inputValues: JSON.stringify(vendor.inputValues),
-        models: JSON.stringify(vendor.models),
+        inputs: JSON.stringify(vendor.inputs ?? []),
+        inputValues: JSON.stringify(vendor.inputValues ?? {}),
+        models: JSON.stringify(vendor.models ?? []),
         code: tsCode,
         createTime: Date.now(),
       });

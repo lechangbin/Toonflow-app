@@ -91,5 +91,10 @@
     "nodemon": "^3.1.11",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@rmp135/sql-ts": {
+      "better-sqlite3": "^12.8.0"
+    }
   }
 }

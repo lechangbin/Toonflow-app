@@ -7,9 +7,11 @@ import { transform } from "sucrase";
 const router = express.Router();
 
 const vendorConfigSchema = z.object({
-  version: z.number(),
-  icon: z.string().optional(),
+  id: z.string(),
+  author: z.string(),
+  description: z.string().optional(),
   name: z.string(),
+  icon: z.string().optional(),
   inputs: z.array(
     z.object({
       key: z.string(),
@@ -41,8 +43,18 @@ const vendorConfigSchema = z.object({
         type: z.literal("video"),
         mode: z.array(
           z.union([
-            z.enum(["singleImage", "multiImage", "gridImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text"]),
-            z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
+            z.enum([
+              "singleImage",
+              "multiImage",
+              "gridImage",
+              "startEndRequired",
+              "endFrameOptional",
+              "startFrameOptional",
+              "text",
+              "audioReference",
+              "videoReference",
+            ]),
+            z.array(z.enum(["video", "image", "audio", "text"])),
           ]),
         ),
         audio: z.union([z.literal("optional"), z.boolean()]),
@@ -60,9 +72,8 @@ const vendorConfigSchema = z.object({
 export default router.post(
   "/",
   validateFields({
-    id: z.number(),
+    id: z.string(),
     tsCode: z.string(),
-    icon: z.string().optional(),
     inputValues: z.record(z.string(), z.string()),
     inputs: z.array(
       z.object({
@@ -108,11 +119,9 @@ export default router.post(
         }),
       ]),
     ),
-    name: z.string().optional(),
-    version: z.string().optional(),
   }),
   async (req, res) => {
-    const { id, tsCode, name, version, models, inputs, inputValues, icon } = req.body;
+    const { id, tsCode, name, models, inputs, inputValues, icon } = req.body;
 
     const jsCode = transform(tsCode, { transforms: ["typescript"] }).code;
     const exports = u.vm(jsCode);
@@ -158,9 +167,6 @@ export default router.post(
     };
 
     let updatedTsCode = tsCode;
-    updatedTsCode = replacePrimitiveValue(updatedTsCode, "name", name ?? vendor.name);
-    updatedTsCode = replacePrimitiveValue(updatedTsCode, "version", version ? Number(version) : vendor.version);
-    updatedTsCode = replacePrimitiveValue(updatedTsCode, "icon", icon ?? vendor.icon ?? "");
     updatedTsCode = replaceBlockValue(updatedTsCode, "inputs", JSON.stringify(inputs ?? vendor.inputs, null, 2));
     updatedTsCode = replaceBlockValue(updatedTsCode, "inputValues", JSON.stringify(inputValues ?? vendor.inputValues, null, 2));
     updatedTsCode = replaceBlockValue(updatedTsCode, "models", JSON.stringify(models ?? vendor.models, null, 2));
@@ -169,9 +175,6 @@ export default router.post(
       .db("o_vendorConfig")
       .where("id", id)
       .update({
-        name: name ? name : vendor.name,
-        version: version ? version.toString() : vendor.version.toString(),
-        icon: icon ? icon : vendor.icon || "",
         inputs: inputs ? JSON.stringify(inputs) : JSON.stringify(vendor.inputs),
         inputValues: inputValues ? JSON.stringify(inputValues) : JSON.stringify(vendor.inputValues),
         models: models ? JSON.stringify(models) : JSON.stringify(vendor.models),
