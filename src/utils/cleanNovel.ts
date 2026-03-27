@@ -71,10 +71,7 @@ class CleanNovel {
     };
 
     // 启动最多 concurrency 个并发任务
-    const workers = Array.from(
-      { length: Math.min(this.concurrency, allChapters.length) },
-      () => runNext()
-    );
+    const workers = Array.from({ length: Math.min(this.concurrency, allChapters.length) }, () => runNext());
 
     await Promise.all(workers);
 

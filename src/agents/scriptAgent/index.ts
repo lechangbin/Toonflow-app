@@ -54,7 +54,7 @@ export async function decisionAI(ctx: AgentContext) {
     `小说名称：${projectData?.name ?? "未知"}`,
     `小说类型：${projectData?.type ?? "未知"}`,
     `小说简介：${projectData?.intro ?? "无"}`,
-    `目标改编影视画风：${projectData?.artStyle ?? "无"}`,
+    `目标改编影视视觉手册|画风：${projectData?.artStyle ?? "无"}`,
     `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
   ].join("\n");
 
@@ -71,7 +71,6 @@ export async function decisionAI(ctx: AgentContext) {
       ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
-      console.log("%c Line:73 🍧 completion", "background:#93c0a4", completion);
       await memory.add("assistant:decision", completion.text);
     },
   });
@@ -101,7 +100,6 @@ export async function executionAI(ctx: AgentContext) {
       ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
-      console.log("%c Line:102 🍻 completion", "background:#fca650", completion);
       await memory.add("assistant:execution", completion.text);
     },
   });
@@ -128,7 +126,6 @@ export async function supervisionAI(ctx: AgentContext) {
       ...useTools(ctx.resTool),
     },
     onFinish: async (completion) => {
-      console.log("%c Line:129 🍣 completion", "background:#3f7cff", completion);
       await memory.add("assistant:supervision", completion.text);
     },
   });

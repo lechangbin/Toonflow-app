@@ -67,8 +67,9 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         id: z.string().describe("章节id"),
       }),
       execute: async ({ id }) => {
-        console.log(id);
-        return "";
+        console.log("[tools] get_novel_text", id);
+        const data = await u.db("o_novel").where({ id }).select("chapterData").first();
+        return data && data?.chapterData ? data.chapterData : "";
       },
     }),
     set_planData_storySkeleton: tool({

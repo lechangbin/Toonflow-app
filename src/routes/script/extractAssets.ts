@@ -17,18 +17,21 @@ export const AssetSchema = z.object({
 
 type Asset = z.infer<typeof AssetSchema>;
 
-/** 控制并发的辅助函数 */
-async function pMap<T, R>(items: T[], fn: (item: T) => Promise<R>, concurrency: number): Promise<R[]> {
-  const results: R[] = [];
-  let index = 0;
-  async function worker() {
-    while (index < items.length) {
-      const i = index++;
-      results[i] = await fn(items[i]);
-    }
+/** 按批次并发执行，每批 batchSize 个同时跑，批次完成后调用 onBatchDone */
+async function pMapBatch<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  batchSize: number,
+  onBatchDone?: (batchResults: R[]) => Promise<void>,
+): Promise<R[]> {
+  const allResults: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    allResults.push(...batchResults);
+    if (onBatchDone) await onBatchDone(batchResults);
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-  return results;
+  return allResults;
 }
 
 export default router.post(
@@ -45,23 +48,94 @@ export default router.post(
     const intansce = u.Ai.Text("universalAgent");
     const novelData = await u.db("o_novel").where("projectId", projectId).select("chapterData");
     if (!novelData || novelData.length === 0) return res.status(400).send(error("请先上传小说"));
-
-    // 每个 scriptId 对应提取出的资产列表
-    const scriptAssetsMap = new Map<number, Asset[]>();
-
+    await u.db("o_script").whereIn("id", scriptIds).update({
+      extractState: 0,
+    });
     // 构建 scriptId -> script 内容的映射
     const scriptMap = new Map(scripts.map((s: o_script) => [s.id, s]));
 
     const errors: { scriptId: number; error: string }[] = [];
+    let successCount = 0;
 
-    // 并发提取所有剧本的资产，每个剧本单独跑一次 AI
-    await pMap(
+    // 每批提取结果：scriptId -> 资产列表
+    type BatchResult = { scriptId: number; assets: Asset[] } | null;
+
+    /** 一批剧本提取完成后统一入库并建立关联 */
+    async function persistBatch(batchResults: BatchResult[]) {
+      const validResults = batchResults.filter((r): r is { scriptId: number; assets: Asset[] } => r !== null && r.assets.length > 0);
+      if (!validResults.length) return;
+
+      // 合并本批所有资产，同名去重
+      const mergedAssetsMap = new Map<string, Asset>();
+      const assetScriptIds = new Map<string, number[]>();
+      for (const { scriptId, assets } of validResults) {
+        for (const asset of assets) {
+          if (!mergedAssetsMap.has(asset.name)) {
+            mergedAssetsMap.set(asset.name, asset);
+          }
+          const ids = assetScriptIds.get(asset.name) || [];
+          ids.push(scriptId);
+          assetScriptIds.set(asset.name, ids);
+        }
+      }
+
+      // 查询已有资产，避免重复插入
+      const existingAssets = await u.db("o_assets").where("projectId", projectId).select("id", "name");
+      const existingMap = new Map(existingAssets.map((a) => [a.name!, a.id!]));
+
+      // 插入不存在的资产
+      const toInsert = [...mergedAssetsMap.values()].filter((asset) => !existingMap.has(asset.name));
+      if (toInsert.length) {
+        await u.db("o_assets").insert(
+          toInsert.map((asset) => ({
+            name: asset.name,
+            prompt: asset.prompt,
+            type: asset.type,
+            describe: asset.desc,
+            projectId: projectId,
+            startTime: Date.now(),
+          })),
+        );
+      }
+
+      // 重新查询获取完整的 name -> id 映射
+      const allAssets = await u.db("o_assets").where("projectId", projectId).select("id", "name");
+      const nameToId = new Map(allAssets.map((a) => [a.name, a.id]));
+
+      // 建立本批各 scriptId 与资产的关联
+      const batchScriptIds = validResults.map((r) => r.scriptId);
+      const scriptAssetRows: { scriptId: number; assetId: number }[] = [];
+      for (const [name, sIds] of assetScriptIds) {
+        const assetId = nameToId.get(name);
+        if (assetId) {
+          for (const sid of sIds) {
+            scriptAssetRows.push({ scriptId: sid, assetId });
+          }
+        }
+      }
+
+      // 先删除本批 scriptId 的旧关联，再插入新的
+      await u.db("o_scriptAssets").whereIn("scriptId", batchScriptIds).delete();
+      if (scriptAssetRows.length) {
+        await u.db("o_scriptAssets").insert(scriptAssetRows);
+      }
+
+      // 本批成功的剧本状态更新为 1（成功）
+      await u.db("o_script").whereIn("id", batchScriptIds).update({
+        extractState: 1,
+        errorReason: null,
+      });
+    }
+
+    // 按批次并发提取剧本资产，每批完成后统一入库
+    await pMapBatch<number, BatchResult>(
       scriptIds,
       async (scriptId: number) => {
         const script = scriptMap.get(scriptId);
         if (!script) {
           errors.push({ scriptId, error: "未找到对应剧本" });
-          return;
+          await u.db("o_script").where("id", scriptId).update({ extractState: -1, errorReason: "未找到对应剧本" });
+          return null;
         }
 
         // 用闭包收集当前 scriptId 的资产
@@ -102,78 +176,23 @@ export default router.post(
           const msg = e?.message || String(e);
           console.error(`[extractAssets] scriptId=${scriptId} name=${script.name} 提取失败:`, msg);
           errors.push({ scriptId, error: script.name + ":" + u.error(e).message });
-          return;
+          await u.db("o_script").where("id", scriptId).update({ extractState: -1, errorReason: u.error(e).message });
+          return null;
         }
 
         if (!collected.length) {
           errors.push({ scriptId, error: "AI 未返回任何资产" });
-          return;
+          await u.db("o_script").where("id", scriptId).update({ extractState: -1, errorReason: "AI 未返回任何资产" });
+          return null;
         }
 
-        scriptAssetsMap.set(scriptId, collected);
+        successCount++;
+        return { scriptId, assets: collected };
       },
       concurrency,
+      persistBatch,
     );
 
-    // 如果全部失败，直接返回错误
-    if (!scriptAssetsMap.size) {
-      return res.status(500).send(error("所有剧本资产提取均失败", errors));
-    }
-
-    // 按 name 合并所有资产，同名资产只保留第一个
-    const mergedAssetsMap = new Map<string, Asset>();
-    // 同时记录每个资产名称关联的 scriptId 列表
-    const assetScriptIds = new Map<string, number[]>();
-
-    for (const [scriptId, assets] of scriptAssetsMap) {
-      for (const asset of assets) {
-        if (!mergedAssetsMap.has(asset.name)) {
-          mergedAssetsMap.set(asset.name, asset);
-        }
-        const ids = assetScriptIds.get(asset.name) || [];
-        ids.push(scriptId);
-        assetScriptIds.set(asset.name, ids);
-      }
-    }
-
-    // 一次性查询数据库中已有的资产
-    const existingAssets = await u.db("o_assets").where("projectId", projectId).select("id", "name");
-    const existingMap = new Map(existingAssets.map((a) => [a.name!, a.id!]));
-
-    // 批量插入不存在的资产
-    const toInsert = [...mergedAssetsMap.values()].filter((asset) => !existingMap.has(asset.name));
-    if (toInsert.length) {
-      await u.db("o_assets").insert(
-        toInsert.map((asset) => ({
-          name: asset.name,
-          prompt: asset.prompt,
-          type: asset.type,
-          describe: asset.desc,
-          projectId: projectId,
-          startTime: Date.now(),
-        })),
-      );
-    }
-
-    // 重新查询所有资产，获取完整的 name -> id 映射
-    const allAssets = await u.db("o_assets").where("projectId", projectId).select("id", "name");
-    const nameToId = new Map(allAssets.map((a) => [a.name, a.id]));
-
-    // 批量建立 scriptId <-> assetId 的关联
-    const scriptAssetRows: { scriptId: number; assetId: number }[] = [];
-    for (const [name, sIds] of assetScriptIds) {
-      const assetId = nameToId.get(name);
-      if (assetId) {
-        for (const sid of sIds) {
-          scriptAssetRows.push({ scriptId: sid, assetId });
-        }
-      }
-    }
-    await u.db("o_scriptAssets").whereIn("scriptId", scriptIds).delete();
-    if (scriptAssetRows.length) {
-      await u.db("o_scriptAssets").insert(scriptAssetRows);
-    }
-
-    return res.send(success(errors.length ? `部分剧本资产提取失败\n${errors.map((i) => i.error).join("\n")}` : "资产提取完成"));
+    return res.send(success("开始提取资产"));
   },
 );
