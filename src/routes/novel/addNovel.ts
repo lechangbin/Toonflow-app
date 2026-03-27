@@ -37,6 +37,7 @@ export default router.post(
     const chapterAllList = await u.db("o_novel").where("projectId", projectId).whereIn("id", totalNovelId);
     const novelClass = new u.cleanNovel();
     novelClass.emitter.on("item", async (item) => {
+      console.log("%c Line:40 🍇 item", "background:#6ec1c2", item);
       await u
         .db("o_novel")
         .where("id", item.id)

@@ -184,6 +184,18 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       },
       initData: async (knex) => {},
     },
+    //提示词表
+    {
+      name: "o_prompt",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.string("name");
+        table.text("rompt");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+      initData: async (knex) => {},
+    },
     //小说原文表
     {
       name: "o_novel",
