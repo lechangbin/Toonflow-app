@@ -90,7 +90,8 @@ export default router.post(
       const errorMsg = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join("; ");
       return res.status(400).send(error(`vendor配置校验失败: ${errorMsg}`));
     }
-    if (vendor.id.include(":")) return res.status(400).send(error("id不能包含英文冒号"));
+
+    if ((vendor.id as string).includes(":")) return res.status(400).send(error("id不能包含英文冒号"));
     await u.db("o_vendorConfig").insert({
       id: vendor.id,
       author: vendor.author,
