@@ -87,6 +87,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
     state: "生成中",
     assetsId: id,
   });
+    await u.db("o_assets").where("id", id).update({ imageId });
 
   // 3. 准备生成参数
   const imagePath = `/${projectId}/${cfg.dir}/${uuidv4()}.jpg`;
@@ -106,7 +107,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
       describe,
       projectId,
       relatedObjects: JSON.stringify(relatedObjects),
-    });
+    })
     aiImage.save(imagePath);
 
     // 5. 更新记录 & 返回结果

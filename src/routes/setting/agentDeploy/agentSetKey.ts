@@ -14,7 +14,7 @@ export default router.post(
     const { id } = req.body;
     await u.db("o_agentDeploy").whereIn("id", id).where("disabled", "<>", 1).update({
       model: "gpt-4.1",
-      modelName: "1:gpt-4.1",
+      modelName: "toonflow:gpt-4.1",
       vendorId: 1,
     });
     res.status(200).send(success("配置成功"));

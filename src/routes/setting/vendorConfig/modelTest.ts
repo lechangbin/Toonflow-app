@@ -76,7 +76,6 @@ export default router.post(
         for await (const chunk of textStream) {
           fullResponse += chunk;
         }
-        console.log("%c Line:78 🥝 fullResponse", "background:#ea7e5c", fullResponse);
         res.status(200).send(success(fullResponse));
       } else {
         const aiTypeFn = {

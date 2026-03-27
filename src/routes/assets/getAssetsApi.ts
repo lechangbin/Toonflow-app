@@ -21,7 +21,7 @@ export default router.post(
     let query = u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath")
+      .select("o_assets.*", "o_image.filePath", "o_image.state")
       .where("o_assets.projectId", projectId)
       .andWhere("o_assets.type", type);
     if (name) {
@@ -34,7 +34,7 @@ export default router.post(
     let childQuery = u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath")
+      .select("o_assets.*", "o_image.filePath", "o_image.state")
       .where("o_assets.projectId", projectId)
       .andWhere("o_assets.type", type)
       .whereNotNull("o_assets.assetsId");
