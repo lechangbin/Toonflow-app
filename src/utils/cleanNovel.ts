@@ -27,8 +27,9 @@ class CleanNovel {
   private async processChapter(novel: o_novel, intansce: ReturnType<typeof u.Ai.Text>): Promise<EventType | null> {
     try {
       const prompt = await u.getPrompts("event");
+      const data = await u.db("o_prompt").where("name", "eventExtraction").first("prompt");
       const resData = await intansce.invoke({
-        system: prompt,
+        system: data ? JSON.stringify(data.prompt) : (prompt as string),
         messages: [
           {
             role: "user",
