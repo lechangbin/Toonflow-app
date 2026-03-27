@@ -1,4 +1,4 @@
-// @db-hash 8e5f2b7a28d4494b291d802b055b6399
+// @db-hash 8aa6e47033e9f59d1f8b797d5b4fccd3
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -47,6 +47,7 @@ export interface o_assets {
   'name'?: string | null;
   'projectId'?: number | null;
   'prompt'?: string | null;
+  'promptState'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
   'startTime'?: number | null;
@@ -119,13 +120,16 @@ export interface o_project {
   'videoRatio'?: string | null;
 }
 export interface o_prompt {
+  'data'?: string | null;
   'id'?: number;
   'name'?: string | null;
-  'rompt'?: string | null;
+  'type'?: string | null;
 }
 export interface o_script {
   'content'?: string | null;
   'createTime'?: number | null;
+  'errorReason'?: string | null;
+  'extractState'?: number | null;
   'id'?: number;
   'name'?: string | null;
   'projectId'?: number | null;
@@ -162,7 +166,7 @@ export interface o_storyboard {
   'filePath'?: string | null;
   'frameMode'?: string | null;
   'id'?: number;
-  'index'?: string | null;
+  'index'?: number | null;
   'lines'?: string | null;
   'mode'?: string | null;
   'model'?: string | null;
