@@ -3,6 +3,7 @@ import u from "@/utils";
 import { Namespace, Socket } from "socket.io";
 import * as agent from "@/agents/productionAgent/index";
 import ResTool from "@/socket/resTool";
+import Memory from "@/utils/agent/memory";
 
 async function verifyToken(rawToken: string): Promise<Boolean> {
   const setting = await u.db("o_setting").where("key", "tokenKey").select("value").first();
@@ -41,29 +42,67 @@ export default (nsp: Namespace) => {
     });
     let abortController: AbortController | null = null;
 
-    socket.on("message", async (text: string) => {
+    socket.on("chat", async (data: { content: string }) => {
+      const { content } = data;
       abortController?.abort();
       abortController = new AbortController();
       const currentController = abortController;
-      console.log("%c Line:30 🍑 isolationKey", "background:#e41a6a", isolationKey);
+      const memory = new Memory("scriptAgent", isolationKey);
 
-      const textStream = await agent.decisionAI({ socket, isolationKey, text, abortSignal: currentController.signal, resTool });
+      const msg = resTool.newMessage("assistant", "统筹");
+      const ctx: agent.AgentContext = {
+        socket,
+        isolationKey,
+        text: content,
+        userMessageTime: new Date(msg.datetime).getTime() - 1,
+        abortSignal: currentController.signal,
+        resTool,
+        msg,
+      };
 
-      let msg = resTool.textMessage();
+      const textStream = await agent.decisionAI(ctx);
+
+      let currentMsg = ctx.msg;
+      let text = currentMsg.text();
+      let currentContent = "";
+
+      const persistCurrentMessage = async () => {
+        if (!currentContent.trim()) return;
+        await memory.add("assistant:decision", currentContent, {
+          name: "统筹",
+          createTime: new Date(currentMsg.datetime).getTime(),
+        });
+        currentContent = "";
+      };
+
+      const syncCurrentMessage = async () => {
+        if (ctx.msg === currentMsg) return;
+        text.complete();
+        currentMsg.complete();
+        await persistCurrentMessage();
+        currentMsg = ctx.msg;
+        text = currentMsg.text();
+      };
 
       try {
         for await (const chunk of textStream) {
-          msg.send(chunk);
+          await syncCurrentMessage();
+          text.append(chunk);
+          currentContent += chunk;
         }
       } catch (err: any) {
         if (err.name !== "AbortError") throw err;
       } finally {
-        msg.end();
+        await syncCurrentMessage();
+        text.complete();
+        currentMsg.complete();
+        await persistCurrentMessage();
         if (abortController === currentController) {
           abortController = null;
         }
       }
     });
+
     socket.on("setModelData", async (data: any) => {
       resTool.data.imageModel = data;
     });
@@ -71,6 +110,7 @@ export default (nsp: Namespace) => {
       isolationKey = data.key;
       resTool.data.scriptId = data.scriptId;
     });
+
     socket.on("stop", () => {
       abortController?.abort();
       abortController = null;

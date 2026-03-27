@@ -69,6 +69,9 @@ export async function decisionAI(ctx: AgentContext) {
       run_sub_agent: runSubAgent(ctx),
       ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
     },
+    onFinish: async (completion) => {
+      await memory.add("assistant:decision", completion.text);
+    },
   });
 
   return textStream;
