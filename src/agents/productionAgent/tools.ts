@@ -3,7 +3,6 @@ import { z } from "zod";
 import _ from "lodash";
 import ResTool from "@/socket/resTool";
 import u from "@/utils";
-import { useSkill } from "@/utils/agent/skillsTools";
 import { urlToBase64 } from "@/utils/vm";
 export const deriveAssetSchema = z.object({
   id: z.number().describe("衍生资产ID,如果新增则为空"),
@@ -75,7 +74,14 @@ const flowDataKeyLabels = Object.fromEntries(
   Object.entries(flowDataSchema.shape).map(([key, schema]) => [key, (schema as z.ZodTypeAny).description ?? key]),
 ) as Record<keyof FlowData, string>;
 
-export default (resTool: ResTool, toolsNames?: string[]) => {
+interface ToolConfig {
+  resTool: ResTool;
+  toolsNames?: string[];
+  msg: ReturnType<ResTool["newMessage"]>;
+}
+
+export default (toolCpnfig: ToolConfig) => {
+  const { resTool, toolsNames, msg } = toolCpnfig;
   const { socket } = resTool;
   const tools: Record<string, Tool> = {
     get_flowData: tool({
@@ -84,9 +90,12 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         key: keySchema.describe("数据key"),
       }),
       execute: async ({ key }) => {
-        resTool.systemMessage(`正在阅读 ${flowDataKeyLabels[key]} 数据...`);
+        const thinking = msg.thinking(`正在获取${flowDataKeyLabels[key]}工作区数据...`);
         console.log("[tools] get_flowData", key);
         const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key }, (res: any) => resolve(res)));
+        thinking.appendText(`获取到${flowDataKeyLabels[key]}:\n` + flowData[key]);
+        thinking.updateTitle(`获取${flowDataKeyLabels[key]}完成`);
+        thinking.complete();
         return flowData[key];
       },
     }),
@@ -95,8 +104,10 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: flowDataSchema.shape.script }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData script", value);
-        resTool.systemMessage("正在保存 剧本 数据");
+        const thinking = msg.thinking("正在保存 剧本 数据");
         socket.emit("setFlowData", { key: "script", value });
+        thinking.updateTitle("保存 剧本 数据完成");
+        thinking.complete();
         return true;
       },
     }),
@@ -105,8 +116,10 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: flowDataSchema.shape.scriptPlan }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData scriptPlan", value);
-        resTool.systemMessage("正在保存 拍摄计划 数据");
+        const thinking = msg.thinking("正在保存 拍摄计划 数据");
         socket.emit("setFlowData", { key: "scriptPlan", value });
+        thinking.updateTitle("保存 拍摄计划 数据完成");
+        thinking.complete();
         return true;
       },
     }),
@@ -115,7 +128,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: z.array(deriveAssetSchema.omit({ id: true })).describe("需要新增的衍生资产列表") }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData add_flowData_assets", value);
-        resTool.systemMessage("正在保存 衍生资产 数据");
+        const thinking = msg.thinking("正在保存 衍生资产 数据");
         const setData = [...value] as z.infer<typeof deriveAssetSchema>[];
         const { projectId, scriptId } = resTool.data;
         const startTime = Date.now();
@@ -154,6 +167,9 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             i.derive = [...(i.derive || []), ...watiAddAssetsMap[i.id]];
           }
         });
+        thinking.updateTitle("保存 衍生资产 数据完成");
+        thinking.complete();
+
         socket.emit("setFlowData", { key: "assets", value: assetsData });
         return true;
       },
@@ -163,7 +179,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: z.array(deriveAssetSchema).describe("需要更新的衍生资产列表") }),
       execute: async ({ value }) => {
         console.log("[tools] update_flowData update_flowData_assets", value);
-        resTool.systemMessage("正在保存 衍生资产 数据");
+        const thinking = msg.thinking("正在保存 衍生资产 数据");
         for (const i of value) {
           await u
             .db("o_assets")
@@ -195,6 +211,8 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             asset.derive = (asset.derive || []).map((d) => updatedMap[d.id] ?? d);
           }
         });
+        thinking.updateTitle("保存 衍生资产 数据完成");
+        thinking.complete();
         socket.emit("setFlowData", { key: "assets", value: assetsData });
         return true;
       },
@@ -204,13 +222,15 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ ids: z.array(z.number()).describe("需要删除的 衍生资产id ") }),
       execute: async ({ ids }) => {
         console.log("[tools] delete_flowData delete_flowData_assets", ids);
-        resTool.systemMessage("正在保存 衍生资产 数据");
+        const thinking = msg.thinking("正在删除指定 衍生资产 数据...");
         await u.db("o_assets").whereIn("id", ids).delete();
         const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "assets" }, (res: any) => resolve(res)));
         const assetsData = flowData.assets;
         assetsData.forEach((i) => {
           i.derive = (i.derive || []).filter((d) => !ids.includes(d.id));
         });
+        thinking.updateTitle("删除指定 衍生资产 数据完成");
+        thinking.complete();
         // 将 derive 中已存在的条目替换为更新后的数据
         socket.emit("setFlowData", { key: "assets", value: assetsData });
         return true;
@@ -265,8 +285,10 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: flowDataSchema.shape.storyboardTable }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData storyboardTable", value);
-        resTool.systemMessage("正在保存 分镜表 数据...");
+        const thinking = msg.thinking("正在保存 分镜表 数据...");
         socket.emit("setFlowData", { key: "storyboardTable", value });
+        thinking.updateTitle("保存 分镜表 数据完成");
+        thinking.complete();
         return true;
       },
     }),
@@ -275,7 +297,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: z.array(storyboardSchema.omit({ id: true })) }),
       execute: async ({ value }) => {
         console.log("[tools] add_flowData storyboard", value);
-        resTool.systemMessage("正在新增 分镜面板 数据...");
+        const thinking = msg.thinking("正在保存 分镜面板 数据...");
         const setData = [...value] as z.infer<typeof storyboardSchema>[];
         for (const item of setData) {
           item.src = "";
@@ -302,6 +324,9 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         const storyboardData = flowData["storyboard"].concat([...setData]);
         socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
 
+        thinking.updateTitle("保存 分镜面板 数据完成");
+        thinking.complete();
+
         return true;
       },
     }),
@@ -310,7 +335,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: flowDataSchema.shape.storyboard }),
       execute: async ({ value }) => {
         console.log("[tools] update_flowData storyboard", value);
-        resTool.systemMessage("正在更新 分镜面板 数据...");
+        const thinking = msg.thinking("正在保存 分镜面板 数据...");
         for (const item of value) {
           await u
             .db("o_storyboard")
@@ -344,6 +369,8 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
           };
         });
         socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
+        thinking.updateTitle("保存 分镜面板 数据完成");
+        thinking.complete();
         return true;
       },
     }),
@@ -352,13 +379,15 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ ids: z.array(z.number()).describe("需要删除的 分镜id ") }),
       execute: async ({ ids }) => {
         console.log("[tools] delete_flowData storyboard", ids);
-        resTool.systemMessage("正在删除指定 分镜面板 数据...");
+        const thinking = msg.thinking("正在删除指定 分镜面板 数据...");
         await u.db("o_storyboard").whereIn("id", ids).delete();
         await u.db("o_assets2Storyboard").whereIn("storyboardId", ids).delete();
         await u.db("o_storyboardFlow").whereIn("storyboardId", ids).delete();
         const flowData: FlowData = await new Promise((resolve) => socket.emit("getFlowData", { key: "storyboard" }, (res: any) => resolve(res)));
         const storyboardData = flowData["storyboard"].filter((item) => !ids.includes(item.id));
         socket.emit("setFlowData", { key: "storyboard", value: storyboardData });
+        thinking.updateTitle("删除指定 分镜面板 数据完成");
+        thinking.complete();
         return true;
       },
     }),
@@ -400,8 +429,10 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: flowDataSchema.shape.workbench }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData workbench", value);
-        resTool.systemMessage("正在保存 工作台配置 数据...");
+        const thinking = msg.thinking("正在保存 工作台配置 数据...");
         socket.emit("setFlowData", { key: "workbench", value });
+        thinking.updateTitle("保存 工作台配置 数据完成");
+        thinking.complete();
         return true;
       },
     }),
@@ -410,7 +441,9 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       inputSchema: z.object({ value: flowDataSchema.shape.poster }),
       execute: async ({ value }) => {
         console.log("[tools] set_flowData poster", value);
-        resTool.systemMessage("正在保存 海报 数据...");
+        const thinking = msg.thinking("正在保存 海报配置 数据...");
+        thinking.updateTitle("保存 海报配置 数据完成");
+        thinking.complete();
         socket.emit("setFlowData", { key: "poster", value });
         return true;
       },
@@ -448,7 +481,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
       }),
       execute: async ({ images }) => {
         console.log("[tools] generate_storyboard_images", images);
-
+        const thinking = msg.thinking("正在生成 分镜图片 数据...");
         // --- 构建任务id集合 ---
         const taskIds = new Set(images.map((item) => item.id));
         const imageMap = new Map(images.map((item) => [item.id, item]));
@@ -492,11 +525,13 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         // 循环依赖检测
         if (visited.size !== images.length) {
           const cyclicIds = images.filter((item) => !visited.has(item.id)).map((item) => item.id);
-          resTool.systemMessage(`检测到循环依赖，涉及分镜id: ${cyclicIds.join(", ")}，请修正后重试`);
+          thinking.appendText(`检测到循环依赖，涉及分镜id: ${cyclicIds.join(", ")}，请修正后重试`);
+          thinking.updateTitle("循环依赖错误");
+          thinking.error();
           return `错误：检测到循环依赖，涉及分镜id: ${cyclicIds.join(", ")}`;
         }
 
-        resTool.systemMessage(`图片生成调度计划：共 ${levels.length} 层，${images.length} 张图片`);
+        thinking.appendText(`图片生成调度计划：共 ${levels.length} 层，${images.length} 张图片`);
 
         // --- 准备公共数据 ---
         const projectData = await u.db("o_project").where("id", resTool.data.projectId).select("videoRatio").first();
@@ -504,7 +539,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
 
         // 生成单张图片的函数
         const generateOneImage = async (item: (typeof images)[0]) => {
-          resTool.systemMessage(`正在生成分镜 id:${item.id} 图片`);
+          const thinking = msg.thinking(`正在生成分镜 id:${item.id} 图片`);
           // 更新数据库状态为生成中
           await u.db("o_storyboard").where("id", item.id).update({ state: "生成中" });
           // 更新前端为生成中
@@ -544,7 +579,8 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             referenceIds: item.referenceIds,
           };
           // 前端对话框提示
-          resTool.systemMessage(`分镜 id:${item.id} 图片生成完成`);
+          thinking.appendText(`分镜 id:${item.id} 图片生成完成`);
+          thinking.complete();
           // 更新前端界面展示
           socket.emit("setFlowData", { key: "setStoryboardImage", value: obj });
         };
@@ -553,7 +589,9 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
         for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
           const levelIds = levels[levelIndex];
           const levelItems = levelIds.map((id) => imageMap.get(id)!);
-          resTool.systemMessage(`开始生成第 ${levelIndex + 1}/${levels.length} 层，共 ${levelItems.length} 张图片 (ids: ${levelIds.join(", ")})`);
+          const thinking = msg.thinking(
+            `开始生成第 ${levelIndex + 1}/${levels.length} 层，共 ${levelItems.length} 张图片 (ids: ${levelIds.join(", ")})`,
+          );
 
           // 同层内所有图片并行生成，使用 allSettled 确保不会因单张失败中断整层
           const results = await Promise.allSettled(levelItems.map((item) => generateOneImage(item)));
@@ -564,7 +602,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
               const failedId = levelIds[i];
               const reason = (results[i] as PromiseRejectedResult).reason;
               console.error(`[tools] 分镜 id:${failedId} 图片生成失败`, reason);
-              resTool.systemMessage(`分镜 id:${failedId} 图片生成失败: ${reason?.message || reason}`);
+              thinking.appendText(`分镜 id:${failedId} 图片生成失败: ${reason?.message || reason}`);
               await u.db("o_storyboard").where("id", failedId).update({ state: "生成失败" });
               socket.emit("setFlowData", {
                 key: "setStoryboardImage",
@@ -572,7 +610,12 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
               });
             }
           }
+          thinking.appendText(`第 ${levelIndex + 1}/${levels.length} 层图片生成完成`);
+          thinking.complete();
         }
+        thinking.appendText("所有分镜图片生成完成");
+        thinking.updateTitle("分镜图片生成完成");
+        thinking.complete();
 
         return "分镜图片生成完成";
       },

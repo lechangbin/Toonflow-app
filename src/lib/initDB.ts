@@ -191,7 +191,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       builder: (table) => {
         table.integer("id").notNullable();
         table.string("name");
-        table.text("prompt");
+        table.string("type");
+        table.text("data");
         table.primary(["id"]);
         table.unique(["id"]);
       },
