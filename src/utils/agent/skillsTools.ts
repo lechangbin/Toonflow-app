@@ -78,7 +78,7 @@ function parseFrontmatter(content: string): { name: string; description: string 
   return { name: result.name, description: result.description };
 }
 
-export async function useSkill(input: SkillInput, mem?: string) {
+export async function useSkill(input: SkillInput) {
   const { mainSkill, workspace = [], attachedSkills = [] } = input;
   const rootDir = getPath("skills");
   const normalizedRootDir = path.resolve(rootDir);
@@ -115,7 +115,7 @@ export async function useSkill(input: SkillInput, mem?: string) {
 
   const content = await fs.promises.readFile(mainPath, "utf-8");
   const skill = parseFrontmatter(content);
-  return { prompt: buildPrompt(skill), tools: createSkillTools(skill, skillPaths, mem) };
+  return { prompt: buildPrompt(skill), tools: createSkillTools(skill, skillPaths), skillPaths };
 }
 
 function buildPrompt(skill: { name: string; description: string }): string {
@@ -132,7 +132,7 @@ function buildPrompt(skill: { name: string; description: string }): string {
 </available_skills>`;
 }
 
-function createSkillTools(skill: { name: string; description: string }, skillPaths: SkillPaths, mem?: string) {
+function createSkillTools(skill: { name: string; description: string }, skillPaths: SkillPaths) {
   const activated = new Set<string>(); // 已激活技能集合，防止重复加载
   const skillsRootDir = path.resolve(getPath("skills"));
   return {
@@ -168,9 +168,6 @@ function createSkillTools(skill: { name: string; description: string }, skillPat
           content += "</skill_resources>\n";
         }
         content += "</skill_content>";
-        if (mem) {
-          content += `\n<memory>\n` + mem + `\n</memory>`;
-        }
         console.log("%c Line:173 🍕 content", "background:#fca650", content);
         return { content };
       },

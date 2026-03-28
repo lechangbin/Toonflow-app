@@ -1,13 +1,20 @@
 import express from "express";
-import u from "@/utils";
-import { z } from "zod";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import fs from "fs";
-import path from "path";
+import fg from "fast-glob";
+import u from "@/utils";
 
 const router = express.Router();
 
-export default router.post("/", validateFields({}), async (req, res) => {
-  res.status(200).send(success({}));
+export default router.post("/", async (req, res) => {
+  const skillsRoot = u.getPath(["skills"]);
+
+  const entries = await fg("**/*.md", {
+    cwd: skillsRoot.replace(/\\/g, "/"),
+    onlyFiles: true,
+  });
+
+  console.log("%c Line:15 🍺 entries", "background:#e41a6a", entries);
+
+  res.status(200).send(success(entries));
 });

@@ -56,7 +56,7 @@ class CleanNovel {
 
   async start(allChapters: o_novel[], projectId: number): Promise<EventType[]> {
     const totalEvent: EventType[] = [];
-    const intansce = u.Ai.Text("universalAgent");
+    const intansce = u.Ai.Text("universalAi");
 
     // 并发控制：通过信号量限制同时执行的任务数
     let running = 0;

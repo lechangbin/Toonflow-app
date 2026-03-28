@@ -6,6 +6,7 @@ import Memory from "@/utils/agent/memory";
 import { useSkill } from "@/utils/agent/skillsTools";
 import useTools from "@/agents/scriptAgent/tools";
 import ResTool from "@/socket/resTool";
+import * as fs from "fs";
 
 export interface AgentContext {
   socket: Socket;
@@ -41,39 +42,36 @@ export async function decisionAI(ctx: AgentContext) {
   const memory = new Memory("scriptAgent", isolationKey);
   await memory.add("user", text, { createTime: userMessageTime });
 
-  const skill = await useSkill({ mainSkill: "script_agent_decision" }, buildMemPrompt(await memory.get(text)));
+  const { skillPaths } = await useSkill({ mainSkill: "script_agent_decision" });
+  const prompt = await fs.promises.readFile(skillPaths.mainSkill, "utf-8");
+
+  const mem = buildMemPrompt(await memory.get(text));
 
   const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
   const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("id", "chapterIndex as index");
 
-  const get_project_info = tool({
-    description: "获取项目的基本信息和章节ID映射表，返回字符串格式的项目信息",
-    inputSchema: z.object({}),
-    execute: async () => {
-      const projectInfo = [
-        "## 项目信息",
-        `小说名称：${projectData?.name ?? "未知"}`,
-        `小说类型：${projectData?.type ?? "未知"}`,
-        `小说简介：${projectData?.intro ?? "无"}`,
-        `目标改编影视视觉手册|画风：${projectData?.artStyle ?? "无"}`,
-        `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
-      ].join("\n");
+  const projectInfo = [
+    "## 项目信息",
+    `小说名称：${projectData?.name ?? "未知"}`,
+    `小说类型：${projectData?.type ?? "未知"}`,
+    `小说简介：${projectData?.intro ?? "无"}`,
+    `目标改编影视视觉手册|画风：${projectData?.artStyle ?? "无"}`,
+    `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
+  ].join("\n");
 
-      const content = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- 章节ID：${i.id}: 第${i.index}章`).join("\n")}\n\n`;
-      return { content };
-    },
-  });
+  const projectPrompt = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- 章节ID：${i.id}: 第${i.index}章`).join("\n")}\n\n`;
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
-    system: skill.prompt,
-    messages: [{ role: "user", content: text }],
+    messages: [
+      { role: "system", content: prompt },
+      { role: "system", content: projectPrompt + mem },
+      { role: "user", content: text },
+    ],
     abortSignal,
     tools: {
-      ...skill.tools,
       ...memory.getTools(),
       run_sub_agent: runSubAgent(ctx),
       ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
-      get_project_info,
     },
     onFinish: async (completion) => {
       await memory.add("assistant:decision", completion.text);

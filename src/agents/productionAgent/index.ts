@@ -6,6 +6,7 @@ import Memory from "@/utils/agent/memory";
 import { useSkill } from "@/utils/agent/skillsTools";
 import useTools from "@/agents/productionAgent/tools";
 import ResTool from "@/socket/resTool";
+import * as fs from "fs";
 
 export interface AgentContext {
   socket: Socket;
@@ -40,14 +41,19 @@ export async function decisionAI(ctx: AgentContext) {
   const memory = new Memory("productionAgent", isolationKey);
   await memory.add("user", text);
 
-  const skill = await useSkill({ mainSkill: "production_agent_decision" }, buildMemPrompt(await memory.get(text)));
+  const { skillPaths } = await useSkill({ mainSkill: "production_agent_decision" });
+  const prompt = await fs.promises.readFile(skillPaths.mainSkill, "utf-8");
+
+  const mem = buildMemPrompt(await memory.get(text));
 
   const { textStream } = await u.Ai.Text("productionAgent").stream({
-    system: skill.prompt,
-    messages: [{ role: "user", content: text }],
+    messages: [
+      { role: "system", content: prompt },
+      { role: "system", content: mem },
+      { role: "user", content: text },
+    ],
     abortSignal,
     tools: {
-      ...skill.tools,
       ...memory.getTools(),
       run_sub_agent: runSubAgent(ctx),
       ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),

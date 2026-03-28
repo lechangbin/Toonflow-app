@@ -4,10 +4,10 @@ import axios from "axios";
 import { transform } from "sucrase";
 import u from "@/utils";
 
-type AiType = "scriptAgent" | "productionAgent" | "universalAgent";
+type AiType = "scriptAgent" | "productionAgent" | "universalAi";
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
-const AiTypeValues: AiType[] = ["scriptAgent", "productionAgent", "universalAgent"];
+const AiTypeValues: AiType[] = ["scriptAgent", "productionAgent", "universalAi"];
 async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {
   if (AiTypeValues.includes(value as AiType)) {
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();

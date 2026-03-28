@@ -126,7 +126,7 @@ export default router.post(
       `;
 
         try {
-          const { _output } = (await u.Ai.Text("universalAgent").invoke({
+          const { _output } = (await u.Ai.Text("universalAi").invoke({
             system: systemPrompt,
             messages: [{ role: "user", content: "小说原文" + novelText }],
             tools: skill.tools,
