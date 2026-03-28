@@ -30,19 +30,19 @@ function readMd(filePath: string): string {
   }
 }
 
-// 获取 images 文件夹第一张图片的 base64，无图片返回空字符串
-function readFirstImage(imagesDir: string): string {
+// 获取 images 文件夹下所有图片文件路径列表
+async function readAllImages(imagesDir: string) {
   try {
-    const files = fs.readdirSync(imagesDir);
-    const imgFile = files.find((f) => /\.(png|jpe?g|gif|webp|svg)$/i.test(f));
-    if (!imgFile) return "";
-    const imgPath = path.join(imagesDir, imgFile);
-    const ext = path.extname(imgFile).slice(1).toLowerCase();
-    const mimeType = ext === "jpg" ? "jpeg" : ext;
-    const base64 = fs.readFileSync(imgPath).toString("base64");
-    return `data:image/${mimeType};base64,${base64}`;
+    const ossPath = u.getPath(["oss", imagesDir]);
+    const files = fs.readdirSync(ossPath);
+    const images = files.filter((f) => /\.(png|jpe?g|gif|webp|svg)$/i.test(f)).map((f) => path.join(imagesDir, f));
+    if (images.length) {
+      return Promise.all(images.map(async (i) => await u.oss.getFileUrl(i)));
+    } else {
+      return [];
+    }
   } catch {
-    return "";
+    return [];
   }
 }
 
@@ -57,32 +57,34 @@ export default router.post("/", async (req, res) => {
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
 
-    const result = styleDirs.map((styleName) => {
-      const styleDir = path.join(artPromptsDir, styleName);
-      const imagesDir = path.join(styleDir, "images");
+    const result = await Promise.all(
+      styleDirs.map(async (styleName) => {
+        const styleDir = path.join(artPromptsDir, styleName);
+        const imagesDir = path.join(styleDir, "images");
 
-      const image = readFirstImage(imagesDir);
+        const images = await readAllImages(styleName);
 
-      const data = DATA_MAP.map(({ label, value, subDir }) => {
-        let mdPath: string;
-        if (subDir) {
-          mdPath = path.join(styleDir, subDir, `${value}.md`);
-        } else {
-          mdPath = path.join(styleDir, `${value}.md`);
-        }
+        const data = DATA_MAP.map(({ label, value, subDir }) => {
+          let mdPath: string;
+          if (subDir) {
+            mdPath = path.join(styleDir, subDir, `${value}.md`);
+          } else {
+            mdPath = path.join(styleDir, `${value}.md`);
+          }
+          return {
+            label,
+            value,
+            data: readMd(mdPath),
+          };
+        });
+
         return {
-          label,
-          value,
-          data: readMd(mdPath),
+          name: styleName,
+          image: images,
+          data,
         };
-      });
-
-      return {
-        name: styleName,
-        image,
-        data,
-      };
-    });
+      }),
+    );
     res.status(200).send(success(result));
   } catch (err) {
     res.status(500).send({ error: String(err) });
