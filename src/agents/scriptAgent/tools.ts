@@ -4,15 +4,7 @@ import { z } from "zod";
 import _ from "lodash";
 import ResTool from "@/socket/resTool";
 
-export const AssetSchema = z.object({
-  id: z.number().describe("资产ID,如果新增则为空").optional(),
-  prompt: z.string().describe("生成提示词"),
-  name: z.string().describe("资产名称"),
-  desc: z.string().describe("资产描述"),
-  type: z.enum(["role", "tool", "scene", "clip"]).describe("资产类型"),
-});
 export const ScriptSchema = z.object({
-  id: z.number().describe("剧本ID"),
   name: z.string().describe("剧本名称"),
   content: z.string().describe("剧本内容"),
 });
@@ -91,50 +83,17 @@ export default (toolCpnfig: ToolConfig) => {
         return text ?? "无数据";
       },
     }),
-    //======================
-    update_script_to_sqlite: tool({
-      description: "更新剧本，修改数据库对应剧本，供后续业务使用",
+    delete_script: tool({
+      description: "删除剧本，你需要先获取get_planData",
       inputSchema: z.object({
-        script: ScriptSchema,
+        name: z.string().describe("剧本名字"),
       }),
-      execute: async ({ script }) => {
-        await u.db("o_script").where({ id: script.id }).update({
-          name: script.name,
-          content: script.content,
-        });
-        socket.emit("setPlanData", { key: "script", value: script.id });
-        return true;
-      },
-    }),
-    insert_script_to_sqlite: tool({
-      description: "新增剧本,将剧本内容插入sqlite数据库，供后续业务使用",
-      inputSchema: z.object({
-        script: ScriptSchema.omit({ id: true }),
-      }),
-      execute: async ({ script }) => {
-        const [scriptId] = await u.db("o_script").insert({
-          name: script.name,
-          content: script.content,
-          projectId: resTool.data.projectId,
-          createTime: Date.now(),
-        });
-        socket.emit("setPlanData", { key: "script", value: scriptId });
-        return true;
-      },
-    }),
-    delete_script_to_sqlite: tool({
-      description: "删除剧本,将剧本内容从sqlite数据库中删除",
-      inputSchema: z.object({
-        scriptId: z.string().describe("剧本id"),
-      }),
-      execute: async ({ scriptId }) => {
-        console.log("[tools] delete_script_to_sqlite", scriptId);
-        await u.db("o_script").where({ id: scriptId }).delete();
-        socket.emit("setPlanData", { key: "script", value: scriptId });
+      execute: async ({ name }) => {
+        console.log("[tools] delete_script", name);
+        await new Promise((resolve) => socket.emit("delScript", { name }, (res: any) => resolve(res)));
         return true;
       },
     }),
   };
-
   return toolsNames ? Object.fromEntries(Object.entries(tools).filter(([n]) => toolsNames.includes(n))) : tools;
 };

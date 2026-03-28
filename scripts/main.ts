@@ -131,6 +131,7 @@ app.whenReady().then(async () => {
     const mod = requireWithCustomPaths(servePath);
     closeServeFn = mod.closeServe;
     const port = await mod.default(true);
+    process.env.PORT = port;
     // 注册协议处理器
     protocol.handle("toonflow", (request) => {
       const url = new URL(request.url);

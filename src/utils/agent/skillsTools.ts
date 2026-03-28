@@ -7,9 +7,11 @@ import * as fs from "fs";
 
 type SkillAttribution =
   //剧本Agent
-  | "script_agent_decision"
-  | "script_agent_execution"
-  | "script_agent_supervision"
+  | "script_agent_decision" //决策
+  | "script_execution_skeleton" //故事骨架
+  | "script_execution_adaptation" //改变策略
+  | "script_execution_script" //剧本生成
+  | "script_agent_supervision" //审核
   //生产Agent
   | "production_agent_decision"
   | "production_agent_execution"

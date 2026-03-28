@@ -3,10 +3,10 @@ import { tool } from "ai";
 import { z } from "zod";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
-import { useSkill } from "@/utils/agent/skillsTools";
 import useTools from "@/agents/scriptAgent/tools";
 import ResTool from "@/socket/resTool";
 import * as fs from "fs";
+import path from "path";
 
 export interface AgentContext {
   socket: Socket;
@@ -40,8 +40,8 @@ export async function decisionAI(ctx: AgentContext) {
   const memory = new Memory("scriptAgent", isolationKey);
   await memory.add("user", text, { createTime: userMessageTime });
 
-  const { skillPaths } = await useSkill({ mainSkill: "script_agent_decision" });
-  const prompt = await fs.promises.readFile(skillPaths.mainSkill, "utf-8");
+  const skill = path.join(u.getPath("skills"), "script_agent_decision.md");
+  const prompt = await fs.promises.readFile(skill, "utf-8");
 
   const mem = buildMemPrompt(await memory.get(text));
 
@@ -62,7 +62,7 @@ export async function decisionAI(ctx: AgentContext) {
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
     messages: [
       { role: "system", content: prompt },
-      { role: "system", content: projectPrompt + mem },
+      { role: "assistant", content: projectPrompt + mem },
       { role: "user", content: text },
     ],
     abortSignal,
@@ -79,107 +79,125 @@ export async function decisionAI(ctx: AgentContext) {
   return textStream;
 }
 
-//====================== 执行层 ======================
-
 function createSubAgent(parentCtx: AgentContext) {
   const { resTool, abortSignal } = parentCtx;
-
   const memory = new Memory("scriptAgent", parentCtx.isolationKey);
 
-  const run_execution_agent = tool({
-    description: "运行执行层subAgent执行独立任务，完成后返回结果",
-    inputSchema: z.object({
-      taskType: z.enum(["故事骨架", "改变策略", "剧本"]).describe("任务类型"),
-      prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
-    }),
-    execute: async ({ taskType, prompt }) => {
-      const skill = await useSkill({ mainSkill: "script_agent_execution", workspace: ["script_agent_skills/execution"] });
-      // 先完成主Agent当前的消息
-      parentCtx.msg.complete();
-      const subMsg = resTool.newMessage("assistant", "编剧");
-      const prefixSystem =
-        "你可以使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>\n<adaptationStrategy>改编策略内容</adaptationStrategy>";
-      // 子Agent用新消息回复
-      const { textStream } = await u.Ai.Text("scriptAgent").stream({
-        system: prefixSystem + skill.prompt,
-        messages: [{ role: "user", content: `请完成${taskType}任务` }],
-        abortSignal,
-        tools: {
-          ...skill.tools,
-          ...useTools({ resTool, msg: subMsg }),
-          get_task_details: tool({
-            description: "获取主Agent传入的任务目标详情",
-            inputSchema: z.object({}),
-            execute: async () => {
-              const thinking = subMsg.thinking("以获取任务详情");
-              thinking.appendText("任务详情:\n" + prompt);
-              thinking.complete();
-              return prompt ?? "运行失败";
-            },
-          }),
-        },
-      });
+  async function runAgent({
+    prompt,
+    system,
+    name,
+    memoryKey,
+    tools: extraTools,
+  }: {
+    prompt: string;
+    system: string;
+    name: string;
+    memoryKey: string;
+    tools?: Record<string, any>;
+  }) {
+    parentCtx.msg.complete();
+    const subMsg = resTool.newMessage("assistant", name);
+    const text = subMsg.text();
+    let fullResponse = "";
 
-      let text = subMsg.text();
-      let fullResponse = "";
-      for await (const chunk of textStream) {
-        text.append(chunk);
-        fullResponse += chunk;
-      }
-      text.complete();
-      subMsg.complete();
-      if (fullResponse.trim()) {
-        await memory.add(`assistant:execution`, fullResponse, { name: "编剧", createTime: new Date(subMsg.datetime).getTime() });
-      }
-      // 为主Agent后续输出创建新消息
-      parentCtx.msg = parentCtx.resTool.newMessage("assistant", "统筹");
-      return fullResponse;
+    const { textStream } = await u.Ai.Text("scriptAgent").stream({
+      system,
+      messages: [{ role: "user", content: prompt }],
+      abortSignal,
+      tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
+    });
+
+    for await (const chunk of textStream) {
+      text.append(chunk);
+      fullResponse += chunk;
+    }
+
+    text.complete();
+    subMsg.complete();
+
+    if (fullResponse.trim()) {
+      await memory.add(memoryKey, fullResponse, {
+        name,
+        createTime: new Date(subMsg.datetime).getTime(),
+      });
+    }
+
+    parentCtx.msg = resTool.newMessage("assistant", "统筹");
+    return fullResponse;
+  }
+
+  const promptInput = z.object({
+    prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
+  });
+
+  const run_sub_agent_storySkeleton = tool({
+    description: "运行执行subAgent来完成故事骨架相关任务",
+    inputSchema: promptInput,
+    execute: async ({ prompt }) => {
+      const skill = path.join(u.getPath("skills"), "script_execution_skeleton.md");
+      const systemPrompt = await fs.promises.readFile(skill, "utf-8");
+      return runAgent({
+        prompt,
+        system: systemPrompt + "你可以使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>",
+        name: "编剧",
+        memoryKey: "assistant:execution:storySkeleton",
+      });
+    },
+  });
+
+  const run_sub_agent_adaptationStrategy = tool({
+    description: "运行执行subAgent来完成改编策略相关任务",
+    inputSchema: promptInput,
+    execute: async ({ prompt }) => {
+      const skill = path.join(u.getPath("skills"), "script_execution_adaptation.md");
+      const systemPrompt = await fs.promises.readFile(skill, "utf-8");
+      return runAgent({
+        prompt,
+        system: systemPrompt + "你可以使用如下XML格式写入工作区：\n<adaptationStrategy>改编策略内容</adaptationStrategy>",
+        name: "编剧",
+        memoryKey: "assistant:execution:adaptationStrategy",
+      });
+    },
+  });
+
+  const run_sub_agent_script = tool({
+    description: "运行执行subAgent来完成剧本相关任务",
+    inputSchema: promptInput,
+    execute: async ({ prompt }) => {
+      const skill = path.join(u.getPath("skills"), "script_execution_script.md");
+      const systemPrompt = await fs.promises.readFile(skill, "utf-8");
+      return runAgent({
+        prompt,
+        system:
+          systemPrompt +
+          `你可以使用如下XML格式写入工作区：\nXML不得添加任何额外标签<script><item name="剧本名称">剧本内容</item><item name="剧本名称">剧本内容</item><item name="剧本名称">剧本内容</item></script>`,
+        name: "编剧",
+        memoryKey: "assistant:execution:script",
+      });
     },
   });
 
   const run_supervision_agent = tool({
     description: "运行监督层subAgent执行独立任务，完成后返回结果",
-    inputSchema: z.object({
-      prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
-    }),
+    inputSchema: promptInput,
     execute: async ({ prompt }) => {
-      const skill = await useSkill({ mainSkill: "script_agent_supervision", workspace: ["script_agent_skills/supervision"] });
+      const skill = path.join(u.getPath("skills"), "script_agent_supervision.md");
+      const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
-      // 先完成主Agent当前的消息
-      parentCtx.msg.complete();
-      // 子Agent用新消息回复
-
-      const subMsg = resTool.newMessage("assistant", "编辑");
-
-      const { textStream } = await u.Ai.Text("scriptAgent").stream({
-        system: skill.prompt,
-        messages: [{ role: "user", content: prompt }],
-        abortSignal,
-        tools: {
-          ...skill.tools,
-          ...useTools({ resTool, msg: subMsg }),
-        },
+      return runAgent({
+        prompt,
+        system: systemPrompt,
+        name: "编辑",
+        memoryKey: "assistant:supervision",
       });
-
-      let text = subMsg.text();
-      let fullResponse = "";
-      for await (const chunk of textStream) {
-        text.append(chunk);
-        fullResponse += chunk;
-      }
-      text.complete();
-      subMsg.complete();
-      if (fullResponse.trim()) {
-        await memory.add(`assistant:supervision`, fullResponse, { name: "编辑", createTime: new Date(subMsg.datetime).getTime() });
-      }
-      // 为主Agent后续输出创建新消息
-      parentCtx.msg = parentCtx.resTool.newMessage("assistant", "统筹");
-      return fullResponse;
     },
   });
 
   return {
-    run_execution_agent,
+    run_sub_agent_storySkeleton,
+    run_sub_agent_adaptationStrategy,
+    run_sub_agent_script,
     run_supervision_agent,
   };
 }
