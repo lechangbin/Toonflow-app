@@ -1,6 +1,6 @@
 import express from "express";
 import u from "@/utils";
-import { success } from "@/lib/responseFormat";
+import { error, success } from "@/lib/responseFormat";
 import fs from "fs";
 import path from "path";
 import { validateFields } from "@/middleware/middleware";
@@ -30,7 +30,7 @@ export default router.post(
       };
 
       if (/^\d+$/.test(name)) {
-        res.status(400).send({ error: "名称不能为纯数字" });
+        res.status(400).send(error("名称不能为纯数字"));
         return;
       }
 
@@ -80,7 +80,7 @@ export default router.post(
         existingFiles = allFiles.filter((f) => /\.(png|jpe?g|gif|webp|svg)$/i.test(f));
       } catch {}
 
-      const retainedFileNames = new Set(images.filter((item) => item.includes("http")).map((url) => path.basename(new URL(url).pathname)));
+      const retainedFileNames = new Set(images.filter((item) => item.startsWith("http")).map((url) => path.basename(new URL(url).pathname)));
 
       for (const file of existingFiles) {
         if (!retainedFileNames.has(file)) {
@@ -89,7 +89,7 @@ export default router.post(
       }
 
       for (const item of images) {
-        if (!item.includes("http")) await u.oss.writeFile(`${name}/${u.uuid()}.jpg`, item);
+        if (!item.startsWith("http")) await u.oss.writeFile(`${name}/${u.uuid()}.jpg`, item);
       }
 
       res.status(200).send(success());
