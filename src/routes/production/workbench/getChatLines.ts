@@ -30,7 +30,7 @@ export default router.post(
 );
 
 async function getLines(prompt: string) {
-  const skill = await useSkill("universal_agent.md");
+  const skill = await useSkill("universal_agent.md");//todo：改为AI
 
   const resText = await u.Ai.Text("universalAgent").invoke({
     system: skill.prompt,

@@ -17,7 +17,7 @@ export interface AgentContext {
   msg: ReturnType<ResTool["newMessage"]>;
 }
 
-function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["get"]>>): string {
+function buildMemPrompt(mem: Awaited<ReturnType<Memory["get"]>>): string {
   let memoryContext = "";
   if (mem.rag.length) {
     memoryContext += `[相关记忆]\n${mem.rag.map((r) => r.content).join("\n")}`;
@@ -30,8 +30,7 @@ function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["
     if (memoryContext) memoryContext += "\n\n";
     memoryContext += `[近期对话]\n${mem.shortTerm.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
   }
-  if (!memoryContext) return skillPrompt;
-  return `${skillPrompt}\n\n## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
+  return `## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
 }
 
 const subAgentList = ["executionAI", "supervisionAI"] as const;
@@ -40,14 +39,11 @@ export async function decisionAI(ctx: AgentContext) {
   const { isolationKey, text, abortSignal } = ctx;
   const memory = new Memory("productionAgent", isolationKey);
   await memory.add("user", text);
-  const [skill, mem] = await Promise.all([useSkill("production_agent_decision.md"), memory.get(text)]);
 
-  const systemPrompt = buildSystemPrompt(skill.prompt, mem);
-
-  const prefixSystem = `以用户当前指令为最终目标。默认直接推进执行；仅当用户明确要求新增或修改拍摄计划时，才调用set_flowData更新scriptPlan并与用户确认。需要执行任务时调用run_sub_agent运行**executionAI**。`;
+  const skill = await useSkill({ mainSkill: "production_agent_decision" }, buildMemPrompt(await memory.get(text)));
 
   const { textStream } = await u.Ai.Text("productionAgent").stream({
-    system: prefixSystem + systemPrompt,
+    system: skill.prompt,
     messages: [{ role: "user", content: text }],
     abortSignal,
     tools: {
@@ -69,7 +65,11 @@ export async function decisionAI(ctx: AgentContext) {
 export async function executionAI(ctx: AgentContext) {
   const { text, abortSignal } = ctx;
 
-  const skill = await useSkill("production_agent_execution.md");
+  const skill = await useSkill({
+    mainSkill: "production_agent_execution",
+    workspace: ["production_agent_skills/execution"],
+    attachedSkills: ["production_agent_skills/execution/driector_art_skills/chinese_sweet_romance/driector_skills"], //todo：后续可以改为动态加载
+  });
 
   const subMsg = ctx.resTool.newMessage("assistant", "执行导演");
 
@@ -89,7 +89,7 @@ export async function executionAI(ctx: AgentContext) {
 export async function supervisionAI(ctx: AgentContext) {
   const { text, abortSignal } = ctx;
 
-  const skill = await useSkill("production_agent_supervision.md");
+  const skill = await useSkill({ mainSkill: "production_agent_supervision", workspace: ["production_agent_skills/supervision"] });
   const subMsg = ctx.resTool.newMessage("assistant", "编辑");
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({

@@ -17,7 +17,7 @@ export interface AgentContext {
   msg: ReturnType<ResTool["newMessage"]>;
 }
 
-function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["get"]>>): string {
+function buildMemPrompt(mem: Awaited<ReturnType<Memory["get"]>>): string {
   let memoryContext = "";
   if (mem.rag.length) {
     memoryContext += `[相关记忆]\n${mem.rag.map((r) => r.content).join("\n")}`;
@@ -30,8 +30,7 @@ function buildSystemPrompt(skillPrompt: string, mem: Awaited<ReturnType<Memory["
     if (memoryContext) memoryContext += "\n\n";
     memoryContext += `[近期对话]\n${mem.shortTerm.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
   }
-  if (!memoryContext) return skillPrompt;
-  return `${skillPrompt}\n\n## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
+  return `## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
 }
 
 const subAgentList = ["executionAI", "supervisionAI"] as const;
@@ -41,26 +40,32 @@ export async function decisionAI(ctx: AgentContext) {
 
   const memory = new Memory("scriptAgent", isolationKey);
   await memory.add("user", text, { createTime: userMessageTime });
-  const [skill, mem] = await Promise.all([useSkill("script_agent_decision.md"), memory.get(text)]);
 
-  const systemPrompt = buildSystemPrompt(skill.prompt, mem);
+  const skill = await useSkill({ mainSkill: "script_agent_decision" }, buildMemPrompt(await memory.get(text)));
 
   const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
   const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("id", "chapterIndex as index");
 
-  const projectInfo = [
-    "## 项目信息",
-    `小说名称：${projectData?.name ?? "未知"}`,
-    `小说类型：${projectData?.type ?? "未知"}`,
-    `小说简介：${projectData?.intro ?? "无"}`,
-    `目标改编影视视觉手册|画风：${projectData?.artStyle ?? "无"}`,
-    `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
-  ].join("\n");
+  const get_project_info = tool({
+    description: "获取项目的基本信息和章节ID映射表，返回字符串格式的项目信息",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const projectInfo = [
+        "## 项目信息",
+        `小说名称：${projectData?.name ?? "未知"}`,
+        `小说类型：${projectData?.type ?? "未知"}`,
+        `小说简介：${projectData?.intro ?? "无"}`,
+        `目标改编影视视觉手册|画风：${projectData?.artStyle ?? "无"}`,
+        `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
+      ].join("\n");
 
-  const prefixSystem = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- 章节ID：${i.id}: 第${i.index}章`).join("\n")}\n\n`;
+      const content = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- 章节ID：${i.id}: 第${i.index}章`).join("\n")}\n\n`;
+      return { content };
+    },
+  });
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
-    system: prefixSystem + systemPrompt,
+    system: skill.prompt,
     messages: [{ role: "user", content: text }],
     abortSignal,
     tools: {
@@ -68,6 +73,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...memory.getTools(),
       run_sub_agent: runSubAgent(ctx),
       ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
+      get_project_info,
     },
     onFinish: async (completion) => {
       await memory.add("assistant:decision", completion.text);
@@ -81,7 +87,11 @@ export async function decisionAI(ctx: AgentContext) {
 
 export async function executionAI(ctx: AgentContext) {
   const { text, abortSignal } = ctx;
-  const skill = await useSkill("script_agent_execution.md");
+
+  const skill = await useSkill({
+    mainSkill: "script_agent_execution",
+    workspace: ["script_agent_skills/execution"],
+  });
 
   const subMsg = ctx.resTool.newMessage("assistant", "编剧");
 
@@ -107,7 +117,8 @@ export async function executionAI(ctx: AgentContext) {
 export async function supervisionAI(ctx: AgentContext) {
   const { text, abortSignal } = ctx;
 
-  const skill = await useSkill("script_agent_supervision.md");
+  const skill = await useSkill({ mainSkill: "script_agent_supervision", workspace: ["script_agent_skills/supervision"] });
+
   const subMsg = ctx.resTool.newMessage("assistant", "编辑");
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({

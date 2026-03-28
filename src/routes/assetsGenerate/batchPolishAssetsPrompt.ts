@@ -93,7 +93,7 @@ export default router.post(
 
     const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
     const novelText = mergeNovelText(novelData);
-    const skill = await useSkill("universal_agent.md");
+    const skill = await useSkill("universal_agent.md");//todo：改为AI
 
     // 批量更新所有 item 状态为生成中
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);

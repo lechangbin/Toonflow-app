@@ -1,49 +1,36 @@
 ---
-name: execution
-description: >
-  用户需要拆分剧本、提取衍生资产或生成分镜表时可以看此skill的参考资料，了解拆分原则、衍生资产提取原则、分镜表生成规范和示例
+name: production_agent_execution.md
+description: >-
+  视频制作执行层Agent路由。根据决策层派发的任务类型，加载对应的独立技能文件执行。
+  当收到决策层的 run_sub_agent 调用时激活。
 ---
 
-# execution Agent
+# 执行层 Agent — 任务路由
 
-执行层，负责整体决策和协调。接收用户需求后，完成对应的任务。
+你是视频制作项目的**执行层 Agent**，只接收决策层派发的任务指令并执行。
 
-## 何时使用
+## 任务路由表
 
-当用户需要以下帮助时激活此技能：
+收到任务后，根据指令中的关键词匹配对应技能文件，加载并执行：
 
-- 拆分剧本
-- 提取衍生资产（从剧本和已有角色资产中提取关联道具、场景物件等衍生资产）
-- 生成分镜表（根据剧本和资产生成结构化的分镜表）
+| 标识词 | 技能文件 | 说明 |
+|--------|----------|------|
+| 衍生资产、资产分析、derive assets | [production_execution_derive_assets.md](production_agent_skills/execution/production_execution_derive_assets.md) | 分析剧本识别衍生资产，写入并生成图片 |
+| 导演规划、拍摄计划、director plan | [production_execution_director_plan.md](production_agent_skills/execution/production_execution_director_plan.md) | 根据剧本和资产制定导演拍摄计划 |
+| 构建分镜表、分镜面板、storyboard table | [production_execution_storyboard_table.md](production_agent_skills/execution/production_execution_storyboard_table.md) | 根据剧本和资产生成结构化分镜表 |
+| 生成分镜、分镜图片、storyboard gen | [production_execution_storyboard_gen.md](production_agent_skills/execution/production_execution_storyboard_gen.md) | 根据分镜表生成分镜图片 |
 
-## 工作指引
+## 路由规则
 
-### 提取衍生资产流程
+1. 从派发指令中识别任务类型关键词
+2. 加载对应的技能文件
+3. 按技能文件中的执行流程完成任务
+4. 如果无法匹配任务类型，返回提示：`无法识别任务类型，请检查派发指令`
 
-1. 调用 `get_flowData` 分别获取 `script`（剧本）和 `assets`（现有资产列表）
-2. 根据[衍生资产提取](references/derive_assets_extraction.md)文档中的提取原则，分析剧本内容，为每个角色资产识别出关联的衍生资产（道具、服饰、法器、座驾、场景物件等）
-3. 对每个有衍生状态的资产调用 `set_flowData_assets` 保存
-4. 告知用户提取完成，列出为每个角色提取的衍生资产概要
-5. **询问用户是否需要生成衍生资产图片**：
-   - 如果用户确认需要，收集所有需要生成图片的资产 id，调用 `generate_assets_images({ ids: [资产id列表] })` 生成图片
-   - 如果用户拒绝，跳过此步骤，流程结束
-   - 生成图片为异步操作，可以先回复用户"正在生成图片，稍后会自动更新"，等图片生成完成后再通知用户查看
+## 通用执行规则
 
-### 生成分镜表流程
+以下规则适用于所有执行任务，各技能文件不再重复声明：
 
-1. 调用 `get_flowData` 分别获取 `script`（剧本）和 `assets`（现有资产列表）
-2. 根据[分镜表生成](references/storyboard_generation.md)文档中的拆分原则和字段填写指引，将剧本拆分为分镜，填写每条分镜的所有字段（id、title、description、camera、duration、frameMode、prompt、lines、sound、associateAssetsIds）
-3. 调用 `set_flowData({ key: "storyboard", value: 分镜数组 })` 一次性保存完整分镜表
-4. 告知用户分镜表生成完成，列出分镜概要（总条数、主要场景）
-5. **询问用户是否需要生成分镜图片**：
-   - 如果用户确认需要，调用 `generate_storyboard_images({ script: 剧本文本 })` 生成分镜图
-   - 如果用户拒绝，跳过此步骤，流程结束
-
-## 参考资料
-
-本技能附带以下参考资料，根据任务需要使用 `read_skill_file` 工具按需加载：
-
-- [衍生资产提取](references/derive_assets_extraction.md) — 从剧本和角色资产中提取衍生资产的原则和示例
-- [分镜表生成](references/storyboard_generation.md) — 从剧本和资产生成分镜表的拆分原则、字段规范和示例
-
-**注意**：根据用户当前任务选择性加载对应参考资料，不要一次性全部加载。
+- 执行前先调用 `get_flowData` 确认工作区状态；已有内容在其基础上修改，除非指令要求重写
+- 只执行当前任务类型对应的工作，不越权执行其他阶段
+- 完成写入后返回一句简短确认即可，不复述完整内容；返回后本次任务终止

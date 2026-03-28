@@ -3,7 +3,6 @@ import { Socket } from "socket.io";
 import type {
   ChatMessageStatus,
   AIMessageContent,
-  UserMessageContent,
   TextContent,
   MarkdownContent,
   ImageContent,
@@ -13,8 +12,7 @@ import type {
   ToolCallContent,
   ActivityContent,
   ReasoningContent,
-  AttachmentContent,
-} from "./ChatMessagesData";
+} from "./chatMessagesData";
 
 type ContentType = AIMessageContent["type"];
 

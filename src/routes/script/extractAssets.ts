@@ -156,7 +156,7 @@ export default router.post(
         });
 
         try {
-          const skill = await useSkill("universal_agent.md");
+          const skill = await useSkill("universal_agent.md");//todo：改为AI
           await intansce.invoke({
             messages: [
               {

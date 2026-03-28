@@ -99,7 +99,7 @@ export default router.post(
     const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
     const novelText = mergeNovelText(novelData);
 
-    const skill = await useSkill("universal_agent.md");
+    const skill = await useSkill("universal_agent.md");//todo：改为AI
 
     const systemPrompt = `${skill.prompt}
 
