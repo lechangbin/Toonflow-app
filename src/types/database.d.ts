@@ -1,4 +1,4 @@
-// @db-hash 8aa6e47033e9f59d1f8b797d5b4fccd3
+// @db-hash dd33f188acbdc629e015ba7017c20c78
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -21,7 +21,7 @@ export interface o_agentDeploy {
   'model'?: string | null;
   'modelName'?: string | null;
   'name'?: string | null;
-  'vendorId'?: number | null;
+  'vendorId'?: string | null;
 }
 export interface o_agentWorkData {
   'createTime'?: number | null;
@@ -111,6 +111,7 @@ export interface o_project {
   'createTime'?: number | null;
   'id'?: number | null;
   'imageModel'?: string | null;
+  'imageQuality'?: string | null;
   'intro'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
@@ -141,22 +142,6 @@ export interface o_scriptAssets {
 export interface o_setting {
   'key'?: string | null;
   'value'?: string | null;
-}
-export interface o_skillAttribution {
-  'attribution'?: string;
-  'skillId'?: string;
-}
-export interface o_skillList {
-  'createTime': number;
-  'description': string;
-  'embedding'?: string | null;
-  'id'?: string;
-  'md5': string;
-  'name': string;
-  'path': string;
-  'state': number;
-  'type': string;
-  'updateTime': number;
 }
 export interface o_storyboard {
   'camera'?: string | null;
@@ -249,8 +234,6 @@ export interface DB {
   "o_script": o_script;
   "o_scriptAssets": o_scriptAssets;
   "o_setting": o_setting;
-  "o_skillAttribution": o_skillAttribution;
-  "o_skillList": o_skillList;
   "o_storyboard": o_storyboard;
   "o_tasks": o_tasks;
   "o_user": o_user;
