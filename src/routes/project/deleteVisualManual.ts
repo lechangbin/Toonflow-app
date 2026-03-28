@@ -2,7 +2,7 @@ import express from "express";
 import u from "@/utils";
 import fs from "fs";
 import { z } from "zod";
-import { success } from "@/lib/responseFormat";
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
@@ -18,7 +18,7 @@ export default router.post(
 
       // 安全校验：不允许包含路径分隔符、纯数字，防止越级删除或误删项目目录
       if (name.includes("/") || name.includes("\\") || name === "." || name === ".." || /^\d+$/.test(name)) {
-        res.status(400).send({ error: "非法的名称" });
+        res.status(400).send(error("名称不能包含路径分隔符或为纯数字"));
         return;
       }
 
@@ -37,7 +37,7 @@ export default router.post(
 
       res.status(200).send(success({ message: "删除成功" }));
     } catch (err) {
-      res.status(500).send({ error: String(err) });
+      res.status(500).send(error(u.error(err).message || "删除失败"));
     }
   },
 );
