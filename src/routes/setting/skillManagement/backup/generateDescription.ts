@@ -24,7 +24,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { content } = req.body;
-    const result = await u.Ai.Text("universalAgent").invoke({
+    const result = await u.Ai.Text("universalAi").invoke({
       system:
         "你是一个文档摘要助手。根据给定的文档内容生成一句简洁的中文描述（不超过100字），概括文档的核心主题和用途。只输出描述文本，不要添加任何前缀或格式。",
       messages: [{ role: "user", content: `内容：\n${content}` }],
