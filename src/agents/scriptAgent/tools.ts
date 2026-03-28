@@ -83,17 +83,6 @@ export default (toolCpnfig: ToolConfig) => {
         return text ?? "无数据";
       },
     }),
-    delete_script: tool({
-      description: "删除剧本，你需要先获取get_planData",
-      inputSchema: z.object({
-        name: z.string().describe("剧本名字"),
-      }),
-      execute: async ({ name }) => {
-        console.log("[tools] delete_script", name);
-        await new Promise((resolve) => socket.emit("delScript", { name }, (res: any) => resolve(res)));
-        return true;
-      },
-    }),
   };
   return toolsNames ? Object.fromEntries(Object.entries(tools).filter(([n]) => toolsNames.includes(n))) : tools;
 };
