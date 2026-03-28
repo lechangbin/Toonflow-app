@@ -1,12 +1,20 @@
-// @db-hash 05ecfd675f848d88631c1a546996caea
+// @db-hash 509ef34a31d203b2a7dca4e5dc69ae88
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_script_old_20260327 {
+  'content'?: string | null;
+  'createTime'?: number | null;
+  'id'?: number;
+  'name'?: string | null;
+  'projectId'?: number | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
+  'name'?: string | null;
   'relatedMessageIds'?: string | null;
   'role'?: string | null;
   'summarized'?: number | null;
@@ -46,7 +54,6 @@ export interface o_assets {
   'name'?: string | null;
   'projectId'?: number | null;
   'prompt'?: string | null;
-  'promptState'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
   'startTime'?: number | null;
@@ -110,6 +117,7 @@ export interface o_project {
   'createTime'?: number | null;
   'id'?: number | null;
   'imageModel'?: string | null;
+  'imageQuality'?: string | null;
   'intro'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
@@ -121,7 +129,7 @@ export interface o_project {
 export interface o_prompt {
   'id'?: number;
   'name'?: string | null;
-  'prompt'?: string | null;
+  'rompt'?: string | null;
 }
 export interface o_script {
   'content'?: string | null;
@@ -229,6 +237,7 @@ export interface o_videoConfig {
 }
 
 export interface DB {
+  "_o_script_old_20260327": _o_script_old_20260327;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;

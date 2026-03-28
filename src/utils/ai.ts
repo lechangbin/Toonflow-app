@@ -116,6 +116,7 @@ class AiImage {
     return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("imageRequest", modelName);
       this.result = await fn(input);
+      console.log("%c Line:119 🌽 this.result", "background:#ed9ec7", this.result);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
     });

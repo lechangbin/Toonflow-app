@@ -31,6 +31,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("id");
         table.string("projectType");
         table.string("imageModel");
+        table.string("imageQuality");
         table.string("videoModel");
         table.text("name");
         table.text("intro");
@@ -64,7 +65,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.string("model");
         table.string("key");
         table.string("modelName");
-        table.integer("vendorId");
+        table.text("vendorId");
         table.string("desc");
         table.string("name");
         table.boolean("disabled").defaultTo(false);

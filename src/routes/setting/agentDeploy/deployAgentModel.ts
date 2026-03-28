@@ -12,7 +12,7 @@ export default router.post(
     name: z.string(),
     model: z.string(),
     modelName: z.string(),
-    vendorId: z.number().nullable(),
+    vendorId: z.string().nullable(),
     desc: z.string(),
   }),
   async (req, res) => {

@@ -500,7 +500,7 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
 
         // --- 准备公共数据 ---
         const projectData = await u.db("o_project").where("id", resTool.data.projectId).select("videoRatio").first();
-        const imageModel = resTool.data.imageModel;
+        const imageModelData = await u.db("o_project").where("id", resTool.data.projectId).select("imageModel", "imageQuality").first();
 
         // 生成单张图片的函数
         const generateOneImage = async (item: (typeof images)[0]) => {
@@ -519,10 +519,10 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
             getStoryboardImageBase64(item.referenceIds),
           ]);
 
-          const imageCls = await u.Ai.Image(imageModel?.modelId).run({
+          const imageCls = await u.Ai.Image(imageModelData.imageModel).run({
             prompt: item.prompt,
             imageBase64: [...assetsBase64, ...referenceBase64],
-            size: imageModel?.quality,
+            size: imageModelData.imageQuality,
             aspectRatio: (projectData?.videoRatio as `${number}:${number}`) ?? "16:9",
             taskClass: "生成图片",
             describe: "分镜图片生成",
@@ -616,20 +616,20 @@ export default (resTool: ResTool, toolsNames?: string[]) => {
           }
         });
         //获取所设置模型
-        const imageModel = resTool.data.imageModel;
+        const imageModelData = await u.db("o_project").where("id", resTool.data.projectId).select("imageModel", "imageQuality").first();
         for (const item of assetsImage) {
           const [imageId] = await u.db("o_image").insert({
             // 数据库插入图片记录
             assetsId: item.assetId,
-            model: imageModel?.modelId,
+            model: imageModelData?.imageModel,
             state: "生成中",
-            resolution: imageModel?.quality,
+            resolution: imageModelData?.imageQuality,
           });
-          u.Ai.Image(imageModel?.modelId)
+          u.Ai.Image(imageModelData?.imageModel)
             .run({
               prompt: item.prompt,
               imageBase64: await getAssetsImageBase64(item.id ? [item.id] : []),
-              size: imageModel?.quality,
+              size: imageModelData?.imageQuality,
               aspectRatio: "16:9",
               taskClass: "生成图片",
               describe: "资产图片生成",
