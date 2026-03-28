@@ -1,4 +1,4 @@
-// @routes-hash ebc81322f1e60446bf41d1ecb72f2b96
+// @routes-hash 5a19c42c22d44ec4c7fe2fc7245535d9
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -99,25 +99,20 @@ import route95 from "./routes/setting/memoryConfig/getMemory";
 import route96 from "./routes/setting/memoryConfig/sureMemory";
 import route97 from "./routes/setting/promptManage/getPrompt";
 import route98 from "./routes/setting/promptManage/updatePrompt";
-import route99 from "./routes/setting/skillManagement/backup/addSkill";
-import route100 from "./routes/setting/skillManagement/backup/deleteSkill";
-import route101 from "./routes/setting/skillManagement/backup/embeddingSkill";
-import route102 from "./routes/setting/skillManagement/backup/generateDescription";
-import route103 from "./routes/setting/skillManagement/backup/getSkillList";
-import route104 from "./routes/setting/skillManagement/backup/scanSkills";
-import route105 from "./routes/setting/skillManagement/backup/updateSkill";
-import route106 from "./routes/setting/skillManagement/getSkillList";
-import route107 from "./routes/setting/vendorConfig/addVendor";
-import route108 from "./routes/setting/vendorConfig/deleteVendor";
-import route109 from "./routes/setting/vendorConfig/getVendorList";
-import route110 from "./routes/setting/vendorConfig/modelTest";
-import route111 from "./routes/setting/vendorConfig/updateCode";
-import route112 from "./routes/setting/vendorConfig/updateVendor";
-import route113 from "./routes/task/getProject";
-import route114 from "./routes/task/getTaskApi";
-import route115 from "./routes/task/getTaskCategories";
-import route116 from "./routes/task/taskDetails";
-import route117 from "./routes/test/test";
+import route99 from "./routes/setting/skillManagement/getSkillContent";
+import route100 from "./routes/setting/skillManagement/getSkillList";
+import route101 from "./routes/setting/skillManagement/saveSkillContent";
+import route102 from "./routes/setting/vendorConfig/addVendor";
+import route103 from "./routes/setting/vendorConfig/deleteVendor";
+import route104 from "./routes/setting/vendorConfig/getVendorList";
+import route105 from "./routes/setting/vendorConfig/modelTest";
+import route106 from "./routes/setting/vendorConfig/updateCode";
+import route107 from "./routes/setting/vendorConfig/updateVendor";
+import route108 from "./routes/task/getProject";
+import route109 from "./routes/task/getTaskApi";
+import route110 from "./routes/task/getTaskCategories";
+import route111 from "./routes/task/taskDetails";
+import route112 from "./routes/test/test";
 
 export default async (app: Express) => {
   app.use("/api/agents/clearMemory", route1);
@@ -218,23 +213,18 @@ export default async (app: Express) => {
   app.use("/api/setting/memoryConfig/sureMemory", route96);
   app.use("/api/setting/promptManage/getPrompt", route97);
   app.use("/api/setting/promptManage/updatePrompt", route98);
-  app.use("/api/setting/skillManagement/backup/addSkill", route99);
-  app.use("/api/setting/skillManagement/backup/deleteSkill", route100);
-  app.use("/api/setting/skillManagement/backup/embeddingSkill", route101);
-  app.use("/api/setting/skillManagement/backup/generateDescription", route102);
-  app.use("/api/setting/skillManagement/backup/getSkillList", route103);
-  app.use("/api/setting/skillManagement/backup/scanSkills", route104);
-  app.use("/api/setting/skillManagement/backup/updateSkill", route105);
-  app.use("/api/setting/skillManagement/getSkillList", route106);
-  app.use("/api/setting/vendorConfig/addVendor", route107);
-  app.use("/api/setting/vendorConfig/deleteVendor", route108);
-  app.use("/api/setting/vendorConfig/getVendorList", route109);
-  app.use("/api/setting/vendorConfig/modelTest", route110);
-  app.use("/api/setting/vendorConfig/updateCode", route111);
-  app.use("/api/setting/vendorConfig/updateVendor", route112);
-  app.use("/api/task/getProject", route113);
-  app.use("/api/task/getTaskApi", route114);
-  app.use("/api/task/getTaskCategories", route115);
-  app.use("/api/task/taskDetails", route116);
-  app.use("/api/test/test", route117);
+  app.use("/api/setting/skillManagement/getSkillContent", route99);
+  app.use("/api/setting/skillManagement/getSkillList", route100);
+  app.use("/api/setting/skillManagement/saveSkillContent", route101);
+  app.use("/api/setting/vendorConfig/addVendor", route102);
+  app.use("/api/setting/vendorConfig/deleteVendor", route103);
+  app.use("/api/setting/vendorConfig/getVendorList", route104);
+  app.use("/api/setting/vendorConfig/modelTest", route105);
+  app.use("/api/setting/vendorConfig/updateCode", route106);
+  app.use("/api/setting/vendorConfig/updateVendor", route107);
+  app.use("/api/task/getProject", route108);
+  app.use("/api/task/getTaskApi", route109);
+  app.use("/api/task/getTaskCategories", route110);
+  app.use("/api/task/taskDetails", route111);
+  app.use("/api/test/test", route112);
 }

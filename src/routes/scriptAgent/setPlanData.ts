@@ -23,6 +23,19 @@ export default router.post(
       .update({
         data: JSON.stringify(data),
       });
+    const script = data.script;
+
+    await Promise.all(
+      script.map(async (s: any) => {
+        const row = await u.db("o_script").where({ projectId, name: s.name }).first();
+        if (row) {
+          await u.db("o_script").where({ id: row.id }).update({ content: s.content });
+        } else {
+          await u.db("o_script").insert({ projectId, name: s.name, content: s.content });
+        }
+      }),
+    );
+
     res.status(200).send(success());
   },
 );

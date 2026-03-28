@@ -7,9 +7,11 @@ import * as fs from "fs";
 
 type SkillAttribution =
   //剧本Agent
-  | "script_agent_decision"
-  | "script_agent_execution"
-  | "script_agent_supervision"
+  | "script_agent_decision" //决策
+  | "script_execution_skeleton" //故事骨架
+  | "script_execution_adaptation" //改变策略
+  | "script_execution_script" //剧本生成
+  | "script_agent_supervision" //审核
   //生产Agent
   | "production_agent_decision"
   | "production_agent_execution"
@@ -39,52 +41,89 @@ function ensureNonEmptyBody(body: string, fallback: string): string {
 // ==================== 解析 SKILL.md ====================
 
 function parseFrontmatter(content: string): { name: string; description: string } {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match?.[1]) throw new Error("No frontmatter found");
-
-  const result: Record<string, string> = {};
-  const lines = match[1].split("\n");
-
-  for (let i = 0; i < lines.length; ) {
-    const colonIndex = lines[i].indexOf(":");
-    if (colonIndex === -1) {
-      i++;
-      continue;
-    }
-
-    const key = lines[i].slice(0, colonIndex).trim();
-    if (!key) {
-      i++;
-      continue;
-    }
-
-    let value = lines[i].slice(colonIndex + 1).trim();
-    i++;
-
-    if (/^[>|]-?$/.test(value)) {
-      const fold = value.startsWith(">");
-      const parts: string[] = [];
-      while (i < lines.length && /^\s+/.test(lines[i])) {
-        parts.push(lines[i].trim());
-        i++;
-      }
-      value = fold ? parts.join(" ") : parts.join("\n");
-    }
-
-    result[key] = value;
+  const match = content.match(/^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/);
+  if (!match?.[1]) {
+    throw new Error(`技能文件缺少有效的 frontmatter，确保以 --- 包裹并包含 name 和 description 字段。${content}`);
   }
 
-  if (!result.name || !result.description) throw new Error("Frontmatter missing required field: name or description");
+  const result: Record<string, string> = {};
+  const lines = match[1].split(/\r?\n/);
+
+  for (let i = 0; i < lines.length; ) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      i++;
+      continue;
+    }
+
+    const keyMatch = line.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)$/);
+    if (!keyMatch) {
+      i++;
+      continue;
+    }
+
+    const key = keyMatch[1].trim();
+    const rawValue = (keyMatch[2] ?? "").trim();
+    i++;
+
+    if (!key) continue;
+
+    if (/^[>|][+-]?[0-9]*$/.test(rawValue)) {
+      const isFolded = rawValue.startsWith(">");
+      const blockLines: string[] = [];
+      let blockIndent: number | null = null;
+
+      while (i < lines.length) {
+        const current = lines[i];
+        const currentTrimmed = current.trim();
+
+        if (currentTrimmed === "") {
+          if (blockIndent !== null) blockLines.push("");
+          i++;
+          continue;
+        }
+
+        const currentIndent = current.match(/^\s*/)?.[0].length ?? 0;
+        if (blockIndent === null) {
+          blockIndent = currentIndent;
+        }
+
+        if (currentIndent < blockIndent) break;
+
+        blockLines.push(current.slice(blockIndent));
+        i++;
+      }
+
+      result[key] = isFolded
+        ? blockLines
+            .join("\n")
+            .replace(/\n{2,}/g, "\n\n")
+            .replace(/([^\n])\n([^\n])/g, "$1 $2")
+            .trim()
+        : blockLines.join("\n").trim();
+      continue;
+    }
+
+    const unquoted = rawValue.replace(/^(['"])([\s\S]*)\1$/, "$2");
+    result[key] = unquoted;
+  }
+
+  if (!result.name || !result.description) {
+    throw new Error(`技能文件缺少必要字段: name 或 description，确保 frontmatter 包含这两个字段。${content}`);
+  }
+
   return { name: result.name, description: result.description };
 }
 
-export async function useSkill(input: SkillInput, mem?: string) {
+export async function useSkill(input: SkillInput) {
   const { mainSkill, workspace = [], attachedSkills = [] } = input;
   const rootDir = getPath("skills");
   const normalizedRootDir = path.resolve(rootDir);
   const mainPath = path.join(rootDir, mainSkill + ".md");
   if (!fs.existsSync(mainPath)) throw new Error(`主技能文件不存在: ${mainPath}`);
-  if (!isPathInside(mainPath, normalizedRootDir)) throw new Error("技能名称无效：检测到路径穿越");
+  if (!isPathInside(mainPath, normalizedRootDir)) throw new Error(`技能名称无效：检测到路径穿越。${mainPath}`);
 
   const resolveSafeSkillDir = (dir: string): string | null => {
     const resolvedDir = path.resolve(normalizedRootDir, dir);
@@ -115,7 +154,7 @@ export async function useSkill(input: SkillInput, mem?: string) {
 
   const content = await fs.promises.readFile(mainPath, "utf-8");
   const skill = parseFrontmatter(content);
-  return { prompt: buildPrompt(skill), tools: createSkillTools(skill, skillPaths, mem) };
+  return { prompt: buildPrompt(skill), tools: createSkillTools(skill, skillPaths), skillPaths };
 }
 
 function buildPrompt(skill: { name: string; description: string }): string {
@@ -132,7 +171,7 @@ function buildPrompt(skill: { name: string; description: string }): string {
 </available_skills>`;
 }
 
-function createSkillTools(skill: { name: string; description: string }, skillPaths: SkillPaths, mem?: string) {
+function createSkillTools(skill: { name: string; description: string }, skillPaths: SkillPaths) {
   const activated = new Set<string>(); // 已激活技能集合，防止重复加载
   const skillsRootDir = path.resolve(getPath("skills"));
   return {
@@ -168,10 +207,6 @@ function createSkillTools(skill: { name: string; description: string }, skillPat
           content += "</skill_resources>\n";
         }
         content += "</skill_content>";
-        if (mem) {
-          content += `\n<memory>\n` + mem + `\n</memory>`;
-        }
-        console.log("%c Line:173 🍕 content", "background:#fca650", content);
         return { content };
       },
     }),
@@ -213,7 +248,6 @@ function createSkillTools(skill: { name: string; description: string }, skillPat
           content += "</skill_resources>\n";
         }
         content += "</skill_content>";
-        console.log("%c Line:214 🍕 content", "background:#6ec1c2", content);
         return { content };
       },
     }),

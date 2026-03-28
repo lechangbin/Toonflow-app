@@ -1,5 +1,5 @@
 import isPathInside from "is-path-inside";
-import getPath from "@/utils/getPath";
+import getPath, { isEletron } from "@/utils/getPath";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -49,7 +49,8 @@ class OSS {
     await this.ensureInit();
     const safePath = normalizeUserPath(userRelPath);
     // URL 始终使用 /，所以这里需要将系统分隔符转回 /
-    const url = process.env.OSSURL || `http://127.0.0.1:10588/`;
+    let url = process.env.OSSURL || `http://127.0.0.1:10588/`;
+    if (isEletron()) url = `http://localhost:${process.env.PORT}/`;
     return `${url}${safePath.split(path.sep).join("/")}`;
   }
 

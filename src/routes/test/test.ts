@@ -9,7 +9,7 @@ export default router.get("/", async (req, res) => {
     {
       mainSkill: "production_agent_execution",
       workspace: ["production_agent_skills/execution"],
-      attachedSkills: ["production_agent_skills/execution/driector_art_skills/chinese_sweet_romance/driector_skills"],
+      attachedSkills: ["art_prompts/chinese_sweet_romance/driector_skills"],
     },
   );
 
