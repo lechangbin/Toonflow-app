@@ -156,13 +156,13 @@ export default router.post(
         });
 
         try {
-          const skill = await useSkill("universal_agent.md");//todo：改为AI
+          const data = await u.db("o_prompt").where("type", "scriptAssetExtraction").first("data");
           await intansce.invoke({
             messages: [
               {
                 role: "system",
                 content:
-                  skill.prompt +
+                  data?.data +
                   "\n\n提取剧本中涉及的资产（角色、场景、道具），参考技能 script_assets_extract 规范，结果必须通过 resultTool 工具返回。",
               },
               {
@@ -170,13 +170,16 @@ export default router.post(
                 content: `请根据以下剧本提取对应的剧本资产（角色、场景、道具、素材片段）:\n\n${script.content}`,
               },
             ],
-            tools: { ...skill.tools, resultTool },
+            tools: { resultTool },
           });
         } catch (e: any) {
           const msg = e?.message || String(e);
           console.error(`[extractAssets] scriptId=${scriptId} name=${script.name} 提取失败:`, msg);
           errors.push({ scriptId, error: script.name + ":" + u.error(e).message });
-          await u.db("o_script").where("id", scriptId).update({ extractState: -1, errorReason: u.error(e).message });
+          await u
+            .db("o_script")
+            .where("id", scriptId)
+            .update({ extractState: -1, errorReason: u.error(e).message });
           return null;
         }
 

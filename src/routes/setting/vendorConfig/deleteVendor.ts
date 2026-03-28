@@ -14,7 +14,6 @@ export default router.post(
     await u.db("o_vendorConfig").where("id", id).del();
     await u.db("o_agentDeploy").where("vendorId", id).update({
       model: null,
-      key: null,
       vendorId: null,
     });
     res.status(200).send(success("删除成功"));
