@@ -17,9 +17,10 @@ export default router.post(
     videoRatio: z.string(),
     imageModel: z.string(),
     videoModel: z.string(),
+    projectType: z.string(),
   }),
   async (req, res) => {
-    const { id, name, intro, type, artStyle, videoRatio, imageModel, videoModel } = req.body;
+    const { id, name, intro, type, artStyle, videoRatio, imageModel, videoModel, projectType } = req.body;
 
     await u.db("o_project").where("id", id).update({
       name,
@@ -29,6 +30,7 @@ export default router.post(
       videoRatio,
       imageModel,
       videoModel,
+      projectType,
     });
 
     res.status(200).send(success({ message: "新增项目成功" }));
