@@ -3,7 +3,6 @@ import u from "@/utils";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { useSkill } from "@/utils/agent/skillsTools";
 const router = express.Router();
 interface OutlineItem {
   description: string;
@@ -99,9 +98,9 @@ export default router.post(
     const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
     const novelText = mergeNovelText(novelData);
 
-    const skill = await useSkill("universal_agent.md");//todo：改为AI
+    const data = await u.db("o_prompt").where("type", "assetsPromptGeneration").first("data");
 
-    const systemPrompt = `${skill.prompt}
+     const systemPrompt = `${data?.data}
 
       请根据以下参数生成${config.label}提示词：
   
@@ -121,7 +120,6 @@ export default router.post(
       const { _output } = (await u.Ai.Text("universalAgent").invoke({
         system: systemPrompt,
         messages: [{ role: "user", content: "小说原文" + novelText }],
-        tools: skill.tools,
       })) as any;
 
       if (!_output) return res.status(500).send("失败");
