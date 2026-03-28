@@ -164,7 +164,7 @@ app.whenReady().then(async () => {
         windowismaximized: () => ({
           maximized: mainWindow?.isMaximized() ?? false,
         }),
-        openDevTool: () => {
+        opendevtool: () => {
           mainWindow?.webContents.openDevTools();
           return { ok: true };
         },

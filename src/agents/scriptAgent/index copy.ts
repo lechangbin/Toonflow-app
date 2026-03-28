@@ -34,6 +34,8 @@ function buildMemPrompt(mem: Awaited<ReturnType<Memory["get"]>>): string {
   return `## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
 }
 
+const subAgentList = ["executionAI", "supervisionAI"] as const;
+
 export async function decisionAI(ctx: AgentContext) {
   const { isolationKey, text, userMessageTime, abortSignal, resTool } = ctx;
 
@@ -68,8 +70,8 @@ export async function decisionAI(ctx: AgentContext) {
     abortSignal,
     tools: {
       ...memory.getTools(),
+      run_sub_agent: runSubAgent(ctx),
       ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
-      ...createSubAgent(ctx),
     },
     onFinish: async (completion) => {
       await memory.add("assistant:decision", completion.text);
@@ -81,105 +83,93 @@ export async function decisionAI(ctx: AgentContext) {
 
 //====================== 执行层 ======================
 
-function createSubAgent(parentCtx: AgentContext) {
-  const { resTool, abortSignal } = parentCtx;
+export async function executionAI(ctx: AgentContext) {
+  const { text, abortSignal } = ctx;
 
+  const skill = await useSkill({
+    mainSkill: "script_agent_execution",
+    workspace: ["script_agent_skills/execution"],
+  });
+
+  const subMsg = ctx.resTool.newMessage("assistant", "编剧");
+
+  const prefixSystem = `
+你可以使用如下XML格式写入工作区：
+<storySkeleton>故事骨架内容</storySkeleton>
+<adaptationStrategy>改编策略内容</adaptationStrategy>
+`;
+
+  const { textStream } = await u.Ai.Text("scriptAgent").stream({
+    system: prefixSystem + skill.prompt,
+    messages: [{ role: "user", content: text }],
+    abortSignal,
+    tools: {
+      ...skill.tools,
+      ...useTools({ resTool: ctx.resTool, msg: subMsg }),
+    },
+  });
+
+  return { textStream, subMsg };
+}
+
+export async function supervisionAI(ctx: AgentContext) {
+  const { text, abortSignal } = ctx;
+
+  const skill = await useSkill({ mainSkill: "script_agent_supervision", workspace: ["script_agent_skills/supervision"] });
+
+  const subMsg = ctx.resTool.newMessage("assistant", "编辑");
+
+  const { textStream } = await u.Ai.Text("scriptAgent").stream({
+    system: skill.prompt,
+    messages: [{ role: "user", content: text }],
+    abortSignal,
+    tools: {
+      ...skill.tools,
+      ...useTools({
+        resTool: ctx.resTool,
+        msg: subMsg,
+      }),
+    },
+  });
+
+  return { textStream, subMsg };
+}
+
+//工具函数
+function runSubAgent(parentCtx: AgentContext) {
   const memory = new Memory("scriptAgent", parentCtx.isolationKey);
-
-  const run_execution_agent = tool({
-    description: "运行执行层subAgent执行独立任务，完成后返回结果",
+  return tool({
+    description: "启动子Agent执行独立任务。可用子Agent:executionAI, decisionAI, supervisionAI",
     inputSchema: z.object({
-      taskType: z.enum(["故事骨架", "改变策略", "剧本"]).describe("任务类型"),
+      agent: z.enum(["executionAI", "supervisionAI"]).describe("子Agent名称"),
       prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
     }),
-    execute: async ({ taskType, prompt }) => {
-      const skill = await useSkill({ mainSkill: "script_agent_execution", workspace: ["script_agent_skills/execution"] });
+    execute: async ({ agent, prompt }) => {
+      const fn = [executionAI, supervisionAI][subAgentList.indexOf(agent)];
+
       // 先完成主Agent当前的消息
       parentCtx.msg.complete();
-      const subMsg = resTool.newMessage("assistant", "编剧");
-      const prefixSystem =
-        "你可以使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>\n<adaptationStrategy>改编策略内容</adaptationStrategy>";
       // 子Agent用新消息回复
-      const { textStream } = await u.Ai.Text("scriptAgent").stream({
-        system: prefixSystem + skill.prompt,
-        messages: [{ role: "user", content: `请完成${taskType}任务` }],
-        abortSignal,
-        tools: {
-          ...skill.tools,
-          ...useTools({ resTool, msg: subMsg }),
-          get_task_details: tool({
-            description: "获取主Agent传入的任务目标详情",
-            inputSchema: z.object({}),
-            execute: async () => {
-              const thinking = subMsg.thinking("以获取任务详情");
-              thinking.appendText("任务详情:\n" + prompt);
-              thinking.complete();
-              return prompt ?? "运行失败";
-            },
-          }),
-        },
-      });
-
+      const { textStream: subTextStream, subMsg } = await fn({ ...parentCtx, text: prompt });
       let text = subMsg.text();
       let fullResponse = "";
-      for await (const chunk of textStream) {
+      for await (const chunk of subTextStream) {
         text.append(chunk);
         fullResponse += chunk;
       }
       text.complete();
       subMsg.complete();
       if (fullResponse.trim()) {
-        await memory.add(`assistant:execution`, fullResponse, { name: "编剧", createTime: new Date(subMsg.datetime).getTime() });
+        await memory.add(`assistant:${agent === "executionAI" ? "execution" : "supervision"}`, fullResponse, {
+          name: agent === "executionAI" ? "编剧" : "编辑",
+          createTime: new Date(subMsg.datetime).getTime(),
+        });
       }
+
       // 为主Agent后续输出创建新消息
       parentCtx.msg = parentCtx.resTool.newMessage("assistant", "统筹");
+
       return fullResponse;
     },
   });
-
-  const run_supervision_agent = tool({
-    description: "运行监督层subAgent执行独立任务，完成后返回结果",
-    inputSchema: z.object({
-      prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
-    }),
-    execute: async ({ prompt }) => {
-      const skill = await useSkill({ mainSkill: "script_agent_supervision", workspace: ["script_agent_skills/supervision"] });
-
-      // 先完成主Agent当前的消息
-      parentCtx.msg.complete();
-      // 子Agent用新消息回复
-
-      const subMsg = resTool.newMessage("assistant", "编辑");
-
-      const { textStream } = await u.Ai.Text("scriptAgent").stream({
-        system: skill.prompt,
-        messages: [{ role: "user", content: prompt }],
-        abortSignal,
-        tools: {
-          ...skill.tools,
-          ...useTools({ resTool, msg: subMsg }),
-        },
-      });
-
-      let text = subMsg.text();
-      let fullResponse = "";
-      for await (const chunk of textStream) {
-        text.append(chunk);
-        fullResponse += chunk;
-      }
-      text.complete();
-      subMsg.complete();
-      if (fullResponse.trim()) {
-        await memory.add(`assistant:supervision`, fullResponse, { name: "编辑", createTime: new Date(subMsg.datetime).getTime() });
-      }
-      // 为主Agent后续输出创建新消息
-      parentCtx.msg = parentCtx.resTool.newMessage("assistant", "统筹");
-      return fullResponse;
-    },
-  });
-
-  return {
-    run_execution_agent,
-    run_supervision_agent,
-  };
 }

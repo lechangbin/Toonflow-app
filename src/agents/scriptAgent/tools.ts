@@ -57,7 +57,7 @@ export default (toolCpnfig: ToolConfig) => {
         thinking.appendText("查询结果:\n" + eventString);
         thinking.updateTitle("查询章节事件完成");
         thinking.complete();
-        return eventString;
+        return eventString ?? "无数据";
       },
     }),
     get_planData: tool({
@@ -72,7 +72,7 @@ export default (toolCpnfig: ToolConfig) => {
         thinking.appendText(`获取到${planDataKeyLabels[key]}:\n` + planData[key]);
         thinking.updateTitle(`获取${planDataKeyLabels[key]}完成`);
         thinking.complete();
-        return planData[key];
+        return planData[key] ?? "无数据";
       },
     }),
     get_novel_text: tool({
@@ -88,7 +88,7 @@ export default (toolCpnfig: ToolConfig) => {
         thinking.appendText(`获取到原文:\n` + text);
         thinking.updateTitle(`获取小说章节原文完成`);
         thinking.complete();
-        return data && data?.chapterData ? data.chapterData : text;
+        return text ?? "无数据";
       },
     }),
     //======================
