@@ -1,6 +1,19 @@
-// @db-hash dd33f188acbdc629e015ba7017c20c78
+// @db-hash e24c7c99757472b92af11f26a2b2b8c7
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_project_old_20260328 {
+  'artStyle'?: string | null;
+  'createTime'?: number | null;
+  'id'?: number | null;
+  'imageModel'?: string | null;
+  'intro'?: string | null;
+  'name'?: string | null;
+  'projectType'?: string | null;
+  'type'?: string | null;
+  'userId'?: number | null;
+  'videoModel'?: string | null;
+  'videoRatio'?: string | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -21,7 +34,7 @@ export interface o_agentDeploy {
   'model'?: string | null;
   'modelName'?: string | null;
   'name'?: string | null;
-  'vendorId'?: string | null;
+  'vendorId'?: number | null;
 }
 export interface o_agentWorkData {
   'createTime'?: number | null;
@@ -143,6 +156,22 @@ export interface o_setting {
   'key'?: string | null;
   'value'?: string | null;
 }
+export interface o_skillAttribution {
+  'attribution'?: string;
+  'skillId'?: string;
+}
+export interface o_skillList {
+  'createTime': number;
+  'description': string;
+  'embedding'?: string | null;
+  'id'?: string;
+  'md5': string;
+  'name': string;
+  'path': string;
+  'state': number;
+  'type': string;
+  'updateTime': number;
+}
 export interface o_storyboard {
   'camera'?: string | null;
   'createTime'?: number | null;
@@ -216,6 +245,7 @@ export interface o_videoConfig {
 }
 
 export interface DB {
+  "_o_project_old_20260328": _o_project_old_20260328;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
@@ -234,6 +264,8 @@ export interface DB {
   "o_script": o_script;
   "o_scriptAssets": o_scriptAssets;
   "o_setting": o_setting;
+  "o_skillAttribution": o_skillAttribution;
+  "o_skillList": o_skillList;
   "o_storyboard": o_storyboard;
   "o_tasks": o_tasks;
   "o_user": o_user;
