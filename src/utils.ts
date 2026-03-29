@@ -9,6 +9,7 @@ import vm from "@/utils/vm";
 import task from "@/utils/taskRecord";
 import Ai from "@/utils/ai";
 import { getPrompts } from "@/utils/getPrompts";
+import { getArtPrompt } from "@/utils/getArtPrompt";
 
 export default {
   db,
@@ -22,4 +23,5 @@ export default {
   Ai,
   task,
   getPrompts,
+  getArtPrompt,
 };
