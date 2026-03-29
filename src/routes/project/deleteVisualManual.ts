@@ -1,6 +1,6 @@
 import express from "express";
 import u from "@/utils";
-import fs from "fs";
+import fs from "node:fs/promises";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -24,15 +24,21 @@ export default router.post(
 
       const artPromptsDir = u.getPath(["skills", "art_prompts", name]);
 
-      // 1. 删除 skills/art_prompts 下的同名文件夹
-      if (fs.existsSync(artPromptsDir)) {
-        fs.rmSync(artPromptsDir, { recursive: true, force: true });
-        // 2. 删除 oss 下的同名文件夹（存放图片）
-        try {
-          await u.oss.deleteDirectory(name);
-        } catch {
-          // oss 下不存在该目录则忽略
+      try {
+        const stat = await fs.stat(artPromptsDir);
+        if (!stat.isDirectory()) {
+          throw new Error(`${artPromptsDir} 不是文件夹`);
         }
+        await fs.rm(artPromptsDir, { recursive: true, force: true });
+      } catch (e) {
+        console.error("[删除视觉手册] 删除失败:", artPromptsDir, e);
+      }
+
+      // 2. 删除 oss 下的同名文件夹（存放图片），独立于 art_prompts 目录
+      try {
+        await u.oss.deleteDirectory(name);
+      } catch (e) {
+        console.warn("[删除视觉手册] oss 目录删除失败:", name, e);
       }
 
       res.status(200).send(success({ message: "删除成功" }));
