@@ -84,16 +84,13 @@ export default router.post(
       });
     const result: ResultItem[] = Object.values(itemMap);
 
-    const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string }> = {
-      role: { promptKey: "role-polish", itemType: "characters", label: "角色标准四视图", nameLabel: "角色" },
-      scene: { promptKey: "scene-polish", itemType: "scenes", label: "场景图", nameLabel: "场景" },
-      tool: { promptKey: "tool-polish", itemType: "props", label: "道具图", nameLabel: "道具" },
+    const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string; visualManual: string }> = {
+      role: { promptKey: "role-polish", itemType: "characters", label: "角色标准四视图", nameLabel: "角色", visualManual: "art_character" },
+      scene: { promptKey: "scene-polish", itemType: "scenes", label: "场景图", nameLabel: "场景", visualManual: "art_scene" },
+      tool: { promptKey: "tool-polish", itemType: "props", label: "道具图", nameLabel: "道具", visualManual: "art_prop" },
     };
-
     const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
     const novelText = mergeNovelText(novelData);
-    const data = await u.db("o_prompt").where("type", "assetsPromptGeneration").first("data");
-
     // 批量更新所有 item 状态为生成中
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);
     await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
@@ -105,11 +102,12 @@ export default router.post(
       limit(async () => {
         const config = typeConfig[item.type];
         if (!config) return;
-
+        //获取到视觉手册
+        const visualManual = await u.getArtPrompt(project.artStyle as string, config.visualManual);
+        if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
         findItemByName(result, item.name, config.itemType);
 
-        const systemPrompt = `${data?.data}
-
+        const systemPrompt = `
       请根据以下参数生成${config.label}提示词：
   
       **基础参数：**
@@ -122,6 +120,7 @@ export default router.post(
       - ${config.nameLabel}描述:${item.describe},
   
       请严格按照skill规范生成${item.type === "role" ? "人物角色四视图" : config.label}提示词。
+      ${visualManual}
       `;
 
         try {
