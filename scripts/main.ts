@@ -3,6 +3,10 @@ import path from "path";
 import fs from "fs";
 import Module from "module";
 
+// 加速 Electron 启动：跳过 GPU 信息收集，减少初始化耗时
+app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
+app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
+
 declare const __APP_VERSION__: string | undefined;
 
 /**
@@ -164,33 +168,43 @@ function closeLoading(): void {
   }
 }
 
-function createMainWindow(): void {
-  const win = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    minWidth: 800,
-    minHeight: 500,
-    frame: false,
-    show: true,
-    autoHideMenuBar: true,
-    resizable: true,
-    thickFrame: true,
-  });
-  mainWindow = win;
-  win.setMenuBarVisibility(false);
-  win.removeMenu();
+function createMainWindow(): Promise<void> {
+  return new Promise((resolve) => {
+    const win = new BrowserWindow({
+      width: 1000,
+      height: 700,
+      minWidth: 800,
+      minHeight: 500,
+      frame: false,
+      show: false,
+      autoHideMenuBar: true,
+      resizable: true,
+      thickFrame: true,
+    });
+    mainWindow = win;
+    win.setMenuBarVisibility(false);
+    win.removeMenu();
 
-  win.on("closed", () => {
-    mainWindow = null;
-  });
+    win.on("closed", () => {
+      mainWindow = null;
+    });
 
-  const isDev = process.env.NODE_ENV === "dev" || !app.isPackaged;
-  if (process.env.VITE_DEV) {
-    void win.loadURL("http://localhost:50188");
-  } else {
-    const htmlPath = isDev ? path.join(process.cwd(), "data", "web", "index.html") : path.join(app.getPath("userData"), "data", "web", "index.html");
-    void win.loadFile(htmlPath);
-  }
+    win.once("ready-to-show", () => {
+      closeLoading();
+      win.show();
+      resolve();
+    });
+
+    const isDev = process.env.NODE_ENV === "dev" || !app.isPackaged;
+    if (process.env.VITE_DEV) {
+      void win.loadURL("http://localhost:50188");
+    } else {
+      const htmlPath = isDev
+        ? path.join(process.cwd(), "data", "web", "index.html")
+        : path.join(app.getPath("userData"), "data", "web", "index.html");
+      void win.loadFile(htmlPath);
+    }
+  });
 }
 
 let closeServeFn: (() => Promise<void>) | undefined;
@@ -207,13 +221,14 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 app.whenReady().then(async () => {
-  // 先显示加载窗口
+  // 立即显示加载窗口（data URL + backgroundColor，瞬间可见）
   showLoading();
 
   try {
     let servePath: string;
     if (app.isPackaged) {
-      // 生产环境：从 extraResources 初始化数据到用户目录，然后从用户目录加载后端服务
+      // 生产环境：让出主线程一次，确保 loading 窗口渲染后再做耗时文件拷贝
+      await new Promise((r) => setTimeout(r, 0));
       initializeData();
       servePath = path.join(app.getPath("userData"), "data", "serve", "app.js");
     } else {
@@ -284,13 +299,11 @@ app.whenReady().then(async () => {
       });
     });
 
-    // 服务启动成功，关闭加载窗口，创建主窗口
-    closeLoading();
-    createMainWindow();
+    // 服务启动成功，创建主窗口（主窗口 ready-to-show 时自动关闭loading）
+    await createMainWindow();
   } catch (err) {
     console.error("[服务启动失败]:", err);
-    closeLoading();
-    createMainWindow();
+    await createMainWindow();
   }
 });
 
