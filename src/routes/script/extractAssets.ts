@@ -63,19 +63,34 @@ export default router.post(
     if (!scriptIds.length) return res.status(400).send(error("请先选择剧本"));
     const scripts = await u.db("o_script").whereIn("id", scriptIds);
     const intansce = u.Ai.Text("universalAi");
-    const novelData = await u.db("o_novel").where("projectId", projectId).select("chapterData");
-    if (!novelData || novelData.length === 0) return res.status(400).send(error("请先上传小说"));
-    await u.db("o_script").whereIn("id", scriptIds).update({
-      extractState: 0,
-    });
+
+    // 查询已有的剧本-资产关联，找出已经提取过资产的剧本
+    const existingScriptAssets = await u.db("o_scriptAssets").whereIn("scriptId", scriptIds).select("scriptId");
+    const scriptIdsWithAssets = new Set(existingScriptAssets.map((sa: any) => sa.scriptId));
+
     // 构建 scriptId -> script 内容的映射
     const scriptMap = new Map(scripts.map((s: o_script) => [s.id, s]));
+
+    // 过滤掉已成功提取过资产的剧本（extractState === 1 且有关联资产）
+    const filteredScriptIds = scriptIds.filter((id: number) => {
+      const script = scriptMap.get(id);
+      return !(script?.extractState === 1 && scriptIdsWithAssets.has(id));
+    });
+    const skippedCount = scriptIds.length - filteredScriptIds.length;
+
+    if (!filteredScriptIds.length) {
+      return res.send(success("所有剧本已提取过资产，无需重复提取"));
+    }
+
+    await u.db("o_script").whereIn("id", filteredScriptIds).update({
+      extractState: 0,
+    });
 
     const errors: { scriptId: number; error: string }[] = [];
     let successCount = 0;
 
-    // 将 scriptIds 按 groupSize（默认5）分组，每组一起发给 AI
-    const scriptGroups = chunkArray(scriptIds, groupSize);
+    // 将过滤后的 scriptIds 按 groupSize（默认5）分组，每组一起发给 AI
+    const scriptGroups = chunkArray(filteredScriptIds, groupSize);
 
     /** 一组剧本提取完成后统一入库并建立关联 */
     async function persistGroupResult(result: GroupResult) {
@@ -159,9 +174,7 @@ export default router.post(
 
       // 查询当前项目已有的资产列表，提供给 AI 参考
       const existingAssets = await u.db("o_assets").where("projectId", projectId).select("name", "type");
-      console.log("%c Line:162 🍔 existingAssets", "background:#ea7e5c", existingAssets);
       const existingAssetsList = existingAssets.map((a) => `${a.name}(${a.type})`).join("、");
-      console.log("%c Line:164 🍫 existingAssetsList", "background:#33a5ff", existingAssetsList);
 
       // 拼接多集剧本内容，每集用分隔标记
       const scriptsContent = validScripts
@@ -248,6 +261,6 @@ export default router.post(
       });
     }
 
-    return res.send(success("开始提取资产"));
+    return res.send(success(skippedCount > 0 ? `开始提取资产，跳过 ${skippedCount} 个已提取的剧本` : "开始提取资产"));
   },
 );

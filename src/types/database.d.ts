@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // @db-hash 93b2462070c45c2b449e9a18c4e88763
+=======
+// @db-hash 24748d4ef971381a79c720c846f83847
+>>>>>>> 796947cef173e7fe2f96e21fa8aeae23ff0fdf4a
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {

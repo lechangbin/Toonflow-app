@@ -34,6 +34,6 @@ export default router.post(
     const data = JSON.parse(row.data ?? "{}");
     data.script = await u.db("o_script").where({ projectId }).select("id", "name", "content");
 
-    res.status(200).send(success(data));
+    res.status(200).send(success({ data, id: row.id }));
   },
 );
