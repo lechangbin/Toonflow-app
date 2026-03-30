@@ -6,11 +6,21 @@
   <a href="https://gitee.com/HBAI-Ltd/Toonflow-app">
     <img src="https://img.shields.io/badge/Gitee-C71D23?style=flat-square&logo=gitee&logoColor=white" alt="Gitee" />
   </a>
+  &nbsp;|&nbsp;
+  <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
+    <img src="./docs/atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    Atomgit
+  </a>
 </p>
 
 <p align="center">
-  <strong>中文</strong> | 
-  <a href="./docs/README.en.md">English</a>
+  <strong>简体中文</strong> | 
+  <a href="./docs/README.zhtw.md">繁體中文</a> | 
+  <a href="./docs/README.en.md">English</a> | 
+  <a href="./docs/README.th.md">ไทย</a> | 
+  <a href="./docs/README.vi.md">Tiếng Việt</a> | 
+  <a href="./docs/README.ja.md">日本語</a> | 
+  <a href="./docs/README.ru.md">Русский</a>
 </p>
 
 <div align="center">
@@ -32,8 +42,8 @@
     <a href="https://github.com/HBAI-Ltd/Toonflow-app/stargazers">
       <img src="https://img.shields.io/github/stars/HBAI-Ltd/Toonflow-app?style=for-the-badge&logo=github" alt="Stars Badge" />
     </a>
-    <a href="https://www.gnu.org/licenses/agpl-3.0" target="_blank">
-      <img src="https://img.shields.io/badge/License-AGPL-blue.svg?style=for-the-badge" alt="AGPL License Badge" />
+    <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">
+      <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge" alt="Apache-2.0 License Badge" />
     </a>
     <a href="https://github.com/HBAI-Ltd/Toonflow-app/releases">
       <img alt="release" src="https://img.shields.io/github/v/release/HBAI-Ltd/Toonflow-app?style=for-the-badge" />
@@ -47,7 +57,7 @@
 
 # 🌟 主要功能
 
-Toonflow 是一款 AI 工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。借助 Toonflow，可以轻松完成从文字到影像的全流程，让短剧制作变得更加智能与便捷。
+Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。借助 Toonflow，可以轻松完成从文字到影像的全流程，让短剧制作变得更加智能与便捷。
 
 - ✅ **角色生成**  
    自动分析原始小说文本，智能识别并生成角色设定，包括外貌、性格、身份等详细信息，为后续剧本与画面创作提供可靠基础。
@@ -103,10 +113,13 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 | 操作系统 | GitHub 下载                                                  | 夸克网盘下载                                    | 说明           |
 | :------: | :----------------------------------------------------------- | :---------------------------------------------- | :------------- |
 | Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
-|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包       |
-|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包       |
+|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
+|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
 
-> 目前仅支持 Windows 版本，其他系统将陆续开放。
+> [!CAUTION]
+> MacOS 系统请到 设置-隐私与安全性 配置安全性否则可能因证书问题无法正常打开
+>
+> 参考知乎文档：[https://www.zhihu.com/question/433389276](https://www.zhihu.com/question/433389276)
 
 > 因 Gitee OS 环境限制及 Release 文件上传大小限制，暂不提供 Gitee Release 下载地址。
 
@@ -123,92 +136,46 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 ### 前置条件
 
 - 已安装 [Docker](https://docs.docker.com/get-docker/)（版本 20.10+）
-- 已安装 [Docker Compose](https://docs.docker.com/compose/install/)（版本 2.0+）
 
-### 方式一：在线部署（推荐）
+### 方式一：在线部署
 
-从 GitHub / Gitee 自动拉取源码并构建镜像：
-
-```shell
-docker-compose -f docker/docker-compose.yml up -d --build
-```
-
-**支持的构建参数：**
-
-| 参数     | 说明         | 默认值   | 示例               |
-| -------- | ------------ | -------- | ------------------ |
-| `GIT`    | 代码仓库源   | `github` | `github` / `gitee` |
-| `TAG`    | 指定版本标签 | 最新 tag | `v1.0.6`           |
-| `BRANCH` | 指定分支     | 默认分支 | `main` / `dev`     |
-
-**版本选择优先级**：指定 TAG > 指定 BRANCH > 自动获取最新 tag > 默认分支
-
-**指定参数示例：**
-
-```shell
-# 使用 Gitee 源（国内推荐，速度更快）
-GIT=gitee docker-compose -f docker/docker-compose.yml up -d --build
-
-# 指定版本标签
-TAG=v1.0.6 docker-compose -f docker/docker-compose.yml up -d --build
-
-# 指定分支 + Gitee 源
-GIT=gitee BRANCH=dev docker-compose -f docker/docker-compose.yml up -d --build
-```
+待完善，暂时使用本地构建。
 
 ### 方式二：本地构建
 
-使用本地已有的源码直接构建，适合开发者或已克隆仓库的用户：
+使用本地已有的源码直接构建，适合开发者或已克隆仓库的用户，这需要你在本地安装 git：
 
 ```shell
 # 先克隆项目（如已有则跳过）
 git clone https://github.com/HBAI-Ltd/Toonflow-app.git
 cd Toonflow-app
 
-# 使用本地源码构建
-docker-compose -f docker/docker-compose.local.yml up -d --build
+# 使用 docker-compose 本地构建并启动
+yarn docker:local
+
+# 或者手动构建
+docker build -t toonflow .
+docker run -d -p <本地端口>:10588 -v <本地数据路径>:/app/data toonflow
+
+# 此时在相应端口的 /web/index.html 路径即可访问页面
+# 例如 http://localhost:10588/web/index.html
 ```
 
 ### 服务端口说明
 
-| 端口    | 用途           | 在线部署映射  | 本地构建映射  |
-| ------- | -------------- | ------------- | ------------- |
-| `80`    | Nginx 前端页面 | 随机端口      | `8080:80`     |
-| `10588` | 后端 API 服务  | `10588:10588` | `10588:10588` |
+| 端口    | 用途     | 部署映射      |
+| ------- | -------- | ------------- |
+| `10588` | 软件界面 | `10588:10588` |
 
-### 数据持久化
+**环境变量说明：**
 
-默认日志目录会挂载到宿主机 `./logs` 目录。如需持久化上传文件或数据库，可在 `docker-compose.yml` 中添加 volumes：
+| 变量       | 说明                               |
+| ---------- | ---------------------------------- |
+| `NODE_ENV` | 运行环境，`prod` 表示生产环境      |
+| `PORT`     | 服务监听端口（默认 10588）         |
+| `OSSURL`   | 文件存储访问地址，用于静态资源访问 |
 
-```yaml
-volumes:
-  - ./logs:/var/log
-  - ./uploads:/app/uploads # 持久化上传文件
-  - ./data:/app/data # 持久化数据库（如有）
-```
-
-### 常用操作命令
-
-```shell
-# 查看容器状态
-docker-compose -f docker/docker-compose.yml ps
-
-# 查看实时日志
-docker-compose -f docker/docker-compose.yml logs -f
-
-# 停止服务
-docker-compose -f docker/docker-compose.yml down
-
-# 重新构建并启动（更新版本时使用）
-docker-compose -f docker/docker-compose.yml up -d --build
-
-# 进入容器调试
-docker exec -it toonflow sh
-```
-
-> ⚠️ **首次登录**  
-> 账号：`admin`  
-> 密码：`admin123`
+---
 
 ## 云端部署
 
@@ -260,7 +227,7 @@ yarn build
 ```json
 {
   "name": "toonflow-app",
-  "script": "build/app.js",
+  "script": "data/serve/app.js",
   "instances": "max",
   "exec_mode": "cluster",
   "env": {
@@ -317,8 +284,25 @@ pm2 monit             # 监控面板
 
 > [!CAUTION]
 > 🚧 **PR 提交规范** 🚧
-> 
+>
 > ⛔ `master` 分支不接受任何 PR ｜ ✅ 请将 PR 提交到 `develop` 分支
+>
+> 欢迎开发者们共同参与 Toonflow 的共创。如有兴趣加入，请在交流群内联系主理人 ACT
+
+## 🛠️ 技术栈
+
+| 类别       | 技术                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------- |
+| 运行时     | Node.js 23.11.1+                                                                          |
+| 语言       | TypeScript 5.x                                                                            |
+| 后端框架   | Express 5                                                                                 |
+| 数据库     | SQLite（better-sqlite3 / knex）                                                           |
+| AI 集成    | Vercel AI SDK（OpenAI / Anthropic / Google / DeepSeek / 智谱 / MiniMax / 通义千问 / xAI） |
+| 本地推理   | @huggingface/transformers（ONNX）                                                         |
+| 实时通信   | Socket.IO                                                                                 |
+| 桌面客户端 | Electron 40                                                                               |
+| 图像处理   | Sharp                                                                                     |
+| 容器化     | Docker                                                                                    |
 
 ## 开发环境准备
 
@@ -355,7 +339,7 @@ pm2 monit             # 监控面板
 
    本项目包含 **后端 API 服务** 和 **前端页面** 两部分，请根据需要选择启动方式：
 
-   - **方式一：仅启动后端服务（开发调试用）**
+   - **方式一：仅启动后端服务**
 
      ```bash
      yarn dev
@@ -363,7 +347,7 @@ pm2 monit             # 监控面板
 
      > ⚠️ 此命令仅启动后端 API 服务（端口 10588），**不包含前端页面**。直接访问 `http://localhost:10588` 只能调用 API 接口，无法看到完整的网页界面。如需同时使用前端页面，请配合前端项目单独启动，或使用下方的 GUI 模式。
 
-   - **方式二：启动 Electron 桌面客户端（推荐完整体验）**
+   - **方式二：启动 Electron 桌面客户端**
 
      ```bash
      yarn dev:gui
@@ -371,12 +355,13 @@ pm2 monit             # 监控面板
 
      > 此命令会同时启动后端服务和 Electron 桌面窗口，自带内置前端页面，开箱即用，无需额外配置。适合想要完整体验所有功能的开发者。
 
-   **两种模式对比：**
+   - **方式三：生产模式启动**
 
-   | 命令           | 启动内容                 | 前端页面 | 适用场景                         |
-   | -------------- | ------------------------ | -------- | -------------------------------- |
-   | `yarn dev`     | 仅后端 API（端口 10588） | ❌ 无    | 后端开发调试、配合前端项目联调   |
-   | `yarn dev:gui` | 后端 + Electron 桌面端   | ✅ 内置  | 完整功能体验、桌面客户端开发调试 |
+     ```bash
+     yarn start
+     ```
+
+     > 以生产模式直接运行编译后的服务（需先执行 `yarn build`）。
 
 4. **项目打包**
 
@@ -427,47 +412,63 @@ pm2 monit             # 监控面板
 - **GitHub**：[Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
 - **Gitee**：[Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
 
-前端构建后，将 `dist` 目录内容复制到本项目的 `scripts/web` 目录即可集成。
+前端构建后，将 `dist` 目录内容复制到本项目的 `data/web` 目录即可集成。
 
 ## 项目结构
 
 ```
-📂 docker/                   # Docker 配置文件
-📂 docs/                    # 文档资源
-📂 scripts/                 # 构建脚本与静态资源
-│  └─ 📂 web/              # 前端编译产物（内置）
+📂 build/                    # 编译产物
+📂 data/                     # 运行时数据
+│  ├─ 📂 models/            # 本地推理模型（ONNX）
+│  ├─ 📂 oss/               # 对象存储（素材/角色/场景）
+│  ├─ 📂 serve/             # 生产环境入口
+│  ├─ 📂 skills/            # Agent 技能提示词
+│  └─ 📂 web/               # 前端编译产物（内置）
+📂 docs/                     # 文档资源
+📂 env/                      # 环境配置
+📂 scripts/                  # 构建与辅助脚本
 📂 src/
-├─ 📂 agents/              # AI Agent 模块
-├─ 📂 lib/                 # 公共库（数据库初始化、响应格式）
-├─ 📂 middleware/          # 中间件
-├─ 📂 routes/              # 路由模块
-│  ├─ 📂 assets/           # 素材管理
-│  ├─ 📂 index/            # 首页
-│  ├─ 📂 novel/            # 小说管理
-│  ├─ 📂 other/            # 其他功能
-│  ├─ 📂 outline/          # 大纲管理
-│  ├─ 📂 project/          # 项目管理
-│  ├─ 📂 prompt/           # 提示词管理
-│  ├─ 📂 script/           # 剧本生成
-│  ├─ 📂 setting/          # 系统设置
-│  ├─ 📂 storyboard/       # 分镜管理
-│  ├─ 📂 task/             # 任务管理
-│  ├─ 📂 user/             # 用户管理
-│  └─ 📂 video/            # 视频生成
-├─ 📂 types/               # TypeScript 类型声明
-├─ 📂 utils/               # 工具函数
-├─ 📄 app.ts               # 应用入口
-├─ 📄 core.ts              # 路由核心
-├─ 📄 env.ts               # 环境变量处理
-├─ 📄 err.ts               # 错误处理
-├─ 📄 router.ts            # 路由注册
-└─ 📄 utils.ts             # 通用工具
-📂 uploads/                 # 上传文件目录
-📄 LICENSE                  # 许可证
-📄 NOTICES.txt              # 第三方依赖声明
-📄 package.json             # 项目配置
-📄 README.md                # 项目说明
-📄 tsconfig.json            # TypeScript 配置
+├─ 📂 agents/               # AI Agent 模块
+│  ├─ 📂 productionAgent/   # 生产 Agent
+│  └─ 📂 scriptAgent/       # 剧本 Agent
+├─ 📂 lib/                  # 公共库（数据库初始化、响应格式）
+├─ 📂 middleware/            # 中间件
+├─ 📂 routes/               # 路由模块
+│  ├─ 📂 agents/            # Agent 记忆管理
+│  ├─ 📂 artStyle/          # 画风管理
+│  ├─ 📂 assets/            # 素材管理
+│  ├─ 📂 assetsGenerate/    # 素材生成
+│  ├─ 📂 cornerScape/       # 分镜管理
+│  ├─ 📂 general/           # 通用接口
+│  ├─ 📂 login/             # 登录认证
+│  ├─ 📂 migrate/           # 数据迁移
+│  ├─ 📂 modelSelect/       # 模型选择
+│  ├─ 📂 novel/             # 小说管理
+│  ├─ 📂 other/             # 其他功能
+│  ├─ 📂 production/        # 制作管理
+│  ├─ 📂 project/           # 项目管理
+│  ├─ 📂 script/            # 剧本生成
+│  ├─ 📂 scriptAgent/       # 剧本 Agent 接口
+│  ├─ 📂 setting/           # 系统设置
+│  ├─ 📂 task/              # 任务管理
+│  └─ 📂 test/              # 测试接口
+├─ 📂 socket/               # WebSocket 实时通信
+├─ 📂 types/                # TypeScript 类型声明
+├─ 📂 utils/                # 工具函数
+├─ 📄 app.ts                # 应用入口
+├─ 📄 core.ts               # 核心初始化
+├─ 📄 env.ts                # 环境变量处理
+├─ 📄 err.ts                # 错误处理
+├─ 📄 logger.ts             # 日志模块
+├─ 📄 router.ts             # 路由注册
+└─ 📄 utils.ts              # 通用工具
+📄 Dockerfile                # Docker 构建文件
+📄 electron-builder.yml      # Electron 打包配置
+📄 skillList.json            # 技能清单
+📄 LICENSE                   # 许可证（Apache-2.0）
+📄 NOTICES.txt               # 第三方依赖声明
+📄 package.json              # 项目配置
+📄 tsconfig.json             # TypeScript 配置
 ```
 
 ---
@@ -483,46 +484,13 @@ pm2 monit             # 监控面板
 
 ---
 
-# 📝 开发计划
-
-我们正持续优化产品，以下为近期开发重点：
-
-1. 核心功能升级
-
-- `🧩 提示词润色生成 Agent` 基于 AI 智能润色视频提示词，自动拆解生成分镜脚本，支持多镜头智能融合与平滑过渡
-- `📄 多格式文本支持` 扩展小说以外的剧本、漫画脚本、游戏对话文本等多种格式的智能解析
-
-2. 生产流程优化
-
-- `👗 角色服化道管理` 强化长篇内容中角色的服装、化妆、道具一致性，支持多剧集关联记忆和着装自动生成
-- `📦 批量处理/任务队列` 支持多章节同时处理，后台任务管理，进度实时监控和中断恢复
-
-3. 视觉生成增强
-
-- `🎭 多风格模板库` 内置多种视觉风格包，支持一键风格转换和用户自定义风格保存
-- `⏱️ 智能节奏分析/优化` 分析剧情情绪曲线，自动建议高潮点和节奏变化，优化分镜安排生产流程优化
-
----
-
 # 👨‍👩‍👧‍👦 微信交流群
 
 ~~交流群 1~~
 
 ~~交流群 2~~
 
-~~交流群 3~~
-
-~~交流群 4~~
-
-~~交流群 5~~
-
-~~交流群 6~~
-
-~~交流群 7~~
-
-~~交流群 8~~
-
-~~交流群 9~~
+...
 
 ~~交流群 10~~
 
@@ -532,9 +500,13 @@ pm2 monit             # 监控面板
 
 ~~交流群 13~~
 
+...
+
+~~交流群 24~~
+
 拉群小助手:
 
-<img src="./docs/QR.png" alt="Toonflow Logo" height="400"/>
+<img src="./docs/QR.png" alt="Toonflow QR" height="400"/>
 
 ---
 
@@ -546,11 +518,36 @@ pm2 monit             # 监控面板
 
 # 📜 许可证
 
-Toonflow 基于 AGPL-3.0 协议开源发布，许可证详情：https://www.gnu.org/licenses/agpl-3.0.html
+Toonflow 基于 Apache-2.0 协议开源发布，并附有补充商业协议。
 
-您可以在遵循 AGPL-3.0 相关条款与条件的情况下，将 Toonflow 用于包括商业目的在内的各类用途。
+许可证详情：https://www.apache.org/licenses/LICENSE-2.0
 
-如需获得免于 AGPL-3.0 限制的专有商业许可，请通过邮箱与我们联系。
+## 补充协议
+
+- 若将本软件以产品形式分发给 **2 个及以上独立第三方**使用，须取得 HBAI-Ltd **书面商业授权**。
+- **≤ 5 个法人**联合运营内部使用，不对外提供服务的，视为内部使用，**无需授权**。
+- 不得删除或修改 Toonflow 中的标识或版权信息。
+
+## 永久免费场景
+
+- ✅ 用 Toonflow 制作内容并获得平台分账
+- ✅ 二次开发供自己团队内部使用
+- ✅ ≤ 5 个法人联合运营内部使用
+- ✅ 个人学习、研究、非商业用途
+
+## 商业授权定价
+
+| 阶段 | 年销售额 | 年费 |
+|------|---------|------|
+| 🌱 扶持期 | < ¥10 万 | **免费** |
+| 🚀 初创期 | ¥10–50 万 | ¥5,000/年 |
+| 📈 成长期 | ¥50–150 万 | ¥20,000/年 |
+| 🏢 规模期 | ¥150–500 万 | ¥80,000/年 |
+| 🌐 企业级 | > ¥500 万 | 面议 |
+
+> **不追溯条款**：v1.0.8 发布前基于 AGPL-3.0 使用的用户，继续按 AGPL-3.0 执行，不受本协议变更约束。
+
+完整协议详见 [LICENSE](./LICENSE) 文件。
 
 ---
 
@@ -565,13 +562,14 @@ Toonflow 基于 AGPL-3.0 协议开源发布，许可证详情：https://www.gnu.
 感谢以下开源项目为 Toonflow 提供强大支持：
 
 - [Express](https://expressjs.com/) - 快速、开放、极简的 Node.js Web 框架
-- [AI](https://ai-sdk.dev/) - 面向 TypeScript 的 AI 工具包
+- [AI SDK](https://ai-sdk.dev/) - 面向 TypeScript 的 AI 工具包
 - [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3) - 高性能 SQLite3 绑定库
 - [Sharp](https://sharp.pixelplumbing.com/) - 高性能 Node.js 图像处理库
 - [Axios](https://axios-http.com/) - 基于 Promise 的 HTTP 客户端
 - [Zod](https://zod.dev/) - TypeScript 优先的模式验证库
-- [Aigne](https://github.com/aigne-com/aigne) - LLM API 统一管理与接入中间件
+- [Socket.IO](https://socket.io/) - 实时双向事件通信引擎
 - [Electron](https://www.electronjs.org/) - 跨平台桌面应用开发框架
+- [Hugging Face Transformers](https://huggingface.co/docs/transformers.js) - 本地 ML 推理库
 
 感谢以下组织/单位/个人为 Toonflow 提供支持：
 

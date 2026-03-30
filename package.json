@@ -3,6 +3,7 @@
   "version": "1.0.8",
   "description": "Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。",
   "author": "HBAI-Ltd <ltlctools@outlook.com>",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/HBAI-Ltd/Toonflow-app#readme",
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
     "dev": "nodemon --inspect --exec tsx src/app.ts",
     "dev:gui": "electronmon -r tsx scripts/main.ts",
     "dev:gui-vite": "cross-env VITE_DEV=1 electronmon -r tsx scripts/main.ts",
+    "start": "cross-env NODE_ENV=prod node data/serve/app.js",
     "lint": "tsc --noEmit",
     "build": "cross-env NODE_ENV=prod tsx scripts/build.ts",
     "pack": "electron-builder --dir",
@@ -28,9 +30,6 @@
     "dist:win": "yarn build && electron-builder --win",
     "dist:mac": "yarn build && electron-builder --mac",
     "dist:linux": "yarn build && electron-builder --linux",
-    "test": "cross-env NODE_ENV=prod node data/serve/app.js",
-    "docker:build": "docker-compose -f docker/docker-compose.yml up -d --build",
-    "docker:local": "docker-compose -f docker/docker-compose.local.yml up -d --build",
     "debug:ai": "npx @ai-sdk/devtools",
     "license": "bun run scripts/license.ts"
   },
