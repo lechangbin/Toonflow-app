@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import { o_novel } from "@/types/database";
-import { useSkill } from "@/utils/agent/skillsTools";
 import u from "@/utils";
+import { stripThink } from "@/utils/stripThink";
 export interface EventType {
   id: number;
   event: string;
@@ -24,11 +24,11 @@ class CleanNovel {
     this.concurrency = concurrency;
   }
 
-  private async processChapter(novel: o_novel, intansce: ReturnType<typeof u.Ai.Text>): Promise<EventType | null> {
+  private async processChapter(novel: o_novel): Promise<EventType | null> {
     try {
       const prompt = await u.getPrompts("event");
       const data = await u.db("o_prompt").where("type", "eventExtraction").first("data");
-      const resData = await intansce.invoke({
+      const resData = await u.Ai.Text("universalAi").invoke({
         system: data ? JSON.stringify(data.data) : (prompt as string),
         messages: [
           {
@@ -45,7 +45,7 @@ class CleanNovel {
           },
         ],
       });
-      const preData = resData.text;
+      const preData = stripThink(resData.text);
       this.emitter.emit("item", { id: novel.id, event: preData });
       return { id: novel.id!, event: preData };
     } catch (e) {
@@ -56,7 +56,6 @@ class CleanNovel {
 
   async start(allChapters: o_novel[], projectId: number): Promise<EventType[]> {
     const totalEvent: EventType[] = [];
-    const intansce = u.Ai.Text("universalAi");
 
     // 并发控制：通过信号量限制同时执行的任务数
     let running = 0;
@@ -68,7 +67,7 @@ class CleanNovel {
       const novel = allChapters[index++];
       running++;
 
-      return this.processChapter(novel, intansce).then((result) => {
+      return this.processChapter(novel).then((result) => {
         if (result) totalEvent.push(result);
         running--;
         return runNext();
