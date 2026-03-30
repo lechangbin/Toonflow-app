@@ -83,6 +83,7 @@ export default (nsp: Namespace) => {
         text = currentMsg.text();
       };
 
+      let aborted = false;
       try {
         for await (const chunk of textStream) {
           await syncCurrentMessage();
@@ -90,11 +91,20 @@ export default (nsp: Namespace) => {
           currentContent += chunk;
         }
       } catch (err: any) {
-        if (err.name !== "AbortError") throw err;
+        if (err.name === "AbortError" || currentController.signal.aborted) {
+          aborted = true;
+        } else {
+          throw err;
+        }
       } finally {
         await syncCurrentMessage();
-        text.complete();
-        currentMsg.complete();
+        if (aborted) {
+          text.complete();
+          currentMsg.stop();
+        } else {
+          text.complete();
+          currentMsg.complete();
+        }
         await persistCurrentMessage();
         if (abortController === currentController) {
           abortController = null;

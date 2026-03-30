@@ -110,16 +110,20 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
 
       try {
         const aiImage = u.Ai.Image(model);
-        await aiImage.run({
-          prompt: userPrompt,
-          imageBase64: item.base64 ? [item.base64] : [],
-          size: resolution,
-          aspectRatio: "16:9",
-          taskClass: cfg.taskClass,
-          describe,
-          projectId,
-          relatedObjects: JSON.stringify(relatedObjects),
-        });
+        await aiImage.run(
+          {
+            prompt: userPrompt,
+            imageBase64: item.base64 ? [item.base64] : [],
+            size: resolution,
+            aspectRatio: "16:9",
+          },
+          {
+            taskClass: cfg.taskClass,
+            describe,
+            projectId,
+            relatedObjects: JSON.stringify(relatedObjects),
+          },
+        );
         aiImage.save(imagePath);
 
         const imageData = await u.db("o_image").where("id", imageId).select("*").first();

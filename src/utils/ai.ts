@@ -25,23 +25,10 @@ async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${strin
   const selectedModel = modelList.find((i: any) => i.modelName == name);
   if (!selectedModel) throw new Error(`未找到模型 ${name} id=${id}`);
   const jsCode = transform(vendorConfigData.code!, { transforms: ["typescript"] }).code;
-  const running = u.vm(jsCode);
-  Object.assign(running.vendor.inputValues, JSON.parse(vendorConfigData.inputValues ?? "{}"));
-  running.vendor.models = modelList;
-  const fn = running[fnName];
+  const fn = u.vm(jsCode)[fnName];
   if (!fn) throw new Error(`未找到供应商配置中的函数 ${fnName} id=${id}`);
-  if (fnName == "textRequest") {
-    const model = fn(selectedModel);
-    if (!model) throw new Error(`供应商 textRequest 返回无效模型 id=${id}`);
-    return model;
-  }
-  return async <T>(input: T) => {
-    const result = await fn(input, selectedModel);
-    if (result === undefined || result === null) {
-      throw new Error(`供应商函数 ${fnName} 未返回有效结果 id=${id}`);
-    }
-    return result;
-  };
+  if (fnName == "textRequest") return fn(selectedModel);
+  else return <T>(input: T) => fn(input, selectedModel);
 }
 
 async function withTaskRecord<T>(
@@ -113,6 +100,9 @@ interface ImageConfig {
   imageBase64: string[]; //输入的图片提示词
   size: "1K" | "2K" | "4K"; // 图片尺寸
   aspectRatio: `${number}:${number}`; // 长宽比
+}
+
+interface TaskRecord {
   taskClass: string; // 任务分类
   describe: string; // 任务描述
   relatedObjects: string; // 相关对象信息，便于后续分析和追踪
@@ -125,8 +115,8 @@ class AiImage {
   constructor(key: `${string}:${string}`) {
     this.key = key;
   }
-  async run(input: ImageConfig) {
-    return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
+  async run(input: ImageConfig, taskRecord: TaskRecord) {
+    return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("imageRequest", modelName);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
@@ -139,7 +129,6 @@ class AiImage {
   }
 }
 interface VideoConfig {
-  projectId: number; // 项目ID
   prompt: string; //视频提示词
   imageBase64: string[]; //输入的图片提示词
   aspectRatio: `${number}:${number}`; // 长宽比
@@ -147,9 +136,6 @@ interface VideoConfig {
   duration: number; // 视频时长，单位秒
   resolution: string; // 视频分辨率
   audio: boolean; // 是否需要配音
-  taskClass: string; // 任务分类
-  describe: string; // 任务描述
-  relatedObjects: string; // 相关对象信息，便于后续分析和追踪
 }
 
 class AiVideo {
@@ -158,8 +144,8 @@ class AiVideo {
   constructor(key: `${string}:${string}`) {
     this.key = key;
   }
-  async run(input: VideoConfig) {
-    return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
+  async run(input: VideoConfig, taskRecord: TaskRecord) {
+    return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("videoRequest", modelName);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
@@ -177,8 +163,8 @@ class AiAudio {
   constructor(key: `${string}:${string}`) {
     this.key = key;
   }
-  async run(input: VideoConfig) {
-    return withTaskRecord(this.key, input.taskClass, input.describe, input.relatedObjects, input.projectId, async (modelName) => {
+  async run(input: VideoConfig, taskRecord: TaskRecord) {
+    return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, async (modelName) => {
       const fn = await getVendorTemplateFn("ttsRequest", modelName);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);

@@ -39,6 +39,7 @@ export default router.post(
       state: "生成中",
       scriptId,
       storyboardId,
+      projectId,
     };
     const [videoId] = await u.db("o_video").insert(videoData);
     //查询分镜是否已有配置
@@ -105,19 +106,23 @@ export default router.post(
         console.log("%c Line:110 🍑 prompt", "background:#b03734", prompt);
 
         const aiVideo = u.Ai.Video(model);
-        await aiVideo.run({
-          projectId,
-          prompt,
-          imageBase64: base64.filter((item) => item !== null) as string[],
-          mode,
-          duration,
-          aspectRatio: (ratio?.videoRatio as `${number}:${number}`) || "16:9",
-          resolution,
-          audio,
-          taskClass: "视频生成",
-          describe: "根据提示词生成视频",
-          relatedObjects: JSON.stringify(relatedObjects),
-        });
+        await aiVideo.run(
+          {
+            prompt,
+            imageBase64: base64.filter((item) => item !== null) as string[],
+            mode,
+            duration,
+            aspectRatio: (ratio?.videoRatio as `${number}:${number}`) || "16:9",
+            resolution,
+            audio,
+          },
+          {
+            projectId,
+            taskClass: "视频生成",
+            describe: "根据提示词生成视频",
+            relatedObjects: JSON.stringify(relatedObjects),
+          },
+        );
         await aiVideo.save(videoPath);
         await u.db("o_video").where("id", videoId).update({ state: "生成成功" });
         // await u.db("o_videoConfig").where("storyboardId", storyboardId).update({ videoId, updateTime: Date.now() });

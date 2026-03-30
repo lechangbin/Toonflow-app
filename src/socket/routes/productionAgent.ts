@@ -36,11 +36,21 @@ export default (nsp: Namespace) => {
 
     console.log("[productionAgent] 已连接:", socket.id);
 
-    const resTool = new ResTool(socket, {
+    let resTool = new ResTool(socket, {
       projectId: socket.handshake.auth.projectId,
       scriptId: socket.handshake.auth.scriptId,
     });
     let abortController: AbortController | null = null;
+
+    socket.on("updateContext", (data: { isolationKey: string; projectId: number; scriptId: number }, callback) => {
+      isolationKey = data.isolationKey;
+      resTool = new ResTool(socket, {
+        projectId: data.projectId,
+        scriptId: data.scriptId,
+      });
+      console.log("[productionAgent] 上下文已更新:", isolationKey);
+      callback?.({ success: true });
+    });
 
     socket.on("chat", async (data: { content: string }) => {
       const { content } = data;
@@ -84,6 +94,7 @@ export default (nsp: Namespace) => {
         text = currentMsg.text();
       };
 
+      let aborted = false;
       try {
         for await (const chunk of textStream) {
           await syncCurrentMessage();
@@ -91,11 +102,21 @@ export default (nsp: Namespace) => {
           currentContent += chunk;
         }
       } catch (err: any) {
-        if (err.name !== "AbortError") throw err;
+        if (err.name === "AbortError" || currentController.signal.aborted) {
+          aborted = true;
+        } else {
+          throw err;
+        }
       } finally {
         await syncCurrentMessage();
-        text.complete();
-        currentMsg.complete();
+        if (aborted) {
+          text.append("[已停止]");
+          text.complete();
+          currentMsg.stop();
+        } else {
+          text.complete();
+          currentMsg.complete();
+        }
         await persistCurrentMessage();
         if (abortController === currentController) {
           abortController = null;
