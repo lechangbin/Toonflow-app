@@ -63,8 +63,6 @@ export default router.post(
     if (!scriptIds.length) return res.status(400).send(error("请先选择剧本"));
     const scripts = await u.db("o_script").whereIn("id", scriptIds);
     const intansce = u.Ai.Text("universalAi");
-    const novelData = await u.db("o_novel").where("projectId", projectId).select("chapterData");
-    if (!novelData || novelData.length === 0) return res.status(400).send(error("请先上传小说"));
     await u.db("o_script").whereIn("id", scriptIds).update({
       extractState: 0,
     });

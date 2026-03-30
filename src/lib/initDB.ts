@@ -469,6 +469,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("model");
         table.text("resolution");
         table.text("state");
+        table.text("reason");
         table.primary(["id"]);
         table.unique(["id"]);
       },
