@@ -41,7 +41,6 @@ export default router.post(
           },
         ],
       });
-      console.log("%c Line:35 🎂 text", "background:#3f7cff", text);
 
       const repeloadObj = {
         prompt: text,

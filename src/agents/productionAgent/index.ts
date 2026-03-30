@@ -51,7 +51,7 @@ export async function decisionAI(ctx: AgentContext) {
   const { textStream } = await u.Ai.Text("productionAgent").stream({
     messages: [
       { role: "system", content: prompt },
-      { role: "system", content: mem },
+      { role: "assistant", content: mem },
       { role: "user", content: text },
     ],
     abortSignal,
@@ -174,8 +174,8 @@ function createSubAgent(parentCtx: AgentContext) {
 }
 
 async function createArtSkills(artName: string) {
-  const path = u.getPath(["skills", "art_prompts", artName, "driector_skills"]);
-  const skillList = await scanSkills(path + "/*.md");
+  const workerPath = u.getPath(["skills", "art_prompts", artName, "driector_skills"]);
+  const skillList = await scanSkills(workerPath + "/*.md");
   const mainSkills: { path: string; name: string; description: string }[] = [];
   for (const skillPath of skillList) {
     if (!fs.existsSync(skillPath)) throw new Error(`主技能文件不存在: ${skillPath}`);
@@ -183,8 +183,9 @@ async function createArtSkills(artName: string) {
     const parsed = parseFrontmatter(content);
     mainSkills.push({ path: skillPath, ...parsed });
   }
-  return {
+  const res = {
     prompt: buildSkillPrompt(mainSkills),
-    tools: createSkillTools(mainSkills, { mainSkill: mainSkills, secondarySkills: [], tertiarySkills: [] }),
+    tools: createSkillTools(mainSkills, { mainSkill: mainSkills, secondarySkills: [], tertiarySkills: [] },workerPath),
   };
+  return res
 }

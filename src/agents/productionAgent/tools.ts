@@ -53,7 +53,7 @@ const posterItemSchema = z.object({
   id: z.number().describe("海报ID"),
   image: z.string().describe("海报图片路径"),
 });
-const flowDataSchema = z.object({
+export const flowDataSchema = z.object({
   script: z.string().describe("剧本内容"),
   scriptPlan: z.string().describe("拍摄计划"),
   assets: z.array(assetItemSchema).describe("衍生资产"),
@@ -146,42 +146,6 @@ export default (toolCpnfig: ToolConfig) => {
         thinking.updateTitle("资产操作完成");
         thinking.complete();
         return res ?? "删除成功";
-      },
-    }),
-
-    add_storyboard: tool({
-      description: "新增或更新分镜面板",
-      inputSchema: z.object({
-        id: z.number().nullable().describe("分镜面板ID,如果新增则为空"),
-        title: z.string().describe("分镜面板名称"),
-        desc: z.string().describe("分镜面板描述"),
-        group: z.number().describe("分镜面板分组,根据这个字段 对分镜图片，进行同时生成视频，例如 同一分组的两张图片会被用于首尾帧生成视频"),
-      }),
-      execute: async (storyboard) => {
-        const thinking = msg.thinking("正在操作资产...");
-        const { projectId, scriptId } = resTool.data;
-        const createTime = Date.now();
-        console.log("%c Line:161 🍤 storyboard", "background:#e41a6a", storyboard);
-
-        const data = {
-          id: storyboard.id ?? undefined,
-          title: storyboard.title,
-          description: storyboard.desc,
-          createTime,
-          scriptId,
-        };
-        if (storyboard.id) {
-          await u.db("o_storyboard").where("id", storyboard.id).update(data);
-          thinking.appendText(`已更新分镜面板，ID: ${storyboard.id}\n`);
-        } else {
-          const [insertedId] = await u.db("o_storyboard").insert(data);
-          data.id = insertedId;
-          thinking.appendText(`已新增分镜面板，ID: ${insertedId}\n`);
-        }
-        const res = await new Promise((resolve) => socket.emit("addStoryboard", data, (res: any) => resolve(res)));
-        thinking.updateTitle("分镜面板操作完成");
-        thinking.complete();
-        return res ?? "操作成功";
       },
     }),
     generate_deriveAsset: tool({
