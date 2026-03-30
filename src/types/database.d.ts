@@ -1,12 +1,18 @@
-// @db-hash f7bc2fdb80756d5536929eb47155578b
+// @db-hash 06e91b1ef334867ed5ea41d5a857d07a
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_script_old_20260327 {
-  'content'?: string | null;
+export interface _o_project_old_20260328 {
+  'artStyle'?: string | null;
   'createTime'?: number | null;
-  'id'?: number;
+  'id'?: number | null;
+  'imageModel'?: string | null;
+  'intro'?: string | null;
   'name'?: string | null;
-  'projectId'?: number | null;
+  'projectType'?: string | null;
+  'type'?: string | null;
+  'userId'?: number | null;
+  'videoModel'?: string | null;
+  'videoRatio'?: string | null;
 }
 export interface memories {
   'content': string;
@@ -54,6 +60,7 @@ export interface o_assets {
   'name'?: string | null;
   'projectId'?: number | null;
   'prompt'?: string | null;
+  'promptState'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
   'startTime'?: number | null;
@@ -173,7 +180,7 @@ export interface o_storyboard {
   'filePath'?: string | null;
   'frameMode'?: string | null;
   'id'?: number;
-  'index'?: string | null;
+  'index'?: number | null;
   'lines'?: string | null;
   'mode'?: string | null;
   'model'?: string | null;
@@ -184,6 +191,7 @@ export interface o_storyboard {
   'sound'?: string | null;
   'state'?: string | null;
   'title'?: string | null;
+  'videoPrompt'?: string | null;
 }
 export interface o_tasks {
   'describe'?: string | null;
@@ -238,7 +246,7 @@ export interface o_videoConfig {
 }
 
 export interface DB {
-  "_o_script_old_20260327": _o_script_old_20260327;
+  "_o_project_old_20260328": _o_project_old_20260328;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
