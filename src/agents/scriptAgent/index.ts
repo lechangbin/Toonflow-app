@@ -144,7 +144,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
       return runAgent({
         prompt,
-        system: systemPrompt + "\n你可以使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>",
+        system: systemPrompt + "\n你必须使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>",
         name: "编剧",
         memoryKey: "assistant:execution:storySkeleton",
       });
@@ -159,7 +159,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
       return runAgent({
         prompt,
-        system: systemPrompt + "\n你可以使用如下XML格式写入工作区：\n<adaptationStrategy>改编策略内容</adaptationStrategy>",
+        system: systemPrompt + "\n你必须使用如下XML格式写入工作区：\n<adaptationStrategy>改编策略内容</adaptationStrategy>",
         name: "编剧",
         memoryKey: "assistant:execution:adaptationStrategy",
       });
@@ -176,7 +176,7 @@ function createSubAgent(parentCtx: AgentContext) {
         prompt,
         system:
           systemPrompt +
-          `\n你可以使用如下XML格式写入工作区：\nXML不得添加任何额外标签<script><item name="剧本名称">剧本内容</item><item name="剧本名称">剧本内容</item><item name="剧本名称">剧本内容</item></script>`,
+          `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<script><item name="剧本名称">剧本内容</item><item name="剧本名称">剧本内容</item><item name="剧本名称">剧本内容</item></script>`,
         name: "编剧",
         memoryKey: "assistant:execution:script",
       });

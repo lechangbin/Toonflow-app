@@ -135,7 +135,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const addPrompt =
         "\n" +
         [
-          "你可以使用如下XML格式写入工作区：\n```",
+          "你必须使用如下XML格式写入工作区：\n```",
           "拍摄计划：<scriptPlan>内容</scriptPlan>",
           "分镜表：<storyboardTable>内容</storyboardTable>",
           "```",
@@ -168,7 +168,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
       return runAgent({
         prompt,
-        system: systemPrompt + "你可以使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>",
+        system: systemPrompt + "你必须使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>",
         name: "监制",
         memoryKey: "assistant:supervision",
       });
