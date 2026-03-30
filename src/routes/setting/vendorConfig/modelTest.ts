@@ -78,6 +78,7 @@ export default router.post(
         }
         res.status(200).send(success(fullResponse));
       } else {
+        console.log("%c Line:83 🥔", "background:#e41a6a");
         const aiTypeFn = {
           image: "Image",
           video: "Video",
