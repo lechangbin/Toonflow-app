@@ -153,11 +153,11 @@ export default (toolCpnfig: ToolConfig) => {
     generate_deriveAsset: tool({
       description: "生成衍生资产",
       inputSchema: z.object({
-        id: z.array(z.number()).describe("需要生成的 衍生资产ID"),
+        ids: z.array(z.number()).describe("需要生成的 衍生资产ID"),
       }),
-      execute: async ({ id }) => {
+      execute: async ({ ids }) => {
         const thinking = msg.thinking("正在生成衍生资产...");
-        new Promise((resolve) => socket.emit("generateDeriveAsset", { id }, (res: any) => resolve(res)))
+        new Promise((resolve) => socket.emit("generateDeriveAsset", { ids }, (res: any) => resolve(res)))
           .then((res) => {
             thinking.appendText(`已生成衍生资产，ID: ${JSON.stringify(res, null, 2)}\n`);
             thinking.updateTitle("衍生资产开始完成");

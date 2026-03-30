@@ -42,21 +42,46 @@ export default router.post(
     const rolePrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_character_derivative");
     const toolPrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_prop_derivative");
     const scenePrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_scene_derivative");
-    const promptRecord = {
-      role: rolePrompt,
-      tool: toolPrompt,
-      scene: scenePrompt,
+    const promptRecord: Record<string, { prompt: string; label: string; focus: string }> = {
+      role: {
+        prompt: rolePrompt,
+        label: "角色衍生资产",
+        focus: "注重人物的姿态、表情、服饰细节、体态特征与情绪表达，保持与原始角色设计的一致性（如发型、瞳色、服装风格），同时体现衍生场景下的变化。",
+      },
+      tool: {
+        prompt: toolPrompt,
+        label: "道具衍生资产",
+        focus: "注重道具的材质质感、光影效果、结构细节与功能特征，保持与原始道具设计的一致性（如形状、配色、标志性元素），清晰展示道具在不同状态或角度下的视觉表现。",
+      },
+      scene: {
+        prompt: scenePrompt,
+        label: "场景衍生资产",
+        focus: "注重场景的空间层次、光影氛围、环境细节与情绪渲染，保持与原始场景设计的一致性（如建筑风格、色调、标志性地标），体现不同时间段或天气条件下的视觉变化。",
+      },
     };
     const imageData = [];
     for (const item of assetsDataArr) {
+      const typeConfig = promptRecord[item.type!] || promptRecord["role"];
+      const hasRefImage = !!imageUrlRecord[item.assetsId!];
+
       const { text } = await u.Ai.Text("universalAi").invoke({
-        system: `
-        你需要根据用户提供的资产的标题与描述，结合当前项目的美术风格，为我优化提示词以便生成更符合项目美术风格的图片。直接输出提示词，不需要做任何解释说明。
-        美术风格：${promptRecord[item.type! as keyof typeof promptRecord]}`,
+        system: `你是一位专业的 AI 绘画提示词工程师，擅长将资产描述转化为高质量的图片生成提示词。
+
+## 任务
+根据用户提供的${typeConfig.label}名称与描述，结合项目美术风格规范，生成一段精准的图片生成提示词（Prompt）。
+
+## 输出要求
+- 直接输出最终提示词，不要包含任何解释、标题或标记
+- 提示词应为具体的视觉描述，包含主体、构图、光影、色调、氛围等要素
+- ${typeConfig.focus}
+${hasRefImage ? "- 当前资产有参考图作为风格锚点，提示词应侧重描述衍生变化部分，避免重复参考图已有的基础特征" : "- 当前资产无参考图，提示词需要完整描述视觉特征"}
+
+## 项目美术风格与提示词规范参考
+${typeConfig.prompt || "（未指定特定美术风格，请根据资产描述选择合适的画面风格）"}`,
         messages: [
           {
             role: "user",
-            content: `资产名称:${item.name},资产描述:${item.describe}`,
+            content: `资产名称: ${item.name}\n资产描述: ${item.describe || "无详细描述"}`,
           },
         ],
       });
