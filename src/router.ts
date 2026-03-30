@@ -1,4 +1,4 @@
-// @routes-hash 4320384558d78e1f5a302e2126dd9699
+// @routes-hash 6f4b1b062e88dc5cb13583c50c217537
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -55,13 +55,13 @@ import route51 from "./routes/production/getFlowData";
 import route52 from "./routes/production/getProductionData";
 import route53 from "./routes/production/getStoryboardData";
 import route54 from "./routes/production/saveFlowData";
-import route55 from "./routes/production/storyboard/downPreviewImage";
-import route56 from "./routes/production/storyboard/getStoryboardData";
-import route57 from "./routes/production/storyboard/previewImage";
-import route58 from "./routes/production/workbench/confirmSelection";
-import route59 from "./routes/production/workbench/delVideo";
-import route60 from "./routes/production/workbench/generateVideo";
-import route61 from "./routes/production/workbench/generateVideoPrompt";
+import route55 from "./routes/production/storyboard/batchGenerateImage";
+import route56 from "./routes/production/storyboard/downPreviewImage";
+import route57 from "./routes/production/storyboard/getStoryboardData";
+import route58 from "./routes/production/storyboard/previewImage";
+import route59 from "./routes/production/workbench/confirmSelection";
+import route60 from "./routes/production/workbench/delVideo";
+import route61 from "./routes/production/workbench/generateVideo";
 import route62 from "./routes/production/workbench/getChatLines";
 import route63 from "./routes/production/workbench/getVideoModelDetail";
 import route64 from "./routes/production/workbench/videoPolling";
@@ -171,13 +171,13 @@ export default async (app: Express) => {
   app.use("/api/production/getProductionData", route52);
   app.use("/api/production/getStoryboardData", route53);
   app.use("/api/production/saveFlowData", route54);
-  app.use("/api/production/storyboard/downPreviewImage", route55);
-  app.use("/api/production/storyboard/getStoryboardData", route56);
-  app.use("/api/production/storyboard/previewImage", route57);
-  app.use("/api/production/workbench/confirmSelection", route58);
-  app.use("/api/production/workbench/delVideo", route59);
-  app.use("/api/production/workbench/generateVideo", route60);
-  app.use("/api/production/workbench/generateVideoPrompt", route61);
+  app.use("/api/production/storyboard/batchGenerateImage", route55);
+  app.use("/api/production/storyboard/downPreviewImage", route56);
+  app.use("/api/production/storyboard/getStoryboardData", route57);
+  app.use("/api/production/storyboard/previewImage", route58);
+  app.use("/api/production/workbench/confirmSelection", route59);
+  app.use("/api/production/workbench/delVideo", route60);
+  app.use("/api/production/workbench/generateVideo", route61);
   app.use("/api/production/workbench/getChatLines", route62);
   app.use("/api/production/workbench/getVideoModelDetail", route63);
   app.use("/api/production/workbench/videoPolling", route64);
