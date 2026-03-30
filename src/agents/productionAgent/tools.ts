@@ -14,7 +14,7 @@ const deriveAssetSchema = z.object({
   state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态"),
   type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
 });
-const assetItemSchema = z.object({
+export const assetItemSchema = z.object({
   id: z.number().describe("资产唯一标识"),
   name: z.string().describe("资产名称"),
   type: z.enum(["role", "tool", "scene", "clip"]).describe("资产类型"),
@@ -100,18 +100,20 @@ export default (toolCpnfig: ToolConfig) => {
         id: z.number().nullable().describe("衍生资产ID,如果新增则为空"),
         name: z.string().describe("衍生资产名称"),
         desc: z.string().describe("衍生资产描述"),
-        type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
       }),
       execute: async (deriveAsset) => {
         const thinking = msg.thinking("正在操作资产...");
         const { projectId, scriptId } = resTool.data;
         const startTime = Date.now();
+        const parentAssets = await u.db("o_assets").where("id", deriveAsset.assetsId).select("id", "type").first();
+        if (!parentAssets) return "关联的资产不存在";
+
         const data = {
           id: deriveAsset.id ?? undefined,
           assetsId: deriveAsset.assetsId,
           projectId,
           name: deriveAsset.name,
-          type: deriveAsset.type,
+          type: parentAssets.type,
           describe: deriveAsset.desc,
           startTime,
         };
@@ -155,25 +157,42 @@ export default (toolCpnfig: ToolConfig) => {
       }),
       execute: async ({ id }) => {
         const thinking = msg.thinking("正在生成衍生资产...");
-        const res = await new Promise((resolve) => socket.emit("generateDeriveAsset", { id }, (res: any) => resolve(res)));
-        thinking.appendText(`已生成衍生资产，ID: ${id}\n`);
-        thinking.updateTitle("衍生资产生成完成");
-        thinking.complete();
-        return res ?? "生成失败";
+        new Promise((resolve) => socket.emit("generateDeriveAsset", { id }, (res: any) => resolve(res)))
+          .then((res) => {
+            thinking.appendText(`已生成衍生资产，ID: ${JSON.stringify(res, null, 2)}\n`);
+            thinking.updateTitle("衍生资产开始完成");
+            thinking.complete();
+          })
+          .catch((e) => {
+            thinking.appendText("衍生资产生成失败:\n" + u.error(e).message);
+            thinking.updateTitle("衍生资产生成失败");
+            thinking.complete();
+          });
+
+        return "开始生成衍生资产";
       },
     }),
     generate_storyboard: tool({
       description: "生成分镜图片",
       inputSchema: z.object({
-        storyboardIds: z.array(z.number()).describe("分镜ID列表"),
+        ids: z.array(z.number()).describe("分镜面板中需要更新的分镜 ID 列表,传入id仅作对应分镜更新用，不传入则全部生成"),
       }),
-      execute: async ({ storyboardIds }) => {
+      execute: async ({ ids }) => {
+        console.log("%c Line:176 🍒 ids", "background:#ea7e5c", ids);
         const thinking = msg.thinking("正在生成分镜...");
-        const res = await new Promise((resolve) => socket.emit("generateStoryboard", { storyboardIds }, (res: any) => resolve(res)));
-        thinking.appendText("生成的分镜数据:\n" + JSON.stringify(res, null, 2));
-        thinking.updateTitle("分镜生成完成");
-        thinking.complete();
-        return res;
+        new Promise((resolve) => socket.emit("generateStoryboard", { ids }, (res: any) => resolve(res)))
+          .then((res) => {
+            thinking.appendText("生成的分镜数据:\n" + JSON.stringify(res, null, 2));
+            thinking.updateTitle("分镜生成完成");
+            thinking.complete();
+          })
+          .catch((e) => {
+            thinking.appendText("分镜生成失败:\n" + u.error(e).message);
+            thinking.updateTitle("分镜生成失败");
+            thinking.complete();
+          });
+
+        return "开始生成分镜";
       },
     }),
   };
