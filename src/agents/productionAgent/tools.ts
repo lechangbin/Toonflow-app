@@ -109,6 +109,7 @@ export default (toolCpnfig: ToolConfig) => {
         type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
       }),
       execute: async (deriveAsset) => {
+        const thinking = msg.thinking("正在操作资产...");
         const { projectId, scriptId } = resTool.data;
         const startTime = Date.now();
         const data = {
@@ -122,12 +123,16 @@ export default (toolCpnfig: ToolConfig) => {
         };
         if (deriveAsset.id) {
           await u.db("o_assets").where("id", deriveAsset.id).update(data);
+          thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
         } else {
           const [insertedId] = await u.db("o_assets").insert(data);
           data.id = insertedId;
           await u.db("o_scriptAssets").insert({ scriptId, assetId: insertedId });
+          thinking.appendText(`已新增衍生资产，ID: ${insertedId}\n`);
         }
         const res = await new Promise((resolve) => socket.emit("addDeriveAsset", data, (res: any) => resolve(res)));
+        thinking.updateTitle("资产操作完成");
+        thinking.complete();
         return res ?? "操作成功";
       },
     }),
@@ -138,11 +143,41 @@ export default (toolCpnfig: ToolConfig) => {
         id: z.number().describe("衍生资产ID"),
       }),
       execute: async ({ assetsId, id }) => {
+        const thinking = msg.thinking("正在操作资产...");
         const { scriptId } = resTool.data;
         await u.db("o_assets").where("id", id).del();
         await u.db("o_scriptAssets").where({ scriptId, assetId: id }).del();
-        const res = await new Promise((resolve) => socket.emit("delDeriveAsset", { assetsId, id  }, (res: any) => resolve(res)));
+        thinking.appendText(`已删除衍生资产，ID: ${id}\n`);
+        const res = await new Promise((resolve) => socket.emit("delDeriveAsset", { assetsId, id }, (res: any) => resolve(res)));
+        thinking.updateTitle("资产操作完成");
+        thinking.complete();
         return res ?? "删除成功";
+      },
+    }),
+    generate_deriveAsset: tool({
+      description: "生成衍生资产",
+      inputSchema: z.object({
+        id: z.number().describe("衍生资产ID"),
+      }),
+      execute: async ({ id }) => {
+        const thinking = msg.thinking("正在生成衍生资产...");
+        const res = await new Promise((resolve) => socket.emit("generateDeriveAsset", { id }, (res: any) => resolve(res)));
+        thinking.appendText(`已生成衍生资产，ID: ${id}\n`);
+        thinking.updateTitle("衍生资产生成完成");
+        thinking.complete();
+        return res ?? "生成失败";
+      },
+    }),
+    generate_storyboard: tool({
+      description: "生成分镜",
+      inputSchema: z.object({}),
+      execute: async ({ script }) => {
+        const thinking = msg.thinking("正在生成分镜...");
+        const res = await new Promise((resolve) => socket.emit("generateStoryboard", { script }, (res: any) => resolve(res)));
+        thinking.appendText("生成的分镜数据:\n" + JSON.stringify(res, null, 2));
+        thinking.updateTitle("分镜生成完成");
+        thinking.complete();
+        return res;
       },
     }),
   };
