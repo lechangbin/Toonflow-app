@@ -53,7 +53,7 @@ const posterItemSchema = z.object({
   id: z.number().describe("海报ID"),
   image: z.string().describe("海报图片路径"),
 });
-const flowDataSchema = z.object({
+export const flowDataSchema = z.object({
   script: z.string().describe("剧本内容"),
   scriptPlan: z.string().describe("拍摄计划"),
   assets: z.array(assetItemSchema).describe("衍生资产"),
@@ -150,7 +150,6 @@ export default (toolCpnfig: ToolConfig) => {
         return res ?? "删除成功";
       },
     }),
-
     generate_deriveAsset: tool({
       description: "生成衍生资产",
       inputSchema: z.object({

@@ -111,7 +111,6 @@ export default router.post(
       请根据以下参数生成${config.label}提示词：
   
       **基础参数：**
-      - 风格: ${project?.artStyle || "未指定"}
       - 小说类型: ${project?.type || "未指定"}
       - 小说背景: ${project?.intro || "未指定"}
   

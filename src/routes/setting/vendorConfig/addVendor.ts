@@ -1,5 +1,4 @@
 import express from "express";
-import { serializeError } from "serialize-error";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
@@ -29,14 +28,14 @@ const vendorConfigSchema = z.object({
         name: z.string(),
         modelName: z.string(),
         type: z.literal("text"),
-        multimodal: z.boolean(),
-        tool: z.boolean(),
+        think: z.boolean(),
       }),
       z.object({
         name: z.string(),
         modelName: z.string(),
         type: z.literal("image"),
         mode: z.array(z.enum(["text", "singleImage", "multiReference"])),
+        associationSkills:z.string().optional(),
       }),
       z.object({
         name: z.string(),
@@ -46,8 +45,6 @@ const vendorConfigSchema = z.object({
           z.union([
             z.enum([
               "singleImage",
-              "multiImage",
-              "gridImage",
               "startEndRequired",
               "endFrameOptional",
               "startFrameOptional",
@@ -55,7 +52,7 @@ const vendorConfigSchema = z.object({
               "audioReference",
               "videoReference",
             ]),
-            z.array(z.enum(["video", "image", "audio", "text"])),
+            z.array(z.enum(["videoReference", "imageReference", "audioReference", "textReference"])),
           ]),
         ),
         audio: z.union([z.literal("optional"), z.boolean()]),

@@ -6,69 +6,6 @@ import { z } from "zod";
 import { transform } from "sucrase";
 const router = express.Router();
 
-const vendorConfigSchema = z.object({
-  id: z.string(),
-  author: z.string(),
-  description: z.string().optional(),
-  name: z.string(),
-  icon: z.string().optional(),
-  inputs: z.array(
-    z.object({
-      key: z.string(),
-      label: z.string(),
-      type: z.enum(["text", "password", "url"]),
-      required: z.boolean(),
-      placeholder: z.string().optional(),
-    }),
-  ),
-  inputValues: z.record(z.string(), z.string()),
-  models: z.array(
-    z.discriminatedUnion("type", [
-      z.object({
-        name: z.string(),
-        modelName: z.string(),
-        type: z.literal("text"),
-        multimodal: z.boolean(),
-        tool: z.boolean(),
-      }),
-      z.object({
-        name: z.string(),
-        modelName: z.string(),
-        type: z.literal("image"),
-        mode: z.array(z.enum(["text", "singleImage", "multiReference"])),
-      }),
-      z.object({
-        name: z.string(),
-        modelName: z.string(),
-        type: z.literal("video"),
-        mode: z.array(
-          z.union([
-            z.enum([
-              "singleImage",
-              "multiImage",
-              "gridImage",
-              "startEndRequired",
-              "endFrameOptional",
-              "startFrameOptional",
-              "text",
-              "audioReference",
-              "videoReference",
-            ]),
-            z.array(z.enum(["video", "image", "audio", "text"])),
-          ]),
-        ),
-        audio: z.union([z.literal("optional"), z.boolean()]),
-        durationResolutionMap: z.array(
-          z.object({
-            duration: z.array(z.number()),
-            resolution: z.array(z.string()),
-          }),
-        ),
-      }),
-    ]),
-  ),
-});
-
 export default router.post(
   "/",
   validateFields({
@@ -89,14 +26,14 @@ export default router.post(
           name: z.string(),
           modelName: z.string(),
           type: z.literal("text"),
-          multimodal: z.boolean(),
-          tool: z.boolean(),
+          think: z.boolean(),
         }),
         z.object({
           name: z.string(),
           modelName: z.string(),
           type: z.literal("image"),
           mode: z.array(z.enum(["text", "singleImage", "multiReference"])),
+          associationSkills: z.string().optional(),
         }),
         z.object({
           name: z.string(),
@@ -104,10 +41,11 @@ export default router.post(
           type: z.literal("video"),
           mode: z.array(
             z.union([
-              z.enum(["singleImage", "multiImage", "gridImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text"]),
+              z.enum(["singleImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text"]),
               z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
             ]),
           ),
+          associationSkills: z.string().optional(),
           audio: z.union([z.literal("optional"), z.boolean()]),
           durationResolutionMap: z.array(
             z.object({

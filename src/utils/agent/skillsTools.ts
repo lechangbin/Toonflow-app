@@ -177,9 +177,9 @@ ${skillEntries}
 </available_skills>`;
 }
 
-export function createSkillTools(skills: { name: string; description: string }[], skillPaths: SkillPaths) {
+export function createSkillTools(skills: { name: string; description: string }[], skillPaths: SkillPaths, rootDir: string = getPath("skills")) {
   const activated = new Set<string>(); // 已激活技能集合，防止重复加载
-  const skillsRootDir = path.resolve(getPath("skills"));
+  const skillsRootDir = path.resolve(rootDir);
   const skillNames = skills.map((s) => s.name);
   const skillMap = new Map(skillPaths.mainSkill.map((s) => [s.name, s]));
   return {
