@@ -8,17 +8,22 @@ export default router.post(
   "/",
   validateFields({
     scriptId: z.number(),
+    projectId: z.number(),
   }),
   async (req, res) => {
-    const { scriptId } = req.body;
+    const { scriptId, projectId } = req.body;
 
     //查询分镜数据
     const storyboards = await u.db("o_storyboard").where("o_storyboard.scriptId", scriptId).select("*").orderBy("index", "asc");
+
+    //查询项目默认的视频模型
+    const project = await u.db("o_project").where("id", projectId).first();
 
     const storyboardsList = await Promise.all(
       storyboards.map(async (item) => {
         return {
           ...item,
+          model: project?.videoModel || null,
           filePath: item.filePath ? await u.oss.getFileUrl(item.filePath) : null,
         };
       }),

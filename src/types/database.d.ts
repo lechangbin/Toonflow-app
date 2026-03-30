@@ -1,4 +1,4 @@
-// @db-hash e24c7c99757472b92af11f26a2b2b8c7
+// @db-hash 06e91b1ef334867ed5ea41d5a857d07a
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_project_old_20260328 {
@@ -191,6 +191,7 @@ export interface o_storyboard {
   'sound'?: string | null;
   'state'?: string | null;
   'title'?: string | null;
+  'videoPrompt'?: string | null;
 }
 export interface o_tasks {
   'describe'?: string | null;

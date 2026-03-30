@@ -481,6 +481,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("scriptId");
         table.text("title");
         table.text("prompt");
+        table.text("videoPrompt");
         table.text("description");
         table.text("filePath");
         table.text("model");
