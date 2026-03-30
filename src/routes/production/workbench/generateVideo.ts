@@ -39,6 +39,7 @@ export default router.post(
       state: "生成中",
       scriptId,
       storyboardId,
+      projectId,
     };
     const [videoId] = await u.db("o_video").insert(videoData);
     //查询分镜是否已有配置
