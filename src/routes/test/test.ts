@@ -2,25 +2,35 @@ import express from "express";
 const router = express.Router();
 import u from "@/utils";
 import fs from "fs";
-import { useSkill } from "@/utils/agent/skillsTools";
+import Memory from "@/utils/agent/memory";
+
+
+function buildMemPrompt(mem: Awaited<ReturnType<Memory["get"]>>): string {
+  let memoryContext = "";
+  if (mem.rag.length) {
+    memoryContext += `[相关记忆]\n${mem.rag.map((r) => r.content).join("\n")}`;
+  }
+  if (mem.summaries.length) {
+    if (memoryContext) memoryContext += "\n\n";
+    memoryContext += `[历史摘要]\n${mem.summaries.map((s, i) => `${i + 1}. ${s.content}`).join("\n")}`;
+  }
+  if (mem.shortTerm.length) {
+    if (memoryContext) memoryContext += "\n\n";
+    memoryContext += `[近期对话]\n${mem.shortTerm.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
+  }
+  return `## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
+}
 
 export default router.get("/", async (req, res) => {
-  const skill = await useSkill(
-    {
-      mainSkill: "production_agent_execution",
-      workspace: ["production_agent_skills/execution"],
-      attachedSkills: ["art_prompts/chinese_sweet_romance/driector_skills"],
-    },
-  );
 
-  const test = await u.Ai.Text("scriptAgent").invoke({
-    system: skill.prompt,
-    messages: [
-      { role: "user", content: "渐进式激活skill，技能->资源1->资源2...一直渐进到最深处，并输出你的阅读路线，同级目录你只用读取一个无需全部读取" },
-    ],
-    tools: skill.tools,
-  });
+  const isolationKey = "test";
+  const input = "你好"
 
-  console.log("%c Line:21 🌽 text", "background:#ea7e5c", test.text);
-  res.send(test.text);
+    const memory = new Memory("productionAgent", isolationKey);
+  await memory.add("user", input);
+
+
+  const mem = buildMemPrompt(await memory.get(input));
+
+  res.send(mem);
 });
