@@ -138,6 +138,7 @@ function createSubAgent(parentCtx: AgentContext) {
           "你必须使用如下XML格式写入工作区：\n```",
           "拍摄计划：<scriptPlan>内容</scriptPlan>",
           "分镜表：<storyboardTable>内容</storyboardTable>",
+          "分镜面板：<storyboard>内容</storyboard>",
           "```",
         ].join("\n");
       // "剧本：<script>内容</script>",
