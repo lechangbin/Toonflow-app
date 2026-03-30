@@ -15,14 +15,19 @@ export function getArtPrompt(styleName: string, fileName: string): string {
     return "";
   }
 
+  // 获取 prefix.md 内容
+  const prefixFile = findFileRecursive(baseDir, "prefix.md");
+  const prefixContent = prefixFile ? fs.readFileSync(prefixFile, "utf-8") : "";
+
   const target = fileName.endsWith(".md") ? fileName : `${fileName}.md`;
   const found = findFileRecursive(baseDir, target);
 
   if (!found) {
-    return "";
+    return prefixContent;
   }
 
-  return fs.readFileSync(found, "utf-8");
+  const fileContent = fs.readFileSync(found, "utf-8");
+  return prefixContent ? `${prefixContent}\n${fileContent}` : fileContent;
 }
 /**
  * 传入风格目录名，获取该风格下所有 .md 文件内容，按文件名映射返回

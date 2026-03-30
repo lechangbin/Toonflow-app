@@ -85,27 +85,26 @@ export default router.post(
 
     const result: ResultItem[] = Object.values(itemMap);
 
-    const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string }> = {
-      role: { promptKey: "role-polish", itemType: "characters", label: "角色标准四视图", nameLabel: "角色" },
-      scene: { promptKey: "scene-polish", itemType: "scenes", label: "场景图", nameLabel: "场景" },
-      tool: { promptKey: "tool-polish", itemType: "props", label: "道具图", nameLabel: "道具" },
+    const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string; visualManual: string }> = {
+      role: { promptKey: "role-polish", itemType: "characters", label: "角色标准四视图", nameLabel: "角色", visualManual: "art_character" },
+      scene: { promptKey: "scene-polish", itemType: "scenes", label: "场景图", nameLabel: "场景", visualManual: "art_scene" },
+      tool: { promptKey: "tool-polish", itemType: "props", label: "道具图", nameLabel: "道具", visualManual: "art_prop" },
     };
 
     const config = typeConfig[type];
     if (!config) return res.status(500).send(error("不支持的类型"));
-
+    if (!config.visualManual) return res.status(500).send(error("视觉手册未定义"));
+    //获取到视觉手册
+    const visualManual = await u.getArtPrompt(project.artStyle as string, config.visualManual);
+    if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
     findItemByName(result, name, config.itemType);
     const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
     const novelText = mergeNovelText(novelData);
 
-    const data = await u.db("o_prompt").where("type", "assetsPromptGeneration").first("data");
-
-     const systemPrompt = `${data?.data}
-
+    const systemPrompt = `
       请根据以下参数生成${config.label}提示词：
   
       **基础参数：**
-      - 风格: ${project?.artStyle || "未指定"}
       - 小说类型: ${project?.type || "未指定"}
       - 小说背景: ${project?.intro || "未指定"}
   
@@ -113,7 +112,8 @@ export default router.post(
       - ${config.nameLabel}名称:${name},
       - ${config.nameLabel}描述:${describe},
   
-      请严格按照skill规范生成${type === "role" ? "人物角色四视图" : config.label}提示词。
+      请严格按照skill规范生成${type === "role" ? "人物角色四视图" : config.label}提示词
+      ${visualManual}。
       `;
 
     try {

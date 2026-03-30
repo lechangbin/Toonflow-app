@@ -35,8 +35,8 @@ export default router.post(
       }
 
       const mainPath = u.getPath(["skills", "art_prompts", name]);
-      if (!fs.existsSync(mainPath)) {
-        return res.status(400).send(error("视觉手册不存在"));
+      if (fs.existsSync(mainPath)) {
+        return res.status(400).send(error("请勿填写重复名称的视觉手册"));
       }
       // 字段映射表（与 getVisualManual 保持一致）
       const DATA_MAP: { value: string; subDir?: string }[] = [

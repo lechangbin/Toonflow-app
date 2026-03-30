@@ -31,7 +31,6 @@ export default router.post(
       imageId: assets!.imageId ?? null,
       tempAssets,
     };
-      console.log("%c Line:30 🥤 data", "background:#465975", data);
     res.status(200).send(success(data));
   },
 );
