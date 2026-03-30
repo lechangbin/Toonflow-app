@@ -1,13 +1,62 @@
-// @db-hash 93b2462070c45c2b449e9a18c4e88763
+// @db-hash ea0c51ccb8c93a2f019139db9621721e
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_project_old_20260330 {
+  'artStyle'?: string | null;
+  'createTime'?: number | null;
+  'id'?: number | null;
+  'intro'?: string | null;
+  'name'?: string | null;
+  'projectType'?: string | null;
+  'type'?: string | null;
+  'userId'?: number | null;
+  'videoRatio'?: string | null;
+}
+export interface _o_storyboard_old_20260325 {
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'duration'?: string | null;
+  'filePath'?: string | null;
+  'frameMode'?: string | null;
+  'id'?: number;
+  'lines'?: string | null;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'reason'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'sound'?: string | null;
+  'state'?: string | null;
+  'title'?: string | null;
+}
+export interface _o_storyboard_old_20260330 {
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'duration'?: string | null;
+  'filePath'?: string | null;
+  'frameMode'?: string | null;
+  'id'?: number;
+  'index'?: string | null;
+  'lines'?: string | null;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'reason'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'sound'?: string | null;
+  'state'?: string | null;
+  'title'?: string | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
   'embedding'?: string | null;
   'id'?: string;
   'isolationKey': string;
-  'name'?: string | null;
   'relatedMessageIds'?: string | null;
   'role'?: string | null;
   'summarized'?: number | null;
@@ -47,7 +96,6 @@ export interface o_assets {
   'name'?: string | null;
   'projectId'?: number | null;
   'prompt'?: string | null;
-  'promptState'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
   'startTime'?: number | null;
@@ -129,8 +177,6 @@ export interface o_prompt {
 export interface o_script {
   'content'?: string | null;
   'createTime'?: number | null;
-  'errorReason'?: string | null;
-  'extractState'?: number | null;
   'id'?: number;
   'name'?: string | null;
   'projectId'?: number | null;
@@ -167,7 +213,7 @@ export interface o_storyboard {
   'filePath'?: string | null;
   'frameMode'?: string | null;
   'id'?: number;
-  'index'?: number | null;
+  'index'?: string | null;
   'lines'?: string | null;
   'mode'?: string | null;
   'model'?: string | null;
@@ -178,6 +224,7 @@ export interface o_storyboard {
   'sound'?: string | null;
   'state'?: string | null;
   'title'?: string | null;
+  'videoPrompt'?: string | null;
 }
 export interface o_tasks {
   'describe'?: string | null;
@@ -232,6 +279,9 @@ export interface o_videoConfig {
 }
 
 export interface DB {
+  "_o_project_old_20260330": _o_project_old_20260330;
+  "_o_storyboard_old_20260325": _o_storyboard_old_20260325;
+  "_o_storyboard_old_20260330": _o_storyboard_old_20260330;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
