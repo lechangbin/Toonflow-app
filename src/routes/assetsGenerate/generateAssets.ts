@@ -98,16 +98,20 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
   try {
     // 4. 调用 AI 生成图片
     const aiImage = u.Ai.Image(model);
-    await aiImage.run({
-      prompt: userPrompt,
-      imageBase64: base64 ? [base64] : [],
-      size: resolution,
-      aspectRatio: "16:9",
-      taskClass: cfg.taskClass,
-      describe,
-      projectId,
-      relatedObjects: JSON.stringify(relatedObjects),
-    });
+    await aiImage.run(
+      {
+        prompt: userPrompt,
+        imageBase64: base64 ? [base64] : [],
+        size: resolution,
+        aspectRatio: "16:9",
+      },
+      {
+        taskClass: cfg.taskClass,
+        describe,
+        projectId,
+        relatedObjects: JSON.stringify(relatedObjects),
+      },
+    );
     aiImage.save(imagePath);
 
     // 5. 更新记录 & 返回结果
