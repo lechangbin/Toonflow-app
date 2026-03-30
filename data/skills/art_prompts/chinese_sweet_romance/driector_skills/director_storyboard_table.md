@@ -1,3 +1,9 @@
+---
+name: director_storyboard_table
+description: 分镜表设计技法，规范古风甜宠写实超现实主义在景别、运镜、时长、动作、光影与转场上的镜头语言表达。
+metaData: director_skills
+---
+
 # 分镜表设计 · 古风甜宠写实超现实主义 · 风格技法参考
 
 ---

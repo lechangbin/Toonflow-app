@@ -406,26 +406,10 @@ class AutoThinkingTextStream extends ContentStream<string> {
   private pending = "";
   private inThinking = false;
   private thinkingStream: ThinkingStream | null = null;
-  private thinkingBuffer = "";
-  private thinkingStartTime: number = 0;
 
   constructor(socket: Socket, messageId: string, contentId: string, messageBuilder: MessageBuilder) {
     super(socket, messageId, contentId, "text");
     this.messageBuilder = messageBuilder;
-  }
-
-  /**
-   * 检查 str 的尾部是否是 tag 的某个非空真前缀。
-   * 返回需要保留的尾部字符数（0 表示不需要缓冲）。
-   */
-  private static tailPrefixLen(str: string, tag: string): number {
-    const maxCheck = Math.min(str.length, tag.length - 1);
-    for (let len = maxCheck; len >= 1; len--) {
-      if (str.endsWith(tag.slice(0, len))) {
-        return len;
-      }
-    }
-    return 0;
   }
 
   override append(chunk: string) {
@@ -436,47 +420,40 @@ class AutoThinkingTextStream extends ContentStream<string> {
 
     while (rest.length > 0) {
       if (!this.inThinking) {
-        // 寻找 <think> 开始标签
         const openIndex = rest.indexOf(AutoThinkingTextStream.OPEN_TAG);
-        if (openIndex >= 0) {
-          this.flushText(rest.slice(0, openIndex));
-          this.inThinking = true;
-          this.thinkingStartTime = Date.now();
-          this.thinkingBuffer = "";
-          this.ensureThinkingStream();
-          rest = rest.slice(openIndex + AutoThinkingTextStream.OPEN_TAG.length);
-          continue;
+        if (openIndex < 0) {
+          const keepLen = AutoThinkingTextStream.OPEN_TAG.length - 1;
+          const flushLen = Math.max(0, rest.length - keepLen);
+          if (flushLen > 0) {
+            this.appendText(rest.slice(0, flushLen));
+            rest = rest.slice(flushLen);
+          }
+          this.pending = rest;
+          break;
         }
 
-        // 检查尾部是否可能是标签的部分前缀
-        const keep = AutoThinkingTextStream.tailPrefixLen(rest, AutoThinkingTextStream.OPEN_TAG);
-        if (keep > 0) {
-          this.flushText(rest.slice(0, rest.length - keep));
-          this.pending = rest.slice(rest.length - keep);
-        } else {
-          this.flushText(rest);
-        }
-        break;
-      } else {
-        // 寻找 </think> 结束标签
-        const closeIndex = rest.indexOf(AutoThinkingTextStream.CLOSE_TAG);
-        if (closeIndex >= 0) {
-          this.flushThinking(rest.slice(0, closeIndex));
-          this.finishThinking();
-          rest = rest.slice(closeIndex + AutoThinkingTextStream.CLOSE_TAG.length);
-          continue;
-        }
+        this.appendText(rest.slice(0, openIndex));
+        this.inThinking = true;
+        this.ensureThinkingStream();
+        rest = rest.slice(openIndex + AutoThinkingTextStream.OPEN_TAG.length);
+        continue;
+      }
 
-        // 检查尾部是否可能是标签的部分前缀
-        const keep = AutoThinkingTextStream.tailPrefixLen(rest, AutoThinkingTextStream.CLOSE_TAG);
-        if (keep > 0) {
-          this.flushThinking(rest.slice(0, rest.length - keep));
-          this.pending = rest.slice(rest.length - keep);
-        } else {
-          this.flushThinking(rest);
+      const closeIndex = rest.indexOf(AutoThinkingTextStream.CLOSE_TAG);
+      if (closeIndex < 0) {
+        const keepLen = AutoThinkingTextStream.CLOSE_TAG.length - 1;
+        const flushLen = Math.max(0, rest.length - keepLen);
+        if (flushLen > 0) {
+          this.appendThinking(rest.slice(0, flushLen));
+          rest = rest.slice(flushLen);
         }
+        this.pending = rest;
         break;
       }
+
+      this.appendThinking(rest.slice(0, closeIndex));
+      this.finishThinking();
+      rest = rest.slice(closeIndex + AutoThinkingTextStream.CLOSE_TAG.length);
     }
 
     return this;
@@ -489,9 +466,9 @@ class AutoThinkingTextStream extends ContentStream<string> {
 
     if (this.pending) {
       if (this.inThinking) {
-        this.flushThinking(this.pending);
+        this.appendThinking(this.pending);
       } else {
-        this.flushText(this.pending);
+        this.appendText(this.pending);
       }
       this.pending = "";
     }
@@ -507,27 +484,22 @@ class AutoThinkingTextStream extends ContentStream<string> {
       this.thinkingStream = null;
     }
     this.pending = "";
-    this.thinkingBuffer = "";
     this.inThinking = false;
     return super.error();
   }
 
-  /** 输出普通文本 */
-  private flushText(text: string) {
+  private appendText(text: string) {
     if (!text) return;
     super.append(text);
   }
 
-  /** 输出思考文本：累积完整内容，用 merge 策略发送，避免前端 append 丢失 */
-  private flushThinking(text: string) {
+  private appendThinking(text: string) {
     if (!text) return;
-    this.thinkingBuffer += text;
-    this.ensureThinkingStream().merge({ title: "思考中...", text: this.thinkingBuffer });
+    this.ensureThinkingStream().appendText(text);
   }
 
   private ensureThinkingStream() {
     if (!this.thinkingStream) {
-      this.thinkingStartTime = Date.now();
       this.thinkingStream = this.messageBuilder.thinking("思考中...");
     }
     return this.thinkingStream;
@@ -535,11 +507,8 @@ class AutoThinkingTextStream extends ContentStream<string> {
 
   private finishThinking() {
     if (this.thinkingStream) {
-      const elapsed = ((Date.now() - this.thinkingStartTime) / 1000).toFixed(1);
-      this.thinkingStream.updateTitle(`思考完毕（${elapsed}秒）`);
-      this.thinkingStream.complete({ title: `思考完毕（${elapsed}秒）`, text: this.thinkingBuffer });
+      this.thinkingStream.complete();
       this.thinkingStream = null;
-      this.thinkingBuffer = "";
     }
     this.inThinking = false;
   }

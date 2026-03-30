@@ -9,6 +9,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createXai } from "@ai-sdk/xai";
+import { createMinimax } from "vercel-minimax-ai-provider";
 import FormData from "form-data";
 
 export default function runCode(code: string) {
@@ -24,6 +25,7 @@ export default function runCode(code: string) {
       createAnthropic,
       createOpenAICompatible,
       createXai,
+      createMinimax,
       createGoogleGenerativeAI,
       zipImage,
       zipImageResolution,

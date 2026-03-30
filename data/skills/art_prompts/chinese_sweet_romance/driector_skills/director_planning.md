@@ -1,3 +1,9 @@
+---
+name: director_planning
+description: 导演规划技法，定义古风甜宠写实超现实主义在主题立意、视觉基调、叙事节奏、场景意图与声音设计上的全局规划方法。
+metaData: director_skills
+---
+
 # 导演规划 · 古风甜宠写实超现实主义 · 风格技法参考
 
 ---

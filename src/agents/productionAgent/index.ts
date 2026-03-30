@@ -3,7 +3,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
-import { useSkill } from "@/utils/agent/skillsTools";
+import { buildSkillPrompt, createSkillTools, parseFrontmatter, scanSkills, useSkill } from "@/utils/agent/skillsTools";
 import useTools from "@/agents/productionAgent/tools";
 import ResTool from "@/socket/resTool";
 import * as fs from "fs";
@@ -77,12 +77,14 @@ function createSubAgent(parentCtx: AgentContext) {
     name,
     memoryKey,
     tools: extraTools,
+    messages,
   }: {
     prompt: string;
     system: string;
     name: string;
     memoryKey: string;
     tools?: Record<string, any>;
+    messages?: { role: "user" | "assistant" | "system"; content: string }[];
   }) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
@@ -91,7 +93,7 @@ function createSubAgent(parentCtx: AgentContext) {
 
     const { textStream } = await u.Ai.Text("scriptAgent").stream({
       system,
-      messages: [{ role: "user", content: prompt }],
+      messages: messages ?? [{ role: "user", content: prompt }],
       abortSignal,
       tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
     });
@@ -135,11 +137,20 @@ function createSubAgent(parentCtx: AgentContext) {
         ].join("\n");
       // "剧本：<script>内容</script>",
 
+      const projectInfo = await u.db("o_project").where("id", resTool.data.projectId).first();
+      if (!projectInfo) throw new Error(`项目不存在，ID: ${resTool.data.projectId}`);
+      const artSkills = await createArtSkills(projectInfo?.artStyle!);
+
       return runAgent({
         prompt,
         system: systemPrompt + addPrompt,
         name: "执行导演",
         memoryKey: "assistant:execution",
+        messages: [
+          { role: "assistant", content: artSkills.prompt },
+          { role: "user", content: prompt },
+        ],
+        tools: { ...artSkills.tools },
       });
     },
   });
@@ -162,89 +173,18 @@ function createSubAgent(parentCtx: AgentContext) {
   return { run_sub_agent_execution, run_sub_agent_supervision };
 }
 
-// //====================== 执行层 ======================
-
-// export async function executionAI(ctx: AgentContext) {
-//   const { text, abortSignal } = ctx;
-
-//   const skill = await useSkill({
-//     mainSkill: "production_agent_execution",
-//     workspace: ["production_agent_skills/execution"],
-//     attachedSkills: ["production_agent_skills/execution/driector_art_skills/chinese_sweet_romance/driector_skills"], //todo：后续可以改为动态加载
-//   });
-
-//   const subMsg = ctx.resTool.newMessage("assistant", "执行导演");
-
-//   const { textStream } = await u.Ai.Text("productionAgent").stream({
-//     system: skill.prompt,
-//     messages: [{ role: "user", content: text }],
-//     abortSignal,
-//     tools: {
-//       ...skill.tools,
-//       ...useTools({ resTool: ctx.resTool, msg: subMsg }),
-//     },
-//   });
-
-//   return { textStream, subMsg };
-// }
-
-// export async function supervisionAI(ctx: AgentContext) {
-//   const { text, abortSignal } = ctx;
-
-//   const skill = await useSkill({ mainSkill: "production_agent_supervision", workspace: ["production_agent_skills/supervision"] });
-//   const subMsg = ctx.resTool.newMessage("assistant", "监制");
-
-//   const { textStream } = await u.Ai.Text("productionAgent").stream({
-//     system: skill.prompt,
-//     messages: [{ role: "user", content: text }],
-//     abortSignal,
-//     tools: {
-//       ...skill.tools,
-//       ...useTools({
-//         resTool: ctx.resTool,
-//         msg: subMsg,
-//       }),
-//     },
-//   });
-
-//   return { textStream, subMsg };
-// }
-
-// //工具函数
-// function runSubAgent(parentCtx: AgentContext) {
-//   const memory = new Memory("productionAgent", parentCtx.isolationKey);
-//   return tool({
-//     description: "启动子Agent执行独立任务。可用子Agent:executionAI, decisionAI, supervisionAI",
-//     inputSchema: z.object({
-//       agent: z.enum(["executionAI", "supervisionAI"]).describe("子Agent名称"),
-//       prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
-//     }),
-//     execute: async ({ agent, prompt }) => {
-//       const fn = [executionAI, supervisionAI][subAgentList.indexOf(agent)];
-
-//       // 先完成主Agent当前的消息
-//       parentCtx.msg.complete();
-//       // 子Agent用新消息回复
-//       const { textStream: subTextStream, subMsg } = await fn({ ...parentCtx, text: prompt });
-//       let text = subMsg.text();
-//       let fullResponse = "";
-//       for await (const chunk of subTextStream) {
-//         text.append(chunk);
-//         fullResponse += chunk;
-//       }
-//       text.complete();
-//       subMsg.complete();
-//       if (fullResponse.trim()) {
-//         await memory.add(`assistant:${agent === "executionAI" ? "execution" : "supervision"}`, fullResponse, {
-//           name: agent === "executionAI" ? "执行导演" : "监制",
-//           createTime: new Date(subMsg.datetime).getTime(),
-//         });
-//       }
-
-//       // 为主Agent后续输出创建新消息
-//       parentCtx.msg = parentCtx.resTool.newMessage("assistant", "监制");
-
-//       return fullResponse;
-//     },
-//   });
-// }
+async function createArtSkills(artName: string) {
+  const path = u.getPath(["skills", "art_prompts", artName, "driector_skills"]);
+  const skillList = await scanSkills(path + "/*.md");
+  const mainSkills: { path: string; name: string; description: string }[] = [];
+  for (const skillPath of skillList) {
+    if (!fs.existsSync(skillPath)) throw new Error(`主技能文件不存在: ${skillPath}`);
+    const content = await fs.promises.readFile(skillPath, "utf-8");
+    const parsed = parseFrontmatter(content);
+    mainSkills.push({ path: skillPath, ...parsed });
+  }
+  return {
+    prompt: buildSkillPrompt(mainSkills),
+    tools: createSkillTools(mainSkills, { mainSkill: mainSkills, secondarySkills: [], tertiarySkills: [] }),
+  };
+}

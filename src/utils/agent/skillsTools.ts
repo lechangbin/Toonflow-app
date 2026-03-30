@@ -4,6 +4,7 @@ import path from "path";
 import isPathInside from "is-path-inside";
 import getPath from "@/utils/getPath";
 import * as fs from "fs";
+import fg from "fast-glob";
 
 type SkillAttribution =
   //剧本Agent
@@ -18,13 +19,13 @@ type SkillAttribution =
   | "production_agent_supervision";
 
 interface SkillInput {
-  mainSkill: SkillAttribution;
+  mainSkill: SkillAttribution[];
   workspace?: string[];
   attachedSkills?: string[];
 }
 
 interface SkillPaths {
-  mainSkill: string;
+  mainSkill: { path: string; name: string; description: string }[];
   secondarySkills: string[];
   tertiarySkills: string[];
 }
@@ -40,7 +41,7 @@ function ensureNonEmptyBody(body: string, fallback: string): string {
 
 // ==================== 解析 SKILL.md ====================
 
-function parseFrontmatter(content: string): { name: string; description: string } {
+export function parseFrontmatter(content: string): { name: string; description: string } {
   const match = content.match(/^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/);
   if (!match?.[1]) {
     throw new Error(`技能文件缺少有效的 frontmatter，确保以 --- 包裹并包含 name 和 description 字段。${content}`);
@@ -121,9 +122,16 @@ export async function useSkill(input: SkillInput) {
   const { mainSkill, workspace = [], attachedSkills = [] } = input;
   const rootDir = getPath("skills");
   const normalizedRootDir = path.resolve(rootDir);
-  const mainPath = path.join(rootDir, mainSkill + ".md");
-  if (!fs.existsSync(mainPath)) throw new Error(`主技能文件不存在: ${mainPath}`);
-  if (!isPathInside(mainPath, normalizedRootDir)) throw new Error(`技能名称无效：检测到路径穿越。${mainPath}`);
+
+  const mainSkills: { path: string; name: string; description: string }[] = [];
+  for (const skill of mainSkill) {
+    const skillPath = path.join(rootDir, skill + ".md");
+    if (!fs.existsSync(skillPath)) throw new Error(`主技能文件不存在: ${skillPath}`);
+    if (!isPathInside(skillPath, normalizedRootDir)) throw new Error(`技能名称无效：检测到路径穿越。${skillPath}`);
+    const content = await fs.promises.readFile(skillPath, "utf-8");
+    const parsed = parseFrontmatter(content);
+    mainSkills.push({ path: skillPath, ...parsed });
+  }
 
   const resolveSafeSkillDir = (dir: string): string | null => {
     const resolvedDir = path.resolve(normalizedRootDir, dir);
@@ -147,50 +155,52 @@ export async function useSkill(input: SkillInput) {
     });
 
   const skillPaths: SkillPaths = {
-    mainSkill: mainPath,
+    mainSkill: mainSkills,
     secondarySkills: collectMdFiles(workspace, false),
     tertiarySkills: collectMdFiles(attachedSkills, true),
   };
 
-  const content = await fs.promises.readFile(mainPath, "utf-8");
-  const skill = parseFrontmatter(content);
-  return { prompt: buildPrompt(skill), tools: createSkillTools(skill, skillPaths), skillPaths };
+  return { prompt: buildSkillPrompt(mainSkills), tools: createSkillTools(mainSkills, skillPaths), skillPaths };
 }
 
-function buildPrompt(skill: { name: string; description: string }): string {
+export function buildSkillPrompt(skills: { name: string; description: string }[]): string {
+  const skillEntries = skills
+    .map((s) => `  <skill>\n    <name>${s.name}</name>\n    <description>${s.description}</description>\n  </skill>`)
+    .join("\n");
   return `## Skills
 以下技能提供了专业任务的专用指令。
 当任务与某个技能的描述匹配时，调用 activate_skill 工具并传入技能名称来加载完整指令。
 加载后遵循技能指令执行任务，需要时调用 read_skill_file 读取资源文件内容。
 
 <available_skills>
-  <skill>
-    <name>${skill.name}</name>
-    <description>${skill.description}</description>
-  </skill>
+${skillEntries}
 </available_skills>`;
 }
 
-function createSkillTools(skill: { name: string; description: string }, skillPaths: SkillPaths) {
+export function createSkillTools(skills: { name: string; description: string }[], skillPaths: SkillPaths) {
   const activated = new Set<string>(); // 已激活技能集合，防止重复加载
   const skillsRootDir = path.resolve(getPath("skills"));
+  const skillNames = skills.map((s) => s.name);
+  const skillMap = new Map(skillPaths.mainSkill.map((s) => [s.name, s]));
   return {
     activate_skill: tool({
-      description: `激活一个技能，加载其完整指令和捆绑资源列表到上下文。可用技能：${skill.name}`,
+      description: `激活一个技能，加载其完整指令和捆绑资源列表到上下文。可用技能：${skillNames.join(", ")}`,
       inputSchema: z.object({
-        name: z.enum([skill.name] as [string, ...string[]]).describe("要激活的技能名称"),
+        name: z.enum(skillNames as [string, ...string[]]).describe("要激活的技能名称"),
       }),
       execute: async ({ name }) => {
         if (activated.has(name)) {
           console.log(`⚡[主技能] ℹ️ 技能 "${name}" 已激活，跳过重复注入`);
           return { alreadyActive: true, message: `技能 "${name}" 已激活，无需重复加载` };
         }
+        const matched = skillMap.get(name);
+        if (!matched) return { error: `未找到技能 "${name}"` };
         let raw = "";
         try {
-          raw = await fs.promises.readFile(skillPaths.mainSkill, "utf-8");
-          console.log(`⚡[主技能] ✓ 已读取主技能文件： ${skillPaths.mainSkill}（${raw.length} 字符）`);
+          raw = await fs.promises.readFile(matched.path, "utf-8");
+          console.log(`⚡[主技能] ✓ 已读取主技能文件： ${matched.path}（${raw.length} 字符）`);
         } catch (error) {
-          console.log(`⚡[主技能] ✗ 读取失败：未找到文件 "${skillPaths.mainSkill}"`);
+          console.log(`⚡[主技能] ✗ 读取失败：未找到文件 "${matched.path}"`);
         }
         activated.add(name);
         console.log(`⚡[主技能] ✓ 技能 "${name}" 已激活`);
@@ -252,4 +262,13 @@ function createSkillTools(skill: { name: string; description: string }, skillPat
       },
     }),
   };
+}
+
+export async function scanSkills(folderPath: string) {
+  const unixPath = toUnixPath(folderPath);
+  const entries = await fg(unixPath, {
+    onlyFiles: true,
+    absolute: true,
+  });
+  return entries;
 }
