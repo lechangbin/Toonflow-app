@@ -11,33 +11,39 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createXai } from "@ai-sdk/xai";
 import { createMinimax } from "vercel-minimax-ai-provider";
 import FormData from "form-data";
+import jsonwebtoken from "jsonwebtoken";
 
-export default function runCode(code: string) {
+export default function runCode(code: string, vendor?: Record<string, any>) {
   // 创建一个沙盒
   const exports = {};
+  const sandbox: Record<string, any> = {
+    createOpenAI,
+    createDeepSeek,
+    createZhipu,
+    createQwen,
+    createAnthropic,
+    createOpenAICompatible,
+    createXai,
+    createMinimax,
+    createGoogleGenerativeAI,
+    zipImage,
+    zipImageResolution,
+    urlToBase64,
+    mergeImages,
+    pollTask,
+    fetch,
+    exports,
+    axios,
+    FormData,
+    logger,
+    jsonwebtoken,
+  };
+  if (vendor !== undefined) {
+    sandbox.vendor = vendor;
+  }
   const vm = new VM({
     timeout: 0,
-    sandbox: {
-      createOpenAI,
-      createDeepSeek,
-      createZhipu,
-      createQwen,
-      createAnthropic,
-      createOpenAICompatible,
-      createXai,
-      createMinimax,
-      createGoogleGenerativeAI,
-      zipImage,
-      zipImageResolution,
-      urlToBase64,
-      mergeImages,
-      pollTask,
-      fetch,
-      exports,
-      axios,
-      FormData,
-      logger,
-    },
+    sandbox,
     compiler: "javascript",
     eval: false,
     wasm: false,

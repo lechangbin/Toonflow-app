@@ -25,10 +25,23 @@ async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${strin
   const selectedModel = modelList.find((i: any) => i.modelName == name);
   if (!selectedModel) throw new Error(`未找到模型 ${name} id=${id}`);
   const jsCode = transform(vendorConfigData.code!, { transforms: ["typescript"] }).code;
-  const fn = u.vm(jsCode)[fnName];
+  const running = u.vm(jsCode);
+  Object.assign(running.vendor.inputValues, JSON.parse(vendorConfigData.inputValues ?? "{}"));
+  running.vendor.models = modelList;
+  const fn = running[fnName];
   if (!fn) throw new Error(`未找到供应商配置中的函数 ${fnName} id=${id}`);
-  if (fnName == "textRequest") return fn(selectedModel);
-  else return <T>(input: T) => fn(input, selectedModel);
+  if (fnName == "textRequest") {
+    const model = fn(selectedModel);
+    if (!model) throw new Error(`供应商 textRequest 返回无效模型 id=${id}`);
+    return model;
+  }
+  return async <T>(input: T) => {
+    const result = await fn(input, selectedModel);
+    if (result === undefined || result === null) {
+      throw new Error(`供应商函数 ${fnName} 未返回有效结果 id=${id}`);
+    }
+    return result;
+  };
 }
 
 async function withTaskRecord<T>(
