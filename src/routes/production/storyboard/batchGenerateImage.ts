@@ -42,6 +42,7 @@ export default router.post(
     // 当没有 storyboardIds 时，通过 AI 生成新的分镜面板数据
     let finalStoryboardIds: number[] = storyboardIds || [];
     if (!storyboardIds || storyboardIds.length === 0) {
+      await u.db("o_storyboard").where("scriptId", scriptId).delete();
       const createdIds: number[] = [];
       const resultTools = tool({
         description: "结果输出工具（必须调用）",
@@ -51,6 +52,7 @@ export default router.post(
               title: z.string().describe("分镜名称"),
               description: z.string().describe("分镜详细描述"),
               relatedAssets: z.array(z.number()).describe("关联衍生资产id数组"),
+              duration: z.number().describe("用于生成的视频时长（秒）"),
             }),
           ),
         }),
@@ -61,6 +63,7 @@ export default router.post(
               title: item.title,
               description: item.description,
               scriptId: scriptId,
+              duration: String(item.duration),
             });
             createdIds.push(id);
             if (item.relatedAssets.length === 0) continue;
@@ -71,22 +74,36 @@ export default router.post(
         },
       });
       const { text } = await u.Ai.Text("universalAi").invoke({
-        system: `
-        你需要根据用户提供的剧本、分镜表、拍摄计划和资产列表，来生成一个分镜面板，内容结构为 [{title:"分镜名称",description:"分镜详细描述",relatedAssets:关联衍生资产id}]。
-        你必须调用 resultTools 来输出结果，传入的参数需要包含 items 字段，items 是一个数组，每个元素包含 title（分镜名称）,description（分镜详细描述）,relatedAssets（关联衍生资产id数组）。请直接输出调用工具的代码，不要做任何多余的描述性文字，必须等待工具调用完成。调用工具后你本身的回复 请保持空白，不要添加任何内容。`,
+        system: `你是一位专业的动画分镜师。你的任务是根据剧本内容、分镜表、拍摄计划和可用资产，拆分并生成完整的分镜面板数据。
+
+## 工作流程
+1. 仔细阅读剧本，理解故事情节、角色关系和情感节奏。
+2. 参照分镜表和拍摄计划，确定每个分镜的镜头语言（景别、角度、运镜方式）。
+3. 将可用资产合理分配到对应分镜中，确保每个分镜关联的资产与画面内容一致。
+4. 为每个分镜撰写详细的画面描述，包含：场景环境、角色动作与表情、镜头构图、光影氛围。
+5. 根据镜头内容合理分配视频时长（一般 2~8 秒，对话或动作复杂的场景可适当延长）。
+
+## 输出要求
+- 你 **必须** 调用 resultTools 工具来输出结果，不要在回复中添加任何文字说明。
+- items 数组中每个元素包含：
+  - title：简洁的分镜名称（如"开场远景"、"角色对话特写"）
+  - description：详细的分镜画面描述（至少 50 字），需包含镜头景别、角色状态、环境氛围等具体视觉信息
+  - relatedAssets：该分镜关联的衍生资产 ID 数组，仅关联与画面内容直接相关的资产
+  - duration：建议视频时长（秒），根据画面复杂度和叙事节奏合理分配`,
         messages: [
           {
             role: "user",
-            content: `
-          ====== 剧本 ======
-        ${script}
-        ====== 分镜表 ======
-        ${storyboardTable}
-        ====== 拍摄计划 ======
-        ${scriptPlan}
-        ====== 资产列表 ======
-        ${assets.map((i) => i.derive.map((t) => `衍生资产名称:${t.name},衍生资产类型:${t.type},关联资产ID:${t.assetsId}`).join("\n")).join("\n")}
-          `,
+            content: `## 剧本
+${script}
+
+## 分镜表
+${storyboardTable}
+
+## 拍摄计划
+${scriptPlan}
+
+## 可用资产列表
+${assets.map((i) => i.derive.map((t) => `- 衍生资产名称: ${t.name} | 类型: ${t.type} | 资产ID: ${t.assetsId}`).join("\n")).join("\n")}`,
           },
         ],
         tools: { resultTools },
@@ -133,13 +150,17 @@ export default router.post(
     );
     for (const item of storyboardData) {
       const { text } = await u.Ai.Text("universalAi").invoke({
-        system: `
-        你需要根据用户提供的分镜的标题与描述，结合当前项目的美术风格，为我生成一段提示词以便生成更符合项目美术风格的分镜图片。直接输出提示词，不做任何解释说明。
-        美术风格：${sceneArkPrompt}`,
+        system: `你是一位专业的 AI 绘画提示词工程师，擅长将分镜描述转化为高质量的图片生成提示词。
+
+## 任务
+根据分镜的标题与描述，结合项目美术风格要求，生成一段精准的英文图片生成提示词（Prompt）。
+
+## 项目美术风格与提示词规范参考
+${sceneArkPrompt || "（未指定特定美术风格，请根据分镜内容选择合适的画面风格）"}`,
         messages: [
           {
             role: "user",
-            content: `分镜描述:${item.description}`,
+            content: `分镜标题: ${item.title}\n分镜描述: ${item.description}`,
           },
         ],
       });
