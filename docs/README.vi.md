@@ -518,9 +518,36 @@ Bot mời tham gia:
 
 # 📜 Giấy phép
 
-Toonflow phát hành mã nguồn mở theo Apache-2.0. Chi tiết: https://www.apache.org/licenses/LICENSE-2.0
+Toonflow phát hành mã nguồn mở theo Apache-2.0, kèm thỏa thuận thương mại bổ sung.
 
-Bạn có thể sử dụng Toonflow cho bất kỳ mục đích nào, kể cả thương mại, miễn tuân thủ các điều khoản Apache-2.0.
+Chi tiết: https://www.apache.org/licenses/LICENSE-2.0
+
+## Thỏa thuận bổ sung
+
+- Nếu phân phối phần mềm này dưới dạng sản phẩm cho **2 bên thứ ba độc lập trở lên**, bạn phải có **ủy quyền thương mại bằng văn bản** từ HBAI-Ltd.
+- **≤ 5 pháp nhân** cùng vận hành nội bộ mà không cung cấp dịch vụ ra bên ngoài được coi là **sử dụng nội bộ, không cần ủy quyền**.
+- Không được xóa hoặc sửa đổi nhãn hiệu, logo hoặc thông tin bản quyền trong Toonflow.
+
+## Miễn phí vĩnh viễn
+
+- ✅ Sử dụng Toonflow tạo nội dung và nhận chia sẻ doanh thu nền tảng
+- ✅ Phát triển thêm cho sử dụng nội bộ nhóm
+- ✅ ≤ 5 pháp nhân vận hành chung nội bộ
+- ✅ Học tập cá nhân, nghiên cứu, mục đích phi thương mại
+
+## Bảng giá ủy quyền thương mại
+
+| Giai đoạn | Doanh thu năm | Phí hàng năm |
+|------|---------|------|
+| 🌱 Ươm tạo | < ¥100,000 | **Miễn phí** |
+| 🚀 Khởi nghiệp | ¥100,000–500,000 | ¥5,000/năm |
+| 📈 Tăng trưởng | ¥500,000–1,500,000 | ¥20,000/năm |
+| 🏢 Mở rộng | ¥1,500,000–5,000,000 | ¥80,000/năm |
+| 🌐 Doanh nghiệp | > ¥5,000,000 | Thương lượng |
+
+> **Điều khoản không hồi tố**: Người dùng đã sử dụng Toonflow theo AGPL-3.0 trước khi phát hành v1.0.8 không bị ảnh hưởng. Việc sử dụng hiện tại tiếp tục theo AGPL-3.0.
+
+Xem thỏa thuận đầy đủ tại [LICENSE](../LICENSE).
 
 ---
 

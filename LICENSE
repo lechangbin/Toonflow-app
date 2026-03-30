@@ -200,3 +200,60 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+---
+
+## 补充协议 | Supplementary Agreement
+
+> **补充协议 | Supplementary Agreement**
+>
+> 若您将本软件或其衍生版本以产品形式分发、销售或提供给**两个及以上独立的第三方主体**使用（无论采用买断、订阅、授权或任何其他商业模式），均须事先取得 HBAI-Ltd 的**书面商业授权**。
+>
+> If you distribute, sell, or provide this software (or any derivative) as a product to **two or more independent third parties** (regardless of business model: one-time purchase, subscription, licensing, etc.), you must obtain **written commercial authorization** from HBAI-Ltd prior to such use.
+>
+> **五个以内（含五个）**的法人主体作为联合运营方共同使用本软件，且不向联合体以外的第三方分发或提供服务的，视为**内部使用，无需商业授权**。
+>
+> **Five (5) or fewer** legal entities jointly operating and using this software internally, without distributing or providing services to parties outside the joint operation, are considered **internal use** and do not require commercial authorization.
+>
+> 在使用 Toonflow 的过程中，您不得删除或修改 Toonflow 控制台或应用程序中的标识或版权信息。
+>
+> You may not remove or modify any trademarks, logos, or copyright notices in the Toonflow console or application.
+
+---
+
+## 永久免费场景 | Always Free — No Authorization Required
+
+以下使用场景**永久免费**，无需任何授权：
+
+The following uses are **always free** and require no authorization:
+
+- ✅ 用 Toonflow 制作内容，在平台发布并获得分账 / Using Toonflow to produce content and earn platform revenue shares
+- ✅ 二次开发，供自己团队内部使用 / Secondary development and modification for internal team use
+- ✅ ≤ 5 个法人联合运营内部使用，不对外提供服务 / ≤5 legal entities operating jointly, internally only
+- ✅ 个人学习、研究、非商业用途 / Personal learning, research, and non-commercial purposes
+
+---
+
+## 授权定价 | Licensing Pricing
+
+商业授权费用与被授权方业务规模挂钩：
+
+Commercial licensing fees scale with the licensee's business scale:
+
+| 阶段 | 年销售额 | 年费 |
+|------|---------|------|
+| 🌱 扶持期 / Nurture | < ¥10 万 / $10k | **免费 / Free** |
+| 🚀 初创期 / Startup | ¥10–50 万 / $10k–$50k | ¥5,000 / 年 / year |
+| 📈 成长期 / Growth | ¥50–150 万 / $50k–$150k | ¥20,000 / 年 / year |
+| 🏢 规模期 / Scale | ¥150–500 万 / $150k–$500k | ¥80,000 / 年 / year |
+| 🌐 企业级 / Enterprise | > ¥500 万 / $500k | 面议 / Negotiable |
+
+---
+
+## AGPL 用户保护条款 | AGPL User Protection
+
+> **不追溯条款 | Non-Retroactivity Clause**
+>
+> 本协议变更生效日期（v1.0.8 正式发布日）前，基于 AGPL-3.0 条款使用 Toonflow 的用户，其现有使用行为不受本协议变更的约束，继续按 AGPL-3.0 条款执行。
+>
+> Users who used Toonflow under AGPL-3.0 prior to the effective date of this change (v1.0.8 official release date) are not affected by this license change. Their existing usage continues under AGPL-3.0.

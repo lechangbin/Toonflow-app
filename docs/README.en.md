@@ -518,9 +518,36 @@ Group Assistant:
 
 # 📜 License
 
-Toonflow is open source under Apache-2.0; license details: https://www.apache.org/licenses/LICENSE-2.0
+Toonflow is open source under Apache-2.0 with a supplementary commercial agreement.
 
-You may use Toonflow for all purposes, including commercial, so long as you comply with the terms of Apache-2.0.
+License details: https://www.apache.org/licenses/LICENSE-2.0
+
+## Supplementary Agreement
+
+- If you distribute this software as a product to **2 or more independent third parties**, you must obtain **written commercial authorization** from HBAI-Ltd.
+- **≤ 5 legal entities** operating jointly for internal use without providing services externally are considered **internal use and require no authorization**.
+- You may not remove or modify any trademarks, logos, or copyright notices in Toonflow.
+
+## Always Free — No Authorization Required
+
+- ✅ Using Toonflow to produce content and earn platform revenue shares
+- ✅ Secondary development for internal team use
+- ✅ ≤ 5 legal entities operating jointly, internally only
+- ✅ Personal learning, research, and non-commercial purposes
+
+## Licensing Pricing
+
+| Stage | Annual Revenue | Annual Fee |
+|------|---------|------|
+| 🌱 Nurture | < $10k | **Free** |
+| 🚀 Startup | $10k–$50k | ¥5,000/year |
+| 📈 Growth | $50k–$150k | ¥20,000/year |
+| 🏢 Scale | $150k–$500k | ¥80,000/year |
+| 🌐 Enterprise | > $500k | Negotiable |
+
+> **Non-Retroactivity Clause**: Users who used Toonflow under AGPL-3.0 prior to the v1.0.8 release are not affected by this change. Their existing usage continues under AGPL-3.0.
+
+See the full [LICENSE](../LICENSE) file for details.
 
 ---
 
