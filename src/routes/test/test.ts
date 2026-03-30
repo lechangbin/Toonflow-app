@@ -23,7 +23,7 @@ function buildMemPrompt(mem: Awaited<ReturnType<Memory["get"]>>): string {
 
 export default router.get("/", async (req, res) => {
 
-  const isolationKey = "test";
+  const isolationKey = "1:productionAgent:1";
   const input = "你好"
 
     const memory = new Memory("productionAgent", isolationKey);

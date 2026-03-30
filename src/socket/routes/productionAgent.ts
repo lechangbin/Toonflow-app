@@ -3,7 +3,6 @@ import u from "@/utils";
 import { Namespace, Socket } from "socket.io";
 import * as agent from "@/agents/productionAgent/index";
 import ResTool from "@/socket/resTool";
-import Memory from "@/utils/agent/memory";
 
 async function verifyToken(rawToken: string): Promise<Boolean> {
   const setting = await u.db("o_setting").where("key", "tokenKey").select("value").first();
@@ -57,7 +56,6 @@ export default (nsp: Namespace) => {
       abortController?.abort();
       abortController = new AbortController();
       const currentController = abortController;
-      const memory = new Memory("scriptAgent", isolationKey);
 
       const msg = resTool.newMessage("assistant", "视频策划");
       const ctx: agent.AgentContext = {
@@ -70,54 +68,51 @@ export default (nsp: Namespace) => {
         msg,
       };
 
-      const textStream = await agent.decisionAI(ctx);
-
-      let currentMsg = ctx.msg;
-      let text = currentMsg.text();
-      let currentContent = "";
-
-      const persistCurrentMessage = async () => {
-        if (!currentContent.trim()) return;
-        await memory.add("assistant:decision", currentContent, {
-          name: "视频策划",
-          createTime: new Date(currentMsg.datetime).getTime(),
-        });
-        currentContent = "";
-      };
-
-      const syncCurrentMessage = async () => {
-        if (ctx.msg === currentMsg) return;
-        text.complete();
-        currentMsg.complete();
-        await persistCurrentMessage();
-        currentMsg = ctx.msg;
-        text = currentMsg.text();
-      };
-
-      let aborted = false;
       try {
-        for await (const chunk of textStream) {
-          await syncCurrentMessage();
-          text.append(chunk);
-          currentContent += chunk;
-        }
-      } catch (err: any) {
-        if (err.name === "AbortError" || currentController.signal.aborted) {
-          aborted = true;
-        } else {
-          throw err;
-        }
-      } finally {
-        await syncCurrentMessage();
-        if (aborted) {
-          text.append("[已停止]");
-          text.complete();
-          currentMsg.stop();
-        } else {
+        const textStream = await agent.decisionAI(ctx);
+
+        let currentMsg = ctx.msg;
+        let text = currentMsg.text();
+
+        const syncCurrentMessage = () => {
+          if (ctx.msg === currentMsg) return;
           text.complete();
           currentMsg.complete();
+          currentMsg = ctx.msg;
+          text = currentMsg.text();
+        };
+
+        let aborted = false;
+        try {
+          for await (const chunk of textStream) {
+            syncCurrentMessage();
+            text.append(chunk);
+          }
+        } catch (err: any) {
+          if (err.name === "AbortError" || currentController.signal.aborted) {
+            aborted = true;
+          } else {
+            throw err;
+          }
+        } finally {
+          syncCurrentMessage();
+          if (aborted) {
+            text.append("[已停止]");
+            text.complete();
+            currentMsg.stop();
+          } else {
+            text.complete();
+            currentMsg.complete();
+          }
         }
-        await persistCurrentMessage();
+      } catch (err: any) {
+        if (err.name !== "AbortError" && !currentController.signal.aborted) {
+          const errorMsg = u.error(err).message;
+          console.error("[productionAgent] chat error:", errorMsg);
+          ctx.msg.text(errorMsg).complete();
+          ctx.msg.error();
+        }
+      } finally {
         if (abortController === currentController) {
           abortController = null;
         }

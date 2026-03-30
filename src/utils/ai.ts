@@ -25,7 +25,12 @@ async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${strin
   const selectedModel = modelList.find((i: any) => i.modelName == name);
   if (!selectedModel) throw new Error(`未找到模型 ${name} id=${id}`);
   const jsCode = transform(vendorConfigData.code!, { transforms: ["typescript"] }).code;
-  const fn = u.vm(jsCode)[fnName];
+  const running = u.vm(jsCode);
+  if (running.vendor) {
+    Object.assign(running.vendor.inputValues, JSON.parse(vendorConfigData.inputValues ?? "{}"));
+    running.vendor.models = modelList;
+  }
+  const fn = running[fnName];
   if (!fn) throw new Error(`未找到供应商配置中的函数 ${fnName} id=${id}`);
   if (fnName == "textRequest") return fn(selectedModel);
   else return <T>(input: T) => fn(input, selectedModel);
@@ -115,13 +120,18 @@ class AiImage {
   constructor(key: `${string}:${string}`) {
     this.key = key;
   }
-  async run(input: ImageConfig, taskRecord: TaskRecord) {
-    return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, async (modelName) => {
-      const fn = await getVendorTemplateFn("imageRequest", modelName);
+  async run(input: ImageConfig, taskRecord?: TaskRecord) {
+    const modelName = await resolveModelName(this.key);
+    const exec = async (mn: `${string}:${string}`) => {
+      const fn = await getVendorTemplateFn("imageRequest", mn);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
-    });
+    };
+    if (taskRecord) {
+      return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+    }
+    return exec(modelName);
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);
@@ -144,13 +154,18 @@ class AiVideo {
   constructor(key: `${string}:${string}`) {
     this.key = key;
   }
-  async run(input: VideoConfig, taskRecord: TaskRecord) {
-    return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, async (modelName) => {
-      const fn = await getVendorTemplateFn("videoRequest", modelName);
+  async run(input: VideoConfig, taskRecord?: TaskRecord) {
+    const modelName = await resolveModelName(this.key);
+    const exec = async (mn: `${string}:${string}`) => {
+      const fn = await getVendorTemplateFn("videoRequest", mn);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
-    });
+    };
+    if (taskRecord) {
+      return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+    }
+    return exec(modelName);
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);
@@ -163,13 +178,18 @@ class AiAudio {
   constructor(key: `${string}:${string}`) {
     this.key = key;
   }
-  async run(input: VideoConfig, taskRecord: TaskRecord) {
-    return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, async (modelName) => {
-      const fn = await getVendorTemplateFn("ttsRequest", modelName);
+  async run(input: VideoConfig, taskRecord?: TaskRecord) {
+    const modelName = await resolveModelName(this.key);
+    const exec = async (mn: `${string}:${string}`) => {
+      const fn = await getVendorTemplateFn("ttsRequest", mn);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
-    });
+    };
+    if (taskRecord) {
+      return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+    }
+    return exec(modelName);
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);

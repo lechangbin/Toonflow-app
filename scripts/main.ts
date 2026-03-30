@@ -73,6 +73,52 @@ function requireWithCustomPaths(modulePath: string): any {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let loadingWindow: BrowserWindow | null = null;
+
+const loadingHtml = `data:text/html;charset=utf-8,${encodeURIComponent(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#fff;color:#333;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  user-select:none;-webkit-app-region:drag}
+.spinner{width:48px;height:48px;border:4px solid rgba(0,0,0,.1);
+  border-top-color:#000;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+p{margin-top:20px;font-size:14px;opacity:.6}
+</style></head><body><div class="spinner"></div><p>正在启动服务…</p></body></html>`)}`;
+
+function showLoading(): void {
+  loadingWindow = new BrowserWindow({
+    width: 1000,
+    height: 700,
+    minWidth: 800,
+    minHeight: 500,
+    frame: false,
+    resizable: false,
+    maximizable: false,
+    minimizable: false,
+    show: true,
+    backgroundColor: "#ffffff",
+    autoHideMenuBar: true,
+    titleBarStyle: "hidden",
+    titleBarOverlay: {
+      color: "#ffffff",
+      symbolColor: "#333333",
+      height: 36,
+    },
+  });
+  loadingWindow.setMenuBarVisibility(false);
+  loadingWindow.removeMenu();
+  loadingWindow.on("closed", () => { loadingWindow = null; });
+  void loadingWindow.loadURL(loadingHtml);
+}
+
+function closeLoading(): void {
+  if (loadingWindow && !loadingWindow.isDestroyed()) {
+    loadingWindow.close();
+    loadingWindow = null;
+  }
+}
 
 function createMainWindow(): void {
   const win = new BrowserWindow({
@@ -117,6 +163,9 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 app.whenReady().then(async () => {
+  // 先显示加载窗口
+  showLoading();
+
   try {
     let servePath: string;
     if (app.isPackaged) {
@@ -169,6 +218,17 @@ app.whenReady().then(async () => {
           mainWindow?.webContents.openDevTools();
           return { ok: true };
         },
+        openurlwithbrowser: () => {
+          const search = url.searchParams;
+          const targetUrl = search.get("url");
+          if (targetUrl) {
+            const { shell } = require("electron");
+            shell.openExternal(targetUrl);
+            return { ok: true };
+          } else {
+            return { ok: false, error: "缺少url参数" };
+          }
+        }
       };
       const handler = handlers[pathname];
       const responseData = handler ? handler() : { error: "未知接口" };
@@ -180,10 +240,12 @@ app.whenReady().then(async () => {
       });
     });
 
+    // 服务启动成功，关闭加载窗口，创建主窗口
+    closeLoading();
     createMainWindow();
   } catch (err) {
     console.error("[服务启动失败]:", err);
-    // 如果服务启动失败，仍然创建窗口
+    closeLoading();
     createMainWindow();
   }
 });
