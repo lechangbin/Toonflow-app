@@ -3,20 +3,62 @@ import path from "path";
 import fs from "fs";
 import Module from "module";
 
+declare const __APP_VERSION__: string | undefined;
+
 /**
  * 将 extraResources 中的 data 目录复制到用户数据目录（跳过已存在的文件，保留用户修改）
  */
+
+function getVersionFromFile(filePath: string): string | null {
+  try {
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, "utf8").trim();
+    }
+  } catch {}
+  return null;
+}
+
+function writeVersionToFile(filePath: string, version: string): void {
+  fs.writeFileSync(filePath, version, { encoding: "utf8" });
+}
+
+function copyDirForce(src: string, dest: string): void {
+  if (!fs.existsSync(src)) return;
+  if (fs.existsSync(dest)) {
+    fs.rmSync(dest, { recursive: true, force: true });
+  }
+  copyDirRecursive(src, dest);
+}
+
 function initializeData(): void {
   const srcDir = path.join(process.resourcesPath, "data");
   const destDir = path.join(app.getPath("userData"), "data");
-  if (fs.existsSync(destDir)) return;
-  copyDirRecursive(srcDir, destDir);
+  const versionFile = path.join(destDir, "version.txt");
+  const currentVersion = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
+  const userVersion = getVersionFromFile(versionFile);
+
+  // 首次安装或无version.txt，直接全量拷贝
+  if (!fs.existsSync(destDir) || !userVersion) {
+    copyDirRecursive(srcDir, destDir);
+    writeVersionToFile(versionFile, currentVersion);
+    return;
+  }
+
+  // 版本号不同则覆盖 serve 和 web 目录
+  if (userVersion !== currentVersion) {
+    copyDirForce(path.join(srcDir, "serve"), path.join(destDir, "serve"));
+    copyDirForce(path.join(srcDir, "web"), path.join(destDir, "web"));
+    writeVersionToFile(versionFile, currentVersion);
+  }
 }
 
 function copyDirRecursive(src: string, dest: string): void {
   if (!fs.existsSync(src)) return;
   if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    // 跳过 oss 文件夹和 db2.sqlite 文件
+    if (entry.isDirectory() && entry.name === "oss") continue;
+    if (!entry.isDirectory() && entry.name === "db2.sqlite") continue;
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     if (entry.isDirectory()) {
@@ -109,7 +151,9 @@ function showLoading(): void {
   });
   loadingWindow.setMenuBarVisibility(false);
   loadingWindow.removeMenu();
-  loadingWindow.on("closed", () => { loadingWindow = null; });
+  loadingWindow.on("closed", () => {
+    loadingWindow = null;
+  });
   void loadingWindow.loadURL(loadingHtml);
 }
 
@@ -228,7 +272,7 @@ app.whenReady().then(async () => {
           } else {
             return { ok: false, error: "缺少url参数" };
           }
-        }
+        },
       };
       const handler = handlers[pathname];
       const responseData = handler ? handler() : { error: "未知接口" };
