@@ -123,42 +123,14 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 ### 前置条件
 
 - 已安装 [Docker](https://docs.docker.com/get-docker/)（版本 20.10+）
-- 已安装 [Docker Compose](https://docs.docker.com/compose/install/)（版本 2.0+）
 
-### 方式一：在线部署（推荐）
+### 方式一：在线部署
 
-从 GitHub / Gitee 自动拉取源码并构建镜像：
-
-```shell
-docker-compose -f docker/docker-compose.yml up -d --build
-```
-
-**支持的构建参数：**
-
-| 参数     | 说明         | 默认值   | 示例               |
-| -------- | ------------ | -------- | ------------------ |
-| `GIT`    | 代码仓库源   | `github` | `github` / `gitee` |
-| `TAG`    | 指定版本标签 | 最新 tag | `v1.0.6`           |
-| `BRANCH` | 指定分支     | 默认分支 | `main` / `dev`     |
-
-**版本选择优先级**：指定 TAG > 指定 BRANCH > 自动获取最新 tag > 默认分支
-
-**指定参数示例：**
-
-```shell
-# 使用 Gitee 源（国内推荐，速度更快）
-GIT=gitee docker-compose -f docker/docker-compose.yml up -d --build
-
-# 指定版本标签
-TAG=v1.0.6 docker-compose -f docker/docker-compose.yml up -d --build
-
-# 指定分支 + Gitee 源
-GIT=gitee BRANCH=dev docker-compose -f docker/docker-compose.yml up -d --build
-```
+待完善，暂时使用本地构建。
 
 ### 方式二：本地构建
 
-使用本地已有的源码直接构建，适合开发者或已克隆仓库的用户：
+使用本地已有的源码直接构建，适合开发者或已克隆仓库的用户，这需要你在本地安装git：
 
 ```shell
 # 先克隆项目（如已有则跳过）
@@ -166,49 +138,44 @@ git clone https://github.com/HBAI-Ltd/Toonflow-app.git
 cd Toonflow-app
 
 # 使用本地源码构建
-docker-compose -f docker/docker-compose.local.yml up -d --build
+chmod +x ./build-docker.sh && ./build-docker.sh
+
+docker run -d -p <本地端口>:10588 -v <本地数据路径>:/app/data toonflow
+
+# 此时在相应端口的 /web/index.html 路径即可访问页面。docker版本暂时处于测试状态，容器内会以dev模式运行，这可能会导致响应速度略微受限
+# 例如 http://localhost:10588/web/index.html
 ```
 
 ### 服务端口说明
 
-| 端口    | 用途           | 在线部署映射  | 本地构建映射  |
-| ------- | -------------- | ------------- | ------------- |
-| `80`    | Nginx 前端页面 | 随机端口      | `8080:80`     |
-| `10588` | 后端 API 服务  | `10588:10588` | `10588:10588` |
+| 端口    | 用途           | 部署映射  
+| ------- | -------------- | ------------- 
+| `10588` | 软件界面  | `10588:10588`
 
-### 数据持久化
 
-默认日志目录会挂载到宿主机 `./logs` 目录。如需持久化上传文件或数据库，可在 `docker-compose.yml` 中添加 volumes：
+**环境变量说明：**
 
-```yaml
-volumes:
-  - ./logs:/var/log
-  - ./uploads:/app/uploads # 持久化上传文件
-  - ./data:/app/data # 持久化数据库（如有）
-```
+| 变量       | 说明                               |
+| ---------- | ---------------------------------- |
+| `NODE_ENV` | 运行环境，`prod` 表示生产环境      |
 
-### 常用操作命令
+---
 
-```shell
-# 查看容器状态
-docker-compose -f docker/docker-compose.yml ps
-
-# 查看实时日志
-docker-compose -f docker/docker-compose.yml logs -f
-
-# 停止服务
-docker-compose -f docker/docker-compose.yml down
-
-# 重新构建并启动（更新版本时使用）
-docker-compose -f docker/docker-compose.yml up -d --build
-
-# 进入容器调试
-docker exec -it toonflow sh
-```
 
 > ⚠️ **首次登录**  
 > 账号：`admin`  
 > 密码：`admin123`
+
+#### 6. 部署前端网站
+
+如需单独部署或定制前端界面，请参考前端仓库：
+
+- **GitHub**：[Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
+- **Gitee**：[Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
+
+> 💡 **说明**：本仓库已内置编译好的前端资源，普通用户无需单独部署前端。前端仓库仅供需要二次开发的开发者使用。
+
+---
 
 ## 云端部署
 
@@ -260,7 +227,7 @@ yarn build
 ```json
 {
   "name": "toonflow-app",
-  "script": "build/app.js",
+  "script": "data/serve/app.js",
   "instances": "max",
   "exec_mode": "cluster",
   "env": {
