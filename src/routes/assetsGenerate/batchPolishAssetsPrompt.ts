@@ -107,25 +107,21 @@ export default router.post(
         if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
         findItemByName(result, item.name, config.itemType);
 
-        const systemPrompt = `
-      请根据以下参数生成${config.label}提示词：
-  
-      **基础参数：**
-      - 小说类型: ${project?.type || "未指定"}
-      - 小说背景: ${project?.intro || "未指定"}
-  
-      **${config.nameLabel}设定：**
-      - ${config.nameLabel}名称:${item.name},
-      - ${config.nameLabel}描述:${item.describe},
-  
-      请严格按照skill规范生成${item.type === "role" ? "人物角色四视图" : config.label}提示词。
-      ${visualManual}
-      `;
+        const systemPrompt = visualManual;
 
         try {
           const { _output } = (await u.Ai.Text("universalAi").invoke({
             system: systemPrompt,
-            messages: [{ role: "user", content: "小说原文" + novelText }],
+            messages: [
+              {
+                role: "user",
+                content: `
+                    **基础参数：**
+      **${config.nameLabel}设定：**
+      - ${config.nameLabel}名称:${item.name},
+      - ${config.nameLabel}描述:${item.describe},`,
+              },
+            ],
           })) as any;
 
           if (!_output) {

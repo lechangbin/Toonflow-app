@@ -73,11 +73,24 @@ export default router.post(
         storyboard: [],
         //todo：矫正workbench数据
         workbench: {
-          name: scriptData?.name ?? "",
-          duration: "01:03",
-          resolution: "1920×1080",
-          fps: "30fps",
-          gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          videoList: [
+            {
+              id: 1,
+              prompt: "动起来",
+              filePath: await u.oss.getFileUrl("/artStyle/5d96256a-1610-43a6-a469-c2385cc2287e.jpg"),
+              duration: 4,
+              scriptId: 1,
+              selectedVideoId: 1,
+            },
+            {
+              id: 2,
+              prompt: "跳起来",
+              filePath: await u.oss.getFileUrl("/artStyle/5d96256a-1610-43a6-a469-c2385cc2287e.jpg"),
+              duration: 4,
+              scriptId: 1,
+              selectedVideoId: 1,
+            },
+          ],
         },
         //todo：矫正封面数据
         poster: {

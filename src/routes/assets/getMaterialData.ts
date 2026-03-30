@@ -45,7 +45,7 @@ export default router.post(
         id: row.id,
         filePath: row.filePath ? await u.oss.getFileUrl(row.filePath) : "",
         selected: selectedIds.has(row.id),
-        storyboard: row.storyboardId,
+        videoParametersId: row.videoParametersId,
       })),
     );
 
