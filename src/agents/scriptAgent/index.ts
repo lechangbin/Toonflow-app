@@ -108,13 +108,18 @@ function createSubAgent(parentCtx: AgentContext) {
       tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
     });
 
-    for await (const chunk of textStream) {
-      text.append(chunk);
-      fullResponse += chunk;
+    try {
+      for await (const chunk of textStream) {
+        text.append(chunk);
+        fullResponse += chunk;
+      }
+      text.complete();
+      subMsg.complete();
+    } catch (err: any) {
+      text.complete();
+      subMsg.stop();
+      throw err;
     }
-
-    text.complete();
-    subMsg.complete();
 
     if (fullResponse.trim()) {
       await memory.add(memoryKey, fullResponse, {
