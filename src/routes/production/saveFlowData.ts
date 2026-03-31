@@ -36,12 +36,14 @@ export default router.post(
       await u.db("o_agentWorkData").insert({
         projectId,
         episodesId,
+        key: "productionAgent",
         data: JSON.stringify(data),
       });
     } else {
       await u
         .db("o_agentWorkData")
         .where("projectId", String(projectId))
+        .where("key", "productionAgent")
         .andWhere("episodesId", String(episodesId))
         .update({
           data: JSON.stringify(data),

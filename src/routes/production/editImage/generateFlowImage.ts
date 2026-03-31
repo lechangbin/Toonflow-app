@@ -21,21 +21,24 @@ export default router.post(
     ratio: z.string(),
     prompt: z.string(),
     projectId: z.number(),
-    type: z.enum(["role", "scene", "storyboard", "clip", "tool"]),
   }),
   async (req, res) => {
     const { model, references = [], quality, ratio, prompt, projectId, type } = req.body;
 
-    const imageClass = await u.Ai.Image(model).run({
-      prompt: prompt,
-      imageBase64: references && references.length ? await Promise.all(references.map((url: string) => urlToBase64(url))) : [],
-      size: quality,
-      aspectRatio: ratio,
-      taskClass: "分镜生成",
-      describe: "生成分镜图片",
-      relatedObjects: JSON.stringify(req.body),
-      projectId: projectId,
-    });
+    const imageClass = await u.Ai.Image(model).run(
+      {
+        prompt: prompt,
+        imageBase64: references && references.length ? await Promise.all(references.map((url: string) => urlToBase64(url))) : [],
+        size: quality,
+        aspectRatio: ratio,
+      },
+      {
+        taskClass: "工作流图片生成",
+        describe: "工作流图片生成",
+        relatedObjects: JSON.stringify(req.body),
+        projectId: projectId,
+      },
+    );
     const savePath = `${projectId}/${type}/${u.uuid()}.jpg`;
     await imageClass.save(savePath);
 
