@@ -142,7 +142,10 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
 
         await u.db("o_assets").where("id", item.id).update({ imageId });
       } catch (e: any) {
-        await u.db("o_image").where("id", imageId).update({ state: "生成失败" });
+        await u
+          .db("o_image")
+          .where("id", imageId)
+          .update({ state: "生成失败", errorReason: u.error(e).message });
       }
     }),
   );
