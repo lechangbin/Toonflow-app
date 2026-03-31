@@ -1,4 +1,4 @@
-// @db-hash c2029b55b7dcdcf64788dafc34799fea
+// @db-hash ae0b5b1d792b614db036441010965ace
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -42,11 +42,13 @@ export interface o_artStyle {
 export interface o_assets {
   'assetsId'?: number | null;
   'describe'?: string | null;
+  'flowId'?: number | null;
   'id'?: number;
   'imageId'?: number | null;
   'name'?: string | null;
   'projectId'?: number | null;
   'prompt'?: string | null;
+  'promptErrorReason'?: string | null;
   'promptState'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
@@ -70,6 +72,7 @@ export interface o_eventChapter {
 }
 export interface o_image {
   'assetsId'?: number | null;
+  'errorReason'?: string | null;
   'filePath'?: string | null;
   'id'?: number;
   'model'?: string | null;
@@ -79,10 +82,8 @@ export interface o_image {
   'type'?: string | null;
 }
 export interface o_imageFlow {
-  'assetsId'?: number | null;
   'flowData': string;
   'id'?: number;
-  'storyboardId'?: number | null;
 }
 export interface o_novel {
   'chapter'?: string | null;
@@ -162,26 +163,18 @@ export interface o_skillList {
   'updateTime': number;
 }
 export interface o_storyboard {
-  'camera'?: string | null;
   'createTime'?: number | null;
-  'description'?: string | null;
   'duration'?: string | null;
   'filePath'?: string | null;
-  'frameMode'?: string | null;
-  'group'?: string | null;
+  'flowId'?: number | null;
   'id'?: number;
   'index'?: number | null;
-  'lines'?: string | null;
-  'mode'?: string | null;
-  'model'?: string | null;
+  'projectId'?: number | null;
   'prompt'?: string | null;
   'reason'?: string | null;
-  'resolution'?: string | null;
   'scriptId'?: number | null;
-  'sound'?: string | null;
   'state'?: string | null;
-  'title'?: string | null;
-  'videoPrompt'?: string | null;
+  'trackId'?: number | null;
 }
 export interface o_tasks {
   'describe'?: string | null;
