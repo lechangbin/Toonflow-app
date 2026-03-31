@@ -1,20 +1,6 @@
-// @db-hash b1210691844e077e9df7dc16c802ce5a
+// @db-hash c2029b55b7dcdcf64788dafc34799fea
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_project_old_20260331 {
-  'artStyle'?: string | null;
-  'createTime'?: number | null;
-  'id'?: number | null;
-  'imageModel'?: string | null;
-  'imageQuality'?: string | null;
-  'intro'?: string | null;
-  'name'?: string | null;
-  'projectType'?: string | null;
-  'type'?: string | null;
-  'userId'?: number | null;
-  'videoModel'?: string | null;
-  'videoRatio'?: string | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -87,6 +73,7 @@ export interface o_image {
   'filePath'?: string | null;
   'id'?: number;
   'model'?: string | null;
+  'reason'?: string | null;
   'resolution'?: string | null;
   'state'?: string | null;
   'type'?: string | null;
@@ -181,6 +168,7 @@ export interface o_storyboard {
   'duration'?: string | null;
   'filePath'?: string | null;
   'frameMode'?: string | null;
+  'group'?: string | null;
   'id'?: number;
   'index'?: number | null;
   'lines'?: string | null;
@@ -241,7 +229,6 @@ export interface o_videoTrack {
 }
 
 export interface DB {
-  "_o_project_old_20260331": _o_project_old_20260331;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
