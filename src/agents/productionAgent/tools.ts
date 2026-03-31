@@ -175,7 +175,7 @@ export default (toolCpnfig: ToolConfig) => {
     generate_storyboard: tool({
       description: "生成分镜图片",
       inputSchema: z.object({
-        ids: z.array(z.number()).describe("分镜面板中需要更新的分镜 ID 列表,传入id仅作对应分镜更新用，不传入则全部生成"),
+        ids: z.array(z.number()).describe("必须获取真实的分镜ID，支持批量生成"),
       }),
       execute: async ({ ids }) => {
         console.log("%c Line:176 🍒 ids", "background:#ea7e5c", ids);
