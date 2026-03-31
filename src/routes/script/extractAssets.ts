@@ -11,7 +11,6 @@ const router = express.Router();
 
 /** 新资产：AI 首次识别到的资产，需要完整信息 */
 const NewAssetSchema = z.object({
-  prompt: z.string().describe("生成提示词"),
   name: z.string().describe("资产名称,仅为名称不做其他任何表述"),
   desc: z.string().describe("资产描述"),
   type: z.enum(["role", "tool", "scene"]).describe("资产类型"),
@@ -25,7 +24,6 @@ const ExistingAssetRefSchema = z.object({
 });
 
 export const AssetSchema = z.object({
-  prompt: z.string().describe("生成提示词"),
   name: z.string().describe("资产名称,仅为名称不做其他任何表述"),
   desc: z.string().describe("资产描述"),
   type: z.enum(["role", "tool", "scene"]).describe("资产类型"),
@@ -108,7 +106,6 @@ export default router.post(
         await u.db("o_assets").insert(
           toInsert.map((asset) => ({
             name: asset.name,
-            prompt: asset.prompt,
             type: asset.type,
             describe: asset.desc,
             projectId: projectId,
@@ -218,12 +215,11 @@ export default router.post(
               content:
                 data?.data +
                 "\n\n提取剧本中涉及的资产（角色、场景、道具），参考技能 script_assets_extract 规范，结果必须通过 resultTool 工具返回。" +
-                "\n\n注意：本次会同时提供多集剧本，每集剧本以 ===== 【剧本ID: xxx】 ===== 分隔。你需要分析每集剧本使用了哪些资产，并在输出中用 scriptIds 数组标明每个资产在哪些剧本中出现。" +
-                existingHint,
+                "\n\n注意：本次会同时提供多集剧本，每集剧本以 ===== 【剧本ID: xxx】 ===== 分隔。你需要分析每集剧本使用了哪些资产，并在输出中用 scriptIds 数组标明每个资产在哪些剧本中出现。",
             },
             {
               role: "user",
-              content: `请根据以下${validScripts.length}集剧本提取对应的剧本资产（角色、场景、道具）:\n\n${scriptsContent}`,
+              content: `当前已有资产列表：${existingHint}\n\n请根据以下${validScripts.length}集剧本提取对应的剧本资产（角色、场景、道具）:\n\n${scriptsContent}`,
             },
           ],
           tools: { resultTool },
