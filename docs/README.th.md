@@ -1,4 +1,4 @@
-<p>
+﻿<p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
     <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" />
   </a>
@@ -52,6 +52,22 @@
   
   > 🚀 **ผลิตละครสั้นครบวงจร:** จากข้อความสู่นักแสดง จากสตอรี่บอร์ดสู่วิดีโอ AI แบบเต็มกระบวนการ ทุกขั้นตอน ไม่มีอุปสรรค ประสิทธิภาพสร้าง 10 เท่าขึ้นไป!
 </div>
+
+---
+
+# � รองรับหลายภาษา
+
+Toonflow รองรับภาษาในอินเทอร์เฟซดังนี้:
+
+| ภาษา | Language |
+|------|----------|
+| 简体中文 | Chinese (Simplified) |
+| 繁體中文 | Chinese (Traditional) |
+| English | English |
+| ไทย | Thai |
+| Tiếng Việt | Vietnamese |
+| 日本語 | Japanese |
+| Русский | Russian |
 
 ---
 
@@ -486,24 +502,6 @@ pm2 monit             # ดูระบบแบบเรียลไทม์
 
 # 👨‍👩‍👧‍👦 กลุ่ม WeChat
 
-~~กลุ่ม 1~~
-
-~~กลุ่ม 2~~
-
-...
-
-~~กลุ่ม 10~~
-
-~~กลุ่ม 11~~
-
-~~กลุ่ม 12~~
-
-~~กลุ่ม 13~~
-
-...
-
-~~กลุ่ม 24~~
-
 ผู้ช่วยกลุ่ม:
 
 <img src="./QR.png" alt="Toonflow QR" height="400"/>
@@ -587,3 +585,4 @@ Toonflow เป็นโอเพ่นซอร์สภายใต้ Apache-
 
 รายชื่อไลบรารีภายนอกทั้งหมด ดูได้ที่ `NOTICES.txt`
 
+##### copyright © 淮北艾阿网络科技有限公司

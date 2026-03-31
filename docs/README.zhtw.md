@@ -1,4 +1,4 @@
-<p>
+﻿<p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
     <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" />
   </a>
@@ -52,6 +52,22 @@
   
   > 🚀 **一站式短劇生產**：從文本到人物、從分鏡到影片，零門檻全流程AI，10倍以上創作效率！
 </div>
+
+---
+
+# 🌐 多語言支援
+
+Toonflow 支援以下語言介面：
+
+| 語言 | Language |
+|------|----------|
+| 简体中文 | Chinese (Simplified) |
+| 繁體中文 | Chinese (Traditional) |
+| English | English |
+| ไทย | Thai |
+| Tiếng Việt | Vietnamese |
+| 日本語 | Japanese |
+| Русский | Russian |
 
 ---
 
@@ -486,24 +502,6 @@ pm2 monit             # 監控面板
 
 # 👨‍👩‍👧‍👦 微信交流群
 
-~~群1~~
-
-~~群2~~
-
-...
-
-~~群10~~
-
-~~群11~~
-
-~~群12~~
-
-~~群13~~
-
-...
-
-~~群24~~
-
 群助手：
 
 <img src="./QR.png" alt="Toonflow QR" height="400"/>
@@ -586,3 +584,5 @@ Toonflow 基於 Apache-2.0 協議開源發布，並附有補充商業協議。
 </table>
 
 完整第三方依賴列表請見 `NOTICES.txt`
+
+##### copyright © 淮北艾阿网络科技有限公司

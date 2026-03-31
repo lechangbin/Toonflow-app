@@ -55,7 +55,23 @@
 
 ---
 
-# 🌟 Main Features
+# 🌐 Multilingual Support
+
+Toonflow supports the following interface languages:
+
+| Language | Native Name |
+|----------|-------------|
+| Chinese (Simplified) | 简体中文 |
+| Chinese (Traditional) | 繁體中文 |
+| English | English |
+| Thai | ไทย |
+| Vietnamese | Tiếng Việt |
+| Japanese | 日本語 |
+| Russian | Русский |
+
+---
+
+# �🌟 Main Features
 
 Toonflow is an AI short drama comic tool that leverages AI technology to automatically convert novels into scripts, and uses AI-generated images and videos for efficient short drama creation. With Toonflow, you can easily complete the entire process from text to images, making short drama production more intelligent and convenient.
 
@@ -486,24 +502,6 @@ After frontend build, copy the `dist` contents to this project's `data/web` to i
 
 # 👨‍👩‍👧‍👦 WeChat Groups
 
-~~Group 1~~
-
-~~Group 2~~
-
-...
-
-~~Group 10~~
-
-~~Group 11~~
-
-~~Group 12~~
-
-~~Group 13~~
-
-...
-
-~~Group 24~~
-
 Group Assistant:
 
 <img src="./QR.png" alt="Toonflow QR" height="400"/>
@@ -587,3 +585,4 @@ Thanks to the following organizations/individuals for their support:
 
 For a complete list of third-party dependencies, see `NOTICES.txt`
 
+##### copyright © 淮北艾阿网络科技有限公司
