@@ -1,4 +1,4 @@
-// @routes-hash 8b0a09b55cd1b98ff83ad988d077fee3
+// @routes-hash 4bd2ce809f84bc7049bfcf3accb58805
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -65,11 +65,11 @@ import route61 from "./routes/production/storyboard/getStoryboardData";
 import route62 from "./routes/production/storyboard/pollingImage";
 import route63 from "./routes/production/storyboard/previewImage";
 import route64 from "./routes/production/storyboard/removeFrame";
-import route65 from "./routes/production/workbench/confirmSelection";
-import route66 from "./routes/production/workbench/delVideo";
-import route67 from "./routes/production/workbench/generateVideo";
-import route68 from "./routes/production/workbench/generateVideoPrompt";
-import route69 from "./routes/production/workbench/getChatLines";
+import route65 from "./routes/production/workbench/addTrack";
+import route66 from "./routes/production/workbench/confirmSelection";
+import route67 from "./routes/production/workbench/delVideo";
+import route68 from "./routes/production/workbench/generateVideo";
+import route69 from "./routes/production/workbench/generateVideoPrompt";
 import route70 from "./routes/production/workbench/getVideoModelDetail";
 import route71 from "./routes/production/workbench/videoPolling";
 import route72 from "./routes/project/addProject";
@@ -189,11 +189,11 @@ export default async (app: Express) => {
   app.use("/api/production/storyboard/pollingImage", route62);
   app.use("/api/production/storyboard/previewImage", route63);
   app.use("/api/production/storyboard/removeFrame", route64);
-  app.use("/api/production/workbench/confirmSelection", route65);
-  app.use("/api/production/workbench/delVideo", route66);
-  app.use("/api/production/workbench/generateVideo", route67);
-  app.use("/api/production/workbench/generateVideoPrompt", route68);
-  app.use("/api/production/workbench/getChatLines", route69);
+  app.use("/api/production/workbench/addTrack", route65);
+  app.use("/api/production/workbench/confirmSelection", route66);
+  app.use("/api/production/workbench/delVideo", route67);
+  app.use("/api/production/workbench/generateVideo", route68);
+  app.use("/api/production/workbench/generateVideoPrompt", route69);
   app.use("/api/production/workbench/getVideoModelDetail", route70);
   app.use("/api/production/workbench/videoPolling", route71);
   app.use("/api/project/addProject", route72);

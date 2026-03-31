@@ -1,4 +1,4 @@
-// @db-hash d1fbadf1691063f5a730337685fd85b1
+// @db-hash c2029b55b7dcdcf64788dafc34799fea
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -114,6 +114,7 @@ export interface o_project {
   'imageModel'?: string | null;
   'imageQuality'?: string | null;
   'intro'?: string | null;
+  'mode'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
   'type'?: string | null;
@@ -167,6 +168,7 @@ export interface o_storyboard {
   'duration'?: string | null;
   'filePath'?: string | null;
   'frameMode'?: string | null;
+  'group'?: string | null;
   'id'?: number;
   'index'?: number | null;
   'lines'?: string | null;
@@ -216,21 +218,13 @@ export interface o_video {
   'projectId'?: number | null;
   'scriptId'?: number | null;
   'state'?: string | null;
-  'storyboardId'?: number | null;
   'time'?: number | null;
+  'videoTrackId'?: number | null;
 }
-export interface o_videoConfig {
-  'audio'?: number | null;
-  'createTime'?: number | null;
-  'data'?: string | null;
-  'duration'?: number | null;
+export interface o_videoTrack {
   'id'?: number;
-  'mode'?: string | null;
-  'model'?: string | null;
-  'prompt'?: string | null;
-  'resolution'?: string | null;
-  'storyboardId'?: number | null;
-  'updateTime'?: number | null;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
   'videoId'?: number | null;
 }
 
@@ -260,5 +254,5 @@ export interface DB {
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;
   "o_video": o_video;
-  "o_videoConfig": o_videoConfig;
+  "o_videoTrack": o_videoTrack;
 }
