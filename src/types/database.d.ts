@@ -1,6 +1,12 @@
-// @db-hash ae0b5b1d792b614db036441010965ace
+// @db-hash f82eb99171699f051830710c1f816b59
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_videoTrack_old_20260401 {
+  'id'?: number;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
+  'videoId'?: number | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -217,11 +223,15 @@ export interface o_video {
 export interface o_videoTrack {
   'id'?: number;
   'projectId'?: number | null;
+  'prompt'?: string | null;
+  'reason'?: string | null;
   'scriptId'?: number | null;
+  'state'?: string | null;
   'videoId'?: number | null;
 }
 
 export interface DB {
+  "_o_videoTrack_old_20260401": _o_videoTrack_old_20260401;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
