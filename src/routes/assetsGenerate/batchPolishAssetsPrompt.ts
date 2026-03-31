@@ -106,9 +106,7 @@ export default router.post(
         const visualManual = await u.getArtPrompt(project.artStyle as string, config.visualManual);
         if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
         findItemByName(result, item.name, config.itemType);
-
         const systemPrompt = visualManual;
-
         try {
           const { _output } = (await u.Ai.Text("universalAi").invoke({
             system: systemPrompt,

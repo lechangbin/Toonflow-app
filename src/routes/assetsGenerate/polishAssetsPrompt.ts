@@ -34,14 +34,6 @@ interface ResultItem {
 function findItemByName(items: ResultItem[], name: string, type?: ItemType): ResultItem | undefined {
   return items.find((item) => (!type || item.type === type) && item.name === name);
 }
-function mergeNovelText(novelData: NovelChapter[]): string {
-  if (!Array.isArray(novelData)) return "";
-  return novelData
-    .map((chap) => {
-      return `${chap.chapter.trim()}\n\n${chap.chapterData.trim().replace(/\r?\n/g, "\n")}\n`;
-    })
-    .join("\n");
-}
 //润色提示词
 export default router.post(
   "/",
@@ -98,11 +90,7 @@ export default router.post(
     const visualManual = await u.getArtPrompt(project.artStyle as string, config.visualManual);
     if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
     findItemByName(result, name, config.itemType);
-    const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
-    const novelText = mergeNovelText(novelData);
-
     const systemPrompt = visualManual;
-
     try {
       const { _output } = (await u.Ai.Text("universalAi").invoke({
         system: systemPrompt,
