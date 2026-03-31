@@ -30,6 +30,23 @@ export default (toolCpnfig: ToolConfig) => {
   const { resTool, toolsNames, msg } = toolCpnfig;
   const { socket } = resTool;
   const tools: Record<string, Tool> = {
+    get_planData: tool({
+      description: "获取工作区数据",
+      inputSchema: z.object({
+        key: keySchema.describe("数据key"),
+      }),
+      execute: async ({ key }) => {
+        console.log("[tools] get_planData", key);
+        const thinking = msg.thinking(`正在获取${planDataKeyLabels[key]}工作区数据...`);
+        const planData: planData = await new Promise((resolve) => socket.emit("getPlanData", { key }, (res: any) => resolve(res)));
+        const value = planData[key];
+        const valueStr = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value ?? "");
+        thinking.appendText(`获取到${planDataKeyLabels[key]}:\n` + valueStr);
+        thinking.updateTitle(`获取${planDataKeyLabels[key]}完成`);
+        thinking.complete();
+        return valueStr || "无数据";
+      },
+    }),
     get_novel_events: tool({
       description: "获取章节事件",
       inputSchema: z.object({
@@ -51,23 +68,6 @@ export default (toolCpnfig: ToolConfig) => {
         return eventString ?? "无数据";
       },
     }),
-    get_planData: tool({
-      description: "获取工作区数据",
-      inputSchema: z.object({
-        key: keySchema.describe("数据key"),
-      }),
-      execute: async ({ key }) => {
-        console.log("[tools] get_planData", key);
-        const thinking = msg.thinking(`正在获取${planDataKeyLabels[key]}工作区数据...`);
-        const planData: planData = await new Promise((resolve) => socket.emit("getPlanData", { key }, (res: any) => resolve(res)));
-        const value = planData[key];
-        const valueStr = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value ?? "");
-        thinking.appendText(`获取到${planDataKeyLabels[key]}:\n` + valueStr);
-        thinking.updateTitle(`获取${planDataKeyLabels[key]}完成`);
-        thinking.complete();
-        return valueStr || "无数据";
-      },
-    }),
     get_novel_text: tool({
       description: "获取小说章节原始文本内容",
       inputSchema: z.object({
@@ -80,6 +80,22 @@ export default (toolCpnfig: ToolConfig) => {
         const text = data && data?.chapterData ? data.chapterData : "";
         thinking.appendText(`获取到原文:\n` + text);
         thinking.updateTitle(`获取小说章节原文完成`);
+        thinking.complete();
+        return text ?? "无数据";
+      },
+    }),
+    get_script_content: tool({
+      description: "获取剧本本内容",
+      inputSchema: z.object({
+        ids: z.array(z.string()).describe("脚本id"),
+      }),
+      execute: async ({ ids }) => {
+        console.log("[tools] get_script_content", "[tools] get_script_content", ids);
+        const thinking = msg.thinking(`正在获取脚本内容...`);
+        const data = await u.db("o_script").whereIn("id", ids).select("content", "name");
+        const text = data && data.length ? data.map((d) => `<scriptItem name="${d.name}">${d.content}</scriptItem>`).join("\n") : "";
+        thinking.appendText(`获取到脚本内容:\n` + text);
+        thinking.updateTitle(`获取脚本内容完成`);
         thinking.complete();
         return text ?? "无数据";
       },

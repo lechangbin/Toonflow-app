@@ -46,7 +46,6 @@ export async function decisionAI(ctx: AgentContext) {
   const mem = buildMemPrompt(await memory.get(text));
 
   const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
-  const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("id", "chapterIndex as index");
 
   const projectInfo = [
     "## 项目信息",
@@ -57,12 +56,10 @@ export async function decisionAI(ctx: AgentContext) {
     `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
   ].join("\n");
 
-  const projectPrompt = `${projectInfo}\n\n## 章节ID映射表\n${novelData.map((i: any) => `- 章节ID：${i.id}: 第${i.index}章`).join("\n")}\n\n`;
-
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
     messages: [
       { role: "system", content: prompt },
-      { role: "assistant", content: projectPrompt + mem },
+      { role: "assistant", content: projectInfo + mem },
       { role: "user", content: text },
     ],
     abortSignal,
@@ -72,7 +69,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...createSubAgent(ctx),
     },
     onFinish: async (completion) => {
-      await memory.add("assistant:decision", completion.text);
+      await memory.add("assistant:decision", removeAllXmlTags(completion.text));
     },
   });
 
@@ -89,12 +86,14 @@ function createSubAgent(parentCtx: AgentContext) {
     name,
     memoryKey,
     tools: extraTools,
+    messages,
   }: {
     prompt: string;
     system: string;
     name: string;
     memoryKey: string;
     tools?: Record<string, any>;
+    messages?: { role: "user" | "assistant" | "system"; content: string }[];
   }) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
@@ -103,7 +102,7 @@ function createSubAgent(parentCtx: AgentContext) {
 
     const { textStream } = await u.Ai.Text("scriptAgent").stream({
       system,
-      messages: [{ role: "user", content: prompt }],
+      messages: messages ?? [{ role: "user", content: prompt }],
       abortSignal,
       tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
     });
@@ -122,13 +121,13 @@ function createSubAgent(parentCtx: AgentContext) {
     }
 
     if (fullResponse.trim()) {
-      await memory.add(memoryKey, fullResponse, {
+      await memory.add(memoryKey, removeAllXmlTags(fullResponse), {
         name,
         createTime: new Date(subMsg.datetime).getTime(),
       });
     }
 
-    parentCtx.msg = resTool.newMessage("assistant", "统筹");
+    parentCtx.msg = resTool.newMessage("assistant", "视频策划");
     return fullResponse;
   }
 
@@ -172,11 +171,25 @@ function createSubAgent(parentCtx: AgentContext) {
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "script_execution_script.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
+
+      const scriptList = await u.db("o_script").where("projectId", resTool.data.projectId).select("id", "name");
+      const scriptPrompt = ["## 可用剧本(ID:名称)", scriptList.map((s: any) => `${s.id}:${(s.name || "").replace(/[,:]/g, "")}`).join(","), ""].join(
+        "\n",
+      );
+
+      const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("id", "chapterIndex as index");
+
+      const projectPrompt = ["## 章节ID映射(ID:章序)", novelData.map((i: any) => `${i.id}:${i.index}`).join(","), ""].join("\n");
+
       return runAgent({
         prompt,
         system:
           systemPrompt +
           `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`,
+        messages: [
+          { role: "assistant", content: projectPrompt + "\n" + scriptPrompt },
+          { role: "user", content: prompt },
+        ],
         name: "编剧",
         memoryKey: "assistant:execution:script",
       });
@@ -205,4 +218,11 @@ function createSubAgent(parentCtx: AgentContext) {
     run_sub_agent_script,
     run_supervision_agent,
   };
+}
+
+function removeAllXmlTags(text: string): string {
+  text = text.replace(/<([a-zA-Z][\w-]*)(\s+[^>]*)?>([\s\S]*?)<\/\1>/g, "");
+  text = text.replace(/<([a-zA-Z][\w-]*)(\s+[^>]*)?\/>/g, "");
+  text = text.replace(/<\/?[a-zA-Z][\w-]*(\s+[^>]*)?>/g, "");
+  return text.trim();
 }

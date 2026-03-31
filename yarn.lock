@@ -50,9 +50,9 @@
     "@vercel/oidc" "3.1.0"
 
 "@ai-sdk/google@^3.0.20":
-  version "3.0.53"
-  resolved "https://registry.npmmirror.com/@ai-sdk/google/-/google-3.0.53.tgz#3dc30808593e774d8068b46f6ac2ab4ff15e88f8"
-  integrity sha512-uz8tIlkDgQJG9Js2Wh9JHzd4kI9+hYJqf9XXJLx60vyN5mRIqhr49iwR5zGP5Gl8odp2PeR3Gh2k+5bh3Z1HHw==
+  version "3.0.54"
+  resolved "https://registry.npmmirror.com/@ai-sdk/google/-/google-3.0.54.tgz#648cfb5ddd38e4931811fdd94c8c291cc6aa4c21"
+  integrity sha512-EgYYdA2LpHZefLDU/FIpmeTlL5Hi4WKQZY3nACMh0wVhrS1fAvlfrdwnD1G4ISCOKWMWrMcRZX9ubs3NM/KHfA==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
     "@ai-sdk/provider-utils" "4.0.21"
@@ -66,9 +66,9 @@
     "@ai-sdk/provider-utils" "4.0.21"
 
 "@ai-sdk/openai@^3.0.25":
-  version "3.0.48"
-  resolved "https://registry.npmmirror.com/@ai-sdk/openai/-/openai-3.0.48.tgz#38d4690648929703b78672add7e3e21628715d57"
-  integrity sha512-ALmj/53EXpcRqMbGpPJPP4UOSWw0q4VGpnDo7YctvsynjkrKDmoneDG/1a7VQnSPYHnJp6tTRMf5ZdxZ5whulg==
+  version "3.0.49"
+  resolved "https://registry.npmmirror.com/@ai-sdk/openai/-/openai-3.0.49.tgz#88d7de4cf4d42b3e541645ca1338fee41ba58951"
+  integrity sha512-U2f0pCyNn/jQH3wjgxr8o9VvCkuDFTtXbIhbFFtgXqCzMbed6rBnvzQcAMEK0/Pa44byL9zfcvCOFOflvkRA8w==
   dependencies:
     "@ai-sdk/provider" "3.0.8"
     "@ai-sdk/provider-utils" "4.0.21"
@@ -145,9 +145,9 @@
     json-schema "^0.4.0"
 
 "@ai-sdk/xai@^3.0.47":
-  version "3.0.74"
-  resolved "https://registry.npmmirror.com/@ai-sdk/xai/-/xai-3.0.74.tgz#5afe79fc2c97f4920a17b83d2163aee2ea93c4ee"
-  integrity sha512-HDDLsT+QrzE3c2QZLRV/HKAwMtXDb0PMDdk1PYUXLJ3r9Qv76zGKGyvJLX7Pu6c8TOHD1mwLrOVYrsTpC/eTMw==
+  version "3.0.75"
+  resolved "https://registry.npmmirror.com/@ai-sdk/xai/-/xai-3.0.75.tgz#f5986414ace266f4ac94137d4e2740fe4abf589a"
+  integrity sha512-V8UKK4fNpI9cnrtsZBvUp9O9J6Y9fTKBRoSLyEaNGPirACewixmLDbXsSgAeownPVWiWpK34bFysd+XouI5Ywg==
   dependencies:
     "@ai-sdk/openai-compatible" "2.0.37"
     "@ai-sdk/provider" "3.0.8"
@@ -1410,7 +1410,7 @@ brace-expansion@^2.0.1, brace-expansion@^2.0.2:
   dependencies:
     balanced-match "^1.0.0"
 
-brace-expansion@^5.0.2:
+brace-expansion@^5.0.5:
   version "5.0.5"
   resolved "https://registry.npmmirror.com/brace-expansion/-/brace-expansion-5.0.5.tgz#dcc3a37116b79f3e1b46db994ced5d570e930fdb"
   integrity sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==
@@ -3212,9 +3212,9 @@ keyv@^4.0.0:
     json-buffer "3.0.1"
 
 knex@^3.1.0, knex@^3.2.5:
-  version "3.2.7"
-  resolved "https://registry.npmmirror.com/knex/-/knex-3.2.7.tgz#53bc16470217f12fef516a7a649794a405d3473d"
-  integrity sha512-VxdDE72x7Tc08E5yCu8HqYoeOm0HOjAraOtYiGSAUJTYkydwfSGBOpQqYHrzM5vjLNzw2JDL2vDH8m7DjIjtgA==
+  version "3.2.8"
+  resolved "https://registry.npmmirror.com/knex/-/knex-3.2.8.tgz#1bfb9caa8419db2c65512259a83a7896912db42e"
+  integrity sha512-ElXXxu9Nq+5hWYdBUddYIWIT5yKKs5KNCsmKGbJSHPyaMpAABp3xs4L55GgdQoAs6QQ7dv72ai3M4pxYQ8utEg==
   dependencies:
     colorette "2.0.19"
     commander "^10.0.0"
@@ -3493,11 +3493,11 @@ mimic-response@^3.1.0:
   integrity sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==
 
 minimatch@^10.0.3, minimatch@^10.2.1, minimatch@^10.2.2:
-  version "10.2.4"
-  resolved "https://registry.npmmirror.com/minimatch/-/minimatch-10.2.4.tgz#465b3accbd0218b8281f5301e27cedc697f96fde"
-  integrity sha512-oRjTw/97aTBN0RHbYCdtF1MQfvusSIBQM0IZEgzl6426+8jSC0nF1a/GmnVLpfB9yyr6g6FTqWqiZVbxrtaCIg==
+  version "10.2.5"
+  resolved "https://registry.npmmirror.com/minimatch/-/minimatch-10.2.5.tgz#bd48687a0be38ed2961399105600f832095861d1"
+  integrity sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==
   dependencies:
-    brace-expansion "^5.0.2"
+    brace-expansion "^5.0.5"
 
 minimatch@^3.0.4, minimatch@^3.0.5, minimatch@^3.1.1:
   version "3.1.5"
@@ -4083,9 +4083,9 @@ path-scurry@^2.0.2:
     minipass "^7.1.2"
 
 path-to-regexp@^8.0.0:
-  version "8.4.0"
-  resolved "https://registry.npmmirror.com/path-to-regexp/-/path-to-regexp-8.4.0.tgz#8e98fcd94826aff01a90c544ef74ffbaca3a78ed"
-  integrity sha512-PuseHIvAnz3bjrM2rGJtSgo1zjgxapTLZ7x2pjhzWwlp4SJQgK3f3iZIQwkpEnBaKz6seKBADpM4B4ySkuYypg==
+  version "8.4.1"
+  resolved "https://registry.npmmirror.com/path-to-regexp/-/path-to-regexp-8.4.1.tgz#1dbe9c340367a44340e5bc114f515b56c7210f19"
+  integrity sha512-fvU78fIjZ+SBM9YwCknCvKOUKkLVqtWDVctl0s7xIqfmfb38t2TT4ZU2gHm+Z8xGwgW+QWEU3oQSAzIbo89Ggw==
 
 pe-library@^0.4.1:
   version "0.4.1"
