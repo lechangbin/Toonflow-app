@@ -1,4 +1,4 @@
-// @db-hash 125ad64f9dc929a01dd6bfb955f16031
+// @db-hash b1210691844e077e9df7dc16c802ce5a
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_project_old_20260331 {
@@ -230,21 +230,13 @@ export interface o_video {
   'projectId'?: number | null;
   'scriptId'?: number | null;
   'state'?: string | null;
-  'storyboardId'?: number | null;
   'time'?: number | null;
+  'videoTrackId'?: number | null;
 }
-export interface o_videoConfig {
-  'audio'?: number | null;
-  'createTime'?: number | null;
-  'data'?: string | null;
-  'duration'?: number | null;
+export interface o_videoTrack {
   'id'?: number;
-  'mode'?: string | null;
-  'model'?: string | null;
-  'prompt'?: string | null;
-  'resolution'?: string | null;
-  'storyboardId'?: number | null;
-  'updateTime'?: number | null;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
   'videoId'?: number | null;
 }
 
@@ -275,5 +267,5 @@ export interface DB {
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;
   "o_video": o_video;
-  "o_videoConfig": o_videoConfig;
+  "o_videoTrack": o_videoTrack;
 }
