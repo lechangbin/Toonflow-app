@@ -8,8 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./docs/atomgitLogo.png" alt="Atomgit" style="height:16px"/>
-    Atomgit
+    <img src="./docs/atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
   </a>
 </p>
 
@@ -110,11 +109,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. 下载与安装
 
-| 操作系统 | GitHub 下载                                                  | 夸克网盘下载                                    | 说明           |
-| :------: | :----------------------------------------------------------- | :---------------------------------------------- | :------------- |
-| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
-|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
-|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
+| 操作系统 | GitHub                                                  | Atomgit                                               | 夸克网盘下载                                    | 说明           |
+| :------: | :----------------------------------------------------------- | :------------------------------------------------------------ | :---------------------------------------------- | :------------- |
+| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
+|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
+|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
 
 > [!CAUTION]
 > MacOS 系统请到 设置-隐私与安全性 配置安全性否则可能因证书问题无法正常打开

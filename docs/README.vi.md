@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -110,11 +110,11 @@ Trước khi cài đặt và sử dụng, hãy chuẩn bị:
 
 ### 1. Tải về & cài đặt
 
-| Hệ điều hành | Tải GitHub                                                | Tải qua Quark Drive                            | Ghi chú         |
-| :---------: | :-------------------------------------------------------- | :--------------------------------------------- | :-------------- |
-| Windows     | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Gói cài chính thức|
-| Linux       | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Gói cài chính thức|
-| macOS       | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Gói cài chính thức|
+| Hệ điều hành | GitHub                                                  | Atomgit                                               | Tải về trên Quark Drive                             | Ghi chú         |
+| :----------: | :------------------------------------------------------- | :----------------------------------------------------- | :--------------------------------------------------- | :-------------- |
+| Windows      | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0)  | Gói cài đặt chính thức |
+| Linux        | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0)  | Gói cài đặt chính thức |
+| macOS        | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0)  | Gói cài đặt chính thức |
 
 > [!CAUTION]
 > Đối với MacOS, vào Cài đặt - Quyền riêng tư & Bảo mật để cấu hình, nếu không phần mềm có thể không mở được do vấn đề chứng chỉ

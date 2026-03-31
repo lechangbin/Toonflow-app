@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -110,11 +110,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. ดาวน์โหลดและติดตั้ง
 
-| ระบบปฏิบัติการ | ดาวน์โหลดจาก GitHub                                           | ดาวน์โหลดผ่าน Quark Cloud                             | หมายเหตุ           |
-| :--------------: | :------------------------------------------------------------ | :----------------------------------------------- | :------------- |
-| Windows         | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | ตัวติดตั้งอย่างเป็นทางการ |
-|  Linux          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | ตัวติดตั้งอย่างเป็นทางการ |
-|  macOS          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | ตัวติดตั้งอย่างเป็นทางการ |
+| ระบบปฏิบัติการ | GitHub                                                  | Atomgit                                               | ดาวน์โหลดผ่าน Quark Netdisk                        | หมายเหตุ                |
+| :------------: | :------------------------------------------------------- | :---------------------------------------------------- | :--------------------------------------------------- | :---------------------- |
+| Windows        | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Netdisk](https://pan.quark.cn/s/94ef07509df0) | แพ็กเกจติดตั้งอย่างเป็นทางการ |
+| Linux          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Netdisk](https://pan.quark.cn/s/94ef07509df0) | แพ็กเกจติดตั้งอย่างเป็นทางการ |
+| macOS          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Netdisk](https://pan.quark.cn/s/94ef07509df0) | แพ็กเกจติดตั้งอย่างเป็นทางการ |
 
 > [!CAUTION]
 > บน MacOS ให้ไปที่ ตั้งค่า - ความเป็นส่วนตัวและความปลอดภัย ตั้งค่าความปลอดภัยก่อน มิฉะนั้นอาจไม่สามารถเปิดแอปได้เพราะปัญหาใบรับรอง

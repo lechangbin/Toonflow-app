@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -110,11 +110,11 @@ Before installing and using this software, please prepare the following:
 
 ### 1. Download & Install
 
-| Operating System | GitHub Download                                                | Quark Cloud Download                             | Notes         |
-| :--------------: | :------------------------------------------------------------ | :----------------------------------------------- | :------------- |
-| Windows         | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | Official installer |
-|  Linux          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | Official installer |
-|  macOS          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | Official installer |
+| Operating System | GitHub                                                  | Atomgit                                               | Quark Cloud Download                                    | Description           |
+| :--------------: | :------------------------------------------------------ | :---------------------------------------------------- | :------------------------------------------------------ | :-------------------- |
+| Windows          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
+| Linux            | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
+| macOS            | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
 
 > [!CAUTION]
 > On MacOS, please go to Settings - Privacy & Security to configure security settings, otherwise, you may not be able to open the app due to certificate issues.

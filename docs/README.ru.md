@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -110,11 +110,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. Скачивание и установка
 
-| Операционная система | Скачать с GitHub                                          | Скачать с Quark Disk                               | Примечание               |
-| :------------------: | :------------------------------------------------------- | :------------------------------------------------- | :----------------------- |
-| Windows              | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установщик   |
-| Linux                | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установщик   |
-| macOS                | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установщик   |
+| Операционная система | GitHub                                                  | Atomgit                                               | Скачать из Quark Net Disk                          | Описание           |
+| :------------------: | :---------------------------------------------------------- | :------------------------------------------------------------- | :-------------------------------------------------- | :------------------ |
+| Windows              | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Net Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установочный пакет |
+| Linux                | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Net Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установочный пакет |
+| macOS                | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Net Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установочный пакет |
 
 > [!CAUTION]
 > Для macOS: откройте "Настройки → Конфиденциальность и безопасность" и настройте параметры безопасности, иначе может не открыться из-за проблемы с сертификатом.

@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -110,11 +110,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. 下載安裝
 
-| 作業系統      | GitHub下載                                               | Quark雲下載                                    | 備註           |
-| :------------: | :------------------------------------------------------ | :---------------------------------------------- | :------------- |
-| Windows         | [釋出版](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark雲](https://pan.quark.cn/s/94ef07509df0)  | 官方安裝包      |
-|  Linux          | [釋出版](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark雲](https://pan.quark.cn/s/94ef07509df0)  | 官方安裝包      |
-|  macOS          | [釋出版](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark雲](https://pan.quark.cn/s/94ef07509df0)  | 官方安裝包      |
+| 作業系統 | GitHub                                                  | Atomgit                                               | 夸克網盤下載                                    | 說明           |
+| :------: | :----------------------------------------------------------- | :------------------------------------------------------------ | :---------------------------------------------- | :------------- |
+| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克網盤](https://pan.quark.cn/s/94ef07509df0) | 官方發布安裝包 |
+|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克網盤](https://pan.quark.cn/s/94ef07509df0) | 官方發布安裝包 |
+|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克網盤](https://pan.quark.cn/s/94ef07509df0) | 官方發布安裝包 |
 
 > [!CAUTION]
 > MacOS上需進入設定–隱私安全配置安全設定，否則可能因憑證問題無法打開應用。

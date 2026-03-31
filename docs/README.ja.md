@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -110,11 +110,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. ダウンロード＆インストール
 
-| OS         | GitHubダウンロード                                      | Quark（夸克）クラウドダウンロード                 | 説明             |
-| :--------: | :----------------------------------------------------- | :---------------------------------------------- | :--------------- |
-| Windows    | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克クラウド](https://pan.quark.cn/s/94ef07509df0)  | 公式配布インストーラ |
-|  Linux     | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克クラウド](https://pan.quark.cn/s/94ef07509df0)  | 公式配布インストーラ |
-|  macOS     | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克クラウド](https://pan.quark.cn/s/94ef07509df0)  | 公式配布インストーラ |
+| オペレーティングシステム | GitHub                                                  | Atomgit                                               | クアークネットディスクダウンロード                           | 説明              |
+| :------: | :----------------------------------------------------------- | :------------------------------------------------------------ | :---------------------------------------------- | :------------- |
+| Windows  | [リリース](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [リリース](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [クアークネットディスク](https://pan.quark.cn/s/94ef07509df0) | 公式リリースインストールパッケージ |
+|  Linux   | [リリース](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [リリース](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [クアークネットディスク](https://pan.quark.cn/s/94ef07509df0) | 公式リリースインストールパッケージ |
+|  macOS   | [リリース](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [リリース](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [クアークネットディスク](https://pan.quark.cn/s/94ef07509df0) | 公式リリースインストールパッケージ |
 
 > [!CAUTION]
 > MacOSの場合は、設定→プライバシーとセキュリティでセキュリティ設定を許可してください。証明書問題でアプリが開かない場合があります。
