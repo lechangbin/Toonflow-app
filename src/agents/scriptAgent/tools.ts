@@ -11,6 +11,7 @@ export const ScriptSchema = z.object({
 export const planData = z.object({
   storySkeleton: z.string().describe("故事骨架"),
   adaptationStrategy: z.string().describe("改编策略"),
+  script: z.string().describe("剧本内容"),
 });
 
 export type planData = z.infer<typeof planData>;
@@ -60,12 +61,10 @@ export default (toolCpnfig: ToolConfig) => {
         console.log("[tools] get_planData", key);
         const thinking = msg.thinking(`正在获取${planDataKeyLabels[key]}工作区数据...`);
         const planData: planData = await new Promise((resolve) => socket.emit("getPlanData", { key }, (res: any) => resolve(res)));
-        const value = planData[key];
-        const valueStr = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value ?? "");
-        thinking.appendText(`获取到${planDataKeyLabels[key]}:\n` + valueStr);
+        thinking.appendText(`获取到${planDataKeyLabels[key]}:\n` + planData[key]);
         thinking.updateTitle(`获取${planDataKeyLabels[key]}完成`);
         thinking.complete();
-        return valueStr || "无数据";
+        return planData[key] ?? "无数据";
       },
     }),
     get_novel_text: tool({

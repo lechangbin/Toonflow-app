@@ -176,7 +176,7 @@ function createSubAgent(parentCtx: AgentContext) {
         prompt,
         system:
           systemPrompt +
-          `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`,
+          `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><item name="剧本名称">剧本内容</item><item name="剧本名称">剧本内容</item>`,
         name: "编剧",
         memoryKey: "assistant:execution:script",
       });

@@ -73,24 +73,7 @@ export default router.post(
         storyboard: [],
         //todo：矫正workbench数据
         workbench: {
-          videoList: [
-            {
-              id: 1,
-              prompt: "动起来",
-              filePath: await u.oss.getFileUrl("/artStyle/5d96256a-1610-43a6-a469-c2385cc2287e.jpg"),
-              duration: 4,
-              scriptId: 1,
-              selectedVideoId: 1,
-            },
-            {
-              id: 2,
-              prompt: "跳起来",
-              filePath: await u.oss.getFileUrl("/artStyle/5d96256a-1610-43a6-a469-c2385cc2287e.jpg"),
-              duration: 4,
-              scriptId: 1,
-              selectedVideoId: 1,
-            },
-          ],
+          videoList: [],
         },
         //todo：矫正封面数据
         poster: {
@@ -178,14 +161,8 @@ export default router.post(
           ...existing,
           id: i.id,
           index: i.index,
-          title: i.title,
-          description: i.description,
-          camera: i.camera,
           duration: i.duration ? +i.duration : 0,
-          frameMode: i.frameMode,
           prompt: i.prompt,
-          lines: i.lines,
-          sound: i.sound,
           associateAssetsIds: assets2StoryboardMap[i.id!] ?? [],
           src: i.filePath,
           state: i.state,

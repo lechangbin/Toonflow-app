@@ -31,12 +31,7 @@ export default router.post(
       storyboardData.map(async (i: any) => {
         return {
           id: i.id,
-          title: i.title,
           prompt: i.prompt,
-          description: i.description,
-          camera: i.camera,
-          lines: i.lines,
-          sound: i.sound,
           state: i.state,
           src: i.filePath ? await u.oss.getFileUrl(i.filePath!) : "",
         };
