@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -52,6 +52,22 @@
   
   > 🚀 **Универсальный конвейер коротких сериалов**: от текста к персонажам, от раскадровки к видео, 0 порога по всему процессу на базе AI, рост эффективности творчества 10× и более!
 </div>
+
+---
+
+# 🌐 Многоязычная поддержка
+
+Toonflow поддерживает следующие языки интерфейса:
+
+| Язык | Language |
+|------|----------|
+| 简体中文 | Китайский (упрощённый) |
+| 繁體中文 | Китайский (традиционный) |
+| English | Английский |
+| ไทย | Тайский |
+| Tiếng Việt | Вьетнамский |
+| 日本語 | Японский |
+| Русский | Русский |
 
 ---
 
@@ -110,11 +126,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. Скачивание и установка
 
-| Операционная система | Скачать с GitHub                                          | Скачать с Quark Disk                               | Примечание               |
-| :------------------: | :------------------------------------------------------- | :------------------------------------------------- | :----------------------- |
-| Windows              | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установщик   |
-| Linux                | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установщик   |
-| macOS                | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установщик   |
+| Операционная система | GitHub                                                  | Atomgit                                               | Скачать из Quark Net Disk                          | Описание           |
+| :------------------: | :---------------------------------------------------------- | :------------------------------------------------------------- | :-------------------------------------------------- | :------------------ |
+| Windows              | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Net Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установочный пакет |
+| Linux                | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Net Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установочный пакет |
+| macOS                | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Net Disk](https://pan.quark.cn/s/94ef07509df0) | Официальный установочный пакет |
 
 > [!CAUTION]
 > Для macOS: откройте "Настройки → Конфиденциальность и безопасность" и настройте параметры безопасности, иначе может не открыться из-за проблемы с сертификатом.
@@ -485,24 +501,6 @@ pm2 monit             # Мониторинг
 
 # 👨‍👩‍👧‍👦 WeChat-группы
 
-~~Группа 1~~
-
-~~Группа 2~~
-
-...
-
-~~Группа 10~~
-
-~~Группа 11~~
-
-~~Группа 12~~
-
-~~Группа 13~~
-
-...
-
-~~Группа 24~~
-
 Ассистент по добавлению в группу:
 
 <img src="./QR.png" alt="Toonflow QR" height="400"/>
@@ -586,3 +584,4 @@ Toonflow распространяется по лицензии Apache-2.0 с д
 
 Полный список сторонних зависимостей — в файле `NOTICES.txt`
 
+##### copyright © 淮北艾阿网络科技有限公司

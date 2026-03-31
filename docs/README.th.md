@@ -1,4 +1,4 @@
-<p>
+﻿<p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
     <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" />
   </a>
@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -52,6 +52,22 @@
   
   > 🚀 **ผลิตละครสั้นครบวงจร:** จากข้อความสู่นักแสดง จากสตอรี่บอร์ดสู่วิดีโอ AI แบบเต็มกระบวนการ ทุกขั้นตอน ไม่มีอุปสรรค ประสิทธิภาพสร้าง 10 เท่าขึ้นไป!
 </div>
+
+---
+
+# � รองรับหลายภาษา
+
+Toonflow รองรับภาษาในอินเทอร์เฟซดังนี้:
+
+| ภาษา | Language |
+|------|----------|
+| 简体中文 | Chinese (Simplified) |
+| 繁體中文 | Chinese (Traditional) |
+| English | English |
+| ไทย | Thai |
+| Tiếng Việt | Vietnamese |
+| 日本語 | Japanese |
+| Русский | Russian |
 
 ---
 
@@ -110,11 +126,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. ดาวน์โหลดและติดตั้ง
 
-| ระบบปฏิบัติการ | ดาวน์โหลดจาก GitHub                                           | ดาวน์โหลดผ่าน Quark Cloud                             | หมายเหตุ           |
-| :--------------: | :------------------------------------------------------------ | :----------------------------------------------- | :------------- |
-| Windows         | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | ตัวติดตั้งอย่างเป็นทางการ |
-|  Linux          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | ตัวติดตั้งอย่างเป็นทางการ |
-|  macOS          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | ตัวติดตั้งอย่างเป็นทางการ |
+| ระบบปฏิบัติการ | GitHub                                                  | Atomgit                                               | ดาวน์โหลดผ่าน Quark Netdisk                        | หมายเหตุ                |
+| :------------: | :------------------------------------------------------- | :---------------------------------------------------- | :--------------------------------------------------- | :---------------------- |
+| Windows        | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Netdisk](https://pan.quark.cn/s/94ef07509df0) | แพ็กเกจติดตั้งอย่างเป็นทางการ |
+| Linux          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Netdisk](https://pan.quark.cn/s/94ef07509df0) | แพ็กเกจติดตั้งอย่างเป็นทางการ |
+| macOS          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Netdisk](https://pan.quark.cn/s/94ef07509df0) | แพ็กเกจติดตั้งอย่างเป็นทางการ |
 
 > [!CAUTION]
 > บน MacOS ให้ไปที่ ตั้งค่า - ความเป็นส่วนตัวและความปลอดภัย ตั้งค่าความปลอดภัยก่อน มิฉะนั้นอาจไม่สามารถเปิดแอปได้เพราะปัญหาใบรับรอง
@@ -486,24 +502,6 @@ pm2 monit             # ดูระบบแบบเรียลไทม์
 
 # 👨‍👩‍👧‍👦 กลุ่ม WeChat
 
-~~กลุ่ม 1~~
-
-~~กลุ่ม 2~~
-
-...
-
-~~กลุ่ม 10~~
-
-~~กลุ่ม 11~~
-
-~~กลุ่ม 12~~
-
-~~กลุ่ม 13~~
-
-...
-
-~~กลุ่ม 24~~
-
 ผู้ช่วยกลุ่ม:
 
 <img src="./QR.png" alt="Toonflow QR" height="400"/>
@@ -587,3 +585,4 @@ Toonflow เป็นโอเพ่นซอร์สภายใต้ Apache-
 
 รายชื่อไลบรารีภายนอกทั้งหมด ดูได้ที่ `NOTICES.txt`
 
+##### copyright © 淮北艾阿网络科技有限公司

@@ -8,7 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.png" alt="Atomgit" style="height:16px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
     Atomgit
   </a>
 </p>
@@ -55,7 +55,23 @@
 
 ---
 
-# 🌟 Main Features
+# 🌐 Multilingual Support
+
+Toonflow supports the following interface languages:
+
+| Language | Native Name |
+|----------|-------------|
+| Chinese (Simplified) | 简体中文 |
+| Chinese (Traditional) | 繁體中文 |
+| English | English |
+| Thai | ไทย |
+| Vietnamese | Tiếng Việt |
+| Japanese | 日本語 |
+| Russian | Русский |
+
+---
+
+# �🌟 Main Features
 
 Toonflow is an AI short drama comic tool that leverages AI technology to automatically convert novels into scripts, and uses AI-generated images and videos for efficient short drama creation. With Toonflow, you can easily complete the entire process from text to images, making short drama production more intelligent and convenient.
 
@@ -110,11 +126,11 @@ Before installing and using this software, please prepare the following:
 
 ### 1. Download & Install
 
-| Operating System | GitHub Download                                                | Quark Cloud Download                             | Notes         |
-| :--------------: | :------------------------------------------------------------ | :----------------------------------------------- | :------------- |
-| Windows         | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | Official installer |
-|  Linux          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | Official installer |
-|  macOS          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases)   | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0) | Official installer |
+| Operating System | GitHub                                                  | Atomgit                                               | Quark Cloud Download                                    | Description           |
+| :--------------: | :------------------------------------------------------ | :---------------------------------------------------- | :------------------------------------------------------ | :-------------------- |
+| Windows          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
+| Linux            | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
+| macOS            | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
 
 > [!CAUTION]
 > On MacOS, please go to Settings - Privacy & Security to configure security settings, otherwise, you may not be able to open the app due to certificate issues.
@@ -486,24 +502,6 @@ After frontend build, copy the `dist` contents to this project's `data/web` to i
 
 # 👨‍👩‍👧‍👦 WeChat Groups
 
-~~Group 1~~
-
-~~Group 2~~
-
-...
-
-~~Group 10~~
-
-~~Group 11~~
-
-~~Group 12~~
-
-~~Group 13~~
-
-...
-
-~~Group 24~~
-
 Group Assistant:
 
 <img src="./QR.png" alt="Toonflow QR" height="400"/>
@@ -587,3 +585,4 @@ Thanks to the following organizations/individuals for their support:
 
 For a complete list of third-party dependencies, see `NOTICES.txt`
 
+##### copyright © 淮北艾阿网络科技有限公司

@@ -8,8 +8,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./docs/atomgitLogo.png" alt="Atomgit" style="height:16px"/>
-    Atomgit
+    <img src="./docs/atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
   </a>
 </p>
 
@@ -55,7 +54,25 @@
 
 ---
 
-# 🌟 主要功能
+# 🌐 多语言支持
+
+Toonflow 支持以下语言界面：
+
+| 语言 | Language |
+|------|----------|
+| 简体中文 | Chinese (Simplified) |
+| 繁體中文 | Chinese (Traditional) |
+| English | English |
+| ไทย | Thai |
+| Tiếng Việt | Vietnamese |
+| 日本語 | Japanese |
+| Русский | Russian |
+
+> 💡 更多语言适配中，欢迎贡献翻译！
+
+---
+
+# �🌟 主要功能
 
 Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。借助 Toonflow，可以轻松完成从文字到影像的全流程，让短剧制作变得更加智能与便捷。
 
@@ -110,11 +127,11 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ### 1. 下载与安装
 
-| 操作系统 | GitHub 下载                                                  | 夸克网盘下载                                    | 说明           |
-| :------: | :----------------------------------------------------------- | :---------------------------------------------- | :------------- |
-| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
-|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
-|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
+| 操作系统 | GitHub                                                  | Atomgit                                               | 夸克网盘下载                                    | 说明           |
+| :------: | :----------------------------------------------------------- | :------------------------------------------------------------ | :---------------------------------------------- | :------------- |
+| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
+|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
+|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [夸克网盘](https://pan.quark.cn/s/94ef07509df0) | 官方发布安装包 |
 
 > [!CAUTION]
 > MacOS 系统请到 设置-隐私与安全性 配置安全性否则可能因证书问题无法正常打开
@@ -486,24 +503,6 @@ pm2 monit             # 监控面板
 
 # 👨‍👩‍👧‍👦 微信交流群
 
-~~交流群 1~~
-
-~~交流群 2~~
-
-...
-
-~~交流群 10~~
-
-~~交流群 11~~
-
-~~交流群 12~~
-
-~~交流群 13~~
-
-...
-
-~~交流群 24~~
-
 拉群小助手:
 
 <img src="./docs/QR.png" alt="Toonflow QR" height="400"/>
@@ -586,3 +585,5 @@ Toonflow 基于 Apache-2.0 协议开源发布，并附有补充商业协议。
 </table>
 
 完整的第三方依赖清单请查阅 `NOTICES.txt`
+
+##### copyright © 淮北艾阿网络科技有限公司
