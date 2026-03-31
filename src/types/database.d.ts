@@ -1,4 +1,4 @@
-// @db-hash 6be0a80e9c8f541987a4c1e907736237
+// @db-hash d1fbadf1691063f5a730337685fd85b1
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -73,6 +73,7 @@ export interface o_image {
   'filePath'?: string | null;
   'id'?: number;
   'model'?: string | null;
+  'reason'?: string | null;
   'resolution'?: string | null;
   'state'?: string | null;
   'type'?: string | null;
