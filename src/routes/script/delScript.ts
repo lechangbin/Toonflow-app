@@ -14,6 +14,9 @@ export default router.post(
   async (req, res) => {
     const { id } = req.body;
     await u.db("o_script").whereIn("id", id).delete();
+    await u.db("o_assets2Script").whereIn("scriptId", id).delete();
+    await u.db("o_storyboard").whereIn("scriptId", id).delete();
+    await u.db("o_video").whereIn("scriptId", id).delete();
     res.status(200).send(success({ message: "删除剧本成功" }));
   },
 );
