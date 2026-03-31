@@ -28,10 +28,10 @@ export default router.post(
       }),
     );
     const zipStream = new compressing.zip.Stream();
-    result.forEach((item) => {
+    result.forEach((item, index) => {
       const ext = (item.filePath?.split(".").pop() || "png").toLowerCase();
       const absPath = path.join(getPath("oss"), item.filePath!);
-      zipStream.addEntry(absPath, { relativePath: `${item.title}.${ext}` });
+      zipStream.addEntry(absPath, { relativePath: `${index}.${ext}` });
     });
 
     const fileName = `分镜.zip`;

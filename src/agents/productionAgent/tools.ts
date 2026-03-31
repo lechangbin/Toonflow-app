@@ -24,22 +24,11 @@ export const assetItemSchema = z.object({
 });
 const storyboardSchema = z.object({
   id: z.number().describe("分镜ID，必须为真实id"),
-  title: z.string().describe("分镜标题"),
-  description: z.string().describe("分镜描述"),
-  camera: z.string().describe("镜头信息"),
   duration: z.number().describe("持续时长(秒)"),
-  frameMode: z.enum(["firstFrame", "endFrame", "linesSoundEffects"]).describe("帧模式: 首帧/尾帧/台词音效"),
   prompt: z.string().describe("生成提示词"),
-  lines: z.string().nullable().describe("台词内容"),
-  sound: z.string().nullable().describe("音效内容"),
-  mode: z
-    .union([
-      z.enum(["singleImage", "multiImage", "gridImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text"]),
-      z.array(z.enum(["video", "image", "audio", "text"])),
-    ])
-    .describe("视频模式"),
   associateAssetsIds: z.array(z.number()).describe("关联资产ID列表"),
   src: z.string().nullable().describe("分镜资源路径"),
+  index: z.number().nullable().optional().describe("分镜排序字段"),
 });
 const workbenchDataSchema = z.object({
   name: z.string().describe("项目名称"),

@@ -386,14 +386,18 @@ add_deriveAsset({
 | 操作 | 调用 |
 |------|------|
 | 读取剧本 | `get_flowData("script")` |
-| 生成图片 | `generate_storyboard_images({ script: 剧本文本 })` |
+| 读取分镜表 | `get_flowData("stoaryTable")` |
+| 读取分镜面板 | `get_flowData("storyboard")` |
+| 生成图片 | `generate_storyboard_images({ ids: [分镜ID列表] })` |
 
 ### 执行流程
 
-1. 获取 `script`
-2. 调用 `generate_storyboard_images({ script: 剧本文本 })` 生成分镜图片（异步，发起即返回）
+1. 获取 `script` 、`stoaryTable`
+2. 使用XML格式写入工作区分镜面板：<storyboard><items prompt=提示词内容 track=分组 duration=视频推荐时间 associateAssetsIds=[资产ID列表]/></storyboard>
+3. 先获取 `storyboard`数据 再调用 `generate_storyboard_images({ ids: [真实分镜ID列表] })` 生成分镜图片（异步，发起即返回）
 
 ### 约束
 
 - 前置条件：分镜表已构建完成且用户已确认
 - 图片必须与分镜描述匹配
+- 你必须使用XML格式写入工作区分镜面板：<storyboard><items prompt=提示词内容 track=分组 duration=视频推荐时间 associateAssetsIds=[资产ID列表]/></storyboard>

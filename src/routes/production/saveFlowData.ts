@@ -11,7 +11,7 @@ export default router.post(
   validateFields({
     projectId: z.number(),
     episodesId: z.number(),
-    data: flowDataSchema,
+    data: z.any(),
   }),
   async (req, res) => {
     const {
