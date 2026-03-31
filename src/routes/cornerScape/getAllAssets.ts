@@ -16,12 +16,13 @@ export default router.post(
     const data = await u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.model", "o_image.resolution")
+      .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.model", "o_image.resolution", "o_image.errorReason")
       .where("o_assets.projectId", projectId)
       .andWhere("o_assets.type", "<>", "clip")
       .modify((qb) => {
         if (type && type.length > 0) qb.whereIn("o_assets.type", type);
-      }).orderByRaw(`CASE o_assets.type WHEN 'role' THEN 1 WHEN 'scene' THEN 2 WHEN 'tool' THEN 3 ELSE 4 END`);
+      })
+      .orderByRaw(`CASE o_assets.type WHEN 'role' THEN 1 WHEN 'scene' THEN 2 WHEN 'tool' THEN 3 ELSE 4 END`);
     const result = await Promise.all(
       data.map(async (parent: any) => {
         const historyImages = await u.db("o_image").where("assetsId", parent.id).andWhere("state", "已完成").select("id", "filePath");

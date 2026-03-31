@@ -34,7 +34,7 @@ export default router.post(
     let childQuery = u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath", "o_image.state")
+      .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason")
       .where("o_assets.projectId", projectId)
       .andWhere("o_assets.type", type)
       .whereNotNull("o_assets.assetsId");
