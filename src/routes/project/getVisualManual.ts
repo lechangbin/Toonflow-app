@@ -65,7 +65,6 @@ export default router.post("/", async (req, res) => {
         const readmePath = path.join(styleDir, "README.md");
         const readmeContent = fs.readFileSync(readmePath, "utf-8");
         const firstLine = readmeContent.split("\n")[0].replace(/--/g, "");
-        const stylePath = path.join("askills", "art_prompts", styleName);
         const data = DATA_MAP.map(({ label, value, subDir }) => {
           let mdPath: string;
           if (subDir) {
@@ -83,7 +82,7 @@ export default router.post("/", async (req, res) => {
         return {
           name: firstLine,
           image: images,
-          stylePath,
+          stylePath: styleName,
           data,
         };
       }),

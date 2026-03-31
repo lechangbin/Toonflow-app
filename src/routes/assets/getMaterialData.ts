@@ -33,10 +33,6 @@ export default router.post(
       filePath: ending,
       type: "clip",
     });
-    // 查询o_videoConfig表，拿到已选中的videoId
-    const configRows = await u.db("o_videoConfig").select("videoId");
-    const selectedIds = new Set(configRows.map((row) => row.videoId));
-
     // 查询o_video表
     const videoRows = await u.db("o_video").where("state", "生成成功").andWhere("projectId", projectId).select("*");
     // 处理并返回结果
@@ -44,8 +40,7 @@ export default router.post(
       videoRows.map(async (row) => ({
         id: row.id,
         filePath: row.filePath ? await u.oss.getFileUrl(row.filePath) : "",
-        selected: selectedIds.has(row.id),
-        videoParametersId: row.videoParametersId,
+        videoTrackId: row.videoTrackId,
       })),
     );
 

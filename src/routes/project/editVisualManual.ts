@@ -12,7 +12,7 @@ export default router.post(
   "/",
   validateFields({
     name: z.string(),
-    title: z.string(),
+    stylePath: z.string(),
     images: z.array(z.string()),
     data: z.array(
       z.object({
@@ -24,19 +24,19 @@ export default router.post(
   }),
   async (req, res) => {
     try {
-      const { name, title, images, data } = req.body as {
+      const { name, stylePath, images, data } = req.body as {
         name: string;
-        title: string;
+        stylePath: string;
         images: string[];
         data: { label: string; value: string; data: string }[];
       };
 
-      if (/^\d+$/.test(name)) {
+      if (/^\d+$/.test(stylePath)) {
         res.status(400).send(error("名称不能为纯数字"));
         return;
       }
 
-      const mainPath = u.getPath(["skills", "art_prompts", name]);
+      const mainPath = u.getPath(["skills", "art_prompts", stylePath]);
       if (!fs.existsSync(mainPath)) {
         return res.status(400).send(error("视觉手册不存在"));
       }
@@ -74,10 +74,10 @@ export default router.post(
         if (!fs.existsSync(fileDir)) {
           fs.mkdirSync(fileDir, { recursive: true });
         }
-        const content = item.value === "README" ? `# ${title}\n${item.data}` : item.data;
+        const content = item.value === "README" ? `${name}\n${item.data}` : item.data;
         fs.writeFileSync(filePath, content, "utf-8");
       }
-      const ossImagesDir = u.getPath(["oss", name]);
+      const ossImagesDir = u.getPath(["oss", stylePath]);
 
       let existingFiles: string[] = [];
       try {
@@ -89,12 +89,12 @@ export default router.post(
 
       for (const file of existingFiles) {
         if (!retainedFileNames.has(file)) {
-          await u.oss.deleteFile(`${name}/${file}`);
+          await u.oss.deleteFile(`${stylePath}/${file}`);
         }
       }
 
       for (const item of images) {
-        if (!item.startsWith("http")) await u.oss.writeFile(`${name}/${u.uuid()}.jpg`, item);
+        if (!item.startsWith("http")) await u.oss.writeFile(`${stylePath}/${u.uuid()}.jpg`, item);
       }
 
       res.status(200).send(success());

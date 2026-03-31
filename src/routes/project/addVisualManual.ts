@@ -13,6 +13,7 @@ export default router.post(
   validateFields({
     name: z.string(),
     images: z.array(z.string()),
+    stylePath: z.string(),
     data: z.array(
       z.object({
         label: z.string(),
@@ -23,18 +24,19 @@ export default router.post(
   }),
   async (req, res) => {
     try {
-      const { name, images, data } = req.body as {
+      const { name, images, data, stylePath } = req.body as {
         name: string;
         images: string[];
         data: { label: string; value: string; data: string }[];
+        stylePath: string;
       };
 
-      if (/^\d+$/.test(name)) {
-        res.status(400).send(error("名称不能为纯数字"));
+      if (/^\d+$/.test(stylePath)) {
+        res.status(400).send(error("文件名称不能为纯数字"));
         return;
       }
 
-      const mainPath = u.getPath(["skills", "art_prompts", name]);
+      const mainPath = u.getPath(["skills", "art_prompts", stylePath]);
       if (fs.existsSync(mainPath)) {
         return res.status(400).send(error("请勿填写重复名称的视觉手册"));
       }
@@ -74,7 +76,7 @@ export default router.post(
         }
         fs.writeFileSync(filePath, item.data, "utf-8");
       }
-      const ossImagesDir = u.getPath(["oss", name]);
+      const ossImagesDir = u.getPath(["oss", stylePath]);
 
       let existingFiles: string[] = [];
       try {
@@ -86,12 +88,12 @@ export default router.post(
 
       for (const file of existingFiles) {
         if (!retainedFileNames.has(file)) {
-          await u.oss.deleteFile(`${name}/${file}`);
+          await u.oss.deleteFile(`${stylePath}/${file}`);
         }
       }
 
       for (const item of images) {
-        if (!item.startsWith("http")) await u.oss.writeFile(`${name}/${u.uuid()}.jpg`, item);
+        if (!item.startsWith("http")) await u.oss.writeFile(`${stylePath}/${u.uuid()}.jpg`, item);
       }
 
       res.status(200).send(success());
