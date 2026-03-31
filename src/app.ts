@@ -29,15 +29,23 @@ export default async function startServe(randomPort: Boolean = false) {
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
-  const rootDir = u.getPath("oss");
 
-  // 确保 uploads 目录存在
+  // oss 静态资源
+  const rootDir = u.getPath("oss");
   if (!fs.existsSync(rootDir)) {
     fs.mkdirSync(rootDir, { recursive: true });
   }
   console.log("文件目录:", rootDir);
-
   app.use(express.static(rootDir));
+
+  // data/web 静态网站
+  const webDir = u.getPath("web");
+  if (fs.existsSync(webDir)) {
+    console.log("静态网站目录:", webDir);
+    app.use(express.static(webDir));
+  } else {
+    console.warn("静态网站目录不存在:", webDir);
+  }
 
   app.use(async (req, res, next) => {
     const setting = await u.db("o_setting").where("key", "tokenKey").select("value").first();

@@ -7,36 +7,25 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    scriptId: z.number(),
-    projectId: z.number(),
+    ids: z.array(z.number()),
   }),
   async (req, res) => {
-    const { scriptId, projectId } = req.body;
-
-    //查询分镜数据
-    const storyboards = await u.db("o_storyboard").where("o_storyboard.scriptId", scriptId).select("*").orderBy("index", "asc");
-
-    //查询项目默认的视频模型
-    const project = await u.db("o_project").where("id", projectId).first();
-
-    const storyboardsList = await Promise.all(
-      storyboards.map(async (item) => {
-        return {
-          ...item,
-          model: project?.videoModel || null,
-          filePath: item.filePath ? await u.oss.getFileUrl(item.filePath) : null,
-        };
-      }),
-    );
-
-    const storyboardIds = storyboardsList.map((s) => s.id as number);
+    const { ids } = req.body;
 
     //查询分镜配置
-    const storyboardConfigs = await u.db("o_videoConfig").whereIn("storyboardId", storyboardIds).select("*");
-    const storyboardConfigsList = await Promise.all(
-      storyboardConfigs.map(async (item) => {
-        if (item.data) {
-          const parsedData = JSON.parse(item.data);
+    const storyboardConfigs = await u.db("o_videoConfig").whereIn("storyboardId", ids).select("*");
+
+    //查询视频数据
+    const videos = await u.db("o_video").whereIn("storyboardId", ids).select("*");
+
+    //组装数据
+    const data = await Promise.all(
+      ids.map(async (storyboardId: number) => {
+        // 处理配置
+        const configRow = storyboardConfigs.find((item) => item.storyboardId === storyboardId) || null;
+        let config = null;
+        if (configRow?.data) {
+          const parsedData = JSON.parse(configRow.data);
           const dataWithFilePath = await Promise.all(
             parsedData.map(async (d: { type: string; id: number }) => {
               if (d.type === "assets" && d.id) {
@@ -61,35 +50,25 @@ export default router.post(
               return null;
             }),
           );
-
-          return {
-            ...item,
-            data: dataWithFilePath,
-          };
+          config = { ...configRow, data: dataWithFilePath };
         }
-      }),
-    );
-    //查询视频数据
-    const videos = await u.db("o_video").whereIn("storyboardId", storyboardIds).select("*");
 
-    const videosList = await Promise.all(
-      videos.map(async (item) => {
+        // 处理视频
+        const storyboardVideos = videos.filter((v) => v.storyboardId === storyboardId);
+        const videosList = await Promise.all(
+          storyboardVideos.map(async (item) => ({
+            ...item,
+            filePath: item.filePath ? await u.oss.getFileUrl(item.filePath) : null,
+          })),
+        );
+
         return {
-          ...item,
-          filePath: item.filePath ? await u.oss.getFileUrl(item.filePath) : null,
+          id: storyboardId,
+          config,
+          videos: videosList,
         };
       }),
     );
-
-    //组装数据
-    const data = storyboardsList.map((storyboard) => {
-      const config = storyboardConfigsList.find((item) => item?.storyboardId === storyboard.id) || null;
-      return {
-        ...storyboard,
-        config,
-        videos: videosList.filter((video) => video.storyboardId === storyboard.id),
-      };
-    });
     return res.status(200).send(success(data));
   },
 );

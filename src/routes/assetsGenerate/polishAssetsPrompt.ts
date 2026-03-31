@@ -101,25 +101,20 @@ export default router.post(
     const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
     const novelText = mergeNovelText(novelData);
 
-    const systemPrompt = `
-      请根据以下参数生成${config.label}提示词：
-  
-      **基础参数：**
-      - 小说类型: ${project?.type || "未指定"}
-      - 小说背景: ${project?.intro || "未指定"}
-  
-      **${config.nameLabel}设定：**
-      - ${config.nameLabel}名称:${name},
-      - ${config.nameLabel}描述:${describe},
-  
-      请严格按照skill规范生成${type === "role" ? "人物角色四视图" : config.label}提示词
-      ${visualManual}。
-      `;
+    const systemPrompt = visualManual;
 
     try {
       const { _output } = (await u.Ai.Text("universalAi").invoke({
         system: systemPrompt,
-        messages: [{ role: "user", content: "小说原文" + novelText }],
+        messages: [
+          {
+            role: "user",
+            content: `**基础参数：**
+      **${config.nameLabel}设定：**
+      - ${config.nameLabel}名称:${name},
+      - ${config.nameLabel}描述:${describe},`,
+          },
+        ],
       })) as any;
 
       if (!_output) return res.status(500).send("失败");
