@@ -83,6 +83,22 @@ export default (toolCpnfig: ToolConfig) => {
         return text ?? "无数据";
       },
     }),
+    get_script_content: tool({
+      description: "获取剧本本内容",
+      inputSchema: z.object({
+        ids: z.array(z.string()).describe("脚本id"),
+      }),
+      execute: async ({ ids }) => {
+        console.log("[tools] get_script_content", "[tools] get_script_content", ids);
+        const thinking = msg.thinking(`正在获取脚本内容...`);
+        const data = await u.db("o_script").whereIn("id", ids).select("content", "name");
+        const text = data && data.length ? data.map((d) => `<scriptItem name="${d.name}">${d.content}</scriptItem>`).join("\n") : "";
+        thinking.appendText(`获取到脚本内容:\n` + text);
+        thinking.updateTitle(`获取脚本内容完成`);
+        thinking.complete();
+        return text ?? "无数据";
+      },
+    }),
   };
   return toolsNames ? Object.fromEntries(Object.entries(tools).filter(([n]) => toolsNames.includes(n))) : tools;
 };
