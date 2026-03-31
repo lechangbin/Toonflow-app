@@ -17,7 +17,6 @@ export default router.post(
       storyboardData.map(async (i) => {
         return {
           ...i,
-          title: i.title,
           filePath: i.filePath ? await u.oss.getFileUrl(i.filePath!) : "",
         };
       }),
@@ -66,19 +65,11 @@ export default router.post(
         );
         return {
           id: String(item.id),
-          camera: item.camera ? Number(item.camera) : undefined,
           createTime: item.createTime ?? undefined,
-          description: item.description ?? undefined,
           duration: item.duration ? Number(item.duration) : undefined,
           filePath: item.filePath || undefined,
-          frameMode: item.frameMode ? Number(item.frameMode) : undefined,
-          mode: item.mode ?? "",
-          model: item.model ?? "",
           prompt: item.prompt ?? undefined,
-          resolution: item.resolution ?? undefined,
           scriptId: item.scriptId ?? undefined,
-          sound: item.sound ? Number(item.sound) : undefined,
-          title: item.title ?? undefined,
           characters: charactersWithUrl,
         };
       }),

@@ -1,6 +1,49 @@
-// @db-hash c2029b55b7dcdcf64788dafc34799fea
+// @db-hash c145f43374602285beea82bbd51eaec8
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_storyboard_old_20260331 {
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'duration'?: string | null;
+  'filePath'?: string | null;
+  'frameMode'?: string | null;
+  'id'?: number;
+  'index'?: number | null;
+  'lines'?: string | null;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'reason'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'sound'?: string | null;
+  'state'?: string | null;
+  'title'?: string | null;
+  'videoPrompt'?: string | null;
+}
+export interface _o_storyboard_old_20260331_1 {
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'duration'?: string | null;
+  'filePath'?: string | null;
+  'frameMode'?: string | null;
+  'id'?: number;
+  'index'?: number | null;
+  'lines'?: string | null;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'reason'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'sound'?: string | null;
+  'state'?: string | null;
+  'title'?: string | null;
+  'track'?: string | null;
+  'videoPrompt'?: string | null;
+}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -114,7 +157,6 @@ export interface o_project {
   'imageModel'?: string | null;
   'imageQuality'?: string | null;
   'intro'?: string | null;
-  'mode'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
   'type'?: string | null;
@@ -162,26 +204,17 @@ export interface o_skillList {
   'updateTime': number;
 }
 export interface o_storyboard {
-  'camera'?: string | null;
   'createTime'?: number | null;
-  'description'?: string | null;
   'duration'?: string | null;
   'filePath'?: string | null;
-  'frameMode'?: string | null;
-  'group'?: string | null;
   'id'?: number;
   'index'?: number | null;
-  'lines'?: string | null;
-  'mode'?: string | null;
-  'model'?: string | null;
+  'projectId'?: number | null;
   'prompt'?: string | null;
   'reason'?: string | null;
-  'resolution'?: string | null;
   'scriptId'?: number | null;
-  'sound'?: string | null;
   'state'?: string | null;
-  'title'?: string | null;
-  'videoPrompt'?: string | null;
+  'trackId'?: number | null;
 }
 export interface o_tasks {
   'describe'?: string | null;
@@ -218,8 +251,22 @@ export interface o_video {
   'projectId'?: number | null;
   'scriptId'?: number | null;
   'state'?: string | null;
+  'storyboardId'?: number | null;
   'time'?: number | null;
-  'videoTrackId'?: number | null;
+}
+export interface o_videoConfig {
+  'audio'?: number | null;
+  'createTime'?: number | null;
+  'data'?: string | null;
+  'duration'?: number | null;
+  'id'?: number;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'resolution'?: string | null;
+  'storyboardId'?: number | null;
+  'updateTime'?: number | null;
+  'videoId'?: number | null;
 }
 export interface o_videoTrack {
   'id'?: number;
@@ -229,6 +276,8 @@ export interface o_videoTrack {
 }
 
 export interface DB {
+  "_o_storyboard_old_20260331": _o_storyboard_old_20260331;
+  "_o_storyboard_old_20260331_1": _o_storyboard_old_20260331_1;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
@@ -254,5 +303,6 @@ export interface DB {
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;
   "o_video": o_video;
+  "o_videoConfig": o_videoConfig;
   "o_videoTrack": o_videoTrack;
 }
