@@ -1,0 +1,43 @@
+import express from "express";
+import u from "@/utils";
+import { z } from "zod";
+import { error, success } from "@/lib/responseFormat";
+import { validateFields } from "@/middleware/middleware";
+const router = express.Router();
+interface Storyboard {
+  id: number;
+  track: string;
+  src: string | null;
+  associateAssetsIds: number[];
+  duration: number;
+  state: string;
+}
+export default router.post(
+  "/",
+  validateFields({
+    prompt: z.string(),
+    duration: z.number(),
+    state: z.string(),
+    src: z.string().nullable(),
+    scriptId: z.number(),
+    projectId: z.number(),
+  }),
+  async (req, res) => {
+    const { prompt, duration, state, src, scriptId, projectId } = req.body;
+
+    const [trackId] = await u.db("o_videoTrack").insert({
+      scriptId: scriptId,
+      projectId,
+    });
+    const [id] = await u.db("o_storyboard").insert({
+      prompt,
+      duration,
+      state,
+      filePath: new URL(src).pathname,
+      trackId,
+      scriptId: scriptId,
+      projectId: projectId,
+    });
+    return res.status(200).send(success({ id }));
+  },
+);
