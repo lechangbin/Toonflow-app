@@ -60,10 +60,12 @@ export default router.post("/", async (req, res) => {
     const result = await Promise.all(
       styleDirs.map(async (styleName) => {
         const styleDir = path.join(artPromptsDir, styleName);
-        const imagesDir = path.join(styleDir, "images");
 
         const images = await readAllImages(styleName);
-
+        const readmePath = path.join(styleDir, "README.md");
+        const readmeContent = fs.readFileSync(readmePath, "utf-8");
+        const firstLine = readmeContent.split("\n")[0].replace(/--/g, "");
+        const stylePath = path.join("askills", "art_prompts", styleName);
         const data = DATA_MAP.map(({ label, value, subDir }) => {
           let mdPath: string;
           if (subDir) {
@@ -79,8 +81,9 @@ export default router.post("/", async (req, res) => {
         });
 
         return {
-          name: styleName,
+          name: firstLine,
           image: images,
+          stylePath,
           data,
         };
       }),

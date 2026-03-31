@@ -12,6 +12,12 @@ export default router.post(
     data: z.object({
       storySkeleton: z.string(),
       adaptationStrategy: z.string(),
+      script: z.array(
+        z.object({
+          id: z.number(),
+          content: z.string(),
+        }),
+      ),
     }),
   }),
   async (req, res) => {
