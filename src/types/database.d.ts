@@ -1,4 +1,4 @@
-// @db-hash f7bc2fdb80756d5536929eb47155578b
+// @db-hash 7c59ad1ffb7b9f9bb1a5058fb743232b
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_script_old_20260327 {
@@ -7,6 +7,26 @@ export interface _o_script_old_20260327 {
   'id'?: number;
   'name'?: string | null;
   'projectId'?: number | null;
+}
+export interface _o_storyboard_old_20260331 {
+  'camera'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'duration'?: string | null;
+  'filePath'?: string | null;
+  'frameMode'?: string | null;
+  'id'?: number;
+  'index'?: string | null;
+  'lines'?: string | null;
+  'mode'?: string | null;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'reason'?: string | null;
+  'resolution'?: string | null;
+  'scriptId'?: number | null;
+  'sound'?: string | null;
+  'state'?: string | null;
+  'title'?: string | null;
 }
 export interface memories {
   'content': string;
@@ -172,6 +192,7 @@ export interface o_storyboard {
   'duration'?: string | null;
   'filePath'?: string | null;
   'frameMode'?: string | null;
+  'group'?: string | null;
   'id'?: number;
   'index'?: string | null;
   'lines'?: string | null;
@@ -239,6 +260,7 @@ export interface o_videoConfig {
 
 export interface DB {
   "_o_script_old_20260327": _o_script_old_20260327;
+  "_o_storyboard_old_20260331": _o_storyboard_old_20260331;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
