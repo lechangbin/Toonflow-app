@@ -75,10 +75,10 @@ export default router.post(
         workbench: {
           videoList: [],
         },
-        //todo：矫正封面数据
-        poster: {
-          items: [],
-        },
+        // //todo：矫正封面数据
+        // poster: {
+        //   items: [],
+        // },
       };
       return res.status(200).send(success(flowData));
     } else {
