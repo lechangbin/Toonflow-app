@@ -110,6 +110,10 @@ export default router.post(
 
       res.status(200).send(success({ prompt: _output, assetsId }));
     } catch (e: any) {
+      await u
+        .db("o_assets")
+        .where("id", assetsId)
+        .update({ promptState: "失败", promptErrorReason: u.error(e).message });
       return res.status(500).send(error(e?.data?.error?.message ?? e?.message ?? "生成失败"));
     }
   },

@@ -1,6 +1,29 @@
-// @db-hash b1210691844e077e9df7dc16c802ce5a
+// @db-hash 4789feeeda48b86ecadc17318a89460b
 //该文件由脚本自动生成，请勿手动修改
 
+export interface _o_assets_old_20260331 {
+  'assetsId'?: number | null;
+  'describe'?: string | null;
+  'id'?: number;
+  'imageId'?: number | null;
+  'name'?: string | null;
+  'projectId'?: number | null;
+  'prompt'?: string | null;
+  'promptState'?: string | null;
+  'remark'?: string | null;
+  'scriptId'?: number | null;
+  'startTime'?: number | null;
+  'type'?: string | null;
+}
+export interface _o_image_old_20260331 {
+  'assetsId'?: number | null;
+  'filePath'?: string | null;
+  'id'?: number;
+  'model'?: string | null;
+  'resolution'?: string | null;
+  'state'?: string | null;
+  'type'?: string | null;
+}
 export interface _o_project_old_20260331 {
   'artStyle'?: string | null;
   'createTime'?: number | null;
@@ -61,6 +84,7 @@ export interface o_assets {
   'name'?: string | null;
   'projectId'?: number | null;
   'prompt'?: string | null;
+  'promptErrorReason'?: string | null;
   'promptState'?: string | null;
   'remark'?: string | null;
   'scriptId'?: number | null;
@@ -84,6 +108,7 @@ export interface o_eventChapter {
 }
 export interface o_image {
   'assetsId'?: number | null;
+  'errorReason'?: string | null;
   'filePath'?: string | null;
   'id'?: number;
   'model'?: string | null;
@@ -241,6 +266,8 @@ export interface o_videoTrack {
 }
 
 export interface DB {
+  "_o_assets_old_20260331": _o_assets_old_20260331;
+  "_o_image_old_20260331": _o_image_old_20260331;
   "_o_project_old_20260331": _o_project_old_20260331;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;

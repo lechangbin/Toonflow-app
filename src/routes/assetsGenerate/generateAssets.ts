@@ -134,7 +134,10 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
 
     return res.status(200).send(success({ path, assetsId: id }));
   } catch (e) {
-    await u.db("o_image").where("id", imageId).update({ state: "生成失败" });
+    await u
+      .db("o_image")
+      .where("id", imageId)
+      .update({ state: "生成失败", errorReason: u.error(e).message });
     return res.status(400).send(error(u.error(e).message || "图片生成失败"));
   }
 });
