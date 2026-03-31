@@ -89,8 +89,6 @@ export default router.post(
       scene: { promptKey: "scene-polish", itemType: "scenes", label: "场景图", nameLabel: "场景", visualManual: "art_scene" },
       tool: { promptKey: "tool-polish", itemType: "props", label: "道具图", nameLabel: "道具", visualManual: "art_prop" },
     };
-    const novelData = (await u.db("o_novel").whereIn("chapterIndex", [1]).select("*")) as NovelChapter[];
-    const novelText = mergeNovelText(novelData);
     // 批量更新所有 item 状态为生成中
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);
     await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });

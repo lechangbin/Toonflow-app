@@ -1,48 +1,19 @@
-// @db-hash c145f43374602285beea82bbd51eaec8
+// @db-hash b1210691844e077e9df7dc16c802ce5a
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_storyboard_old_20260331 {
-  'camera'?: string | null;
+export interface _o_project_old_20260331 {
+  'artStyle'?: string | null;
   'createTime'?: number | null;
-  'description'?: string | null;
-  'duration'?: string | null;
-  'filePath'?: string | null;
-  'frameMode'?: string | null;
-  'id'?: number;
-  'index'?: number | null;
-  'lines'?: string | null;
-  'mode'?: string | null;
-  'model'?: string | null;
-  'prompt'?: string | null;
-  'reason'?: string | null;
-  'resolution'?: string | null;
-  'scriptId'?: number | null;
-  'sound'?: string | null;
-  'state'?: string | null;
-  'title'?: string | null;
-  'videoPrompt'?: string | null;
-}
-export interface _o_storyboard_old_20260331_1 {
-  'camera'?: string | null;
-  'createTime'?: number | null;
-  'description'?: string | null;
-  'duration'?: string | null;
-  'filePath'?: string | null;
-  'frameMode'?: string | null;
-  'id'?: number;
-  'index'?: number | null;
-  'lines'?: string | null;
-  'mode'?: string | null;
-  'model'?: string | null;
-  'prompt'?: string | null;
-  'reason'?: string | null;
-  'resolution'?: string | null;
-  'scriptId'?: number | null;
-  'sound'?: string | null;
-  'state'?: string | null;
-  'title'?: string | null;
-  'track'?: string | null;
-  'videoPrompt'?: string | null;
+  'id'?: number | null;
+  'imageModel'?: string | null;
+  'imageQuality'?: string | null;
+  'intro'?: string | null;
+  'name'?: string | null;
+  'projectType'?: string | null;
+  'type'?: string | null;
+  'userId'?: number | null;
+  'videoModel'?: string | null;
+  'videoRatio'?: string | null;
 }
 export interface memories {
   'content': string;
@@ -116,7 +87,6 @@ export interface o_image {
   'filePath'?: string | null;
   'id'?: number;
   'model'?: string | null;
-  'reason'?: string | null;
   'resolution'?: string | null;
   'state'?: string | null;
   'type'?: string | null;
@@ -157,6 +127,7 @@ export interface o_project {
   'imageModel'?: string | null;
   'imageQuality'?: string | null;
   'intro'?: string | null;
+  'mode'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
   'type'?: string | null;
@@ -204,17 +175,25 @@ export interface o_skillList {
   'updateTime': number;
 }
 export interface o_storyboard {
+  'camera'?: string | null;
   'createTime'?: number | null;
+  'description'?: string | null;
   'duration'?: string | null;
   'filePath'?: string | null;
+  'frameMode'?: string | null;
   'id'?: number;
   'index'?: number | null;
-  'projectId'?: number | null;
+  'lines'?: string | null;
+  'mode'?: string | null;
+  'model'?: string | null;
   'prompt'?: string | null;
   'reason'?: string | null;
+  'resolution'?: string | null;
   'scriptId'?: number | null;
+  'sound'?: string | null;
   'state'?: string | null;
-  'trackId'?: number | null;
+  'title'?: string | null;
+  'videoPrompt'?: string | null;
 }
 export interface o_tasks {
   'describe'?: string | null;
@@ -251,22 +230,8 @@ export interface o_video {
   'projectId'?: number | null;
   'scriptId'?: number | null;
   'state'?: string | null;
-  'storyboardId'?: number | null;
   'time'?: number | null;
-}
-export interface o_videoConfig {
-  'audio'?: number | null;
-  'createTime'?: number | null;
-  'data'?: string | null;
-  'duration'?: number | null;
-  'id'?: number;
-  'mode'?: string | null;
-  'model'?: string | null;
-  'prompt'?: string | null;
-  'resolution'?: string | null;
-  'storyboardId'?: number | null;
-  'updateTime'?: number | null;
-  'videoId'?: number | null;
+  'videoTrackId'?: number | null;
 }
 export interface o_videoTrack {
   'id'?: number;
@@ -276,8 +241,7 @@ export interface o_videoTrack {
 }
 
 export interface DB {
-  "_o_storyboard_old_20260331": _o_storyboard_old_20260331;
-  "_o_storyboard_old_20260331_1": _o_storyboard_old_20260331_1;
+  "_o_project_old_20260331": _o_project_old_20260331;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
@@ -303,6 +267,5 @@ export interface DB {
   "o_user": o_user;
   "o_vendorConfig": o_vendorConfig;
   "o_video": o_video;
-  "o_videoConfig": o_videoConfig;
   "o_videoTrack": o_videoTrack;
 }
