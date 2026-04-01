@@ -1,22 +1,6 @@
-<<<<<<< HEAD
-// @db-hash 2c7f828da2621d74d1b0d147d4ba4342
-=======
-// @db-hash a27fff5b05e1c9ef490898f17703079a
->>>>>>> bf124d07e35f3d45958f5c2e64a650df7249f737
+// @db-hash 6b1f47596dc417ed5691fe156dc2928f
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_vendorConfig_old_20260401 {
-  'author'?: string | null;
-  'code'?: string | null;
-  'createTime'?: number | null;
-  'description'?: string | null;
-  'icon'?: string | null;
-  'id'?: string;
-  'inputs'?: string | null;
-  'inputValues'?: string | null;
-  'models'?: string | null;
-  'name'?: string | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -213,7 +197,6 @@ export interface o_vendorConfig {
   'code'?: string | null;
   'createTime'?: number | null;
   'description'?: string | null;
-  'enableEnglish'?: number | null;
   'icon'?: string | null;
   'id'?: string;
   'inputs'?: string | null;
@@ -237,12 +220,12 @@ export interface o_videoTrack {
   'prompt'?: string | null;
   'reason'?: string | null;
   'scriptId'?: number | null;
+  'selectVideoId'?: string | null;
   'state'?: string | null;
   'videoId'?: number | null;
 }
 
 export interface DB {
-  "_o_vendorConfig_old_20260401": _o_vendorConfig_old_20260401;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;

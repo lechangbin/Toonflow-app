@@ -23,6 +23,7 @@ interface TrackItem {
   prompt: string;
   state: "未生成" | "生成中" | "已完成" | "生成失败";
   reason?: string;
+  selectVideoId?: number;
   medias: TrackMedia[];
   videoList: VideoItem[];
 }
@@ -40,7 +41,6 @@ export default router.post(
       "videoTrackId",
       storyboardList.map((s) => s.trackId),
     );
-      console.log("%c Line:40 🌽 videoList", "background:#ffdd4d", videoList);
     const trackData = await u.db("o_videoTrack").whereIn(
       //@ts-ignore
       "id",
@@ -56,15 +56,18 @@ export default router.post(
         prompt: item?.prompt || "",
         state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
         reason: item?.reason ?? "",
+        selectVideoId: Number(item?.selectVideoId)!,
         medias: await Promise.all(
           storyboardList
             .filter((s) => s.trackId === trackId)
-            .map(async (s): Promise<TrackMedia> => ({
-              src: s.filePath ? await u.oss.getFileUrl(s.filePath) : "",
-              fileType: "image",
-              ...(s.prompt != null ? { prompt: s.prompt } : {}),
-              ...(s.id != null ? { id: s.id } : {}),
-            })),
+            .map(
+              async (s): Promise<TrackMedia> => ({
+                src: s.filePath ? await u.oss.getFileUrl(s.filePath) : "",
+                fileType: "image",
+                ...(s.prompt != null ? { prompt: s.prompt } : {}),
+                ...(s.id != null ? { id: s.id } : {}),
+              }),
+            ),
         ),
         videoList: await Promise.all(
           videoList
