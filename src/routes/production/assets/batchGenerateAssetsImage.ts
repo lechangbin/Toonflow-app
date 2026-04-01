@@ -96,7 +96,7 @@ export default router.post(
         const savePath = `/${projectId}/assets/${scriptId}/${u.uuid()}.jpg`;
         await imageCls.save(savePath);
         //   更新对应数据库
-        await u.db("o_assets").where("id", item.id).update({ imageId: imageId });
+        await u.db("o_assets").where("id", item.id).update({ imageId: imageId, prompt: text });
         await u.db("o_image").where({ id: imageId }).update({ state: "已完成", filePath: savePath });
         imageData.push({
           id: item.id,

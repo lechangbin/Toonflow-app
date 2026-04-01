@@ -72,7 +72,11 @@ export default router.post(
       .db("o_storyboard")
       .where("scriptId", scriptId)
       .select("id", "trackId", "prompt", "duration", "state", "scriptId", "reason", "filePath");
-    if (!lastStoryboard || !lastStoryboard.length) return res.status(400).send(error("为查到分镜数据"));
+    if (!lastStoryboard || !lastStoryboard.length) return res.status(400).send(error("未查到分镜数据"));
+    batchGenerateVideoPrompts(
+      data.map((i: any) => i.id),
+      projectId,
+    );
     const storyboardData = await Promise.all(
       lastStoryboard.map(async (i) => {
         return {
@@ -91,3 +95,58 @@ export default router.post(
     return res.status(200).send(success(storyboardData));
   },
 );
+
+async function batchGenerateVideoPrompts(storyboardIds: number[], projectId: number) {
+  const lastStoryboard = await u.db("o_storyboard").whereIn("id", storyboardIds).select("id", "trackId", "prompt");
+  const allTrackIds = lastStoryboard.map((i) => i.trackId);
+  const storyboardPromptRecord: Record<number, string[]> = {};
+  lastStoryboard.forEach((i) => {
+    if (i.trackId) {
+      if (!storyboardPromptRecord[i.trackId]) {
+        storyboardPromptRecord[i.trackId] = [];
+      }
+      storyboardPromptRecord[i.trackId].push(i.prompt!);
+    }
+  });
+  const projectSetting = await u.db("o_project").where("id", projectId).select("artStyle").first();
+  const systemPrompt = u.getArtPrompt(projectSetting?.artStyle!, "art_storyboard_video");
+  await u
+    .db("o_videoTrack")
+    .whereIn("id", allTrackIds as number[])
+    .update({
+      state: "生成中",
+    });
+  for (const trackId in storyboardPromptRecord) {
+    const storboardPrompts = storyboardPromptRecord[trackId];
+    try {
+      const { text } = await u.Ai.Text("universalAi").invoke({
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: `请根据我所提供的 ${storboardPrompts.length} 条分镜内容，为我生成一条视频提示词，请直接输出提示词内容，不做任何解释说明。
+            分镜内容如下:
+            ${storboardPrompts.map((i, index) => `${index + 1}.${i}`).join("\n")}`,
+          },
+        ],
+      });
+      await u.db("o_videoTrack").where("id", trackId).update({
+        state: "已完成",
+        prompt: text,
+      });
+      console.log("%c Line:116 🍎 text", "background:#42b983", text);
+    } catch (e) {
+      console.error("生成视频提示词失败", e);
+      await u
+        .db("o_videoTrack")
+        .where("id", trackId)
+        .update({
+          state: "生成失败",
+          reason: u.error(e).message,
+        });
+    }
+  }
+}

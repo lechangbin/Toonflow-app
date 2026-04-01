@@ -13,7 +13,6 @@ export default router.post(
   async (req, res) => {
     const { projectId } = req.body;
     const imageFlowData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality").first();
-
     return res.status(200).send(success(imageFlowData));
   },
 );
