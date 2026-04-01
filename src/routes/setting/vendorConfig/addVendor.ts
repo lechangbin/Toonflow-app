@@ -35,7 +35,7 @@ const vendorConfigSchema = z.object({
         modelName: z.string(),
         type: z.literal("image"),
         mode: z.array(z.enum(["text", "singleImage", "multiReference"])),
-        associationSkills:z.string().optional(),
+        associationSkills: z.string().optional(),
       }),
       z.object({
         name: z.string(),
@@ -43,15 +43,7 @@ const vendorConfigSchema = z.object({
         type: z.literal("video"),
         mode: z.array(
           z.union([
-            z.enum([
-              "singleImage",
-              "startEndRequired",
-              "endFrameOptional",
-              "startFrameOptional",
-              "text",
-              "audioReference",
-              "videoReference",
-            ]),
+            z.enum(["singleImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text", "audioReference", "videoReference"]),
             z.array(z.enum(["videoReference", "imageReference", "audioReference", "textReference"])),
           ]),
         ),
@@ -100,6 +92,7 @@ export default router.post(
       models: JSON.stringify(vendor.models ?? []),
       code: tsCode,
       createTime: Date.now(),
+      enableEnglish: 0,
     });
     res.status(200).send(success(result.data));
   },

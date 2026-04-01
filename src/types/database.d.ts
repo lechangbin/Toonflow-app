@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-// @db-hash 2c7f828da2621d74d1b0d147d4ba4342
-=======
 // @db-hash a27fff5b05e1c9ef490898f17703079a
->>>>>>> bf124d07e35f3d45958f5c2e64a650df7249f737
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_vendorConfig_old_20260401 {
@@ -234,10 +230,7 @@ export interface o_video {
 export interface o_videoTrack {
   'id'?: number;
   'projectId'?: number | null;
-  'prompt'?: string | null;
-  'reason'?: string | null;
   'scriptId'?: number | null;
-  'state'?: string | null;
   'videoId'?: number | null;
 }
 
