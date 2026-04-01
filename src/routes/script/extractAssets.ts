@@ -61,13 +61,12 @@ export default router.post(
 
     if (!scriptIds.length) return res.status(400).send(error("请先选择剧本"));
     const scripts = await u.db("o_script").whereIn("id", scriptIds);
-    const intansce = u.Ai.Text("universalAi");
 
     // 构建 scriptId -> script 内容的映射
     const scriptMap = new Map(scripts.map((s: o_script) => [s.id, s]));
 
     await u.db("o_script").whereIn("id", scriptIds).update({
-      extractState: 0,
+      extractState: 2,
     });
 
     const errors: { scriptId: number; error: string }[] = [];
@@ -139,7 +138,7 @@ export default router.post(
         errorReason: null,
       });
     }
-
+    res.send(success("开始提取资产"));
     // 逐组处理（每组最多 groupSize 集剧本一起发给 AI）
     for (const group of scriptGroups) {
       // 过滤有效剧本
@@ -150,11 +149,19 @@ export default router.post(
           errors.push({ scriptId, error: "未找到对应剧本" });
           await u.db("o_script").where("id", scriptId).update({ extractState: -1, errorReason: "未找到对应剧本" });
         } else {
-          validScripts.push({ id: scriptId, script });
+          // 查看状态是否为等待提取，仅对等待提取进行生成
+          const item = await u.db("o_script").where("id", scriptId).select("extractState").first();
+          if (item?.extractState == 2) {
+            validScripts.push({ id: scriptId, script });
+          }
         }
       }
       if (!validScripts.length) continue;
-
+      const validScriptIds = validScripts.map((v) => v.id);
+      // 修改状态为正在提取中
+      await u.db("o_script").whereIn("id", validScriptIds).update({
+        extractState: 0, // 正在提取
+      });
       // 查询当前项目已有的资产列表，提供给 AI 参考
       const existingAssets = await u.db("o_assets").where("projectId", projectId).select("name", "type");
       const existingAssetsList = existingAssets.map((a) => `${a.name}(${a.type})`).join("、");
@@ -163,8 +170,6 @@ export default router.post(
       const scriptsContent = validScripts
         .map(({ id, script }) => `===== 【剧本ID: ${id}】${script.name || ""} =====\n${script.content}`)
         .join("\n\n");
-
-      const validScriptIds = validScripts.map((v) => v.id);
 
       // 用闭包收集 AI 返回的资产
       let collectedNew: NewAsset[] = [];
@@ -194,7 +199,7 @@ export default router.post(
           ? `\n\n【已有资产列表】：${existingAssetsList}\n对于已有资产，如果在剧本中出现，只需在 existingAssetRefs 中给出资产名称和对应的 scriptIds 数组即可，无需重复生成 desc/type。对于新发现的资产（不在已有列表中），请在 newAssets 中给出完整信息。`
           : "";
 
-        const output = await intansce.invoke({
+        const output = await u.Ai.Text("universalAi").invoke({
           messages: [
             {
               role: "system",
@@ -242,7 +247,5 @@ export default router.post(
         existingRefs: collectedExisting,
       });
     }
-
-    return res.send(success("开始提取资产"));
   },
 );

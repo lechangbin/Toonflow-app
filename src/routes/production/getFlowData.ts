@@ -27,7 +27,7 @@ export default router.post(
     const assetsData = await u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath")
+      .select("o_assets.*", "o_image.filePath", "o_image.state")
       // @ts-ignore
       .where("o_assets.id", "in", assetIds)
       .whereNull("o_assets.assetsId")
@@ -35,7 +35,7 @@ export default router.post(
     let childAssetsData = await u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath")
+      .select("o_assets.*", "o_image.filePath", "o_image.state")
       .where("o_assets.projectId", projectId)
       // @ts-ignore
       .where("o_assets.id", "in", assetIds)
