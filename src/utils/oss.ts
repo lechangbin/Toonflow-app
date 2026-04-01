@@ -45,12 +45,13 @@ class OSS {
    * @param userRelPath 用户传入的相对文件路径（使用 / 作为分隔符）
    * @returns 文件的 http 链接（本地服务地址）
    */
-  async getFileUrl(userRelPath: string): Promise<string> {
+  async getFileUrl(userRelPath: string, prefix?: string): Promise<string> {
+    if (!prefix) prefix = "oss";
     await this.ensureInit();
     const safePath = normalizeUserPath(userRelPath);
     // URL 始终使用 /，所以这里需要将系统分隔符转回 /
-    let url = process.env.OSSURL || `http://127.0.0.1:10588/`;
-    if (isEletron()) url = `http://localhost:${process.env.PORT}/`;
+    let url = `${process.env.OSSURL}${prefix}/` || `http://127.0.0.1:10588/${prefix}/`;
+    if (isEletron()) url = `http://localhost:${process.env.PORT}/${prefix}/`;
     return `${url}${safePath.split(path.sep).join("/")}`;
   }
 
@@ -146,10 +147,7 @@ class OSS {
     await fs.mkdir(path.dirname(absPath), { recursive: true });
     // 如果 data 是 string，则视为 base64 编码，先解码再写入
     // 自动去除可能存在的 Data URL 前缀（如 "data:image/png;base64,"）
-    const buffer =
-      typeof data === "string"
-        ? Buffer.from(data.replace(/^data:[^;]+;base64,/, ""), "base64")
-        : data;
+    const buffer = typeof data === "string" ? Buffer.from(data.replace(/^data:[^;]+;base64,/, ""), "base64") : data;
     await fs.writeFile(absPath, buffer);
   }
 
