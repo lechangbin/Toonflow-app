@@ -116,7 +116,7 @@ export default router.post(
         await u
           .db("o_image")
           .where({ id: imageId })
-          .update({ state: "生成失败", reason: u.error(e).message });
+          .update({ state: "生成失败", errorReason: u.error(e).message });
         return {
           id: item.id!,
           state: "生成失败",
