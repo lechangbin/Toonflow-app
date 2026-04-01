@@ -43,6 +43,8 @@ export default router.post(
       .leftJoin("o_assets2Storyboard", "o_assets.id", "o_assets2Storyboard.assetId")
       .whereIn("o_assets2Storyboard.storyboardId", finalStoryboardIds)
       .select("o_assets2Storyboard.storyboardId", "o_assets.imageId");
+    console.log("%c Line:42 🥪 assetData", "background:#ea7e5c", assetData);
+
     const assetRecord: Record<number, number[]> = {};
     assetData.forEach((item: any) => {
       if (!assetRecord[item.storyboardId]) {
@@ -50,9 +52,7 @@ export default router.post(
       }
       assetRecord[item.storyboardId].push(item.imageId);
     });
-    await u.db("o_storyboard").whereIn("id", finalStoryboardIds).update({
-      state: "生成中",
-    });
+
     res.status(200).send(
       success(
         storyboardData.map((i) => ({
@@ -111,25 +111,30 @@ export default router.post(
   },
 );
 async function getAssetsImageBase64(imageIds: number[]) {
-  if (imageIds.length === 0) return [];
-  const imagePaths = await u
-    .db("o_assets")
-    .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-    .whereIn("o_assets.id", imageIds)
-    .select("o_assets.id", "o_image.filePath");
-  if (!imagePaths.length) return [];
+  if (!imageIds.length) return [];
+
+  const imagePaths = await u.db("o_image").whereIn("o_image.id", imageIds).select("o_image.id", "o_image.filePath");
+
+  // 建立 id 到 filePath 的映射
+  const id2Path = new Map<number, string>();
+  for (const row of imagePaths) {
+    id2Path.set(row.id, row.filePath);
+  }
+
+  // 保证输出顺序与 imageIds 一致
   const imageUrls = await Promise.all(
-    imagePaths.map(async (i) => {
-      if (i.filePath) {
+    imageIds.map(async (id) => {
+      const filePath = id2Path.get(id);
+      if (filePath) {
         try {
-          return await urlToBase64(await u.oss.getFileUrl(i.filePath));
+          return await urlToBase64(await u.oss.getFileUrl(filePath));
         } catch {
           return null;
         }
-      } else {
-        return null;
       }
+      return null;
     }),
   );
+  // 保留顺序，并且过滤掉无效项
   return imageUrls.filter(Boolean) as string[];
 }
