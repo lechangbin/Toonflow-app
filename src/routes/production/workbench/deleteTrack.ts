@@ -12,7 +12,8 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-    await u.db("o_video").where("id", id).delete();
-    res.status(200).send(success({ message: "视频删除成功" }));
+    await u.db("o_videoTrack").where("id", id).delete();
+    await u.db("o_storyboard").where("trackId", id).delete();
+    res.status(200).send(success({ message: "视频段删除成功" }));
   },
 );
