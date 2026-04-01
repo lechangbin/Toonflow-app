@@ -23,6 +23,7 @@ interface TrackItem {
   prompt: string;
   state: "未生成" | "生成中" | "已完成" | "生成失败";
   reason?: string;
+  duration?: number;
   selectVideoId?: number;
   medias: TrackMedia[];
   videoList: VideoItem[];
@@ -53,6 +54,7 @@ export default router.post(
       const item = trackData.find((t) => t.id === trackId);
       trackList.push({
         id: trackId,
+        duration: item?.duration ?? 0,
         prompt: item?.prompt || "",
         state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
         reason: item?.reason ?? "",

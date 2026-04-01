@@ -33,14 +33,6 @@ export default router.post(
       } catch (e) {
         console.error("[删除视觉手册] 删除失败:", artPromptsDir, e);
       }
-
-      // 2. 删除 oss 下的同名文件夹（存放图片），独立于 art_prompts 目录
-      try {
-        await u.oss.deleteDirectory(name);
-      } catch (e) {
-        console.warn("[删除视觉手册] oss 目录删除失败:", name, e);
-      }
-
       res.status(200).send(success({ message: "删除成功" }));
     } catch (err) {
       res.status(500).send(error(u.error(err).message || "删除失败"));

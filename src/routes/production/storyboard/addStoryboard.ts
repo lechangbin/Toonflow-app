@@ -18,12 +18,14 @@ export default router.post(
     prompt: z.string(),
     duration: z.number(),
     state: z.string(),
+    videoPrompt: z.string(),
+    shouldGenerateImage: z.number(),
     src: z.string().nullable(),
     scriptId: z.number(),
     projectId: z.number(),
   }),
   async (req, res) => {
-    const { prompt, duration, state, src, scriptId, projectId } = req.body;
+    const { prompt, duration, state, src, scriptId, projectId, videoPrompt, shouldGenerateImage } = req.body;
 
     const [trackId] = await u.db("o_videoTrack").insert({
       scriptId: scriptId,
@@ -35,6 +37,8 @@ export default router.post(
       state,
       filePath: new URL(src).pathname,
       trackId,
+      videoPrompt,
+      shouldGenerateImage,
       scriptId: scriptId,
       projectId: projectId,
     });

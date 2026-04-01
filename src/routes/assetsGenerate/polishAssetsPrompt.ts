@@ -76,11 +76,31 @@ export default router.post(
       });
 
     const result: ResultItem[] = Object.values(itemMap);
-
+    //查询资产是否是衍生资产
+    const assetsData = await u.db("o_assets").where("id", assetsId).select("assetsId").first();
+    if (!assetsData) return { code: 500, message: "资产不存在" };
     const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string; visualManual: string }> = {
-      role: { promptKey: "role-polish", itemType: "characters", label: "角色标准四视图", nameLabel: "角色", visualManual: "art_character" },
-      scene: { promptKey: "scene-polish", itemType: "scenes", label: "场景图", nameLabel: "场景", visualManual: "art_scene" },
-      tool: { promptKey: "tool-polish", itemType: "props", label: "道具图", nameLabel: "道具", visualManual: "art_prop" },
+      role: {
+        promptKey: "role-polish",
+        itemType: "characters",
+        label: "角色标准四视图",
+        nameLabel: "角色",
+        visualManual: assetsData.assetsId ? "art_character_derivative" : "art_character",
+      },
+      scene: {
+        promptKey: "scene-polish",
+        itemType: "scenes",
+        label: "场景图",
+        nameLabel: "场景",
+        visualManual: assetsData.assetsId ? "art_scene_derivative" : "art_scene",
+      },
+      tool: {
+        promptKey: "tool-polish",
+        itemType: "props",
+        label: "道具图",
+        nameLabel: "道具",
+        visualManual: assetsData.assetsId ? "art_prop_derivative" : "art_prop",
+      },
     };
 
     const config = typeConfig[type];
