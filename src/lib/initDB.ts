@@ -257,11 +257,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
 - 对话密集章节，关注对话推动了什么结果，而非复述对话内容`,
           },
           {
-            name: "资产提示词生成",
-            type: "assetsPromptGeneration",
-            data: "# 资产提示词生成指令 根据提供的项目参数和资产设定，生成符合要求的提示词\n\n请根据以下参数生成提示词：\n\n**基础参数：**\n- 风格: {风格}\n- 小说类型: {小说类型}\n- 小说背景: {小说背景}\n\n**资产设定：**\n- 类型: {角色/场景/道具}\n- 名称:{名称}\n- 描述:{描述}\n\n请严格按照skill规范生成提示词。",
-          },
-          {
             name: "剧本资产提取",
             type: "scriptAssetExtraction",
             data: `---
