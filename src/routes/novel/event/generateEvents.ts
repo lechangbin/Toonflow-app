@@ -12,13 +12,14 @@ export default router.post(
   validateFields({
     projectId: z.number(),
     novelIds: z.array(z.number()),
+    concurrentCount: z.number().min(1).optional(),
   }),
   async (req, res) => {
-    const { projectId, novelIds } = req.body;
+    const { projectId, novelIds, concurrentCount = 5 } = req.body;
 
     const [allChapters, novel] = await Promise.all([
       u.db("o_novel").where("projectId", projectId).whereIn("id", novelIds),
-      Promise.resolve(new u.cleanNovel()),
+      Promise.resolve(new u.cleanNovel(concurrentCount)),
     ]);
     if (allChapters.length === 0) {
       return res.status(400).send(success("没有对应章节"));

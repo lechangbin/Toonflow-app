@@ -24,13 +24,16 @@ export default router.post(
       episodesId: number;
     } = req.body;
     const sqlData = await u.db("o_agentWorkData").where("projectId", String(projectId)).andWhere("episodesId", String(episodesId)).first();
-    if (data.storyboard && data.storyboard.length)
+    const filterDatas = data.storyboard.filter((i) => !i.id);
+    if (data.storyboard && data.storyboard.length && !filterDatas.length)
       await Promise.all(
-        data.storyboard.map(async (i, index) => {
-          await u.db("o_storyboard").where("id", i.id).update({
-            index: index,
-          });
-        }),
+        data.storyboard
+          .filter((i) => i.id)
+          .map(async (i, index) => {
+            await u.db("o_storyboard").where("id", i.id).update({
+              index: index,
+            });
+          }),
       );
     if (!sqlData) {
       await u.db("o_agentWorkData").insert({

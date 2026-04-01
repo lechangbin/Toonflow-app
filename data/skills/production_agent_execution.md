@@ -379,7 +379,7 @@ add_deriveAsset({
 
 ---
 
-## 五、生成分镜图片
+## 五、生成分镜面板与生成分镜图片
 
 ### 工具
 
@@ -393,11 +393,11 @@ add_deriveAsset({
 ### 执行流程
 
 1. 获取 `script` 、`stoaryTable`
-2. 使用XML格式写入工作区分镜面板：<storyboard><items prompt=提示词内容 track=分组 duration=视频推荐时间 associateAssetsIds=[资产ID列表]/></storyboard>
-3. 先获取 `storyboard`数据 再调用 `generate_storyboard_images({ ids: [真实分镜ID列表] })` 生成分镜图片（异步，发起即返回）
+2. 使用XML格式写入工作区分镜面板：<storyboardItem prompt=提示词内容 track=分组 duration=视频推荐时间 associateAssetsIds="[该分镜所需的资产ID列表]" shouldGenerateImage="是否需要生成分镜图片 true/false, 默认为true" /></storyboardItem>
+3. 生成分镜面板后,先获取 `storyboard`数据 再调用 `generate_storyboard_images({ ids: [真实分镜ID列表] })` 生成分镜图片（异步，发起即返回）
 
 ### 约束
 
 - 前置条件：分镜表已构建完成且用户已确认
 - 图片必须与分镜描述匹配
-- 你必须使用XML格式写入工作区分镜面板：<storyboard><items prompt=提示词内容 track=分组 duration=视频推荐时间 associateAssetsIds=[资产ID列表]/></storyboard>
+- 你必须使用XML格式写入工作区分镜面板：<storyboardItem prompt=提示词内容 track=分组 duration=视频推荐时间 associateAssetsIds="[该分镜所需的资产ID列表]" shouldGenerateImage="是否需要生成分镜图片 true/false, 默认为true" /></storyboardItem>

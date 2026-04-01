@@ -16,16 +16,19 @@ export default router.post(
     storyboardIds: z.array(z.number()),
     projectId: z.number(),
     scriptId: z.number(),
+    concurrentCount: z.number().min(1).optional(),
   }),
   async (req, res) => {
     const {
       storyboardIds,
       projectId,
       scriptId,
+      concurrentCount = 5,
     }: {
       storyboardIds: number[];
       projectId: number;
       scriptId: number;
+      concurrentCount: number;
     } = req.body;
     if (!storyboardIds || storyboardIds.length === 0) return res.status(400).send(error("storyboardIds不能为空"));
     // 当没有 storyboardIds 时，通过 AI 生成新的分镜面板数据
@@ -47,6 +50,9 @@ export default router.post(
       }
       assetRecord[item.storyboardId].push(item.imageId);
     });
+    await u.db("o_storyboard").whereIn("id", finalStoryboardIds).update({
+      state: "生成中",
+    });
     res.status(200).send(
       success(
         storyboardData.map((i) => ({
@@ -58,16 +64,14 @@ export default router.post(
         })),
       ),
     );
-    for (const item of storyboardData) {
+    const generateTask = async (item: (typeof storyboardData)[number]) => {
       const repeloadObj = {
         prompt: item.prompt!,
         size: projectSettingData?.imageQuality as "1K" | "2K" | "4K",
         aspectRatio: "16:9" as `${number}:${number}`,
       };
-      await u.db("o_storyboard").where("id", item.id).update({
-        state: "生成中",
-      });
-      u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`)
+
+      await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`)
         .run(
           {
             imageBase64: await getAssetsImageBase64(assetRecord[item.id!] || []),
@@ -97,6 +101,12 @@ export default router.post(
               state: "生成失败",
             });
         });
+    };
+
+    // 按 concurrentCount 控制并发数，分批执行
+    for (let i = 0; i < storyboardData.length; i += concurrentCount) {
+      const batch = storyboardData.slice(i, i + concurrentCount);
+      await Promise.all(batch.map(generateTask));
     }
   },
 );

@@ -21,7 +21,8 @@ export default router.post(
       .update({
         filePath: new URL(url).pathname,
         flowId,
+        state: "已完成",
       });
-    res.status(200).send(success({ message: "更新提示词成功" }));
+    res.status(200).send(success({ message: "更新分镜成功" }));
   },
 );

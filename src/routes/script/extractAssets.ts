@@ -54,7 +54,7 @@ export default router.post(
   validateFields({
     scriptIds: z.array(z.number()),
     projectId: z.number(),
-    groupSize: z.number().min(1).max(10).optional(),
+    groupSize: z.number().min(1).optional(),
   }),
   async (req, res) => {
     const { scriptIds, projectId, groupSize = 5 } = req.body;

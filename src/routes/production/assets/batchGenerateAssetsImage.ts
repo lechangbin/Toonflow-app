@@ -14,9 +14,10 @@ export default router.post(
     assetIds: z.array(z.number()),
     projectId: z.number(),
     scriptId: z.number(),
+    concurrentCount: z.number().min(1).optional(),
   }),
   async (req, res) => {
-    const { assetIds, projectId, scriptId } = req.body;
+    const { assetIds, projectId, scriptId, concurrentCount = 5 } = req.body;
 
     const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle").first();
 
@@ -53,8 +54,24 @@ export default router.post(
         prompt: scenePrompt,
       },
     };
-    const imageData = [];
+    // 先批量为所有 assets 创建 image 记录并标记为"生成中"
+    const imageIdMap: Record<number, number> = {};
     for (const item of assetsDataArr) {
+      const [imageId] = await u.db("o_image").insert({
+        assetsId: item.id,
+        type: item.type,
+        state: "生成中",
+        resolution: projectSettingData?.imageQuality,
+        model: projectSettingData?.imageModel,
+      });
+      imageIdMap[item.id!] = imageId;
+      await u.db("o_assets").where("id", item.id).update({ imageId: imageId });
+    }
+
+    const imageData: { id: number; state: string; src: string }[] = [];
+    res.status(200).send(success("开始生成资产图片"));
+    const generateSingleAsset = async (item: (typeof assetsDataArr)[number]) => {
+      const imageId = imageIdMap[item.id!];
       const typeConfig = promptRecord[item.type!] || promptRecord["role"];
 
       const { text } = await u.Ai.Text("universalAi").invoke({
@@ -67,13 +84,6 @@ export default router.post(
         ],
       });
 
-      const [imageId] = await u.db("o_image").insert({
-        assetsId: item.id,
-        type: item.type,
-        state: "生成中",
-        resolution: projectSettingData?.imageQuality,
-        model: projectSettingData?.imageModel,
-      });
       const imageBase64 = imageUrlRecord[item.assetsId!] ? await urlToBase64(imageUrlRecord[item.assetsId!]) : null;
       try {
         const repeloadObj = {
@@ -93,29 +103,33 @@ export default router.post(
             projectId: projectId,
           },
         );
-        const savePath = `/${projectId}/assets/${scriptId}/${u.uuid()}.jpg`;
+        const savePath = `/${projectId}/assets/${scriptId}/${item.type}/${u.uuid()}.jpg`;
         await imageCls.save(savePath);
-        //   更新对应数据库
-        await u.db("o_assets").where("id", item.id).update({ imageId: imageId, prompt: text });
+        await u.db("o_assets").where("id", item.id).update({ prompt: text });
         await u.db("o_image").where({ id: imageId }).update({ state: "已完成", filePath: savePath });
-        imageData.push({
-          id: item.id,
+        return {
+          id: item.id!,
           state: "已完成",
           src: await u.oss.getFileUrl(savePath),
-        });
+        };
       } catch (e) {
         await u
           .db("o_image")
           .where({ id: imageId })
           .update({ state: "生成失败", reason: u.error(e).message });
-        imageData.push({
-          id: item.id,
+        return {
+          id: item.id!,
           state: "生成失败",
           src: "",
-        });
+        };
       }
-    }
+    };
 
-    return res.status(200).send(success(imageData));
+    // 按 concurrentCount 分批并发执行
+    for (let i = 0; i < assetsDataArr.length; i += concurrentCount) {
+      const batch = assetsDataArr.slice(i, i + concurrentCount);
+      const batchResults = await Promise.all(batch.map(generateSingleAsset));
+      imageData.push(...batchResults);
+    }
   },
 );
