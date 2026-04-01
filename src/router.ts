@@ -1,4 +1,4 @@
-// @routes-hash 39d27430eb844d91284da0877818f52f
+// @routes-hash 5706a0a0e92e01c81f14f8f49c9f837c
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -118,15 +118,16 @@ import route114 from "./routes/setting/skillManagement/getSkillList";
 import route115 from "./routes/setting/skillManagement/saveSkillContent";
 import route116 from "./routes/setting/vendorConfig/addVendor";
 import route117 from "./routes/setting/vendorConfig/deleteVendor";
-import route118 from "./routes/setting/vendorConfig/getVendorList";
-import route119 from "./routes/setting/vendorConfig/modelTest";
-import route120 from "./routes/setting/vendorConfig/updateCode";
-import route121 from "./routes/setting/vendorConfig/updateVendor";
-import route122 from "./routes/task/getProject";
-import route123 from "./routes/task/getTaskApi";
-import route124 from "./routes/task/getTaskCategories";
-import route125 from "./routes/task/taskDetails";
-import route126 from "./routes/test/test";
+import route118 from "./routes/setting/vendorConfig/enableEnglishVendor";
+import route119 from "./routes/setting/vendorConfig/getVendorList";
+import route120 from "./routes/setting/vendorConfig/modelTest";
+import route121 from "./routes/setting/vendorConfig/updateCode";
+import route122 from "./routes/setting/vendorConfig/updateVendor";
+import route123 from "./routes/task/getProject";
+import route124 from "./routes/task/getTaskApi";
+import route125 from "./routes/task/getTaskCategories";
+import route126 from "./routes/task/taskDetails";
+import route127 from "./routes/test/test";
 
 export default async (app: Express) => {
   app.use("/api/agents/clearMemory", route1);
@@ -246,13 +247,14 @@ export default async (app: Express) => {
   app.use("/api/setting/skillManagement/saveSkillContent", route115);
   app.use("/api/setting/vendorConfig/addVendor", route116);
   app.use("/api/setting/vendorConfig/deleteVendor", route117);
-  app.use("/api/setting/vendorConfig/getVendorList", route118);
-  app.use("/api/setting/vendorConfig/modelTest", route119);
-  app.use("/api/setting/vendorConfig/updateCode", route120);
-  app.use("/api/setting/vendorConfig/updateVendor", route121);
-  app.use("/api/task/getProject", route122);
-  app.use("/api/task/getTaskApi", route123);
-  app.use("/api/task/getTaskCategories", route124);
-  app.use("/api/task/taskDetails", route125);
-  app.use("/api/test/test", route126);
+  app.use("/api/setting/vendorConfig/enableEnglishVendor", route118);
+  app.use("/api/setting/vendorConfig/getVendorList", route119);
+  app.use("/api/setting/vendorConfig/modelTest", route120);
+  app.use("/api/setting/vendorConfig/updateCode", route121);
+  app.use("/api/setting/vendorConfig/updateVendor", route122);
+  app.use("/api/task/getProject", route123);
+  app.use("/api/task/getTaskApi", route124);
+  app.use("/api/task/getTaskCategories", route125);
+  app.use("/api/task/taskDetails", route126);
+  app.use("/api/test/test", route127);
 }
