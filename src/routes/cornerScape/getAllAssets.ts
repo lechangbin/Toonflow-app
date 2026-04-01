@@ -19,6 +19,7 @@ export default router.post(
       .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.model", "o_image.resolution", "o_image.errorReason")
       .where("o_assets.projectId", projectId)
       .andWhere("o_assets.type", "<>", "clip")
+      .andWhere("o_assets.assetsId", null)
       .modify((qb) => {
         if (type && type.length > 0) qb.whereIn("o_assets.type", type);
       })

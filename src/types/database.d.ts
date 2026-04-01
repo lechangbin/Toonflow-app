@@ -1,40 +1,23 @@
-// @db-hash 54f96fd4840bc7be938137276359fa34
+// @db-hash 6a348d086c2b17da9a5120ad4f89f068
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_assets_old_20260401 {
-  'assetsId'?: number | null;
-  'describe'?: string | null;
-  'id'?: number;
-  'imageId'?: number | null;
+export interface _o_vendorConfig_old_20260401 {
+  'author'?: string | null;
+  'code'?: string | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'icon'?: string | null;
+  'id'?: string;
+  'inputs'?: string | null;
+  'inputValues'?: string | null;
+  'models'?: string | null;
   'name'?: string | null;
+}
+export interface _o_videoTrack_old_20260401 {
+  'id'?: number;
   'projectId'?: number | null;
-  'prompt'?: string | null;
-  'promptState'?: string | null;
-  'remark'?: string | null;
   'scriptId'?: number | null;
-  'startTime'?: number | null;
-  'type'?: string | null;
-}
-export interface _o_image_old_20260401 {
-  'assetsId'?: number | null;
-  'filePath'?: string | null;
-  'id'?: number;
-  'model'?: string | null;
-  'reason'?: string | null;
-  'resolution'?: string | null;
-  'state'?: string | null;
-  'type'?: string | null;
-}
-export interface _o_image_old_20260401_1 {
-  'assetsId'?: number | null;
-  'errorReason'?: string | null;
-  'filePath'?: string | null;
-  'id'?: number;
-  'model'?: string | null;
-  'reason'?: string | null;
-  'resolution'?: string | null;
-  'state'?: string | null;
-  'type'?: string | null;
+  'videoId'?: number | null;
 }
 export interface memories {
   'content': string;
@@ -77,6 +60,7 @@ export interface o_artStyle {
 export interface o_assets {
   'assetsId'?: number | null;
   'describe'?: string | null;
+  'flowId'?: number | null;
   'id'?: number;
   'imageId'?: number | null;
   'name'?: string | null;
@@ -106,6 +90,7 @@ export interface o_eventChapter {
 }
 export interface o_image {
   'assetsId'?: number | null;
+  'errorReason'?: string | null;
   'filePath'?: string | null;
   'id'?: number;
   'model'?: string | null;
@@ -115,10 +100,8 @@ export interface o_image {
   'type'?: string | null;
 }
 export interface o_imageFlow {
-  'assetsId'?: number | null;
   'flowData': string;
   'id'?: number;
-  'storyboardId'?: number | null;
 }
 export interface o_novel {
   'chapter'?: string | null;
@@ -150,6 +133,7 @@ export interface o_project {
   'imageModel'?: string | null;
   'imageQuality'?: string | null;
   'intro'?: string | null;
+  'mode'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
   'type'?: string | null;
@@ -231,6 +215,7 @@ export interface o_vendorConfig {
   'code'?: string | null;
   'createTime'?: number | null;
   'description'?: string | null;
+  'enableEnglish'?: number | null;
   'icon'?: string | null;
   'id'?: string;
   'inputs'?: string | null;
@@ -260,9 +245,8 @@ export interface o_videoTrack {
 }
 
 export interface DB {
-  "_o_assets_old_20260401": _o_assets_old_20260401;
-  "_o_image_old_20260401": _o_image_old_20260401;
-  "_o_image_old_20260401_1": _o_image_old_20260401_1;
+  "_o_vendorConfig_old_20260401": _o_vendorConfig_old_20260401;
+  "_o_videoTrack_old_20260401": _o_videoTrack_old_20260401;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
