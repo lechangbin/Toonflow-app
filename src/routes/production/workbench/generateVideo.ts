@@ -5,6 +5,18 @@ import { v4 as uuidv4 } from "uuid";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
+
+type Type = "imageReference" | "startImage" | "endImage" | "videoReference" | "audioReference";
+interface UploadItem {
+  fileType: "image" | "video" | "audio";
+  type: Type;
+  sources?: "assets" | "storyboard";
+  id?: number;
+  src?: string;
+  label?: string;
+  prompt?: string;
+}
+
 export default router.post(
   "/",
   validateFields({
@@ -29,23 +41,14 @@ export default router.post(
     //获取生成视频比例
     const ratio = await u.db("o_project").select("videoRatio").where("id", projectId).first();
     const videoPath = `/${projectId}/video/${uuidv4()}.mp4`; //视频保存路径
-    //新增
-    const [videoId] = await u.db("o_video").insert({
-      filePath: videoPath,
-      time: Date.now(),
-      state: "生成中",
-      scriptId,
-      projectId,
-      videoTrackId: trackId,
-    });
     //查询出图片数据
     const images = await Promise.all(
-      uploadData.map(async (item: { id: number; type: string }) => {
-        if (item.type === "storyboard") {
+      uploadData.map(async (item: UploadItem) => {
+        if (item.sources === "storyboard") {
           const filePath = await u.db("o_storyboard").where("id", item.id).select("filePath").first();
           return filePath?.filePath;
         }
-        if (item.type === "assets") {
+        if (item.sources === "assets") {
           const filePath = await u
             .db("o_assets")
             .where("o_assets.id", item.id)
@@ -63,6 +66,15 @@ export default router.post(
         return await u.oss.getImageBase64(item);
       }),
     );
+    //新增
+    const [videoId] = await u.db("o_video").insert({
+      filePath: videoPath,
+      time: Date.now(),
+      state: "生成中",
+      scriptId,
+      projectId,
+      videoTrackId: trackId,
+    });
     res.status(200).send(success(videoId));
     (async () => {
       try {
