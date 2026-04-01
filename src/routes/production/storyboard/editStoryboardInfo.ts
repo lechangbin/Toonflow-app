@@ -14,7 +14,7 @@ export default router.post(
     videoDesc: z.string(),
   }),
   async (req, res) => {
-    const { id, prompt } = req.body;
+    const { id, prompt, videoDesc } = req.body;
     await u.db("o_storyboard").where({ id }).update({
       prompt,
       videoDesc,
