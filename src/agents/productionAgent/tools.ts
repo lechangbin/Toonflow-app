@@ -167,7 +167,6 @@ export default (toolCpnfig: ToolConfig) => {
         ids: z.array(z.number()).describe("必须获取真实的分镜ID，支持批量生成"),
       }),
       execute: async ({ ids }) => {
-        console.log("%c Line:176 🍒 ids", "background:#ea7e5c", ids);
         const thinking = msg.thinking("正在生成分镜...");
         new Promise((resolve) => socket.emit("generateStoryboard", { ids }, (res: any) => resolve(res)))
           .then((res) => {
