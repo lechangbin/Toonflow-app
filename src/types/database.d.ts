@@ -1,4 +1,4 @@
-// @db-hash 7af86e2bafe5cab7d175eb68cf76ed7a
+// @db-hash ea4ad047f16c826806ff76f388882a9c
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_storyboard_old_20260402 {
@@ -12,23 +12,8 @@ export interface _o_storyboard_old_20260402 {
   'prompt'?: string | null;
   'reason'?: string | null;
   'scriptId'?: number | null;
-  'state'?: string | null;
-  'trackId'?: number | null;
-}
-export interface _o_storyboard_old_20260402_1 {
-  'createTime'?: number | null;
-  'duration'?: string | null;
-  'filePath'?: string | null;
-  'flowId'?: number | null;
-  'id'?: number;
-  'index'?: number | null;
-  'projectId'?: number | null;
-  'prompt'?: string | null;
-  'reason'?: string | null;
-  'scriptId'?: number | null;
   'shouldGenerateImage'?: number | null;
   'state'?: string | null;
-  'track'?: string | null;
   'trackId'?: number | null;
   'videoPrompt'?: string | null;
 }
@@ -37,7 +22,6 @@ export interface _o_vendorConfig_old_20260401 {
   'code'?: string | null;
   'createTime'?: number | null;
   'description'?: string | null;
-  'enableEnglish'?: number | null;
   'icon'?: string | null;
   'id'?: string;
   'inputs'?: string | null;
@@ -45,7 +29,13 @@ export interface _o_vendorConfig_old_20260401 {
   'models'?: string | null;
   'name'?: string | null;
 }
-export interface _o_videoTrack_old_20260402 {
+export interface _o_videoTrack_old_20260401 {
+  'id'?: number;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
+  'videoId'?: number | null;
+}
+export interface _o_videoTrack_old_20260401_1 {
   'id'?: number;
   'projectId'?: number | null;
   'prompt'?: string | null;
@@ -229,7 +219,6 @@ export interface o_storyboard {
   'scriptId'?: number | null;
   'shouldGenerateImage'?: number | null;
   'state'?: string | null;
-  'track'?: string | null;
   'trackId'?: number | null;
   'videoDesc'?: string | null;
 }
@@ -254,7 +243,6 @@ export interface o_vendorConfig {
   'code'?: string | null;
   'createTime'?: number | null;
   'description'?: string | null;
-  'enable'?: number | null;
   'enableEnglish'?: number | null;
   'icon'?: string | null;
   'id'?: string;
@@ -280,15 +268,16 @@ export interface o_videoTrack {
   'prompt'?: string | null;
   'reason'?: string | null;
   'scriptId'?: number | null;
+  'selectVideoId'?: number | null;
   'state'?: string | null;
   'videoId'?: number | null;
 }
 
 export interface DB {
   "_o_storyboard_old_20260402": _o_storyboard_old_20260402;
-  "_o_storyboard_old_20260402_1": _o_storyboard_old_20260402_1;
   "_o_vendorConfig_old_20260401": _o_vendorConfig_old_20260401;
-  "_o_videoTrack_old_20260402": _o_videoTrack_old_20260402;
+  "_o_videoTrack_old_20260401": _o_videoTrack_old_20260401;
+  "_o_videoTrack_old_20260401_1": _o_videoTrack_old_20260401_1;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
