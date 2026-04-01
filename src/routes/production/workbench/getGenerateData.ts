@@ -15,7 +15,7 @@ interface TrackMedia {
   src: string;
   id?: number;
   fileType: "image" | "video" | "audio";
-  prompt?: string;
+  videoDesc?: string;
 }
 
 interface TrackItem {
@@ -66,7 +66,7 @@ export default router.post(
               async (s): Promise<TrackMedia> => ({
                 src: s.filePath ? await u.oss.getFileUrl(s.filePath) : "",
                 fileType: "image",
-                ...(s.prompt != null ? { prompt: s.prompt } : {}),
+                ...(s.prompt != null ? { prompt: s.videoDesc } : {}),
                 ...(s.id != null ? { id: s.id } : {}),
               }),
             ),
