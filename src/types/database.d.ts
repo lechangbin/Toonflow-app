@@ -1,41 +1,6 @@
-// @db-hash 54f96fd4840bc7be938137276359fa34
+// @db-hash c0d74bd27b3a41b397705c93d1737a3b
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_assets_old_20260401 {
-  'assetsId'?: number | null;
-  'describe'?: string | null;
-  'id'?: number;
-  'imageId'?: number | null;
-  'name'?: string | null;
-  'projectId'?: number | null;
-  'prompt'?: string | null;
-  'promptState'?: string | null;
-  'remark'?: string | null;
-  'scriptId'?: number | null;
-  'startTime'?: number | null;
-  'type'?: string | null;
-}
-export interface _o_image_old_20260401 {
-  'assetsId'?: number | null;
-  'filePath'?: string | null;
-  'id'?: number;
-  'model'?: string | null;
-  'reason'?: string | null;
-  'resolution'?: string | null;
-  'state'?: string | null;
-  'type'?: string | null;
-}
-export interface _o_image_old_20260401_1 {
-  'assetsId'?: number | null;
-  'errorReason'?: string | null;
-  'filePath'?: string | null;
-  'id'?: number;
-  'model'?: string | null;
-  'reason'?: string | null;
-  'resolution'?: string | null;
-  'state'?: string | null;
-  'type'?: string | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -77,6 +42,7 @@ export interface o_artStyle {
 export interface o_assets {
   'assetsId'?: number | null;
   'describe'?: string | null;
+  'flowId'?: number | null;
   'id'?: number;
   'imageId'?: number | null;
   'name'?: string | null;
@@ -106,6 +72,7 @@ export interface o_eventChapter {
 }
 export interface o_image {
   'assetsId'?: number | null;
+  'errorReason'?: string | null;
   'filePath'?: string | null;
   'id'?: number;
   'model'?: string | null;
@@ -115,10 +82,8 @@ export interface o_image {
   'type'?: string | null;
 }
 export interface o_imageFlow {
-  'assetsId'?: number | null;
   'flowData': string;
   'id'?: number;
-  'storyboardId'?: number | null;
 }
 export interface o_novel {
   'chapter'?: string | null;
@@ -150,6 +115,7 @@ export interface o_project {
   'imageModel'?: string | null;
   'imageQuality'?: string | null;
   'intro'?: string | null;
+  'mode'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
   'type'?: string | null;
@@ -231,6 +197,7 @@ export interface o_vendorConfig {
   'code'?: string | null;
   'createTime'?: number | null;
   'description'?: string | null;
+  'enableEnglish'?: number | null;
   'icon'?: string | null;
   'id'?: string;
   'inputs'?: string | null;
@@ -260,9 +227,6 @@ export interface o_videoTrack {
 }
 
 export interface DB {
-  "_o_assets_old_20260401": _o_assets_old_20260401;
-  "_o_image_old_20260401": _o_image_old_20260401;
-  "_o_image_old_20260401_1": _o_image_old_20260401_1;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
