@@ -12,6 +12,7 @@ import fs from "fs";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
+import path from "path";
 
 const app = express();
 const server = http.createServer(app);
@@ -29,14 +30,28 @@ export default async function startServe(randomPort: Boolean = false) {
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
-
   // oss 静态资源
-  const rootDir = u.getPath("oss");
-  if (!fs.existsSync(rootDir)) {
-    fs.mkdirSync(rootDir, { recursive: true });
+  const ossDir = u.getPath("oss");
+  if (!fs.existsSync(ossDir)) {
+    fs.mkdirSync(ossDir, { recursive: true });
   }
-  console.log("文件目录:", rootDir);
-  app.use(express.static(rootDir));
+  console.log("文件目录:", ossDir);
+  app.use("/oss", express.static(ossDir));
+  // skills 静态资源
+
+  const skillsDir = u.getPath("skills");
+  if (!fs.existsSync(skillsDir)) {
+    fs.mkdirSync(skillsDir, { recursive: true });
+  }
+  console.log("文件目录:", skillsDir);
+  // 只允许图片文件访问
+  app.use(
+    "/skills",
+    (req, res, next) => {
+      /\.(jpe?g|png|gif|webp|svg|ico|bmp)$/i.test(req.path) ? next() : res.status(403).end();
+    },
+    express.static(skillsDir),
+  );
 
   // data/web 静态网站
   const webDir = u.getPath("web");

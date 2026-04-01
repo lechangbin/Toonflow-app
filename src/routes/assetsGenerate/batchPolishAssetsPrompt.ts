@@ -83,21 +83,47 @@ export default router.post(
         });
       });
     const result: ResultItem[] = Object.values(itemMap);
-
-    const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string; visualManual: string }> = {
-      role: { promptKey: "role-polish", itemType: "characters", label: "角色标准四视图", nameLabel: "角色", visualManual: "art_character" },
-      scene: { promptKey: "scene-polish", itemType: "scenes", label: "场景图", nameLabel: "场景", visualManual: "art_scene" },
-      tool: { promptKey: "tool-polish", itemType: "props", label: "道具图", nameLabel: "道具", visualManual: "art_prop" },
-    };
     // 批量更新所有 item 状态为生成中
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);
     await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
+    //查询所有资产，用于判断每个资产是否是衍生资产
+    const assetsDataList = await u.db("o_assets").whereIn("id", assetsIds).select("id", "assetsId");
+    if (!assetsDataList || assetsDataList.length === 0) return res.status(500).send(error("资产不存在"));
+    const assetsDataMap = new Map(assetsDataList.map((a: any) => [a.id, a]));
+
+    const getTypeConfig = (
+      isDerivative: boolean,
+    ): Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string; visualManual: string }> => ({
+      role: {
+        promptKey: "role-polish",
+        itemType: "characters",
+        label: "角色标准四视图",
+        nameLabel: "角色",
+        visualManual: isDerivative ? "art_character_derivative" : "art_character",
+      },
+      scene: {
+        promptKey: "scene-polish",
+        itemType: "scenes",
+        label: "场景图",
+        nameLabel: "场景",
+        visualManual: isDerivative ? "art_scene_derivative" : "art_scene",
+      },
+      tool: {
+        promptKey: "tool-polish",
+        itemType: "props",
+        label: "道具图",
+        nameLabel: "道具",
+        visualManual: isDerivative ? "art_prop_derivative" : "art_prop",
+      },
+    });
 
     // 后台异步并发生成，不阻塞响应
     const limit = pLimit(concurrentCount ?? 1);
-
     const tasks = items.map((item: { assetsId: number; type: string; name: string; describe: string }) =>
       limit(async () => {
+        const assetData = assetsDataMap.get(item.assetsId);
+        if (!assetData) return;
+        const typeConfig = getTypeConfig(!!assetData.assetsId);
         const config = typeConfig[item.type];
         if (!config) return;
         //获取到视觉手册

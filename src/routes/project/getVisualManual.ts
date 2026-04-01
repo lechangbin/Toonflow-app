@@ -33,11 +33,11 @@ function readMd(filePath: string): string {
 // 获取 images 文件夹下所有图片文件路径列表
 async function readAllImages(imagesDir: string) {
   try {
-    const ossPath = u.getPath(["oss", imagesDir]);
+    const ossPath = u.getPath(path.join("skills", "art_prompts", imagesDir, "images"));
     const files = fs.readdirSync(ossPath);
-    const images = files.filter((f) => /\.(png|jpe?g|gif|webp|svg)$/i.test(f)).map((f) => path.join(imagesDir, f));
+    const images = files.filter((f) => /\.(png|jpe?g|gif|webp|svg)$/i.test(f)).map((f) => path.join("art_prompts", imagesDir, "images", f));
     if (images.length) {
-      return Promise.all(images.map(async (i) => await u.oss.getFileUrl(i)));
+      return Promise.all(images.map(async (i) => await u.oss.getFileUrl(i, "skills")));
     } else {
       return [];
     }
@@ -60,7 +60,6 @@ export default router.post("/", async (req, res) => {
     const result = await Promise.all(
       styleDirs.map(async (styleName) => {
         const styleDir = path.join(artPromptsDir, styleName);
-
         const images = await readAllImages(styleName);
         const readmePath = path.join(styleDir, "README.md");
         const readmeContent = fs.readFileSync(readmePath, "utf-8");

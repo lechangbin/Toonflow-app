@@ -77,11 +77,11 @@ export default router.post(
         const content = item.value === "README" ? `${name}\n${item.data}` : item.data;
         fs.writeFileSync(filePath, content, "utf-8");
       }
-      const ossImagesDir = u.getPath(["oss", stylePath]);
+      const imagesDir = path.join(mainPath, "images");
 
       let existingFiles: string[] = [];
       try {
-        const allFiles = fs.readdirSync(ossImagesDir);
+        const allFiles = fs.readdirSync(imagesDir);
         existingFiles = allFiles.filter((f) => /\.(png|jpe?g|gif|webp|svg)$/i.test(f));
       } catch {}
 
@@ -89,12 +89,22 @@ export default router.post(
 
       for (const file of existingFiles) {
         if (!retainedFileNames.has(file)) {
-          await u.oss.deleteFile(`${stylePath}/${file}`);
+          const filePath = path.join(imagesDir, file);
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         }
       }
 
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+      }
+
       for (const item of images) {
-        if (!item.startsWith("http")) await u.oss.writeFile(`${stylePath}/${u.uuid()}.jpg`, item);
+        if (!item.startsWith("http")) {
+          const fileName = `${u.uuid()}.jpg`;
+          const targetPath = path.join(imagesDir, fileName);
+          const buffer = Buffer.from(item.replace(/^data:[^;]+;base64,/, ""), "base64");
+          fs.writeFileSync(targetPath, buffer);
+        }
       }
 
       res.status(200).send(success());

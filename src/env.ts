@@ -3,8 +3,8 @@ import path from "path";
 
 // 默认环境变量（当 env 文件不存在时自动创建）
 const defaultEnvValues: Record<string, string> = {
-  dev: `NODE_ENV=dev\nPORT=10588\nOSSURL=http://127.0.0.1:10588/`,
-  prod: `NODE_ENV=prod\nPORT=10588\nOSSURL=http://127.0.0.1:10588/`,
+  dev: `NODE_ENV=dev\nPORT=10588\nOSSURL=http://127.0.0.1:10588/oss/`,
+  prod: `NODE_ENV=prod\nPORT=10588\nOSSURL=http://127.0.0.1:10588/oss/`,
 };
 
 // 判断是否为打包后的 Electron 环境
