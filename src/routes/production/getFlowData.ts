@@ -141,6 +141,8 @@ export default router.post(
             associateAssetsIds: assets2StoryboardMap[i.id!] ?? [],
             src: i.filePath,
             state: i.state,
+            videoDesc: i.videoDesc,
+            shouldGenerateImage: i.shouldGenerateImage,
             reason: i?.reason ?? "",
           }))
           .sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
