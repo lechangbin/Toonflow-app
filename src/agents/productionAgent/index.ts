@@ -40,9 +40,6 @@ export async function decisionAI(ctx: AgentContext) {
   const memory = new Memory("productionAgent", isolationKey);
   await memory.add("user", text);
 
-  // const { skillPaths } = await useSkill({ mainSkill: "production_agent_decision" });
-  // const prompt = await fs.promises.readFile(skillPaths.mainSkill, "utf-8");
-
   const skill = path.join(u.getPath("skills"), "production_agent_decision.md");
   const prompt = await fs.promises.readFile(skill, "utf-8");
 
@@ -141,7 +138,8 @@ function createSubAgent(parentCtx: AgentContext) {
           "分镜面板：<storyboardItem videoDesc='视频描述' prompt=提示词内容 track='分组' duration='视频推荐时间' associateAssetsIds='[该分镜所需的资产ID列表]' />",
           "```",
         ].join("\n");
-      // "剧本：<script>内容</script>",
+      const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
+      const modelInfo = `项目使用的模型如下：\n图像模型：${projectData?.imageModel}\n视频模型：${projectData?.videoModel}`;
 
       const projectInfo = await u.db("o_project").where("id", resTool.data.projectId).first();
       if (!projectInfo) throw new Error(`项目不存在，ID: ${resTool.data.projectId}`);
@@ -153,7 +151,7 @@ function createSubAgent(parentCtx: AgentContext) {
         name: "执行导演",
         memoryKey: "assistant:execution",
         messages: [
-          { role: "assistant", content: artSkills.prompt },
+          { role: "assistant", content: artSkills.prompt + `\n${modelInfo}` },
           { role: "user", content: prompt },
         ],
         tools: { ...artSkills.tools },
