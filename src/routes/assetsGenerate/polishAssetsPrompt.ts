@@ -108,6 +108,8 @@ export default router.post(
     if (!config.visualManual) return res.status(500).send(error("视觉手册未定义"));
     //获取到视觉手册
     const visualManual = await u.getArtPrompt(project.artStyle as string, "art_skills", config.visualManual);
+    console.log("%c Line:111 🍬 visualManual", "background:#6ec1c2", visualManual);
+    return
     if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
     findItemByName(result, name, config.itemType);
     const systemPrompt = visualManual;

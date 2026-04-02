@@ -93,6 +93,7 @@ export default router.post(
 ></storyboardItem>`,
           )},
           `;
+
     const { text } = await u.Ai.Text("universalAi").invoke({
       system: `${videoPrompt?.data}\n${visualManual}\n${directorManual}`,
       messages: [
@@ -102,8 +103,6 @@ export default router.post(
         },
       ],
     });
-    console.log("%c Line:83 🍷 text", "background:#3f7cff", text);
-
     await u.db("o_videoTrack").where({ id: trackId }).update({
       prompt: text,
     });
