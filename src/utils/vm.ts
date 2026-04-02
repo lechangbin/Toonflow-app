@@ -53,7 +53,6 @@ export default function runCode(code: string, vendor?: Record<string, any>) {
 
   return exports as Record<string, any>;
 }
-
 export function logger(logstring: string) {
   console.log("【VM】" + logstring);
 }
