@@ -83,13 +83,13 @@ export default router.post(
         });
       });
     const result: ResultItem[] = Object.values(itemMap);
-    // 批量更新所有 item 状态为生成中
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);
-    await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
     //查询所有资产，用于判断每个资产是否是衍生资产
     const assetsDataList = await u.db("o_assets").whereIn("id", assetsIds).select("id", "assetsId");
     if (!assetsDataList || assetsDataList.length === 0) return res.status(500).send(error("资产不存在"));
     const assetsDataMap = new Map(assetsDataList.map((a: any) => [a.id, a]));
+    // 所有前置检测通过后，再批量更新状态为生成中
+    await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
 
     const getTypeConfig = (
       isDerivative: boolean,
@@ -128,7 +128,10 @@ export default router.post(
         if (!config) return;
         //获取到视觉手册
         const visualManual = await u.getArtPrompt(project.artStyle as string, "art_skills", config.visualManual);
-        if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
+        if (!visualManual) {
+          await u.db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败", promptErrorReason: "视觉手册未定义" });
+          return;
+        }
         findItemByName(result, item.name, config.itemType);
         const systemPrompt = visualManual;
         try {

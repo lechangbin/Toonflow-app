@@ -24,7 +24,7 @@ export default router.post(
         inputValues: JSON.stringify(inputValue),
       });
     try {
-      const resText = await u.Ai.Text(`toonflow:gpt-4.1`).invoke({
+      const resText = await u.Ai.Text(`toonflow:claude-haiku-4-5-20251001`).invoke({
         prompt: "1+1等于几？",
       });
       if (resText.text) {
@@ -46,6 +46,7 @@ export default router.post(
         res.status(200).send(success("一键填入成功"));
       }
     } catch (err) {
+      console.error(err);
       inputValue.apiKey = "";
       await u
         .db("o_vendorConfig")

@@ -76,7 +76,7 @@ export default router.post(
         for await (const chunk of textStream) {
           fullResponse += chunk;
         }
-        if(!fullResponse) return res.status(500).send(error("模型未返回结果"));
+        if (!fullResponse) return res.status(500).send(error("模型未返回结果"));
         res.status(200).send(success(fullResponse));
       } else {
         const aiTypeFn = {
@@ -87,11 +87,11 @@ export default router.post(
           ...reqConfig.modelData,
         });
         await reqFn.save(type == "video" ? "test.mp4" : "testImage.jpg");
-
         const resultUrl = await u.oss.getFileUrl(type == "video" ? "test.mp4" : "testImage.jpg");
         res.status(200).send(success(resultUrl));
       }
     } catch (err) {
+      console.error(err);
       const msg = u.error(err).message;
       console.error(msg);
       res.status(500).send(error(msg));
