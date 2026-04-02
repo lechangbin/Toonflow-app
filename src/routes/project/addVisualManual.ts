@@ -7,7 +7,7 @@ import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
 const router = express.Router();
 
-// 编辑视觉手册
+// 新增视觉手册
 export default router.post(
   "/",
   validateFields({
@@ -36,7 +36,7 @@ export default router.post(
         return;
       }
 
-      const mainPath = u.getPath(["skills", "art_prompts", stylePath]);
+      const mainPath = u.getPath(["skills", "art_skills", stylePath]);
       if (fs.existsSync(mainPath)) {
         return res.status(400).send(error("请勿填写重复名称的视觉手册"));
       }
