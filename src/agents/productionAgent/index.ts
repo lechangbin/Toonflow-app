@@ -43,12 +43,23 @@ export async function decisionAI(ctx: AgentContext) {
   const skill = path.join(u.getPath("skills"), "production_agent_decision.md");
   const prompt = await fs.promises.readFile(skill, "utf-8");
 
+      const projectInfo = await u.db("o_project").where("id", ctx.resTool.data.projectId).first();
+      if (!projectInfo) throw new Error(`项目不存在，ID: ${ctx.resTool.data.projectId}`);
+      const [_, imageModelName] = projectInfo.imageModel!.split(":");
+      const [id, videoModelName] = projectInfo.videoModel!.split(":");
+      const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
+      const models = JSON.parse(data!.models!);
+      const findData = models.find((i: any) => i.modelName == name);
+      const isRef = findData.mode.every((i: any) => Array.isArray(i));
+      const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
+  
+
   const mem = buildMemPrompt(await memory.get(text));
 
   const { textStream } = await u.Ai.Text("productionAgent").stream({
     messages: [
       { role: "system", content: prompt },
-      { role: "assistant", content: mem },
+      { role: "assistant", content: mem + "\n" + modelInfo },
       { role: "user", content: text },
     ],
     abortSignal,
@@ -138,12 +149,19 @@ function createSubAgent(parentCtx: AgentContext) {
           "分镜面板：<storyboardItem videoDesc='视频描述' prompt=提示词内容 track='分组' duration='视频推荐时间' associateAssetsIds='[该分镜所需的资产ID列表]'></storyboardItem>",
           "```",
         ].join("\n");
-      const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
-      const modelInfo = `项目使用的模型如下：\n图像模型：${projectData?.imageModel}\n视频模型：${projectData?.videoModel}`;
+ 
 
       const projectInfo = await u.db("o_project").where("id", resTool.data.projectId).first();
       if (!projectInfo) throw new Error(`项目不存在，ID: ${resTool.data.projectId}`);
       const artSkills = await createArtSkills(projectInfo?.artStyle!);
+
+      const [_, imageModelName] = projectInfo.imageModel!.split(":");
+      const [id, videoModelName] = projectInfo.videoModel!.split(":");
+      const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
+      const models = JSON.parse(data!.models!);
+      const findData = models.find((i: any) => i.modelName == name);
+      const isRef = findData.mode.every((i: any) => Array.isArray(i));
+      const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 
       return runAgent({
         prompt,
@@ -193,7 +211,6 @@ async function createArtSkills(artName: string) {
   };
   return res;
 }
-
 
 function removeAllXmlTags(text: string): string {
   text = text.replace(/<([a-zA-Z][\w-]*)(\s+[^>]*)?>([\s\S]*?)<\/\1>/g, "");
