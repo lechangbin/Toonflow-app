@@ -58,7 +58,7 @@ export default router.post(
         prompt: item?.prompt || "",
         state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
         reason: item?.reason ?? "",
-        selectVideoId: Number(item?.selectVideoId)!,
+        selectVideoId: Number(item?.videoId)!,
         medias: await Promise.all(
           storyboardList
             .filter((s) => s.trackId === trackId)

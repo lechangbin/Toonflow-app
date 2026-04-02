@@ -30,15 +30,9 @@ export default router.post(
         data: { label: string; value: string; data: string }[];
         directorManual: string;
       };
-      // 不允许纯数字
-      if (/^\d+$/.test(directorManual)) {
-        res.status(400).send(error("文件名称不能为纯数字"));
-        return;
-      }
-
-      // 不允许有符号（只允许中文、字母和数字）
-      if (!/^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(directorManual)) {
-        res.status(400).send(error("文件名称不能包含符号"));
+      // 安全校验：不允许包含路径分隔符、纯数字，防止越级删除或误删项目目录
+      if (name.includes("/") || name.includes("\\") || name === "." || name === ".." || /^\d+$/.test(name)) {
+        res.status(400).send(error("名称不能包含路径分隔符或为纯数字"));
         return;
       }
 
@@ -49,8 +43,8 @@ export default router.post(
       // 字段映射表（与 getVisualManual 保持一致）
       const DATA_MAP: { value: string; subDir?: string }[] = [
         { value: "README" },
-        { value: "art_directorPlanning", subDir: "art_prompt" },
-        { value: "art_storyboard", subDir: "art_prompt" },
+        { value: "narrative_sweet_romance", subDir: "art_prompt" },
+        { value: "storyboard_table_narrative", subDir: "art_prompt" },
       ];
       // 根据 DATA_MAP 构建 value -> subDir 的映射
       const SUB_DIR_MAP = new Map(DATA_MAP.map(({ value, subDir }) => [value, subDir ?? ""]));

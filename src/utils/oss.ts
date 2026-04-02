@@ -95,6 +95,8 @@ class OSS {
       ".ico": "image/x-icon",
       ".tiff": "image/tiff",
       ".tif": "image/tiff",
+      ".mp4": "video/mp4",
+      ".mp3": "audio/mpeg",
     };
 
     const mimeType = mimeTypes[ext];
