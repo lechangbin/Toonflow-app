@@ -172,11 +172,11 @@ description: >-
 | 审核项 | 标准 | 严重程度 |
 |--------|------|----------|
 | 关联资产正确 | associateAssetsIds 中的索引均在 assets 数组范围内；画面中可见的资产已关联 | 严重 |
+| 父子资产选择正确 | 同一分镜按剧情优先选择衍生资产 ID；无匹配衍生时才使用主资产 ID，且二者不得同时出现 | 严重 |
 | 剧本覆盖度 | 剧本中的全部场景和关键事件均有对应分镜，无遗漏 | 严重 |
 | 拆分粒度 | 一个独立画面对应一条分镜；无过度合并或过度拆分 | 中等 |
 | 镜头语言合理 | camera 字段使用标准景别术语；景别变化服务于叙事节奏 | 中等 |
 | 时长合理性 | duration 与画面复杂度匹配；总时长与剧本预估时长基本吻合 | 中等 |
-| frameMode 选择 | 帧模式与分镜内容匹配（动作结果用 endFrame、对话为主用 linesSoundEffects、其余用 firstFrame） | 轻微 |
 
 ### 详细审核标准
 
@@ -199,6 +199,19 @@ description: >-
 不通过示例：
 - assets 只有 3 个，但分镜中出现 `associateAssetsIds: [1, 5]`
 - description 描述"凌玄手持青云令"，但 associateAssetsIds 只有凌玄的索引，遗漏了青云令
+
+#### 父子资产选择正确（严重）
+
+验证方法：
+1. 基于 assets 建立 `deriveId -> assetsId(父资产ID)` 映射
+2. 遍历每条分镜 `associateAssetsIds`
+3. 结合分镜 `description` 判断当前镜头是否明确为衍生状态（如破损、染血、夜景版、激活态等）
+4. 若为衍生状态却只填父 `assetsId`，或同时出现 `deriveId` 与父 `assetsId`，均判定不通过
+5. 若该镜头无匹配衍生状态，允许且应使用主 `assetsId`
+
+不通过示例：
+- 同一分镜 `associateAssetsIds: [1001, 101]`，其中 `1001` 为 `101` 的衍生资产
+- description 明确“青云令裂痕发光（激活态）”，但 `associateAssetsIds` 仅填写主资产 `101`，未选择对应衍生资产 ID
 
 #### 剧本覆盖度（严重）
 
