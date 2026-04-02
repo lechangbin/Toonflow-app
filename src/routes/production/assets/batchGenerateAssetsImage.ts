@@ -27,7 +27,7 @@ export default router.post(
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .whereIn("o_assets.id", parentIds as number[])
-      .select("o_assets.id", "o_image.filePath");
+      .select("o_assets.id", "o_image.filePath", "o_assets.describe");
     const assetsSrcArr = await Promise.all(
       parentAssetsData.map(async (item) => {
         return {
@@ -36,6 +36,12 @@ export default router.post(
         };
       }),
     );
+    assetsDataArr.forEach((i: any) => {
+      const parent = parentAssetsData.find((item) => item.id === i.assetsId);
+      if (parent) {
+        i.parentDescribe = parent.describe;
+      }
+    });
     const imageUrlRecord: Record<number, string> = {};
     assetsSrcArr.forEach((item) => {
       imageUrlRecord[item.id] = item.src;
@@ -70,7 +76,7 @@ export default router.post(
 
     const imageData: { id: number; state: string; src: string }[] = [];
     res.status(200).send(success("开始生成资产图片"));
-    const generateSingleAsset = async (item: (typeof assetsDataArr)[number]) => {
+    const generateSingleAsset = async (item: any) => {
       const imageId = imageIdMap[item.id!];
       const typeConfig = promptRecord[item.type!] || promptRecord["role"];
 
@@ -79,7 +85,9 @@ export default router.post(
         messages: [
           {
             role: "user",
-            content: `资产描述: ${item.describe || "无详细描述"}`,
+            content: `
+            父级资产描述: ${item.parentDescribe || "无详细描述"}
+            当前资产描述: ${item.describe || "无详细描述"}`,
           },
         ],
       });
