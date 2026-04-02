@@ -81,6 +81,8 @@ export default router.post(
     }
 
     if ((vendor.id as string).includes(":")) return res.status(400).send(error("id不能包含英文冒号"));
+    const data = await u.db("o_vendorConfig").where("id", vendor.id).first();
+    if (data) return res.status(500).send(error("供应商id已存在"));
     await u.db("o_vendorConfig").insert({
       id: vendor.id,
       author: vendor.author,
@@ -92,7 +94,7 @@ export default router.post(
       models: JSON.stringify(vendor.models ?? []),
       code: tsCode,
       createTime: Date.now(),
-      enable: 1,
+      enable: vendor.id == "toonflow" ? 1 : 0,
     });
     res.status(200).send(success(result.data));
   },
