@@ -43,8 +43,8 @@ export default router.post(
       // 字段映射表（与 getVisualManual 保持一致）
       const DATA_MAP: { value: string; subDir?: string }[] = [
         { value: "README" },
-        { value: "narrative_sweet_romance", subDir: "driector_skills" },
-        { value: "storyboard_table_narrative", subDir: "driector_skills" },
+        { value: "director_planning_narrative", subDir: "driector_skills" },
+        { value: "director_storyboard_table_narrative", subDir: "driector_skills" },
       ];
       // 根据 DATA_MAP 构建 value -> subDir 的映射
       const SUB_DIR_MAP = new Map(DATA_MAP.map(({ value, subDir }) => [value, subDir ?? ""]));
