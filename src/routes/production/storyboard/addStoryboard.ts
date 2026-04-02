@@ -38,7 +38,7 @@ export default router.post(
       filePath: new URL(src).pathname,
       trackId,
       videoDesc,
-      shouldGenerateImage,
+      shouldGenerateImage: src ? 1 : 0,
       scriptId: scriptId,
       projectId: projectId,
     });

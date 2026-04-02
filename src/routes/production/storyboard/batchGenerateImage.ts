@@ -33,7 +33,9 @@ export default router.post(
     if (!storyboardIds || storyboardIds.length === 0) return res.status(400).send(error("storyboardIds不能为空"));
     // 当没有 storyboardIds 时，通过 AI 生成新的分镜面板数据
     let finalStoryboardIds: number[] = storyboardIds || [];
-    await u.db("o_storyboard").whereIn("id", finalStoryboardIds).where("scriptId", scriptId).update({ state: "生成中" });
+    // shouldGenerateImage === 0 的分镜标记为「未生成」，其余标记为「生成中」
+    await u.db("o_storyboard").whereIn("id", finalStoryboardIds).where("scriptId", scriptId).where("shouldGenerateImage", 0).update({ state: "未生成" });
+    await u.db("o_storyboard").whereIn("id", finalStoryboardIds).where("scriptId", scriptId).whereNot("shouldGenerateImage", 0).update({ state: "生成中" });
 
     const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle").first();
 
@@ -61,6 +63,8 @@ export default router.post(
           associateAssetsIds: assetRecord[i.id!],
           src: null,
           state: i.state,
+          videoDesc: i.videoDesc,
+          shouldGenerateImage: i.shouldGenerateImage,
         })),
       ),
     );
@@ -103,9 +107,10 @@ export default router.post(
         });
     };
 
-    // 按 concurrentCount 控制并发数，分批执行
-    for (let i = 0; i < storyboardData.length; i += concurrentCount) {
-      const batch = storyboardData.slice(i, i + concurrentCount);
+    // 按 concurrentCount 控制并发数，分批执行；跳过 shouldGenerateImage === 0 的分镜
+    const generateList = storyboardData.filter((item) => item.shouldGenerateImage !== 0);
+    for (let i = 0; i < generateList.length; i += concurrentCount) {
+      const batch = generateList.slice(i, i + concurrentCount);
       await Promise.all(batch.map(generateTask));
     }
   },
