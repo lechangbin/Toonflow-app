@@ -1,60 +1,6 @@
-// @db-hash 7af86e2bafe5cab7d175eb68cf76ed7a
+// @db-hash a716ace4700f9295d6e6ba5efb945fec
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_storyboard_old_20260402 {
-  'createTime'?: number | null;
-  'duration'?: string | null;
-  'filePath'?: string | null;
-  'flowId'?: number | null;
-  'id'?: number;
-  'index'?: number | null;
-  'projectId'?: number | null;
-  'prompt'?: string | null;
-  'reason'?: string | null;
-  'scriptId'?: number | null;
-  'state'?: string | null;
-  'trackId'?: number | null;
-}
-export interface _o_storyboard_old_20260402_1 {
-  'createTime'?: number | null;
-  'duration'?: string | null;
-  'filePath'?: string | null;
-  'flowId'?: number | null;
-  'id'?: number;
-  'index'?: number | null;
-  'projectId'?: number | null;
-  'prompt'?: string | null;
-  'reason'?: string | null;
-  'scriptId'?: number | null;
-  'shouldGenerateImage'?: number | null;
-  'state'?: string | null;
-  'track'?: string | null;
-  'trackId'?: number | null;
-  'videoPrompt'?: string | null;
-}
-export interface _o_vendorConfig_old_20260401 {
-  'author'?: string | null;
-  'code'?: string | null;
-  'createTime'?: number | null;
-  'description'?: string | null;
-  'enableEnglish'?: number | null;
-  'icon'?: string | null;
-  'id'?: string;
-  'inputs'?: string | null;
-  'inputValues'?: string | null;
-  'models'?: string | null;
-  'name'?: string | null;
-}
-export interface _o_videoTrack_old_20260402 {
-  'id'?: number;
-  'projectId'?: number | null;
-  'prompt'?: string | null;
-  'reason'?: string | null;
-  'scriptId'?: number | null;
-  'selectVideoId'?: number | null;
-  'state'?: string | null;
-  'videoId'?: number | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -130,7 +76,6 @@ export interface o_image {
   'filePath'?: string | null;
   'id'?: number;
   'model'?: string | null;
-  'reason'?: string | null;
   'resolution'?: string | null;
   'state'?: string | null;
   'type'?: string | null;
@@ -165,6 +110,7 @@ export interface o_outlineNovel {
 export interface o_project {
   'artStyle'?: string | null;
   'createTime'?: number | null;
+  'directorManual'?: string | null;
   'id'?: number | null;
   'imageModel'?: string | null;
   'imageQuality'?: string | null;
@@ -229,7 +175,6 @@ export interface o_storyboard {
   'scriptId'?: number | null;
   'shouldGenerateImage'?: number | null;
   'state'?: string | null;
-  'track'?: string | null;
   'trackId'?: number | null;
   'videoDesc'?: string | null;
 }
@@ -255,7 +200,6 @@ export interface o_vendorConfig {
   'createTime'?: number | null;
   'description'?: string | null;
   'enable'?: number | null;
-  'enableEnglish'?: number | null;
   'icon'?: string | null;
   'id'?: string;
   'inputs'?: string | null;
@@ -280,15 +224,12 @@ export interface o_videoTrack {
   'prompt'?: string | null;
   'reason'?: string | null;
   'scriptId'?: number | null;
+  'selectVideoId'?: number | null;
   'state'?: string | null;
   'videoId'?: number | null;
 }
 
 export interface DB {
-  "_o_storyboard_old_20260402": _o_storyboard_old_20260402;
-  "_o_storyboard_old_20260402_1": _o_storyboard_old_20260402_1;
-  "_o_vendorConfig_old_20260401": _o_vendorConfig_old_20260401;
-  "_o_videoTrack_old_20260402": _o_videoTrack_old_20260402;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
