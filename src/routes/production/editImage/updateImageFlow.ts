@@ -10,10 +10,7 @@ export default router.post(
   validateFields({
     edges: z.any(),
     nodes: z.any(),
-    id: z.number(),
-    imageUrl: z.string(),
     flowId: z.number(),
-    episodesId: z.number(),
   }),
   async (req, res) => {
     const { edges, nodes, flowId } = req.body;
@@ -26,24 +23,6 @@ export default router.post(
         node.data.generatedImage = node.data.generatedImage ? u.replaceUrl(node.data.generatedImage) : "";
       }
     });
-    // let imagePath = "";
-    // try {
-    //   imagePath = new URL(imageUrl).pathname;
-    // } catch (e) {}
-    // if (imagePath) {
-    //   if (type == "storyboard") {
-    //     await u.db("o_storyboard").where("id", id).update({
-    //       filePath: imagePath,
-    //     });
-    //   } else {
-    //     const [imageId] = await u.db("o_image").insert({
-    //       filePath: imagePath,
-    //       assetsId: id,
-    //       state: "已完成",
-    //     });
-    //     await u.db("o_assets").where("id", id).update({ imageId });
-    //   }
-    // }
 
     await u
       .db("o_imageFlow")
