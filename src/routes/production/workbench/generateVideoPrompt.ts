@@ -27,9 +27,7 @@ export default router.post(
       messages: [
         {
           role: "user",
-          content: `你是一个专业的${modelData}视频提示词生成助手。请根据以下提供的提示词，生成一段完整的、可直接用于视频生成模型的中文提示词。${prompt.join(
-            ",",
-          )}`,
+          content: `${prompt.join(",")}`,
         },
       ],
     });
