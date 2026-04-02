@@ -13,7 +13,15 @@ export default router.post(
   }),
   async (req, res) => {
     const { edges, nodes } = req.body;
+    nodes.forEach((node: any) => {
+      if (node.type == "upload") {
+        node.data.image = node.data.image ? u.replaceUrl(node.data.image) : "";
+      }
 
+      if (node.type == "generated") {
+        node.data.generatedImage = node.data.generatedImage ? u.replaceUrl(node.data.generatedImage) : "";
+      }
+    });
     const [insertFlowId] = await u.db("o_imageFlow").insert({
       flowData: JSON.stringify({ edges, nodes }),
     });

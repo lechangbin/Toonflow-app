@@ -26,7 +26,7 @@ export default router.post(
       })),
     );
     //拿到本地片尾视频并插入到data中
-    const ending = await u.oss.getFileUrl("/ending/1d7a2dfdd0c057823797fdf97677a7a0.mp4");
+    const ending = await u.oss.getFileUrl("/ending.mp4", "assets");
     data.push({
       id: 0,
       name: "片尾",

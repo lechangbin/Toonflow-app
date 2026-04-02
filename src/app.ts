@@ -38,7 +38,6 @@ export default async function startServe(randomPort: Boolean = false) {
   console.log("文件目录:", ossDir);
   app.use("/oss", express.static(ossDir));
   // skills 静态资源
-
   const skillsDir = u.getPath("skills");
   if (!fs.existsSync(skillsDir)) {
     fs.mkdirSync(skillsDir, { recursive: true });
@@ -52,6 +51,14 @@ export default async function startServe(randomPort: Boolean = false) {
     },
     express.static(skillsDir),
   );
+
+    // assets 静态资源
+  const assetsDir = u.getPath("assets");
+  if (!fs.existsSync(assetsDir)) {
+    fs.mkdirSync(assetsDir, { recursive: true });
+  }
+  console.log("文件目录:", assetsDir);
+  app.use("/assets", express.static(assetsDir));
 
   // data/web 静态网站
   const webDir = u.getPath("web");
