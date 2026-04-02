@@ -23,7 +23,7 @@ export default router.post(
     projectId: z.number(),
   }),
   async (req, res) => {
-    const { model, references = [], quality, ratio, prompt, projectId, type } = req.body;
+    const { model, references = [], quality, ratio, prompt, projectId } = req.body;
 
     const imageClass = await u.Ai.Image(model).run(
       {
@@ -39,7 +39,7 @@ export default router.post(
         projectId: projectId,
       },
     );
-    const savePath = `${projectId}/${type}/${u.uuid()}.jpg`;
+    const savePath = `${projectId}/workFlow/${u.uuid()}.jpg`;
     await imageClass.save(savePath);
 
     const url = await u.oss.getFileUrl(savePath);

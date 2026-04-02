@@ -894,6 +894,7 @@ Lone figure on city wall, then arrival of a companion. Tension between determina
         table.text("state");
         table.integer("trackId");
         table.text("reason");
+        table.text("track");
         table.text("videoDesc");
         table.integer("shouldGenerateImage"); // 0 否  1 是
         table.integer("projectId");
