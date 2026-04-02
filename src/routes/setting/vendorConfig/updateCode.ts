@@ -36,7 +36,7 @@ const vendorConfigSchema = z.object({
         modelName: z.string(),
         type: z.literal("image"),
         mode: z.array(z.enum(["text", "singleImage", "multiReference"])),
-        associationSkills:z.string().optional(),
+        associationSkills: z.string().optional(),
       }),
       z.object({
         name: z.string(),
@@ -44,19 +44,11 @@ const vendorConfigSchema = z.object({
         type: z.literal("video"),
         mode: z.array(
           z.union([
-            z.enum([
-              "singleImage",
-              "startEndRequired",
-              "endFrameOptional",
-              "startFrameOptional",
-              "text",
-              "audioReference",
-              "videoReference",
-            ]),
-              z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
+            z.enum(["singleImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text", "audioReference", "videoReference"]),
+            z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
           ]),
         ),
-        associationSkills:z.string().optional(),
+        associationSkills: z.string().optional(),
         audio: z.union([z.literal("optional"), z.boolean()]),
         durationResolutionMap: z.array(
           z.object({
@@ -103,7 +95,7 @@ export default router.post(
           inputValues: JSON.stringify(vendor.inputValues ?? {}),
           models: JSON.stringify(vendor.models ?? []),
           code: tsCode,
-          enable: 0,
+          enable: vendor.id == "toonflow" ? 1 : 0,
           createTime: Date.now(),
         });
       res.status(200).send(success(result.data));
