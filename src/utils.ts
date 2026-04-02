@@ -10,6 +10,7 @@ import task from "@/utils/taskRecord";
 import Ai from "@/utils/ai";
 import { getPrompts } from "@/utils/getPrompts";
 import { getArtPrompt } from "@/utils/getArtPrompt";
+import replaceUrl from "@/utils/replaceUrl";
 
 export default {
   db,
@@ -24,4 +25,5 @@ export default {
   task,
   getPrompts,
   getArtPrompt,
+  replaceUrl
 };

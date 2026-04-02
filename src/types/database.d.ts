@@ -1,21 +1,6 @@
-// @db-hash 35cf00f711e9d4df398703de70511684
+// @db-hash 7af86e2bafe5cab7d175eb68cf76ed7a
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_project_old_20260402 {
-  'artStyle'?: string | null;
-  'createTime'?: number | null;
-  'id'?: number | null;
-  'imageModel'?: string | null;
-  'imageQuality'?: string | null;
-  'intro'?: string | null;
-  'mode'?: string | null;
-  'name'?: string | null;
-  'projectType'?: string | null;
-  'type'?: string | null;
-  'userId'?: number | null;
-  'videoModel'?: string | null;
-  'videoRatio'?: string | null;
-}
 export interface _o_storyboard_old_20260402 {
   'createTime'?: number | null;
   'duration'?: string | null;
@@ -180,7 +165,6 @@ export interface o_outlineNovel {
 export interface o_project {
   'artStyle'?: string | null;
   'createTime'?: number | null;
-  'directorManual'?: string | null;
   'id'?: number | null;
   'imageModel'?: string | null;
   'imageQuality'?: string | null;
@@ -301,7 +285,6 @@ export interface o_videoTrack {
 }
 
 export interface DB {
-  "_o_project_old_20260402": _o_project_old_20260402;
   "_o_storyboard_old_20260402": _o_storyboard_old_20260402;
   "_o_storyboard_old_20260402_1": _o_storyboard_old_20260402_1;
   "_o_vendorConfig_old_20260401": _o_vendorConfig_old_20260401;

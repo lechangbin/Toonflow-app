@@ -14,7 +14,5 @@ export default router.post("/", async (req, res) => {
     onlyFiles: true,
   });
 
-  console.log("%c Line:15 🍺 entries", "background:#e41a6a", entries);
-
   res.status(200).send(success(entries));
 });

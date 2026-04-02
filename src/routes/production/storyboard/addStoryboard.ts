@@ -35,7 +35,7 @@ export default router.post(
       prompt,
       duration,
       state,
-      filePath: new URL(src).pathname,
+      filePath: u.replaceUrl(src),
       trackId,
       videoDesc,
       shouldGenerateImage: src ? 1 : 0,

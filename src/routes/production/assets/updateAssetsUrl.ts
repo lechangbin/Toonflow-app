@@ -16,7 +16,7 @@ export default router.post(
   async (req, res) => {
     const { id, url, flowId } = req.body;
     const [imageId] = await u.db("o_image").insert({
-      filePath: new URL(url).pathname,
+      filePath: u.replaceUrl(url),
       state: "已完成",
       assetsId: id,
     });

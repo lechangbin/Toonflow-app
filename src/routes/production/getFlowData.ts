@@ -116,6 +116,7 @@ export default router.post(
             prompt: item.prompt ?? "",
             desc: item.describe ?? "",
             src: item.filePath && (await u.oss.getFileUrl(item.filePath!)),
+            flowId: item.flowId,
             derive: await Promise.all(
               childAssetsData
                 .filter((child) => child.assetsId === item.id)
@@ -129,6 +130,7 @@ export default router.post(
                   src: child.filePath && (await u.oss.getFileUrl(child.filePath!)),
                   state: child.state ?? "未生成",
                   errorReason: child?.errorReason ?? "",
+                  flowId: child.flowId,
                 })),
             ),
           })),
@@ -145,6 +147,7 @@ export default router.post(
             videoDesc: i.videoDesc,
             shouldGenerateImage: i.shouldGenerateImage,
             reason: i?.reason ?? "",
+            flowId: i.flowId,
           }))
           .sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
         res.status(200).send(success(flowData));
