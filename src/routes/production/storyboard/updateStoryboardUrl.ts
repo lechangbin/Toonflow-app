@@ -19,7 +19,7 @@ export default router.post(
       .db("o_storyboard")
       .where({ id })
       .update({
-        filePath: new URL(url).pathname,
+        filePath: u.replaceUrl(url),
         flowId,
         state: "已完成",
         shouldGenerateImage:url ? 1 : 0

@@ -19,10 +19,11 @@ export default router.post(
     const { edges, nodes, flowId } = req.body;
     nodes.forEach((node: any) => {
       if (node.type == "upload") {
-        node.data.image = node.data.image ? new URL(node.data.image).pathname : "";
+        node.data.image = node.data.image ? u.replaceUrl(node.data.image) : "";
       }
+      
       if (node.type == "generated") {
-        node.data.generatedImage = node.data.generatedImage ? new URL(node.data.generatedImage).pathname : "";
+        node.data.generatedImage = node.data.generatedImage ? u.replaceUrl(node.data.generatedImage) : "";
       }
     });
     // let imagePath = "";
