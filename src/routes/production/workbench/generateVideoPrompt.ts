@@ -79,19 +79,31 @@ export default router.post(
     const data = projectData?.directorManual || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const directorManual = u.getArtPrompt(data, "story_skills", "narrative_sweet_romance");
+    const content = `
+          **模型名称**：${modelData},
+          **资产信息**（角色、场景、道具):${assets.map((i) => `[id:${i.id},type:${i.type},name:${i.name}]`).join("，")},
+          **分镜信息**：${storyboard.map(
+            (i) => `<storyboardItem
+  videoDesc=${i.videoDesc}
+  prompt=${i.prompt}
+  track=${i.track}
+  duration=${i.duration}
+  associateAssetsIds=${i.associateAssetsIds}
+  shouldGenerateImage='${i.shouldGenerateImage == 1 ? "true" : "false"}'
+></storyboardItem>`,
+          )},
+          `;
     const { text } = await u.Ai.Text("universalAi").invoke({
       system: `${videoPrompt?.data}\n${visualManual}\n${directorManual}`,
       messages: [
         {
           role: "user",
-          content: `
-          **模型名称**：${modelData},
-          **资产信息**（角色、场景、道具):${JSON.stringify(assets)},
-          **分镜信息**：${JSON.stringify(storyboard)},
-          `,
+          content: content,
         },
       ],
     });
+    console.log("%c Line:83 🍷 text", "background:#3f7cff", text);
+
     await u.db("o_videoTrack").where({ id: trackId }).update({
       prompt: text,
     });
