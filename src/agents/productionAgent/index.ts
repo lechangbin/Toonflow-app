@@ -58,7 +58,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...createSubAgent(ctx),
     },
     onFinish: async (completion) => {
-      await memory.add("assistant:decision", completion.text);
+      await memory.add("assistant:decision", removeAllXmlTags(completion.text));
     },
   });
 
@@ -109,7 +109,7 @@ function createSubAgent(parentCtx: AgentContext) {
     }
 
     if (fullResponse.trim()) {
-      await memory.add(memoryKey, fullResponse, {
+      await memory.add(memoryKey, removeAllXmlTags(fullResponse), {
         name,
         createTime: new Date(subMsg.datetime).getTime(),
       });
@@ -192,4 +192,12 @@ async function createArtSkills(artName: string) {
     tools: createSkillTools(mainSkills, { mainSkill: mainSkills, secondarySkills: [], tertiarySkills: [] }, workerPath),
   };
   return res;
+}
+
+
+function removeAllXmlTags(text: string): string {
+  text = text.replace(/<([a-zA-Z][\w-]*)(\s+[^>]*)?>([\s\S]*?)<\/\1>/g, "");
+  text = text.replace(/<([a-zA-Z][\w-]*)(\s+[^>]*)?\/>/g, "");
+  text = text.replace(/<\/?[a-zA-Z][\w-]*(\s+[^>]*)?>/g, "");
+  return text.trim();
 }

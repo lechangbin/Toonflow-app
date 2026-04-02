@@ -40,9 +40,9 @@ export default router.post(
     assetsSrcArr.forEach((item) => {
       imageUrlRecord[item.id] = item.src;
     });
-    const rolePrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_character_derivative");
-    const toolPrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_prop_derivative");
-    const scenePrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_scene_derivative");
+    const rolePrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_skills", "art_character_derivative");
+    const toolPrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_skills", "art_prop_derivative");
+    const scenePrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_skills", "art_scene_derivative");
     const promptRecord: Record<string, { prompt: string }> = {
       role: {
         prompt: rolePrompt,

@@ -8,8 +8,8 @@ import getPath from "./getPath";
  * @param fileName  - 目标文件名（不含 .md 后缀），例如 "art_character"、"prefix"
  * @returns 文件内容字符串，未找到时返回空字符串
  */
-export function getArtPrompt(styleName: string, fileName: string): string {
-  const baseDir = getPath(["skills", "art_prompts", styleName]);
+export function getArtPrompt(styleName: string, source: string, fileName: string): string {
+  const baseDir = getPath(["skills", source, styleName]);
 
   if (!fs.existsSync(baseDir)) {
     return "";
@@ -34,8 +34,8 @@ export function getArtPrompt(styleName: string, fileName: string): string {
  * @param styleName - 风格目录名，例如 "chinese_sweet_romance"
  * @returns Record<文件名(不含后缀), 文件内容>
  */
-export function getAllArtPrompts(styleName: string): Record<string, string> {
-  const baseDir = getPath(["skills", "art_prompts", styleName]);
+export function getAllArtPrompts(styleName: string, source: string): Record<string, string> {
+  const baseDir = getPath(["skills", source, styleName]);
 
   if (!fs.existsSync(baseDir)) {
     return {};

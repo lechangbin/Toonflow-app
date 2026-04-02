@@ -6,7 +6,7 @@ import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
-// 删除视觉手册
+// 删除导演手册
 export default router.post(
   "/",
   validateFields({
@@ -22,7 +22,7 @@ export default router.post(
         return;
       }
 
-      const artPromptsDir = u.getPath(["skills", "art_skills", name]);
+      const artPromptsDir = u.getPath(["skills", "story_skills", name]);
 
       try {
         const stat = await fs.stat(artPromptsDir);

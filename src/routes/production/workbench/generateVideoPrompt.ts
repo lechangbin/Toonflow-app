@@ -19,15 +19,15 @@ export default router.post(
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
     const artStyle = projectData?.artStyle || "无";
-    const visualManual = u.getArtPrompt(artStyle, "art_storyboard_video");
+    const data = projectData?.directorManual || "无";
+    const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
+    const directorManual = u.getArtPrompt(data, "story_skills", "narrative_sweet_romance");
     const { text } = await u.Ai.Text("universalAi").invoke({
-      system: `${videoPrompt?.data},${visualManual}`,
+      system: `${videoPrompt?.data}\n${visualManual}\n${directorManual}`,
       messages: [
         {
           role: "user",
-          content: `你是一个专业的${modelData}视频生成助手。请根据以下提示词，生成一段完整的、可直接用于视频生成模型的中文提示词。${prompt.join(
-            ",",
-          )}`,
+          content: `${prompt.join(",")}`,
         },
       ],
     });
