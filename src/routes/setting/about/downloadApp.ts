@@ -28,10 +28,11 @@ export default router.post(
   async (req, res) => {
     const { reinstall, url } = req.body;
     const rootDir = u.getPath(["temp"]);
-      fs.mkdirSync(rootDir, { recursive: true });
+    fs.mkdirSync(rootDir, { recursive: true });
     if (reinstall) {
       const response = await axios.get(url, { responseType: "arraybuffer" });
-      const ext = path.extname(new URL(url).pathname) || (process.platform === "win32" ? ".exe" : process.platform === "darwin" ? ".dmg" : ".AppImage");
+      const ext =
+        path.extname(new URL(url).pathname) || (process.platform === "win32" ? ".exe" : process.platform === "darwin" ? ".dmg" : ".AppImage");
       const installerPath = path.join(rootDir, `latest${ext}`);
       fs.writeFileSync(installerPath, response.data);
       runInstaller(installerPath);
@@ -41,13 +42,21 @@ export default router.post(
       fs.writeFileSync(`${rootDir}/latest.zip`, zip);
       await compressing.zip.uncompress(`${rootDir}/latest.zip`, rootDir);
       const tempServerPath = u.getPath(["temp", "serve"]);
-      const webPath = u.getPath(["temp", "web"]);
-      if (!fs.existsSync(tempServerPath) || !fs.existsSync(webPath)) {
-        fs.rmSync(rootDir, { recursive: true, force: true });
-        return res.status(400).send(error("服务器文件不存在"));
+      if (fs.existsSync(tempServerPath)) {
+        fs.cpSync(tempServerPath, u.getPath(["serve"]), { recursive: true });
       }
-      fs.cpSync(tempServerPath, u.getPath(["serve"]), { recursive: true });
-      fs.cpSync(webPath, u.getPath(["web"]), { recursive: true });
+      const webPath = u.getPath(["temp", "web"]);
+      if (fs.existsSync(webPath)) {
+        fs.cpSync(webPath, u.getPath(["web"]), { recursive: true });
+      }
+      const tempSkillsPath = u.getPath(["temp", "skills"]);
+      if (fs.existsSync(tempSkillsPath)) {
+        fs.cpSync(tempSkillsPath, u.getPath(["skills"]), { recursive: true, force: false });
+      }
+      const tempModelsPath = u.getPath(["temp", "models"]);
+      if (fs.existsSync(tempModelsPath)) {
+        fs.cpSync(tempModelsPath, u.getPath(["models"]), { recursive: true, force: false });
+      }
       fs.rmSync(rootDir, { recursive: true, force: true });
       res.status(200).send(success("更新成功，5秒后重启"));
     }
