@@ -49,7 +49,7 @@ export async function decisionAI(ctx: AgentContext) {
       const [id, videoModelName] = projectInfo.videoModel!.split(":");
       const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
       const models = JSON.parse(data!.models!);
-      const findData = models.find((i: any) => i.modelName == name);
+      const findData = models.find((i: any) => i.modelName == videoModelName);
       const isRef = findData.mode.every((i: any) => Array.isArray(i));
       const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
   
@@ -159,7 +159,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const [id, videoModelName] = projectInfo.videoModel!.split(":");
       const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
       const models = JSON.parse(data!.models!);
-      const findData = models.find((i: any) => i.modelName == name);
+      const findData = models.find((i: any) => i.modelName == videoModelName);
       const isRef = findData.mode.every((i: any) => Array.isArray(i));
       const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 

@@ -236,6 +236,11 @@ app.whenReady().then(async () => {
     closeServeFn = mod.closeServe;
     const port = await mod.default(true);
     process.env.PORT = port;
+    await new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        resolve();
+      }, 2000);
+    });
     // 注册协议处理器
     protocol.handle("toonflow", (request) => {
       const url = new URL(request.url);
