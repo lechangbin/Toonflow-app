@@ -1,7 +1,7 @@
 .devtools
 # dependencies (bun install)
 node_modules
-
+.vscode
 # output
 out
 dist
@@ -36,6 +36,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 build/*
 
+data/serve/
+
 upload/*
 uploads/*
 
@@ -45,4 +47,12 @@ db.sqlite-wal
 
 web/*
 
+*.sqlite
+
+router.ts
+
+database.d.ts
+
 .devtools
+data/oss/*
+data/test.sqlite

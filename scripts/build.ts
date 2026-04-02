@@ -14,12 +14,28 @@ if (!fs.existsSync(envDir)) {
   fs.mkdirSync(envDir, { recursive: true });
 }
 if (!fs.existsSync(envFile)) {
-  const defaultEnv = `NODE_ENV=${process.env.NODE_ENV}\nPORT=60000\nOSSURL=http://127.0.0.1:60000/\n`;
+  const defaultEnv = `NODE_ENV=${process.env.NODE_ENV}\nPORT=10588\nOSSURL=http://127.0.0.1:10588/\n`;
   fs.writeFileSync(envFile, defaultEnv, "utf8");
   console.log(`📄 已自动创建环境变量文件: ${envFile}`);
 }
 
-const external = ["electron", "sqlite3", "better-sqlite3", "mysql", "mysql2", "pg", "pg-query-stream", "oracledb", "tedious", "mssql"];
+const pkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
+
+const external = [
+  "electron",
+  "@huggingface/transformers",
+  "onnxruntime-node",
+  "vm2",
+  "sqlite3",
+  "better-sqlite3",
+  "mysql",
+  "mysql2",
+  "pg",
+  "pg-query-stream",
+  "oracledb",
+  "tedious",
+  "mssql",
+];
 
 // 后端服务打包配置
 const appBuildConfig: esbuild.BuildOptions = {
@@ -28,7 +44,7 @@ const appBuildConfig: esbuild.BuildOptions = {
   minify: false,
   format: "cjs",
   allowOverwrite: true,
-  outfile: `build/app.js`,
+  outfile: `data/serve/app.js`,
   platform: "node",
   target: "esnext",
   tsconfig: "./tsconfig.json",
@@ -37,6 +53,9 @@ const appBuildConfig: esbuild.BuildOptions = {
   },
   sourcemap: false,
   external,
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
 };
 
 // Electron 主进程打包配置
@@ -55,6 +74,9 @@ const mainBuildConfig: esbuild.BuildOptions = {
   },
   sourcemap: false,
   external,
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
 };
 
 (async () => {

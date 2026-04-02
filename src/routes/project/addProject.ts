@@ -9,24 +9,35 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    projectType: z.string().optional(),
+    projectType: z.string(),
     name: z.string(),
     intro: z.string(),
     type: z.string(),
     artStyle: z.string(),
+    directorManual: z.string(),
     videoRatio: z.string(),
+    imageModel: z.string(),
+    videoModel: z.string(),
+    imageQuality: z.string(),
+    mode: z.string(),
   }),
   async (req, res) => {
-    const { projectType, name, intro, type, artStyle, videoRatio } = req.body;
+    const { projectType, name, intro, type, directorManual, artStyle, videoRatio, imageModel, videoModel, imageQuality, mode } = req.body;
 
-    await u.db("t_project").insert({
+    await u.db("o_project").insert({
+      projectType,
       name,
       intro,
       type,
       artStyle,
       videoRatio,
+      directorManual,
       userId: 1,
+      imageModel,
+      videoModel,
       createTime: Date.now(),
+      imageQuality,
+      mode,
     });
 
     res.status(200).send(success({ message: "新增项目成功" }));

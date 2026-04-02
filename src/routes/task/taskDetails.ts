@@ -12,7 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { taskId } = req.body;
-    const data = await u.db("t_taskList").where("id", taskId).select("*").first();
+    const data = await u.db("o_tasks").where("id", taskId).select("*").first();
     res.status(200).send(success(data));
   }
 );

@@ -16,23 +16,34 @@ export default router.post(
         reel: z.string(),
         chapter: z.string(),
         chapterData: z.string(),
-      })
+      }),
     ),
   }),
   async (req, res) => {
     const { projectId, data } = req.body;
-
+    const totalNovelId = [];
     for (const item of data) {
-      await u.db("t_novel").insert({
+      const [id] = await u.db("o_novel").insert({
         projectId,
         chapterIndex: item.index,
         reel: item.reel,
         chapter: item.chapter,
         chapterData: item.chapterData,
         createTime: Date.now(),
+        eventState: 0,
       });
+      totalNovelId.push(id);
     }
+    const chapterAllList = await u.db("o_novel").where("projectId", projectId).whereIn("id", totalNovelId);
+    const novelClass = new u.cleanNovel();
+    novelClass.emitter.on("item", async (item) => {
+      await u
+        .db("o_novel")
+        .where("id", item.id)
+        .update({ event: item.event, eventState: item.event ? 1 : -1, errorReason: item?.errReason ?? null });
+    });
+    novelClass.start(chapterAllList, projectId);
 
     res.status(200).send(success({ message: "新增原文成功" }));
-  }
+  },
 );

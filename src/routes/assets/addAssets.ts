@@ -9,29 +9,24 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    projectId: z.number(),
-    scriptId: z.number().optional().nullable(),
     name: z.string(),
-    intro: z.string(),
+    describe: z.string(),
     type: z.string(),
-    prompt: z.string(),
-    remark: z.string().optional().nullable(),
-    episode: z.string().optional().nullable(),
+    projectId: z.number(),
+    remark: z.string(),
+    prompt: z.string().optional().nullable(),
   }),
   async (req, res) => {
-    const { projectId, name, intro, type, prompt, remark, episode, scriptId } = req.body;
-
-    await u.db("t_assets").insert({
-      projectId,
+    const { name, describe, type, projectId, remark, prompt } = req.body;
+    await u.db("o_assets").insert({
       name,
-      intro,
+      describe,
       type,
-      prompt,
+      projectId,
       remark,
-      episode,
-      scriptId,
+      prompt,
+      startTime: Date.now(),
     });
-
     res.status(200).send(success({ message: "新增资产成功" }));
-  }
+  },
 );

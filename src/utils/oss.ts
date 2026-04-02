@@ -1,7 +1,7 @@
 import isPathInside from "is-path-inside";
+import getPath, { isEletron } from "@/utils/getPath";
 import fs from "node:fs/promises";
 import path from "node:path";
-import u from "@/utils";
 
 // 规范化路径：去除前导斜杠，并将路径分隔符统一转换为系统分隔符
 function normalizeUserPath(userPath: string): string {
@@ -27,13 +27,7 @@ class OSS {
   private initPromise: Promise<void>;
 
   constructor() {
-    if (typeof process.versions?.electron !== "undefined") {
-      const { app } = require("electron");
-      const userDataDir: string = app.getPath("userData");
-      this.rootDir = path.join(userDataDir, "uploads");
-    } else {
-      this.rootDir = path.join(process.cwd(), "uploads");
-    }
+    this.rootDir = getPath("oss");
     // 初始化时自动创建根目录
     this.initPromise = fs.mkdir(this.rootDir, { recursive: true }).then(() => {});
   }
@@ -51,11 +45,13 @@ class OSS {
    * @param userRelPath 用户传入的相对文件路径（使用 / 作为分隔符）
    * @returns 文件的 http 链接（本地服务地址）
    */
-  async getFileUrl(userRelPath: string): Promise<string> {
+  async getFileUrl(userRelPath: string, prefix?: string): Promise<string> {
+    if (!prefix) prefix = "oss";
     await this.ensureInit();
     const safePath = normalizeUserPath(userRelPath);
     // URL 始终使用 /，所以这里需要将系统分隔符转回 /
-    const url = process.env.OSSURL || `http://127.0.0.1:60000/`;
+    let url = `${process.env.OSSURL}${prefix}/` || `http://127.0.0.1:10588/${prefix}/`;
+    if (isEletron()) url = `http://localhost:${process.env.PORT}/${prefix}/`;
     return `${url}${safePath.split(path.sep).join("/")}`;
   }
 
@@ -99,6 +95,8 @@ class OSS {
       ".ico": "image/x-icon",
       ".tiff": "image/tiff",
       ".tif": "image/tiff",
+      ".mp4": "video/mp4",
+      ".mp3": "audio/mpeg",
     };
 
     const mimeType = mimeTypes[ext];
@@ -149,7 +147,10 @@ class OSS {
     await this.ensureInit();
     const absPath = resolveSafeLocalPath(userRelPath, this.rootDir);
     await fs.mkdir(path.dirname(absPath), { recursive: true });
-    await fs.writeFile(absPath, data);
+    // 如果 data 是 string，则视为 base64 编码，先解码再写入
+    // 自动去除可能存在的 Data URL 前缀（如 "data:image/png;base64,"）
+    const buffer = typeof data === "string" ? Buffer.from(data.replace(/^data:[^;]+;base64,/, ""), "base64") : data;
+    await fs.writeFile(absPath, buffer);
   }
 
   /**

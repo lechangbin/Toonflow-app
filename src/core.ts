@@ -41,7 +41,7 @@ export default async function generateRouter(): Promise<void> {
   content += `${importLines.join("\n")}\n\n`;
   content += `export default async (app: Express) => {\n`;
   for (const { routePath, varName } of routeModulePairs) {
-    content += `  app.use("${routePath}", ${varName});\n`;
+    content += `  app.use("/api${routePath}", ${varName});\n`;
   }
   content += `}\n`;
 
