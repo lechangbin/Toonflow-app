@@ -1,4 +1,4 @@
-// @db-hash 34cef71f073127ef469a712aa9d9ba8f
+// @db-hash b5c2730a159a5d233aa50e5aae831830
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_project_old_20260402 {
@@ -245,6 +245,7 @@ export interface o_storyboard {
   'scriptId'?: number | null;
   'shouldGenerateImage'?: number | null;
   'state'?: string | null;
+  'track'?: string | null;
   'trackId'?: number | null;
   'videoDesc'?: string | null;
 }
