@@ -1,4 +1,4 @@
-// @routes-hash 0bd9383c5e26c63f175c07ee431ea8a9
+// @routes-hash 8fcf006c33d4705a20117ed4d821cc8d
 import { Express } from "express";
 
 import route1 from "./routes/agents/clearMemory";
@@ -123,7 +123,7 @@ import route119 from "./routes/setting/skillManagement/getSkillList";
 import route120 from "./routes/setting/skillManagement/saveSkillContent";
 import route121 from "./routes/setting/vendorConfig/addVendor";
 import route122 from "./routes/setting/vendorConfig/deleteVendor";
-import route123 from "./routes/setting/vendorConfig/enableEnglishVendor";
+import route123 from "./routes/setting/vendorConfig/enableVendor";
 import route124 from "./routes/setting/vendorConfig/getCodeByLink";
 import route125 from "./routes/setting/vendorConfig/getVendorList";
 import route126 from "./routes/setting/vendorConfig/modelTest";
@@ -258,7 +258,7 @@ export default async (app: Express) => {
   app.use("/api/setting/skillManagement/saveSkillContent", route120);
   app.use("/api/setting/vendorConfig/addVendor", route121);
   app.use("/api/setting/vendorConfig/deleteVendor", route122);
-  app.use("/api/setting/vendorConfig/enableEnglishVendor", route123);
+  app.use("/api/setting/vendorConfig/enableVendor", route123);
   app.use("/api/setting/vendorConfig/getCodeByLink", route124);
   app.use("/api/setting/vendorConfig/getVendorList", route125);
   app.use("/api/setting/vendorConfig/modelTest", route126);
