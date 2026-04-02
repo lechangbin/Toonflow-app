@@ -56,6 +56,7 @@ function copyDirRecursive(src: string, dest: string): void {
   if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     // 跳过 oss 文件夹和 db2.sqlite 文件
+    if (entry.isDirectory() && entry.name === "logs") continue;
     if (entry.isDirectory() && entry.name === "oss") continue;
     if (!entry.isDirectory() && entry.name === "db2.sqlite") continue;
     const srcPath = path.join(src, entry.name);
