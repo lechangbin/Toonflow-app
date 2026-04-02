@@ -14,7 +14,7 @@ export default router.post(
   async (req, res) => {
     const { trackId, videoId } = req.body;
     await u.db("o_videoTrack").where("id", trackId).update({
-      selectVideoId: videoId,
+      videoId: videoId,
     });
     res.status(200).send(success({ message: "视频选择成功" }));
   },

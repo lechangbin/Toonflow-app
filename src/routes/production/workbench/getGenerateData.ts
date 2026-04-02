@@ -54,11 +54,11 @@ export default router.post(
       const item = trackData.find((t) => t.id === trackId);
       trackList.push({
         id: trackId,
-        duration: item?.duration ?? 0,
+        duration: item?.duration ?? 0,   
         prompt: item?.prompt || "",
         state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
         reason: item?.reason ?? "",
-        selectVideoId: Number(item?.selectVideoId)!,
+        selectVideoId: Number(item?.videoId)!,
         medias: await Promise.all(
           storyboardList
             .filter((s) => s.trackId === trackId)

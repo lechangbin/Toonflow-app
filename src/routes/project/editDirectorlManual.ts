@@ -7,13 +7,13 @@ import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
 const router = express.Router();
 
-// 新增视觉手册
+// 编辑导演手册
 export default router.post(
   "/",
   validateFields({
     name: z.string(),
+    directorManual: z.string(),
     images: z.array(z.string()),
-    stylePath: z.string(),
     data: z.array(
       z.object({
         label: z.string(),
@@ -24,11 +24,11 @@ export default router.post(
   }),
   async (req, res) => {
     try {
-      const { name, images, data, stylePath } = req.body as {
+      const { name, directorManual, images, data } = req.body as {
         name: string;
+        directorManual: string;
         images: string[];
         data: { label: string; value: string; data: string }[];
-        stylePath: string;
       };
 
       // 安全校验：不允许包含路径分隔符、纯数字，防止越级删除或误删项目目录
@@ -36,26 +36,17 @@ export default router.post(
         res.status(400).send(error("名称不能包含路径分隔符或为纯数字"));
         return;
       }
-      const mainPath = u.getPath(["skills", "art_skills", stylePath]);
-      if (fs.existsSync(mainPath)) {
-        return res.status(400).send(error("请勿填写重复名称的视觉手册"));
+
+      const mainPath = u.getPath(["skills", "story_skills", directorManual]);
+      if (!fs.existsSync(mainPath)) {
+        return res.status(400).send(error("导演手册不存在"));
       }
       // 字段映射表（与 getVisualManual 保持一致）
       const DATA_MAP: { value: string; subDir?: string }[] = [
         { value: "README" },
-        { value: "prefix" },
-        { value: "art_character", subDir: "art_prompt" },
-        { value: "art_character_derivative", subDir: "art_prompt" },
-        { value: "art_prop", subDir: "art_prompt" },
-        { value: "art_prop_derivative", subDir: "art_prompt" },
-        { value: "art_scene", subDir: "art_prompt" },
-        { value: "art_scene_derivative", subDir: "art_prompt" },
-        { value: "art_storyboard", subDir: "art_prompt" },
-        { value: "art_storyboard_video", subDir: "art_prompt" },
-        { value: "director_planning", subDir: "driector_skills" },
-        { value: "director_storyboard_table", subDir: "driector_skills" },
+        { value: "narrative_sweet_romance", subDir: "driector_skills" },
+        { value: "storyboard_table_narrative", subDir: "driector_skills" },
       ];
-
       // 根据 DATA_MAP 构建 value -> subDir 的映射
       const SUB_DIR_MAP = new Map(DATA_MAP.map(({ value, subDir }) => [value, subDir ?? ""]));
 
@@ -74,7 +65,8 @@ export default router.post(
         if (!fs.existsSync(fileDir)) {
           fs.mkdirSync(fileDir, { recursive: true });
         }
-        fs.writeFileSync(filePath, item.data, "utf-8");
+        const content = item.value === "README" ? `${name}\n${item.data}` : item.data;
+        fs.writeFileSync(filePath, content, "utf-8");
       }
       const imagesDir = path.join(mainPath, "images");
 

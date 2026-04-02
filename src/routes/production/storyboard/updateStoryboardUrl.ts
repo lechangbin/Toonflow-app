@@ -22,6 +22,7 @@ export default router.post(
         filePath: new URL(url).pathname,
         flowId,
         state: "已完成",
+        shouldGenerateImage:url ? 1 : 0
       });
     res.status(200).send(success({ message: "更新分镜成功" }));
   },

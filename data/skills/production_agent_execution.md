@@ -52,11 +52,11 @@
 ### `add_deriveAsset` 入参要求
 ```ts
 add_deriveAsset({
-  assetsId: number,                // 关联的资产ID
-  id: number | null,               // 衍生资产ID，新增填 null
-  name: string,                    // 衍生资产名称
-  desc: string,                    // 衍生资产描述
-  type: "role" | "tool" | "scene" | "clip", // 衍生资产类型
+	assetsId: number,                // 关联的资产ID
+	id: number | null,               // 衍生资产ID，新增填 null
+	name: string,                    // 衍生资产名称
+	desc: string,                    // 衍生资产描述
+	type: "role" | "tool" | "scene" | "clip", // 衍生资产类型
 })
 ```
 
@@ -66,10 +66,10 @@ add_deriveAsset({
 - `name`：2~6 字，体现视觉外观变化
 - `desc`：`[与默认态的差异] · [视觉特征] ，1~100 字
 - `type`：
-  - 角色资产填 `role`
-  - 道具资产填 `tool`
-  - 场景资产填 `scene`
-  - 镜头/片段类资产填 `clip`
+	- 角色资产填 `role`
+	- 道具资产填 `tool`
+	- 场景资产填 `scene`
+	- 镜头/片段类资产填 `clip`
 
 
 
@@ -133,7 +133,7 @@ add_deriveAsset({
 
 ### 执行流程
 
-1. 加载风格技法参考，获取 `script` 和 `assets`，并并且激活 `director_planning` ，所有规划内容以该文档为风格基准，冲突时以风格技法参考为准。
+1. 加载风格技法参考，获取 `script` 和 `assets`，并并且激活 `director_planning_narrative` 以及 `director_planning_style`，所有规划内容以该文档为风格基准，冲突时以风格技法参考为准。
 2. 按下方规范制定导演规划（创作规划），全文遵守「导演具象化原则」
 
 ### 导演具象化原则（贯穿全文）
@@ -163,7 +163,7 @@ add_deriveAsset({
 约束：
 - 色调具体到色温范围或色彩倾向描述
 - 光影以「段落-光影方向」表格呈现，每段落指定光影基调方向
-- 色温、光源角度、冷暖色调分配等具体技法参数以风格技法参考（`director_planning`）为准
+- 色温、光源角度、冷暖色调分配等具体技法参数以风格技法参考（`director_planning_narrative` 以及 `director_planning_style`）为准
 - **构图须说明叙事理由**，参考以下情绪-构图映射（按需选用）：
   - 对称构图 → 秩序 / 压迫 / 庄重
   - 三分法偏侧留白 → 孤独 / 期待 / 未知
@@ -210,7 +210,7 @@ add_deriveAsset({
 
 约束：
 - 配乐按段落统一规划（不逐场），同段落内场景切换靠环境音变化过渡
-- 乐器选择、组合策略等具体技法以风格技法参考（`director_planning`）为准
+- 乐器选择、组合策略等具体技法以风格技法参考（`director_planning_narrative` 以及 `director_planning_style`）为准
 - 环境音具体到可感知声源（"蝉鸣 / 溪水 / 市井叫卖 / 雨滴檐角"），每场标注 1~2 个核心环境音
 - 标注运用沉默手法的关键瞬间（关键情感瞬间优先考虑去掉配乐，只留环境音）
 - 全片配乐覆盖率建议不超过 70%，留白段落与配乐段落形成呼吸感
@@ -249,7 +249,7 @@ add_deriveAsset({
 
 ### 执行流程
 
-1. 获取 `script` 和 `assets`，并且激活 `director_storyboard_table` ，作为分镜设计的风格参考。
+1. 获取 `script` 和 `assets`，并且激活 `director_storyboard_table_narrative` 以及 `director_storyboard_table_style` ，作为分镜设计的风格参考。
 2. 按下方规则将剧本拆分为分镜，**每写一行前**回顾上一行状态，确保符合「视觉连续性铁律」后再填写当前行所有字段
 
 ### 分镜拆分原则
@@ -408,7 +408,7 @@ add_deriveAsset({
 - **定场精简**：每个新场景定场最多 1~2 镜，禁止 3 镜以上的碎片化定场；能一镜完成定场+引入的不拆两镜
 - **镜头合并自检**：完成全部分镜后，逐段检查是否有可合并的相邻镜头（同空间局部描述、纯装饰镜头、信息重复镜头），合并后重新编号
 - **黄金 6 秒**：无台词镜头不超过 6s，定场/过渡类镜头尤其注意
-- **光影风格一致**：光影描述须与风格技法参考（`director_storyboard_table`）的光影规范保持一致
+- **光影风格一致**：光影描述须与风格技法参考（`director_storyboard_table_narrative` 以及 `director_storyboard_table_style`）的光影规范保持一致
 
 ---
 
@@ -421,14 +421,34 @@ add_deriveAsset({
 | 读取剧本 | `get_flowData("script")` |
 | 读取分镜表 | `get_flowData("stoaryTable")` |
 
+### 写入模式
+
+本阶段根据决策层派发指令中携带的模式信息，选择对应的写入策略：
+
+| 模式 | 说明 | prompt | shouldGenerateImage | track 分组规则 |
+|------|------|--------|---------------------|----------------|
+| **纯文本多参模式** | 仅写入视频描述与资产绑定，不生成提示词和分镜图 | `''`（空字符串） | `false` | 同「分镜图辅助多参模式」，累计时长 ≤ 15s |
+| **分镜图辅助多参模式** | 完整生成提示词并生成分镜图（当前默认行为） | 正常生成 | `true`（默认） | 累计时长 ≤ 15s |
+| **首位帧模式** | 完整生成提示词，每条分镜独立一组 | 正常生成 | `true`（默认） | **不分组**，每行独立一组，按顺序递增 |
+
+> 模式信息由决策层在派发指令中明确指定，执行层不自行判断。
+
 ### 执行流程
 
-1. 获取 `script` 、`stoaryTable`，并加载下方「分镜提示词 · 通用基础技法」与风格专属技法（激活 `director_storyboard`）作为提示词生成的全部参考依据，冲突时以风格专属技法为准
-2. 确定分组与时长规则：同组内分镜 `duration` 累计时长不得超过 15 秒，且每条 `duration` 必须严格使用 `stoaryTable` 对应行时长
-3. **人物空间位置预分析**：正式写入前，先通读全部分镜表，梳理同一人物在不同分镜中出现的画面位置与朝向，建立「人物-位置」连续性基准（如：角色A全片画面偏左、面朝右；角色B画面偏右、面朝左），后续每条 prompt 中涉及该人物时须保持一致
-4. **图像资产标注与正文绑定**：为每条分镜的 prompt 生成图像资产标注前缀，按 `associateAssetsIds` 的引用顺序，依次标注 `@图N 为xx{类型}`；**提示词正文中所有涉及该角色/场景/道具的位置，必须使用对应的 `@图N` 替代其名称**，建立参考图与画面描述的直接绑定（详见下方「prompt 图像资产标注规则」）
-5. 严格按 `stoaryTable` 的分镜数据行逐行写入分镜面板（排除表头与分隔行），<storyboardItem prompt=提示词内容 track=分组 duration=视频推荐时间 associateAssetsIds="[该分镜所需的资产ID列表]" shouldGenerateImage="是否需要生成分镜图片 true/false, 默认为true" /></storyboardItem>
-6. 写入完成后，仅返回一句确认：`已完成分镜面板写入`
+1. 获取 `script` 、`stoaryTable`，识别决策层指令中的**写入模式**（纯文本多参模式 / 分镜图辅助多参模式 / 首位帧模式）
+2. **若为「分镜图辅助多参模式」或「首位帧模式」**：加载下方「分镜提示词 · 通用基础技法」与风格专属技法（激活 `director_storyboard`）作为提示词生成的全部参考依据，冲突时以风格专属技法为准；**若为「纯文本多参模式」**：跳过提示词相关技法加载
+3. 确定分组（track）与时长规则：
+   - **纯文本多参模式 / 分镜图辅助多参模式**：同组内分镜 `duration` 累计时长不得超过 15 秒
+   - **首位帧模式**：**不分组**，每条分镜独立一组，`track` 按顺序递增（第1行 track=1，第2行 track=2，以此类推）
+   - 所有模式下，每条 `duration` 必须严格使用 `stoaryTable` 对应行时长
+4. **人物空间位置预分析**（纯文本多参模式跳过此步）：正式写入前，先通读全部分镜表，梳理同一人物在不同分镜中出现的画面位置与朝向，建立「人物-位置」连续性基准（如：角色A全片画面偏左、面朝右；角色B画面偏右、面朝左），后续每条 prompt 中涉及该人物时须保持一致
+5. **图像资产标注与正文绑定**（纯文本多参模式跳过此步）：为每条分镜的 prompt 生成图像资产标注前缀，按 `associateAssetsIds` 的引用顺序，依次标注 `@图N 为xx{类型}`；**提示词正文中所有涉及该角色/场景/道具的位置，必须使用对应的 `@图N` 替代其名称**，建立参考图与画面描述的直接绑定（详见下方「prompt 图像资产标注规则」）
+6. **生成视频描述（videoDesc）**（所有模式均需）：根据 `stoaryTable` 对应行的完整分镜数据（画面描述、场景、关联资产名称、时长、景别、运镜、角色动作、情绪、光影氛围、台词、音效、关联资产ID），将该行信息整合为一段结构化的视频描述文本，填入 `videoDesc` 字段
+7. 严格按 `stoaryTable` 的分镜数据行逐行写入分镜面板（排除表头与分隔行），根据模式差异化输出：
+   - **纯文本多参模式**：`<storyboardItem videoDesc='视频描述' prompt='' track='分组' duration='视频推荐时间' associateAssetsIds="[该分镜所需的资产ID列表]" shouldGenerateImage="false" ></storyboardItem>`
+   - **分镜图辅助多参模式**：`<storyboardItem videoDesc='视频描述' prompt='提示词内容' track='分组' duration='视频推荐时间' associateAssetsIds="[该分镜所需的资产ID列表]" shouldGenerateImage="true" ></storyboardItem>`
+   - **首位帧模式**：`<storyboardItem videoDesc='视频描述' prompt='提示词内容' track='按顺序递增的独立分组' duration='视频推荐时间' associateAssetsIds="[该分镜所需的资产ID列表]" shouldGenerateImage="true" ></storyboardItem>`
+8. 写入完成后，仅返回一句确认：`已完成分镜面板写入（{当前模式名称}）`
 
 ### 分镜提示词 · 通用基础技法
 
@@ -664,13 +684,22 @@ Image [2]: @图2 — [外貌关键描述]
 ### 约束
 
 - 前置条件：分镜表已构建完成且用户已确认
-- 你必须使用XML格式写入工作区分镜面板：<storyboardItem videoDesc='视频描述' prompt='提示词内容' track='分组' duration='视频推荐时间' associateAssetsIds="[该分镜所需的资产ID列表]" shouldGenerateImage="是否需要生成分镜图片 true/false, 默认为true"></storyboardItem>
-- 分组总时长约束：每个 `group` 的累计时长不得超过 15 秒
+- 你必须使用XML格式写入工作区分镜面板（具体参数值按当前模式填写，见上方执行流程第7步）
+- **videoDesc 必填**（所有模式）：每条分镜的 `videoDesc` 必须根据 `stoaryTable` 对应行的分镜数据生成，包含画面描述、场景、关联资产名称、时长、景别、运镜、角色动作、情绪、光影氛围、台词、音效、关联资产ID 等完整信息
 - 行数一致性约束：分镜面板 `items` 数量必须与 `stoaryTable` 的分镜数据行数量完全一致（不包含表头与分隔行）
 - 时长一致性约束：分镜面板 `duration` 必须与 `stoaryTable` 对应行时长完全一致
-- **人物位置连贯性**：每条 prompt 须通过上述「人物位置连贯性规则」校验，同场景内同一人物的画面位置与朝向描述前后一致
-- **图像资产标注必填**：每条 prompt 必须以图像资产标注前缀开头，标注数量与 `associateAssetsIds` 数量一致、顺序一致；缺少标注或顺序不匹配视为格式错误
 - 阶段边界：本阶段禁止调用 `generate_storyboard_images`
+
+**模式差异化约束：**
+
+| 约束项 | 纯文本多参模式 | 分镜图辅助多参模式 | 首位帧模式 |
+|--------|---------------|-------------------|------------|
+| `prompt` | `''`（空字符串） | 正常生成提示词 | 正常生成提示词 |
+| `shouldGenerateImage` | `false` | `true` | `true` |
+| `track` 分组 | 累计时长 ≤ 15s | 累计时长 ≤ 15s | 每行独立一组，按顺序递增 |
+| 人物位置连贯性校验 | 不适用（无 prompt） | **必须**校验 | **必须**校验 |
+| 图像资产标注 | 不适用（无 prompt） | **必填** | **必填** |
+| 提示词技法加载 | 跳过 | 加载通用基础技法 + 风格专属技法 | 加载通用基础技法 + 风格专属技法 |
 
 ---
 

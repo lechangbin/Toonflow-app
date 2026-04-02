@@ -31,12 +31,13 @@ export default router.post(
         data: { label: string; value: string; data: string }[];
       };
 
-      if (/^\d+$/.test(stylePath)) {
-        res.status(400).send(error("名称不能为纯数字"));
+      // 安全校验：不允许包含路径分隔符、纯数字，防止越级删除或误删项目目录
+      if (name.includes("/") || name.includes("\\") || name === "." || name === ".." || /^\d+$/.test(name)) {
+        res.status(400).send(error("名称不能包含路径分隔符或为纯数字"));
         return;
       }
 
-      const mainPath = u.getPath(["skills", "art_prompts", stylePath]);
+      const mainPath = u.getPath(["skills", "art_skills", stylePath]);
       if (!fs.existsSync(mainPath)) {
         return res.status(400).send(error("视觉手册不存在"));
       }

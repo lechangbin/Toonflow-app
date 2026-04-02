@@ -107,7 +107,7 @@ export default router.post(
     if (!config) return res.status(500).send(error("不支持的类型"));
     if (!config.visualManual) return res.status(500).send(error("视觉手册未定义"));
     //获取到视觉手册
-    const visualManual = await u.getArtPrompt(project.artStyle as string, config.visualManual);
+    const visualManual = await u.getArtPrompt(project.artStyle as string, "art_skills", config.visualManual);
     if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
     findItemByName(result, name, config.itemType);
     const systemPrompt = visualManual;
