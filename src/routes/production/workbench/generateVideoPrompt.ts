@@ -95,8 +95,12 @@ export default router.post(
           `;
 
     const { text } = await u.Ai.Text("universalAi").invoke({
-      system: `${videoPrompt?.data}\n${visualManual}\n${directorManual}`,
+      system: videoPrompt?.data!,
       messages: [
+        {
+          role: "assistant",
+          content: `${visualManual}\n${directorManual}`,
+        },
         {
           role: "user",
           content: content,
