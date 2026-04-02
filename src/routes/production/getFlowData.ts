@@ -32,7 +32,6 @@ export default router.post(
       .where("o_assets.id", "in", assetIds)
       .andWhere("o_assets.assetsId", null)
       .where("o_assets.projectId", projectId);
-    console.log("%c Line:28 🎂 assetsData", "background:#6ec1c2", assetsData);
 
     let childAssetsData = await u
       .db("o_assets")

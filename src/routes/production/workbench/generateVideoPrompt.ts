@@ -23,11 +23,11 @@ export default router.post(
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const directorManual = u.getArtPrompt(data, "story_skills", "narrative_sweet_romance");
     const { text } = await u.Ai.Text("universalAi").invoke({
-      system: `${videoPrompt?.data},${visualManual},${directorManual}`,
+      system: `${videoPrompt?.data}\n${visualManual}\n${directorManual}`,
       messages: [
         {
           role: "user",
-          content: `你是一个专业的${modelData}视频生成助手。请根据以下提示词，生成一段完整的、可直接用于视频生成模型的中文提示词。${prompt.join(
+          content: `你是一个专业的${modelData}视频提示词生成助手。请根据以下提供的提示词，生成一段完整的、可直接用于视频生成模型的中文提示词。${prompt.join(
             ",",
           )}`,
         },

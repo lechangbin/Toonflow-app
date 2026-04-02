@@ -66,6 +66,9 @@ export default router.post(
         return await u.oss.getImageBase64(item);
       }),
     );
+    console.log("%c Line:64 🍡 base64", "background:#ea7e5c", base64);
+
+    return;
     //新增
     const [videoId] = await u.db("o_video").insert({
       filePath: videoPath,
