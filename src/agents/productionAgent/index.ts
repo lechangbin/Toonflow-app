@@ -3,7 +3,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
-import { buildSkillPrompt, createSkillTools, parseFrontmatter, scanSkills, useSkill } from "@/utils/agent/skillsTools";
+import { createSkillTools, parseFrontmatter, scanSkills, useSkill } from "@/utils/agent/skillsTools";
 import useTools from "@/agents/productionAgent/tools";
 import ResTool from "@/socket/resTool";
 import * as fs from "fs";
@@ -43,16 +43,15 @@ export async function decisionAI(ctx: AgentContext) {
   const skill = path.join(u.getPath("skills"), "production_agent_decision.md");
   const prompt = await fs.promises.readFile(skill, "utf-8");
 
-      const projectInfo = await u.db("o_project").where("id", ctx.resTool.data.projectId).first();
-      if (!projectInfo) throw new Error(`项目不存在，ID: ${ctx.resTool.data.projectId}`);
-      const [_, imageModelName] = projectInfo.imageModel!.split(":");
-      const [id, videoModelName] = projectInfo.videoModel!.split(":");
-      const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
-      const models = JSON.parse(data!.models!);
-      const findData = models.find((i: any) => i.modelName == videoModelName);
-      const isRef = findData.mode.every((i: any) => Array.isArray(i));
-      const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
-  
+  const projectInfo = await u.db("o_project").where("id", ctx.resTool.data.projectId).first();
+  if (!projectInfo) throw new Error(`项目不存在，ID: ${ctx.resTool.data.projectId}`);
+  const [_, imageModelName] = projectInfo.imageModel!.split(":");
+  const [id, videoModelName] = projectInfo.videoModel!.split(":");
+  const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
+  const models = JSON.parse(data!.models!);
+  const findData = models.find((i: any) => i.modelName == videoModelName);
+  const isRef = findData.mode.every((i: any) => Array.isArray(i));
+  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 
   const mem = buildMemPrompt(await memory.get(text));
 
@@ -149,11 +148,10 @@ function createSubAgent(parentCtx: AgentContext) {
           "分镜面板：<storyboardItem videoDesc='视频描述' prompt=提示词内容 track='分组' duration='视频推荐时间' associateAssetsIds='[该分镜所需的资产ID列表]'></storyboardItem>",
           "```",
         ].join("\n");
- 
 
       const projectInfo = await u.db("o_project").where("id", resTool.data.projectId).first();
       if (!projectInfo) throw new Error(`项目不存在，ID: ${resTool.data.projectId}`);
-      const artSkills = await createArtSkills(projectInfo?.artStyle!);
+      const artSkills = await createArtSkills(projectInfo?.artStyle!, projectInfo?.directorManual!);
 
       const [_, imageModelName] = projectInfo.imageModel!.split(":");
       const [id, videoModelName] = projectInfo.videoModel!.split(":");
@@ -195,9 +193,10 @@ function createSubAgent(parentCtx: AgentContext) {
   return { run_sub_agent_execution, run_sub_agent_supervision };
 }
 
-async function createArtSkills(artName: string) {
-  const workerPath = u.getPath(["skills", "art_prompts", artName, "driector_skills"]);
-  const skillList = await scanSkills(workerPath + "/*.md");
+async function createArtSkills(artName: string, storyName: string) {
+  const artWorkerPath = u.getPath(["skills", "art_skills", artName, "driector_skills"]);
+  const storyWorkerPath = u.getPath(["skills", "story_skills", storyName, "driector_skills"]);
+  const skillList = [...(await scanSkills(artWorkerPath + "/*.md")), ...(await scanSkills(storyWorkerPath + "/*.md"))];
   const mainSkills: { path: string; name: string; description: string }[] = [];
   for (const skillPath of skillList) {
     if (!fs.existsSync(skillPath)) throw new Error(`主技能文件不存在: ${skillPath}`);
@@ -206,8 +205,12 @@ async function createArtSkills(artName: string) {
     mainSkills.push({ path: skillPath, ...parsed });
   }
   const res = {
-    prompt: buildSkillPrompt(mainSkills),
-    tools: createSkillTools(mainSkills, { mainSkill: mainSkills, secondarySkills: [], tertiarySkills: [] }, workerPath),
+    prompt: `## Skills
+以下技能提供了专业任务的专用指令。
+当任务与某个技能的描述匹配时，调用 activate_skill 工具并传入技能名称来加载完整指令。
+加载后遵循技能指令执行任务，需要时调用 read_skill_file 读取资源文件内容。
+${buildSkillPrompt(mainSkills)}`,
+    tools: createSkillTools(mainSkills, { mainSkill: mainSkills, secondarySkills: [], tertiarySkills: [] }),
   };
   return res;
 }
@@ -217,4 +220,14 @@ function removeAllXmlTags(text: string): string {
   text = text.replace(/<([a-zA-Z][\w-]*)(\s+[^>]*)?\/>/g, "");
   text = text.replace(/<\/?[a-zA-Z][\w-]*(\s+[^>]*)?>/g, "");
   return text.trim();
+}
+
+export function buildSkillPrompt(skills: { name: string; description: string }[]): string {
+  const skillEntries = skills
+    .map((s) => `  <skill>\n    <name>${s.name}</name>\n    <description>${s.description}</description>\n  </skill>`)
+    .join("\n");
+  return `
+<available_skills>
+${skillEntries}
+</available_skills>`;
 }

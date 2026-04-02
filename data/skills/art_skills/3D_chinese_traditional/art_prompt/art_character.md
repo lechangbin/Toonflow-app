@@ -165,7 +165,7 @@ metaData: art_skills
 {性别}角色四视图设定图，3D渲染风格，高精度建模，PBR材质，国风3D，电影级光影，
 character design sheet, character turnaround,
 {脸型}, {眼型}, {鼻型}, {唇型}, {整体气质}, 素颜状态,
-{肤色}, PBR材质渲染, 皮肤通透发光, 高精度建模, 光影层次丰富,
+{肤色}, PBR材质渲染, 3D渲染通透质感, 高精度建模, 光影层次丰富,
 {身高描述, 如:165cm tall, tall elegant woman}, {头身比, 如:7 heads tall proportion}, {身材描述}, {体态描述},
 {发色}{发长}, 高精度发丝清晰, {基础造型}, 无发饰,
 （女性: 素色古装长裙 / 男性: 素色古装长衫）, 基础色, 无花纹装饰,

@@ -34,10 +34,20 @@ export default router.post(
     // 当没有 storyboardIds 时，通过 AI 生成新的分镜面板数据
     let finalStoryboardIds: number[] = storyboardIds || [];
     // shouldGenerateImage === 0 的分镜标记为「未生成」，其余标记为「生成中」
-    await u.db("o_storyboard").whereIn("id", finalStoryboardIds).where("scriptId", scriptId).where("shouldGenerateImage", 0).update({ state: "未生成" });
-    await u.db("o_storyboard").whereIn("id", finalStoryboardIds).where("scriptId", scriptId).whereNot("shouldGenerateImage", 0).update({ state: "生成中" });
+    await u
+      .db("o_storyboard")
+      .whereIn("id", finalStoryboardIds)
+      .where("scriptId", scriptId)
+      .where("shouldGenerateImage", 0)
+      .update({ state: "未生成" });
+    await u
+      .db("o_storyboard")
+      .whereIn("id", finalStoryboardIds)
+      .where("scriptId", scriptId)
+      .whereNot("shouldGenerateImage", 0)
+      .update({ state: "生成中" });
 
-    const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle").first();
+    const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle", "videoRatio").first();
 
     const storyboardData = await u.db("o_storyboard").where("scriptId", scriptId).whereIn("id", finalStoryboardIds);
     const assetData = await u
@@ -72,7 +82,7 @@ export default router.post(
       const repeloadObj = {
         prompt: item.prompt!,
         size: projectSettingData?.imageQuality as "1K" | "2K" | "4K",
-        aspectRatio: "16:9" as `${number}:${number}`,
+        aspectRatio: projectSettingData?.videoRatio as `${number}:${number}`,
       };
 
       await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`)

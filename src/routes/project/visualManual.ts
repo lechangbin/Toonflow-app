@@ -16,7 +16,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { type } = req.body;
-    const basePath = getPath(["skills", "art_prompts", "chinese_sweet_romance"]);
+    const basePath = getPath(["skills", "art_skills", "chinese_sweet_romance"]);
     // 递归查找 basePath 下名为 `${type}.md` 的文件
     const findFile = (dir: string, target: string): string | null => {
       const entries = fs.readdirSync(dir, { withFileTypes: true });

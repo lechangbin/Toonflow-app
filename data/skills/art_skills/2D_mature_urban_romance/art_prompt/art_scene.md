@@ -63,7 +63,7 @@
 | 建筑 | 现代建筑/玻璃幕墙/砖墙 | 现代都市、建筑线条 |
 | 空气感 | 必须有空气透视，远处偏灰偏蓝 | 远山如黛、空气透视 |
 | 光照 | 自然光/人造光、戏剧化低调光影 | 自然光照、体积光、戏剧光影 |
-| 镜头感 | 电影级构图、浅景深虚化、镜头光学特征 | `shallow depth of field`、`film grain`、`lens flare` |
+| 镜头感 | 电影级构图、浅景深虚化、动画镜头特征 | `shallow depth of field`、`vignette`、`anime cinematic` |
 | 瑕疵感 | 城市使用痕迹、岁月痕迹 | 城市痕迹、生活气息 |
 
 ### 室外类型速查
@@ -111,8 +111,8 @@
 anime style，cel shading，modern urban style，
 cinematic composition，dramatic low-key lighting，
 ultra detailed，8K，high quality，
-shallow depth of field，film grain，lens flare，vignette，
-真实二次元动画风格，电影级构图，戏剧化低调光影，
+shallow depth of field，画面颗粒感，镜头暗角，
+赛璐璐动画风格，电影级构图，戏剧化低调光影，
 scene design sheet，environment concept art，no people，no characters，no human figures，
 {室内/室外}，{场景类型}，{现代风格}，{季节+时间}，
 前景：{元素}，中景：{元素}，后景：{元素}，
@@ -139,7 +139,7 @@ scene design sheet，environment concept art，no people，no characters，no hu
 | R4 | 四视图的建筑结构/材质/色调/光线/季节/天候必须完全一致 |
 | R5 | 场景图中**严禁出现任何人物** |
 | R6 | 必须包含「二次元动画风格」关键词（anime style / cel shading） |
-| R7 | 必须包含镜头光学特征（shallow depth of field / film grain / vignette 至少一项） |
+| R7 | 必须包含景深特征（shallow depth of field / vignette 至少一项），保持动画赛璐璐风格 |
 | R8 | 材质必须带有现代使用痕迹/生活气息，禁止全新无瑕的"3D渲染感" |
 
 ### 严禁

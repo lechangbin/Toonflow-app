@@ -12,7 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { type } = req.body;
-    const dataList = await u.db("o_vendorConfig").select("id", "models", "name");
+    const dataList = await u.db("o_vendorConfig").select("id", "models", "name").where("enable", 1);
     if (!dataList || dataList.length === 0) {
       return res.status(404).send({ error: "模型未找到" });
     }

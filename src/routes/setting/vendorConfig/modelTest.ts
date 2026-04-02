@@ -76,6 +76,7 @@ export default router.post(
         for await (const chunk of textStream) {
           fullResponse += chunk;
         }
+        if(!fullResponse) return res.status(500).send(error("模型未返回结果"));
         res.status(200).send(success(fullResponse));
       } else {
         const aiTypeFn = {

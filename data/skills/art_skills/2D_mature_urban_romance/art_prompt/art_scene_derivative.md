@@ -112,8 +112,8 @@
 anime style，cel shading，modern urban style，
 cinematic composition，dramatic low-key lighting，
 ultra detailed，8K，high quality，
-shallow depth of field，film grain，lens flare，vignette，
-真实二次元动画风格，电影级构图，戏剧化低调光影，
+shallow depth of field，画面颗粒感，镜头暗角，
+赛璐璐动画风格，电影级构图，戏剧化低调光影，
 scene derivative design sheet，environment concept art，no people，no characters，no human figures，
 保持场景空间结构一致，
 {景别视角（如有）}，{时段描述（如有）}，{天候描述（如有）}，
@@ -146,7 +146,7 @@ scene derivative design sheet，environment concept art，no people，no charact
 | R6 | 场景图中**严禁出现任何人物** |
 | R7 | 根据用户提供的信息自行判断变化维度，无需拆分为独立模板 |
 | R8 | 必须包含「二次元动画风格」关键词（anime style / cel shading） |
-| R9 | 必须包含镜头光学特征（shallow depth of field / film grain / vignette 至少一项） |
+| R9 | 必须包含景深特征（shallow depth of field / vignette 至少一项），保持动画赛璐璐风格 |
 | R10 | 材质必须带有现代使用痕迹/生活气息，禁止全新无瑕的"3D渲染感" |
 
 ### 严禁

@@ -38,7 +38,7 @@ metaData: art_skills
 | 材质 | 木质为主、石/玉/绢/纱为辅 | 檀木家具、玉石屏风、绢纱帷幔 |
 | 色调 | 中国传统色调 + 月白纱幔 + 朱红木漆 | 暖木色调、素雅陈设 |
 | 纵深 | 前/中/后景层次 | 前景{元素}、中景{元素}、后景{元素} |
-| 质感 | 木纹/布料垂感/瓷器光泽可辨 | 纹理清晰、质感写实 |
+| 质感 | 木纹/布料垂感/瓷器光泽可辨 | 纹理清晰、材质质感精细 |
 | 光照 | 自然光源为主（窗光/烛光），体积光，环境光遮蔽 | 自然光漫射、烛光摇曳、体积光 |
 | 镜头感 | 景深虚化前后景、镜头暗角、色散微痕 | depth of field、lens vignette、chromatic aberration |
 | 瑕疵感 | 木面有使用痕迹、石面有风化纹、布料有自然褶皱 | 岁月痕迹、自然磨损、布料自然垂褶 |
@@ -114,9 +114,9 @@ metaData: art_skills
 
 古风场景四视图设定图，
 3D渲染风格，高精度建模，PBR材质，国风3D，电影级光影，
-3D rendered, photorealistic, shot on ARRI Alexa, volumetric lighting,
+3D rendered, volumetric lighting,
 depth of field, natural lens vignette, subtle chromatic aberration, bokeh,
-真实摄影质感，体积光，自然光照，物理光影，
+3D渲染质感，体积光，自然光照，物理光影，
 scene design sheet, environment concept art, no people, no characters, no human figures,
 {室内/室外}，{场景类型}，{朝代风格}，{季节+时间},
 前景：{元素}, 中景：{元素}, 后景：{元素},

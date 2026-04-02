@@ -83,8 +83,8 @@
 基于{道具名}设定图，
 anime style，cel shading，modern urban style，
 cinematic composition，ultra detailed，8K，high quality，
-shallow depth of field，film grain，lens flare，vignette，
-真实二次元动画风格，现代都市风，戏剧化低调光影，
+shallow depth of field，画面颗粒感，镜头暗角，
+赛璐璐动画风格，现代都市风，戏剧化低调光影，
 prop derivative design sheet，item concept art，no people，no characters，no human figures，
 {道具类型}，{材质描述}，
 当前状态：{状态名}，{状态视觉描述}，
@@ -92,7 +92,7 @@ prop derivative design sheet，item concept art，no people，no characters，no
 纯道具静物展示，道具独立陈列，无人持有，无人佩戴，
 同一画面四宫格（2×2）：左上正面图(front view)+右上侧面图(side view)+左下背面图(back view)+右下细节特写(detail closeup)，
 纯净中性灰背景，均匀柔光，无硬阴影，
-材质纹理超清晰，质感写实，状态细节可辨
+材质纹理超清晰，赛璐璐质感，状态细节可辨
 图中不要有任何文字，
 画面中不能出现任何人物、手部、手指、肢体，道具不可处于被握持或佩戴状态
 
@@ -109,7 +109,7 @@ prop derivative design sheet，item concept art，no people，no characters，no
 | R3 | 必须使用四宫格（2×2）布局：左上正面图+右上侧面图+左下背面图+右下细节特写 |
 | R4 | 必须指定「纯净中性灰背景」，均匀柔光，无硬阴影 |
 | R5 | 必须包含「二次元动画风格」关键词（anime style / cel shading） |
-| R6 | 必须包含镜头光学特征（shallow depth of field / film grain / vignette 至少一项） |
+| R6 | 必须包含景深特征（shallow depth of field / vignette 至少一项），保持动画赛璐璐风格 |
 
 ### 严禁
 

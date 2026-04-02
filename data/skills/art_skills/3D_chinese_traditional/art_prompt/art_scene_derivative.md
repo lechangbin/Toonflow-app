@@ -116,9 +116,9 @@ metaData: art_skills
 
 古风场景衍生四视图设定图，基于{场景名}概念图，
 3D渲染风格，高精度建模，PBR材质，国风3D，电影级光影，
-3D rendered, photorealistic, volumetric lighting,
+3D rendered, volumetric lighting,
 depth of field, natural lens vignette, subtle chromatic aberration, bokeh,
-真实摄影质感，体积光，自然光照，物理光影，
+3D渲染质感，体积光，自然光照，物理光影，
 scene derivative design sheet, environment concept art, no people, no characters, no human figures,
 保持场景空间结构一致，
 {景别视角（如有）}, {时段描述（如有）}, {天候描述（如有）},
