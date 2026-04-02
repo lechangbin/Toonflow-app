@@ -8,8 +8,8 @@ const router = express.Router();
 // 字段映射表
 const DATA_MAP: { label: string; value: string; subDir?: string }[] = [
   { label: "README", value: "README" },
-  { label: "前缀", value: "art_character", subDir: "art_prompt" },
-  { label: "角色", value: "art_character_derivative", subDir: "art_prompt" },
+  { label: "导演规划", value: "art_directorPlanning", subDir: "art_prompt" },
+  { label: "分镜表", value: "art_storyboard", subDir: "art_prompt" },
 ];
 
 // 读取 md 文件内容，文件不存在时返回空字符串
