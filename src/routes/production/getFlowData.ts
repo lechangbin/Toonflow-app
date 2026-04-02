@@ -27,18 +27,20 @@ export default router.post(
     const assetsData = await u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath", "o_image.state")
+      .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason")
       // @ts-ignore
       .where("o_assets.id", "in", assetIds)
-      .whereNull("o_assets.assetsId")
+      .andWhere("o_assets.assetsId", null)
       .where("o_assets.projectId", projectId);
+    console.log("%c Line:28 🎂 assetsData", "background:#6ec1c2", assetsData);
+
     let childAssetsData = await u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath", "o_image.state")
+      .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason")
       .where("o_assets.projectId", projectId)
       // @ts-ignore
-      .where("o_assets.id", "in", assetIds)
+      .where("o_assets.assetsId", "in", assetIds)
       .whereNotNull("o_assets.assetsId");
 
     if (!sqlData) {
@@ -141,6 +143,8 @@ export default router.post(
             associateAssetsIds: assets2StoryboardMap[i.id!] ?? [],
             src: i.filePath,
             state: i.state,
+            videoDesc: i.videoDesc,
+            shouldGenerateImage: i.shouldGenerateImage,
             reason: i?.reason ?? "",
           }))
           .sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
