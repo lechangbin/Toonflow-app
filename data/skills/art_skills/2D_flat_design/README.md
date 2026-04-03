@@ -1,4 +1,5 @@
 # 2D扁平风（Flat Design）风格说明
+# 2D扁平风（Flat Design）风格说明
 
 本风格专为"2D扁平风（Flat Design）"题材打造，所有美术提示词、规范和生成内容均严格限定于：
 
