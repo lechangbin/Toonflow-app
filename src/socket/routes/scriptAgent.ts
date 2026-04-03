@@ -112,4 +112,7 @@ export default (nsp: Namespace) => {
       abortController = null;
     });
   });
+  nsp.on("disconnect", (socket: Socket) => {
+    console.log("[scriptAgent] 已断开连接:", socket.id);
+  });
 };
