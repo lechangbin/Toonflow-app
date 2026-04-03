@@ -8,6 +8,7 @@ export default router.post(
   "/",
   validateFields({
     id: z.string(),
+    enable: z.number(),
   }),
   async (req, res) => {
     const { id, enable } = req.body;
