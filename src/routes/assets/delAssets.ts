@@ -14,6 +14,7 @@ export default router.post(
     const { id } = req.body;
     const assetsData = await u.db("o_image").where("assetsId", id);
     await Promise.all(assetsData.map((i) => i.filePath && u.oss.deleteFile(i.filePath)));
+    await u.db("o_image").where({ assetsId: id }).delete();
     await u.db("o_assets").where({ id }).delete();
     res.status(200).send(success({ message: "删除资产成功" }));
   },

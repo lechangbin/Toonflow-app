@@ -13,27 +13,35 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-
-    const scriptData = await u.db("o_script").where("projectId", id).select("id");
-    const scriptIds = scriptData.map((item: any) => item.id);
-
+    //删除项目
+    await u.db("o_project").where("id", id).delete();
+    //删除项目下的原文
+    await u.db("o_novel").where("projectId", id).delete();
+    // 删除项目下的剧本信息
+    await u.db("o_script").where("projectId", id).delete();
+    await u.db("o_outline").where("projectId", id).delete();
+    // 删除项目下的任务
+    await u.db("o_tasks").where("projectId", id).delete();
+    // 删除项目下的分镜
+    await u.db("o_storyboard").where("projectId", id).delete();
+    // 删除项目下的资产
+    await u.db("o_assets").where("projectId", id).delete();
+    //删除需要删除资产的归属图片
     const assetsData = await u.db("o_assets").where("projectId", id).select("id");
     const assetsIds = assetsData.map((item: any) => item.id);
-
-    await u.db("o_project").where("id", id).delete();
-    await u.db("o_novel").where("projectId", id).delete();
-    await u.db("o_outline").where("projectId", id).delete();
-    await u.db("o_tasks").where("projectId", id).delete();
-
-    await u.db("o_script").where("projectId", id).delete();
-    await u.db("o_assets").where("projectId", id).delete();
-
     if (assetsIds.length > 0) {
-      await u.db("o_image").where("projectId", id).orWhereIn("assetsId", assetsIds).delete();
+      await u.db("o_image").orWhereIn("assetsId", assetsIds).delete();
     }
-
-    await u.db("o_video").whereIn("scriptId", scriptIds).delete();
-
+    //删除项目下的视频
+    const videoData = await u.db("o_video").where("projectId", id).select("id");
+    const videoIds = videoData.map((item: any) => item.id);
+    if (videoIds.length > 0) {
+      await u.db("o_videoTrack").whereIn("videoId", videoIds).update({
+        videoId: null,
+      });
+    }
+    await u.db("o_video").where("projectId", id).delete();
+    //删除项目下的资源
     try {
       await u.oss.deleteDirectory(`${id}/`);
       console.log(`项目 ${id} 的OSS文件夹删除成功`);
