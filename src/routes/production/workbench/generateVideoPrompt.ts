@@ -76,9 +76,7 @@ export default router.post(
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
     const artStyle = projectData?.artStyle || "无";
-    const data = projectData?.directorManual || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
-    const directorManual = u.getArtPrompt(data, "story_skills", "director_planning_narrative");
     const content = `
           **模型名称**：${modelData},
           **资产信息**（角色、场景、道具):${assets.map((i) => `[id:${i.id},type:${i.type},name:${i.name}]`).join("，")},
@@ -99,7 +97,7 @@ export default router.post(
       messages: [
         {
           role: "assistant",
-          content: `${visualManual}\n${directorManual}`,
+          content: `${visualManual}`,
         },
         {
           role: "user",
