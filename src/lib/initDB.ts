@@ -43,6 +43,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("createTime");
         table.integer("userId");
         table.primary(["id"]);
+        table.unique(["id"]);
       },
     },
     //风格表
