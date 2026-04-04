@@ -28,6 +28,7 @@ const external = [
   "vm2",
   "sqlite3",
   "better-sqlite3",
+  "sharp",
   "mysql",
   "mysql2",
   "pg",

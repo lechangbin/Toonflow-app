@@ -21,6 +21,9 @@ files:
   - "!scripts/*.ts"
 
 asar: true
+asarUnpack:
+  - "**/node_modules/sharp/**"
+  - "**/node_modules/@img/**"
 
 extraResources:
   - from: data

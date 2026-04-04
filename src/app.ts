@@ -12,7 +12,6 @@ import fs from "fs";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
-import path from "path";
 
 const app = express();
 const server = http.createServer(app);
@@ -52,7 +51,7 @@ export default async function startServe(randomPort: Boolean = false) {
     express.static(skillsDir),
   );
 
-    // assets 静态资源
+  // assets 静态资源
   const assetsDir = u.getPath("assets");
   if (!fs.existsSync(assetsDir)) {
     fs.mkdirSync(assetsDir, { recursive: true });
@@ -105,7 +104,7 @@ export default async function startServe(randomPort: Boolean = false) {
     res.status(err.status || 500).send(err);
   });
 
-  const port = randomPort ? 0 : parseInt(process.env.PORT || "10588");
+  const port = randomPort ? 0 : 10588;
   return await new Promise((resolve) => {
     server.listen(port, async () => {
       const address = server.address();

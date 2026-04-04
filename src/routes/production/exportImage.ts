@@ -33,19 +33,8 @@ export default router.post(
       const absPath = path.join(getPath("oss"), item.filePath!);
       zipStream.addEntry(absPath, { relativePath: `${index}.${ext}` });
     });
-
-    const fileName = `分镜.zip`;
-    const zipFilePath = getPath(["oss", "temp", fileName]);
-    await new Promise<void>((resolve, reject) => {
-      const fs = require("fs");
-      fs.mkdirSync(getPath(["oss", "temp"]), { recursive: true });
-      const writeStream = fs.createWriteStream(zipFilePath);
-      zipStream.pipe(writeStream);
-      writeStream.on("finish", resolve);
-      writeStream.on("error", reject);
-    });
-
-    const downloadUrl = `${process.env.OSSURL || "http://127.0.0.1:10588/"}temp/${fileName}`;
-    res.json(success({ url: downloadUrl }));
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", "attachment; filename=export.zip");
+    zipStream.pipe(res);
   },
 );

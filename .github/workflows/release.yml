@@ -31,6 +31,11 @@ jobs:
       - name: Build application
         run: yarn build
 
+      - name: Install sharp platform binaries
+        run: |
+          npm install --os=win32 --cpu=x64 sharp
+          npm install --os=win32 --cpu=arm64 sharp
+
       - name: Build Windows installer
         run: yarn dist:win
         env:
@@ -63,6 +68,11 @@ jobs:
       - name: Build application
         run: yarn build
 
+      - name: Install sharp platform binaries
+        run: |
+          npm install --os=darwin --cpu=x64 sharp
+          npm install --os=darwin --cpu=arm64 sharp
+
       - name: Build macOS installer
         run: yarn dist:mac
         env:
@@ -94,6 +104,11 @@ jobs:
 
       - name: Build application
         run: yarn build
+
+      - name: Install sharp platform binaries
+        run: |
+          npm install --os=linux --cpu=x64 sharp
+          npm install --os=linux --cpu=arm64 sharp
 
       - name: Build Linux installer
         run: yarn dist:linux
