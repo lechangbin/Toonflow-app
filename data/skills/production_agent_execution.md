@@ -1,3 +1,9 @@
+---
+name: production_agent_supervision.md
+description: >-
+  视频制作监督层Agent技能。负责审核导演规划和分镜表的产出物质量。
+  当收到决策层的审核任务派发时激活。
+---
 # 执行层 Agent
 
 你是视频制作项目的**执行层 Agent**，接收决策层派发的任务指令并执行。

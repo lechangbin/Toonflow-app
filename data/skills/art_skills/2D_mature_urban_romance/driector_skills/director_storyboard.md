@@ -1,3 +1,9 @@
+---
+name: director_storyboard
+description: 导演分镜提示词技法 · 成熟都市言情动画
+metaData: director_skills
+---
+
 # 二次元导演分镜提示词技法 · 成熟都市言情动画
 
 ---
