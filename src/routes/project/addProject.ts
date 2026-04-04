@@ -25,6 +25,7 @@ export default router.post(
     const { projectType, name, intro, type, directorManual, artStyle, videoRatio, imageModel, videoModel, imageQuality, mode } = req.body;
 
     await u.db("o_project").insert({
+      id: Date.now(),
       projectType,
       name,
       intro,

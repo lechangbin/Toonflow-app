@@ -141,6 +141,7 @@ add_deriveAsset({
 
 1. 加载风格技法参考，获取 `script` 和 `assets`，并并且激活 `director_planning_narrative` 以及 `director_planning_style`，所有规划内容以该文档为风格基准，冲突时以风格技法参考为准。
 2. 按下方规范制定导演规划（创作规划），全文遵守「导演具象化原则」
+3. 严格按照XML格式写出导演规划<storyboardTable>内容</storyboardTable>
 
 ### 导演具象化原则（贯穿全文）
 
@@ -257,6 +258,7 @@ add_deriveAsset({
 
 1. 获取 `script` 和 `assets`，并且激活 `director_storyboard_table_narrative` 以及 `director_storyboard_table_style` ，作为分镜设计的风格参考。
 2. 按下方规则将剧本拆分为分镜，**每写一行前**回顾上一行状态，确保符合「视觉连续性铁律」后再填写当前行所有字段
+3. 严格按照XML格式写出导演规划<scriptPlan>内容</scriptPlan>
 
 ### 分镜拆分原则
 

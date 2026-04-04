@@ -168,7 +168,7 @@ function createSubAgent(parentCtx: AgentContext) {
         memoryKey: "assistant:execution",
         messages: [
           { role: "assistant", content: artSkills.prompt + `\n${modelInfo}` },
-          { role: "user", content: prompt },
+          { role: "user", content: prompt + addPrompt },
         ],
         tools: { ...artSkills.tools },
       });
@@ -183,7 +183,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
       return runAgent({
         prompt,
-        system: systemPrompt + "你必须使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>",
+        system: systemPrompt,
         name: "监制",
         memoryKey: "assistant:supervision",
       });

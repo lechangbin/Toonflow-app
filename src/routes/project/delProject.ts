@@ -54,6 +54,9 @@ export default router.post(
     await u.db("o_videoTrack").where("projectId", id).delete();
     await u.db("o_video").where("projectId", id).delete();
     //删除项目下的资源
+
+    await u.db("memories").where("isolationKey", "like", `${id}:%`).delete();
+
     try {
       await u.oss.deleteDirectory(`${id}/`);
       console.log(`项目 ${id} 的OSS文件夹删除成功`);

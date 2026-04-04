@@ -141,11 +141,15 @@ function createSubAgent(parentCtx: AgentContext) {
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "script_execution_skeleton.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
+
+      const formatPrompt = "\n你必须使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>";
+
       return runAgent({
         prompt,
-        system: systemPrompt + "\n你必须使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>",
+        system: systemPrompt + formatPrompt,
         name: "编剧",
         memoryKey: "assistant:execution:storySkeleton",
+        messages: [{ role: "user", content: prompt + formatPrompt }],
       });
     },
   });
@@ -156,11 +160,15 @@ function createSubAgent(parentCtx: AgentContext) {
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "script_execution_adaptation.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
+
+      const formatPrompt = "\n你必须使用如下XML格式写入工作区：\n<adaptationStrategy>改编策略内容</adaptationStrategy>";
+
       return runAgent({
         prompt,
-        system: systemPrompt + "\n你必须使用如下XML格式写入工作区：\n<adaptationStrategy>改编策略内容</adaptationStrategy>",
+        system: systemPrompt + formatPrompt,
         name: "编剧",
         memoryKey: "assistant:execution:adaptationStrategy",
+        messages: [{ role: "user", content: prompt + formatPrompt }],
       });
     },
   });
@@ -181,14 +189,14 @@ function createSubAgent(parentCtx: AgentContext) {
 
       const projectPrompt = ["## 章节ID映射(ID:章序)", novelData.map((i: any) => `${i.id}:${i.index}`).join(","), ""].join("\n");
 
+      const formatPrompt = `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`;
+
       return runAgent({
         prompt,
-        system:
-          systemPrompt +
-          `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`,
+        system: systemPrompt + formatPrompt,
         messages: [
           { role: "assistant", content: projectPrompt + "\n" + scriptPrompt },
-          { role: "user", content: prompt },
+          { role: "user", content: prompt + formatPrompt },
         ],
         name: "编剧",
         memoryKey: "assistant:execution:script",
