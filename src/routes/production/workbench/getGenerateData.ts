@@ -38,23 +38,18 @@ export default router.post(
   async (req, res) => {
     const { projectId, scriptId } = req.body;
     const storyboardList = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
+    const trackData = await u.db("o_videoTrack").where({ projectId, scriptId });
     const videoList = await u.db("o_video").whereIn(
       "videoTrackId",
-      storyboardList.map((s) => s.trackId),
+      trackData.map((t) => t.id),
     );
-    const trackData = await u.db("o_videoTrack").whereIn(
-      //@ts-ignore
-      "id",
-      storyboardList.map((s) => s.trackId),
-    );
-
     const trackList: TrackItem[] = [];
-    const trackIdMap = [...new Set<number>(storyboardList.map((s) => s.trackId!))];
+    const trackIdMap = [...new Set<number>(trackData.map((t) => t.id!))];
     for (const trackId of trackIdMap) {
       const item = trackData.find((t) => t.id === trackId);
       trackList.push({
         id: trackId,
-        duration: item?.duration ?? 0,   
+        duration: item?.duration ?? 0,
         prompt: item?.prompt || "",
         state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
         reason: item?.reason ?? "",
