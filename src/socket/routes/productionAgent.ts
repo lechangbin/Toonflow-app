@@ -124,4 +124,7 @@ export default (nsp: Namespace) => {
       abortController = null;
     });
   });
+  nsp.on("disconnect", (socket: Socket) => {
+    console.log("[productionAgent] 已断开连接:", socket.id);
+  });
 };

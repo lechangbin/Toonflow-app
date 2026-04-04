@@ -51,11 +51,11 @@ export default router.post(
       }
       const tempSkillsPath = u.getPath(["temp", "skills"]);
       if (fs.existsSync(tempSkillsPath)) {
-        fs.cpSync(tempSkillsPath, u.getPath(["skills"]), { recursive: true, force: false });
+        fs.cpSync(tempSkillsPath, u.getPath(["skills"]), { recursive: true });
       }
       const tempModelsPath = u.getPath(["temp", "models"]);
       if (fs.existsSync(tempModelsPath)) {
-        fs.cpSync(tempModelsPath, u.getPath(["models"]), { recursive: true, force: false });
+        fs.cpSync(tempModelsPath, u.getPath(["models"]), { recursive: true });
       }
       fs.rmSync(rootDir, { recursive: true, force: true });
       res.status(200).send(success("更新成功，5秒后重启"));

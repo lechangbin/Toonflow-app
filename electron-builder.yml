@@ -47,6 +47,7 @@ nsis:
   artifactName: ${productName}-${version}-win-${arch}-setup.${ext}
   installerIcon: './scripts/logo.ico'
   uninstallerIcon: './scripts/logo.ico'
+  include: ./scripts/installer.nsh
 
 mac:
   target:
