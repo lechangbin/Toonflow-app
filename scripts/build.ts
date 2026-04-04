@@ -7,18 +7,6 @@ if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = "prod";
 }
 
-// 自动创建 env 目录和环境变量文件（.gitignore 可能忽略了这些文件）
-const envDir = path.resolve("env");
-const envFile = path.join(envDir, `.env.${process.env.NODE_ENV}`);
-if (!fs.existsSync(envDir)) {
-  fs.mkdirSync(envDir, { recursive: true });
-}
-if (!fs.existsSync(envFile)) {
-  const defaultEnv = `NODE_ENV=${process.env.NODE_ENV}\nPORT=10588\nOSSURL=http://127.0.0.1:10588/\n`;
-  fs.writeFileSync(envFile, defaultEnv, "utf8");
-  console.log(`📄 已自动创建环境变量文件: ${envFile}`);
-}
-
 const pkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
 
 const external = [
