@@ -11,13 +11,19 @@ on:
         required: false
         type: boolean
         default: false
+      skipRelease:
+        description: "跳过发布（仅构建测试）"
+        required: false
+        type: boolean
+        default: false
 
 env:
   NODE_VERSION: "24"
+  SKIP_RELEASE: ${{ inputs.skipRelease || false }}
 
 jobs:
   # ==================== Windows 构建 ====================
-  构建-Windows:
+  build-Windows:
     strategy:
       fail-fast: false
       matrix:
@@ -88,7 +94,7 @@ jobs:
           retention-days: 30
 
   # ==================== macOS 构建 ====================
-  构建-macOS:
+  build-macOS:
     strategy:
       fail-fast: false
       matrix:
@@ -171,7 +177,7 @@ jobs:
           retention-days: 30
 
   # ==================== Linux 构建 ====================
-  构建-Linux:
+  build-Linux:
     runs-on: ubuntu-latest
     name: 构建 Linux (x64)
 
@@ -228,11 +234,11 @@ jobs:
           retention-days: 30
 
   # ==================== 发布 ====================
-  发布:
-    needs: [构建-Windows, 构建-macOS, 构建-Linux]
+  release:
+    needs: [build-Windows, build-macOS, build-Linux]
     runs-on: ubuntu-latest
     name: 发布到 GitHub
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && inputs.skipRelease != true
 
     permissions:
       contents: write
