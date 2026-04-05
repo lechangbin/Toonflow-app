@@ -11,6 +11,7 @@ import Ai from "@/utils/ai";
 import { getPrompts } from "@/utils/getPrompts";
 import { getArtPrompt } from "@/utils/getArtPrompt";
 import replaceUrl from "@/utils/replaceUrl";
+import writeVersion from "@/utils/writeVersion";
 
 export default {
   db,
@@ -25,5 +26,6 @@ export default {
   task,
   getPrompts,
   getArtPrompt,
-  replaceUrl
+  replaceUrl,
+  writeVersion,
 };

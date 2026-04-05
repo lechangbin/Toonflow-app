@@ -24,9 +24,10 @@ export default router.post(
   validateFields({
     url: z.url(),
     reinstall: z.boolean(),
+    version: z.string(),
   }),
   async (req, res) => {
-    const { reinstall, url } = req.body;
+    const { reinstall, url, version } = req.body;
     const rootDir = u.getPath(["temp"]);
     fs.mkdirSync(rootDir, { recursive: true });
     if (reinstall) {
@@ -58,6 +59,7 @@ export default router.post(
         fs.cpSync(tempModelsPath, u.getPath(["models"]), { recursive: true, force: true });
       }
       fs.rmSync(rootDir, { recursive: true, force: true });
+      await u.writeVersion(version);
       res.status(200).send(success("更新成功，5秒后重启"));
     }
   },

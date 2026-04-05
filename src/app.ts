@@ -17,6 +17,9 @@ const app = express();
 const server = http.createServer(app);
 
 export default async function startServe(randomPort: Boolean = false) {
+
+  await u.writeVersion()
+
   const io = new Server(server, { cors: { origin: "*" } });
   socketInit(io);
 
