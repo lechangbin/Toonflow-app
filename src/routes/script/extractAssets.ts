@@ -64,7 +64,6 @@ export default router.post(
     const { scriptIds, projectId, groupSize = 5 } = req.body;
 
     if (!scriptIds.length) return res.status(400).send(error("请先选择剧本"));
-    console.log("%c Line:67 🍪 scriptIds", "background:#e41a6a", scriptIds);
     const scripts = await u.db("o_script").whereIn("id", scriptIds);
     
 
@@ -80,7 +79,6 @@ export default router.post(
 
     // 将 scriptIds 按 groupSize（默认5）分组，每组一起发给 AI
     const scriptGroups = chunkArray(scriptIds as number[], groupSize);
-    console.log("%c Line:83 🍿 scriptGroups", "background:#f5ce50", scriptGroups);
 
     /** 一组剧本提取完成后统一入库并建立关联 */
     async function persistGroupResult(result: GroupResult) {
@@ -165,8 +163,6 @@ export default router.post(
             }
           }
         }
-        console.log("%c Line:161 🥕 validScripts", "background:#42b983", validScripts);
-
         if (!validScripts.length) return;
         const validScriptIds = validScripts.map((v) => v.id);
         // 修改状态为正在提取中

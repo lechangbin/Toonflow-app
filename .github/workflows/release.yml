@@ -1,4 +1,4 @@
-name: Build and Release
+name: 构建发布
 
 on:
   push:
@@ -6,136 +6,254 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version number (e.g., 1.0.0)"
+      debug:
+        description: "启用调试模式"
         required: false
-        type: string
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: "24"
 
 jobs:
-  build-windows:
+  # ==================== Windows 构建 ====================
+  构建-Windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+
     runs-on: windows-latest
+    name: 构建 Windows (${{ matrix.arch }})
 
     steps:
-      - name: Checkout code
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 配置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "yarn"
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
+      - name: 缓存依赖
+        uses: actions/cache@v4
+        id: cache
+        with:
+          path: node_modules
+          key: windows-${{ matrix.arch }}-modules-${{ hashFiles('yarn.lock') }}
+
+      - name: 安装依赖
+        if: steps.cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
+        env:
+          npm_config_arch: ${{ matrix.arch }}
 
-      - name: Build application
+      - name: 调试 - 显示环境信息
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== 系统信息 ====="
+          systeminfo | findstr /B /C:"OS"
+          echo "===== Node 版本 ====="
+          node -v
+          echo "===== Yarn 版本 ====="
+          yarn -v
+          echo "===== 目标架构 ====="
+          echo "${{ matrix.arch }}"
+
+      - name: 构建应用
         run: yarn build
 
-      - name: Build Windows installer
-        run: yarn dist:win
+      - name: 调试 - 显示构建产物
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== 构建目录内容 ====="
+          dir dist 2>nul || echo "dist 目录不存在"
+
+      - name: 打包 Windows 安装程序
+        run: yarn dist:win --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
+      - name: 调试 - 显示打包产物
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== 最终产物 ====="
+          dir dist\*.exe
+
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: windows-builds
-          path: |
-            dist/*.exe
+          name: windows-${{ matrix.arch }}
+          path: dist/*.exe
           retention-days: 30
 
-  build-macos:
-    runs-on: macos-latest
+  # ==================== macOS 构建 ====================
+  构建-macOS:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            os: macos-14
+            name: Apple Silicon
+          - arch: x64
+            os: macos-13
+            name: Intel
+
+    runs-on: ${{ matrix.os }}
+    name: 构建 macOS (${{ matrix.name }})
 
     steps:
-      - name: Checkout code
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 配置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "yarn"
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
+      - name: 缓存依赖
+        uses: actions/cache@v4
+        id: cache
+        with:
+          path: node_modules
+          key: macos-${{ matrix.arch }}-modules-${{ hashFiles('yarn.lock') }}
+
+      - name: 安装依赖
+        if: steps.cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
 
-      - name: Build application
+      - name: 调试 - 显示环境信息
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== 系统信息 ====="
+          uname -a
+          echo "===== 系统架构 ====="
+          uname -m
+          echo "===== Node 版本 ====="
+          node -v
+          echo "===== Yarn 版本 ====="
+          yarn -v
+
+      - name: 调试 - 验证 native 模块架构
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== sharp 模块架构 ====="
+          file node_modules/sharp/build/Release/*.node 2>/dev/null || echo "sharp 未安装"
+          echo "===== 其他 native 模块 ====="
+          find node_modules -name "*.node" -exec file {} \; 2>/dev/null | head -20
+
+      - name: 构建应用
         run: yarn build
 
-      - name: Build macOS installer
+      - name: 调试 - 显示构建产物
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== 构建目录内容 ====="
+          ls -la dist/ 2>/dev/null || echo "dist 目录不存在"
+
+      - name: 打包 macOS 安装程序
         run: yarn dist:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
+      - name: 调试 - 显示打包产物
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== 最终产物 ====="
+          ls -la dist/*.dmg
+
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: macos-builds
-          path: |
-            dist/*.dmg
+          name: macos-${{ matrix.arch }}
+          path: dist/*.dmg
           retention-days: 30
 
-  build-linux:
+  # ==================== Linux 构建 ====================
+  构建-Linux:
     runs-on: ubuntu-latest
+    name: 构建 Linux (x64)
 
     steps:
-      - name: Checkout code
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 配置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "yarn"
 
-      - name: Install dependencies
+      - name: 安装依赖
         run: yarn install --frozen-lockfile
 
-      - name: Build application
+      - name: 调试 - 显示环境信息
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== 系统信息 ====="
+          uname -a
+          echo "===== 系统架构 ====="
+          uname -m
+          echo "===== Node 版本 ====="
+          node -v
+          echo "===== Yarn 版本 ====="
+          yarn -v
+
+      - name: 调试 - 验证 native 模块架构
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== sharp 模块架构 ====="
+          file node_modules/sharp/build/Release/*.node 2>/dev/null || echo "sharp 未安装"
+
+      - name: 构建应用
         run: yarn build
 
-      - name: Build Linux installer
+      - name: 打包 Linux 安装程序
         run: yarn dist:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
+      - name: 调试 - 显示打包产物
+        if: ${{ inputs.debug }}
+        run: |
+          echo "===== 最终产物 ====="
+          ls -la dist/*.AppImage
+
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: linux-builds
-          path: |
-            dist/*.AppImage
+          name: linux-x64
+          path: dist/*.AppImage
           retention-days: 30
 
-  release:
-    needs: [build-windows, build-macos, build-linux]
+  # ==================== 发布 ====================
+  发布:
+    needs: [构建-Windows, 构建-macOS, 构建-Linux]
     runs-on: ubuntu-latest
+    name: 发布到 GitHub
     if: startsWith(github.ref, 'refs/tags/')
 
     permissions:
       contents: write
 
     steps:
-      - name: Download Windows artifacts
+      - name: 下载所有构建产物
         uses: actions/download-artifact@v4
         with:
-          name: windows-builds
-          path: dist
+          path: artifacts
 
-      - name: Download macOS artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-builds
-          path: dist
+      - name: 整理文件
+        run: |
+          mkdir -p dist
+          find artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" \) -exec mv {} dist/ \;
 
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-builds
-          path: dist
+      - name: 显示待发布文件
+        run: |
+          echo "===== 待发布文件列表 ====="
+          ls -la dist/
 
-      - name: Create Release
+      - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: ToonFlow ${{ github.ref_name }}
@@ -152,21 +270,22 @@ jobs:
             | 🍎 macOS | Apple Silicon | `ToonFlow-*-mac-arm64.dmg` | 适用于 M1/M2/M3/M4 芯片的 Mac |
             | 🍎 macOS | Intel | `ToonFlow-*-mac-x64.dmg` | 适用于 Intel 芯片的 Mac |
             | 🐧 Linux | x64 | `ToonFlow-*-linux-x64.AppImage` | 适用于大多数 Linux 发行版 |
-            | 🐧 Linux | ARM64 | `ToonFlow-*-linux-arm64.AppImage` | 适用于 ARM 架构 Linux 设备 |
 
             > 💡 **不确定选哪个？** Windows 用户通常选 **x64-setup.exe**；Mac 用户查看「关于本机」：M 系列芯片选 **arm64.dmg**，Intel 选 **x64.dmg**。
 
             ## 🚀 安装说明
 
-            - **Windows**：下载 `.exe` 文件，双击运行安装向导即可。如果运行时出现 DLL 缺失或闪退，请先安装 [Microsoft Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)。
-            - **macOS**：下载 `.dmg` 文件，打开后将 ToonFlow 拖入「应用程序」文件夹。首次打开如遇安全提示，请前往「系统设置 → 隐私与安全性」中允许运行。
-            - **Linux**：下载 `.AppImage` 文件，执行 `chmod +x ToonFlow-*.AppImage` 后双击运行。
+            - **Windows**：下载 `.exe` 文件，双击运行安装向导即可。如遇 DLL 缺失，请安装 [VC++ 运行库](https://aka.ms/vs/17/release/vc_redist.x64.exe)。
+            - **macOS**：下载 `.dmg` 文件，打开后将应用拖入「应用程序」。首次打开如遇安全提示，前往「系统设置 → 隐私与安全性」允许运行。
+            - **Linux**：下载 `.AppImage`，执行 `chmod +x ToonFlow-*.AppImage` 后运行。
 
             ---
 
-          files: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 发布完成
+        run: |
+          echo "✅ 发布完成！"
+          echo "🔗 Release: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
