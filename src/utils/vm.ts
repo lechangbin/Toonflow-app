@@ -12,7 +12,7 @@ import { createXai } from "@ai-sdk/xai";
 import { createMinimax } from "vercel-minimax-ai-provider";
 import FormData from "form-data";
 import jsonwebtoken from "jsonwebtoken";
-
+import u from "@/utils";
 export default function runCode(code: string, vendor?: Record<string, any>) {
   // 创建一个沙盒
   const exports = {};
@@ -94,6 +94,7 @@ export async function pollTask(
     try {
       const result = await fn();
       if (result.completed) return result;
+      if(result?.error) return result;
     } catch (e: any) {
       return { completed: false, error: e?.message || "poll error" };
     }
