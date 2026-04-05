@@ -85,6 +85,7 @@ export default (nsp: Namespace) => {
         let aborted = false;
         try {
           for await (const chunk of textStream) {
+            await new Promise<void>((resolve) => setTimeout(() => resolve(), 1));
             syncCurrentMessage();
             text.append(chunk);
           }

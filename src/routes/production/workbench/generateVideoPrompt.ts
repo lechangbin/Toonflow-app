@@ -92,22 +92,26 @@ export default router.post(
           )},
           `;
 
-    const { text } = await u.Ai.Text("universalAi").invoke({
-      system: videoPrompt?.data!,
-      messages: [
-        {
-          role: "assistant",
-          content: `${visualManual}`,
-        },
-        {
-          role: "user",
-          content: content,
-        },
-      ],
-    });
-    await u.db("o_videoTrack").where({ id: trackId }).update({
-      prompt: text,
-    });
-    res.status(200).send(success(text));
+    try {
+      const { text } = await u.Ai.Text("universalAi").invoke({
+        system: videoPrompt?.data!,
+        messages: [
+          {
+            role: "assistant",
+            content: `${visualManual}`,
+          },
+          {
+            role: "user",
+            content: content,
+          },
+        ],
+      });
+      await u.db("o_videoTrack").where({ id: trackId }).update({
+        prompt: text,
+      });
+      res.status(200).send(success(text));
+    } catch (error) {
+      res.status(500).send(error);
+    }
   },
 );

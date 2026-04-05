@@ -109,6 +109,7 @@ function createSubAgent(parentCtx: AgentContext) {
 
     try {
       for await (const chunk of textStream) {
+        await new Promise<void>((resolve) => setTimeout(() => resolve(), 1));
         text.append(chunk);
         fullResponse += chunk;
       }

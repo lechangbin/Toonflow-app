@@ -45,7 +45,7 @@ export default router.post(
       writeStream.on("error", reject);
     });
 
-    const downloadUrl = `${process.env.OSSURL || "http://127.0.0.1:10588/"}temp/${fileName}`;
+    const downloadUrl = `${process.env.OSSURL + `oss/` || "http://127.0.0.1:10588/oss/"}temp/${fileName}`;
     res.json(success({ url: downloadUrl }));
   },
 );
