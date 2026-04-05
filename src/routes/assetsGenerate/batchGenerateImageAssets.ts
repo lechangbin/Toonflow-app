@@ -107,7 +107,6 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
       const userPrompt = buildPrompt(cfg, project.artStyle ?? "", item.name, item.prompt);
       const describe = `生成${cfg.label}图，名称：${item.name}，提示词：${item.prompt}`;
       const relatedObjects = { id: item.id, projectId, type: cfg.label };
-
       try {
         const aiImage = u.Ai.Image(model);
         await aiImage.run(

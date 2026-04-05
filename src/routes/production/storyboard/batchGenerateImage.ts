@@ -44,7 +44,7 @@ export default router.post(
       .db("o_storyboard")
       .whereIn("id", finalStoryboardIds)
       .where("scriptId", scriptId)
-      .whereNot("shouldGenerateImage", 0)
+      .whereNot("shouldGenerateImage", 1)
       .update({ state: "生成中" });
 
     const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle", "videoRatio").first();
