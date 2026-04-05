@@ -9,6 +9,17 @@ app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 
 declare const __APP_VERSION__: string | undefined;
 
+/**
+ * 将 extraResources 中的 data 目录复制到用户数据目录（跳过已存在的文件，保留用户修改）
+ */
+
+function getVersionFromUpdateJson(filePath: string): string | null {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8")).version ?? null;
+  } catch {}
+  return null;
+}
+
 const SKIP_ENTRIES = new Set(["logs", "oss", "db2.sqlite"]);
 
 function copyDir(src: string, dest: string, overwrite = false): void {
@@ -29,9 +40,9 @@ function copyDir(src: string, dest: string, overwrite = false): void {
 function initializeData(): void {
   const srcDir = path.join(process.resourcesPath, "data");
   const destDir = path.join(app.getPath("userData"), "data");
-  const updateJsonFile = path.join(destDir, "version.txt");
+  const updateJsonFile = path.join(destDir, "update.json");
   const currentVersion = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
-  const userVersion = fs.existsSync(updateJsonFile) ? fs.readFileSync(updateJsonFile, "utf8") : null;
+  const userVersion = getVersionFromUpdateJson(updateJsonFile);
 
   if (!userVersion) {
     copyDir(srcDir, destDir);
