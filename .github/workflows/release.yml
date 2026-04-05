@@ -1,14 +1,15 @@
-name: 构建发布
+name: Build and Release
 
 on:
   push:
-    branches:
-      - main
-      - dev
-  pull_request:
-    branches:
-      - main
+    tags:
+      - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number (e.g., 1.0.0)"
+        required: false
+        type: string
 
 env:
   NODE_VERSION: "24"
