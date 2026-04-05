@@ -1,9 +1,13 @@
-name: 构建发布
+name: 构建测试
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       debug:
@@ -85,7 +89,7 @@ jobs:
         with:
           name: windows-${{ matrix.arch }}
           path: dist/*.exe
-          retention-days: 30
+          retention-days: 7
 
   # ==================== macOS 构建 ====================
   build-macOS:
@@ -168,7 +172,7 @@ jobs:
         with:
           name: macos-${{ matrix.arch }}
           path: dist/*.dmg
-          retention-days: 30
+          retention-days: 7
 
   # ==================== Linux 构建 ====================
   build-Linux:
@@ -225,67 +229,23 @@ jobs:
         with:
           name: linux-x64
           path: dist/*.AppImage
-          retention-days: 30
+          retention-days: 7
 
-  # ==================== 发布 ====================
-  release:
+  # ==================== 构建摘要 ====================
+  summary:
     needs: [build-Windows, build-macOS, build-Linux]
     runs-on: ubuntu-latest
-    name: 发布到 GitHub
-    if: startsWith(github.ref, 'refs/tags/')
-
-    permissions:
-      contents: write
+    name: 构建摘要
+    if: always()
 
     steps:
-      - name: 下载所有构建产物
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: 整理文件
+      - name: 输出构建结果
         run: |
-          mkdir -p dist
-          find artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" \) -exec mv {} dist/ \;
-
-      - name: 显示待发布文件
-        run: |
-          echo "===== 待发布文件列表 ====="
-          ls -la dist/
-
-      - name: 创建 GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ToonFlow ${{ github.ref_name }}
-          draft: false
-          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
-          generate_release_notes: true
-          body: |
-            ## 📦 下载指南
-
-            | 操作系统 | 架构 | 文件 | 说明 |
-            |---------|------|------|------|
-            | 🪟 Windows | x64 | `ToonFlow-*-win-x64-setup.exe` | **推荐**，适用于大多数 Windows 电脑 |
-            | 🪟 Windows | ARM64 | `ToonFlow-*-win-arm64-setup.exe` | 适用于 ARM 架构 Windows 设备 |
-            | 🍎 macOS | Apple Silicon | `ToonFlow-*-mac-arm64.dmg` | 适用于 M1/M2/M3/M4 芯片的 Mac |
-            | 🍎 macOS | Intel | `ToonFlow-*-mac-x64.dmg` | 适用于 Intel 芯片的 Mac |
-            | 🐧 Linux | x64 | `ToonFlow-*-linux-x64.AppImage` | 适用于大多数 Linux 发行版 |
-
-            > 💡 **不确定选哪个？** Windows 用户通常选 **x64-setup.exe**；Mac 用户查看「关于本机」：M 系列芯片选 **arm64.dmg**，Intel 选 **x64.dmg**。
-
-            ## 🚀 安装说明
-
-            - **Windows**：下载 `.exe` 文件，双击运行安装向导即可。如遇 DLL 缺失，请安装 [VC++ 运行库](https://aka.ms/vs/17/release/vc_redist.x64.exe)。
-            - **macOS**：下载 `.dmg` 文件，打开后将应用拖入「应用程序」。首次打开如遇安全提示，前往「系统设置 → 隐私与安全性」允许运行。
-            - **Linux**：下载 `.AppImage`，执行 `chmod +x ToonFlow-*.AppImage` 后运行。
-
-            ---
-
-          files: dist/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 发布完成
-        run: |
-          echo "✅ 发布完成！"
-          echo "🔗 Release: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          echo "===== 构建测试完成 ====="
+          echo "Windows x64: ${{ needs.build-Windows.result }}"
+          echo "Windows arm64: ${{ needs.build-Windows.result }}"
+          echo "macOS Apple Silicon: ${{ needs.build-macOS.result }}"
+          echo "macOS Intel: ${{ needs.build-macOS.result }}"
+          echo "Linux x64: ${{ needs.build-Linux.result }}"
+          echo ""
+          echo "构建产物将保留 7 天，可在 Actions 页面下载。"
