@@ -9,12 +9,6 @@ on:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      debug:
-        description: "启用调试模式"
-        required: false
-        type: boolean
-        default: false
 
 env:
   NODE_VERSION: "24"
@@ -25,10 +19,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x64, arm64]
+        include:
+          - arch: x64
+            name: x64
+          - arch: arm64
+            name: ARM64
 
     runs-on: windows-latest
-    name: 构建 Windows (${{ matrix.arch }})
+    name: 构建 Windows (${{ matrix.name }})
 
     steps:
       - name: 检出代码
@@ -52,37 +50,10 @@ jobs:
         env:
           npm_config_arch: ${{ matrix.arch }}
 
-      - name: 调试 - 显示环境信息
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== 系统信息 ====="
-          systeminfo | findstr /B /C:"OS"
-          echo "===== Node 版本 ====="
-          node -v
-          echo "===== Yarn 版本 ====="
-          yarn -v
-          echo "===== 目标架构 ====="
-          echo "${{ matrix.arch }}"
-
-      - name: 构建应用
-        run: yarn build
-
-      - name: 调试 - 显示构建产物
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== 构建目录内容 ====="
-          dir dist 2>nul || echo "dist 目录不存在"
-
       - name: 打包 Windows 安装程序
-        run: yarn dist:win --${{ matrix.arch }}
+        run: yarn dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 调试 - 显示打包产物
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== 最终产物 ====="
-          dir dist\*.exe
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
@@ -127,45 +98,10 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
 
-      - name: 调试 - 显示环境信息
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== 系统信息 ====="
-          uname -a
-          echo "===== 系统架构 ====="
-          uname -m
-          echo "===== Node 版本 ====="
-          node -v
-          echo "===== Yarn 版本 ====="
-          yarn -v
-
-      - name: 调试 - 验证 native 模块架构
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== sharp 模块架构 ====="
-          file node_modules/sharp/build/Release/*.node 2>/dev/null || echo "sharp 未安装"
-          echo "===== 其他 native 模块 ====="
-          find node_modules -name "*.node" -exec file {} \; 2>/dev/null | head -20
-
-      - name: 构建应用
-        run: yarn build
-
-      - name: 调试 - 显示构建产物
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== 构建目录内容 ====="
-          ls -la dist/ 2>/dev/null || echo "dist 目录不存在"
-
       - name: 打包 macOS 安装程序
-        run: yarn dist:mac
+        run: yarn dist:mac --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 调试 - 显示打包产物
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== 最终产物 ====="
-          ls -la dist/*.dmg
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
@@ -176,8 +112,17 @@ jobs:
 
   # ==================== Linux 构建 ====================
   build-Linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            name: x64
+          - arch: arm64
+            name: ARM64
+
     runs-on: ubuntu-latest
-    name: 构建 Linux (x64)
+    name: 构建 Linux (${{ matrix.name }})
 
     steps:
       - name: 检出代码
@@ -192,42 +137,15 @@ jobs:
       - name: 安装依赖
         run: yarn install --frozen-lockfile
 
-      - name: 调试 - 显示环境信息
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== 系统信息 ====="
-          uname -a
-          echo "===== 系统架构 ====="
-          uname -m
-          echo "===== Node 版本 ====="
-          node -v
-          echo "===== Yarn 版本 ====="
-          yarn -v
-
-      - name: 调试 - 验证 native 模块架构
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== sharp 模块架构 ====="
-          file node_modules/sharp/build/Release/*.node 2>/dev/null || echo "sharp 未安装"
-
-      - name: 构建应用
-        run: yarn build
-
       - name: 打包 Linux 安装程序
-        run: yarn dist:linux
+        run: yarn dist:linux --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 调试 - 显示打包产物
-        if: ${{ inputs.debug }}
-        run: |
-          echo "===== 最终产物 ====="
-          ls -la dist/*.AppImage
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: linux-x64
+          name: linux-${{ matrix.arch }}
           path: dist/*.AppImage
           retention-days: 7
 
