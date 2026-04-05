@@ -37,15 +37,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: 缓存依赖
-        uses: actions/cache@v4
-        id: cache
-        with:
-          path: node_modules
-          key: windows-${{ matrix.arch }}-modules-${{ hashFiles('yarn.lock') }}
-
       - name: 安装依赖
-        if: steps.cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
         env:
           npm_config_arch: ${{ matrix.arch }}
@@ -87,15 +79,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: 缓存依赖
-        uses: actions/cache@v4
-        id: cache
-        with:
-          path: node_modules
-          key: macos-${{ matrix.arch }}-modules-${{ hashFiles('yarn.lock') }}
-
       - name: 安装依赖
-        if: steps.cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
         env:
           npm_config_arch: ${{ matrix.arch }}
@@ -134,7 +118,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "yarn"
 
       - name: 安装依赖
         run: yarn install --frozen-lockfile
