@@ -174,14 +174,15 @@ jobs:
 
             | 操作系统 | 架构 | 文件 | 说明 |
             |---------|------|------|------|
-            | 🪟 Windows | x64 | `ToonFlow-*-win-x64-setup.exe` | **推荐**，适用于大多数 Windows 电脑 |
+            | 🪟 Windows | 通用 | `ToonFlow-*-win-setup.exe` | **推荐**，适用于大多数 Windows 电脑 |
+            | 🪟 Windows | x64 | `ToonFlow-*-win-x64-setup.exe` | 适用于 64 位 Windows 电脑 |
             | 🪟 Windows | ARM64 | `ToonFlow-*-win-arm64-setup.exe` | 适用于 ARM 架构 Windows 设备 |
             | 🍎 macOS | Apple Silicon | `ToonFlow-*-mac-arm64.dmg` | 适用于 M1/M2/M3/M4 芯片的 Mac |
             | 🍎 macOS | Intel | `ToonFlow-*-mac-x64.dmg` | 适用于 Intel 芯片的 Mac |
-            | 🐧 Linux | x64 | `ToonFlow-*-linux-x64.AppImage` | 适用于大多数 Linux 发行版 |
+            | 🐧 Linux | x86_64 | `ToonFlow-*-linux-x86_64.AppImage` | 适用于大多数 Linux 发行版 |
             | 🐧 Linux | ARM64 | `ToonFlow-*-linux-arm64.AppImage` | 适用于 ARM 架构的 Linux 设备 |
 
-            > 💡 **不确定选哪个？** Windows 用户通常选 **x64-setup.exe**；Mac 用户查看「关于本机」：M 系列芯片选 **arm64.dmg**，Intel 选 **x64.dmg**。
+            > 💡 **不确定选哪个？** Windows 用户通常选 **win-setup.exe**；Mac 用户查看「关于本机」：M 系列芯片选 **arm64.dmg**，Intel 选 **x64.dmg**。
 
             ## 🚀 安装说明
 
