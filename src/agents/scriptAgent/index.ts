@@ -47,6 +47,8 @@ export async function decisionAI(ctx: AgentContext) {
 
   const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
 
+  const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex");
+
   const projectInfo = [
     "## 项目信息",
     `小说名称：${projectData?.name ?? "未知"}`,
@@ -54,12 +56,13 @@ export async function decisionAI(ctx: AgentContext) {
     `小说简介：${projectData?.intro ?? "无"}`,
     `目标改编影视视觉手册|画风：${projectData?.artStyle ?? "无"}`,
     `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
+    `章节数量：${novelData.length}章`,
   ].join("\n");
 
   const { textStream } = await u.Ai.Text("scriptAgent").stream({
     messages: [
       { role: "system", content: prompt },
-      { role: "assistant", content: projectInfo + mem },
+      { role: "assistant", content: projectInfo + "\n" + mem },
       { role: "user", content: text },
     ],
     abortSignal,
@@ -186,9 +189,7 @@ function createSubAgent(parentCtx: AgentContext) {
         "\n",
       );
 
-      const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("id", "chapterIndex as index");
-
-      const projectPrompt = ["## 章节ID映射(ID:章序)", novelData.map((i: any) => `${i.id}:${i.index}`).join(","), ""].join("\n");
+      const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex");
 
       const formatPrompt = `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`;
 
@@ -196,7 +197,7 @@ function createSubAgent(parentCtx: AgentContext) {
         prompt,
         system: systemPrompt + formatPrompt,
         messages: [
-          { role: "assistant", content: projectPrompt + "\n" + scriptPrompt },
+          { role: "assistant", content: scriptPrompt + `章节数量：${novelData.length}章` },
           { role: "user", content: prompt + formatPrompt },
         ],
         name: "编剧",

@@ -34,17 +34,17 @@ export default (toolCpnfig: ToolConfig) => {
     get_novel_events: tool({
       description: "获取章节事件",
       inputSchema: z.object({
-        ids: z.array(z.number()).describe("章节id，注意区分"),
+        chapterIndexs: z.array(z.number()).describe("章节的编号"),
       }),
-      execute: async ({ ids }) => {
-        console.log("[tools] get_novel_events", ids);
+      execute: async ({ chapterIndexs }) => {
+        console.log("[tools] get_novel_events", chapterIndexs);
         const thinking = msg.thinking("正在查询章节事件...");
         const data = await u
           .db("o_novel")
           .where("projectId", resTool.data.projectId)
           .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState")
-          .whereIn("id", ids);
-        thinking.appendText("正在查询章节ID: " + ids.join(","));
+          .whereIn("chapterIndex", chapterIndexs);
+        thinking.appendText("正在查询章节编号: " + chapterIndexs.join(","));
         const eventString = data.map((i: any) => [`第${i.index}章，标题：${i.chapter}，事件：${i.event}`].join("\n")).join("\n");
         thinking.appendText("查询结果:\n" + eventString);
         thinking.updateTitle("查询章节事件完成");
@@ -70,12 +70,12 @@ export default (toolCpnfig: ToolConfig) => {
     get_novel_text: tool({
       description: "获取小说章节原始文本内容",
       inputSchema: z.object({
-        id: z.string().describe("章节id"),
+        chapterIndex: z.string().describe("章节编号"),
       }),
-      execute: async ({ id }) => {
-        console.log("[tools] get_novel_text", "[tools] get_novel_text", id);
+      execute: async ({ chapterIndex }) => {
+        console.log("[tools] get_novel_text", "[tools] get_novel_text", chapterIndex);
         const thinking = msg.thinking(`正在获取小说章节原文...`);
-        const data = await u.db("o_novel").where({ id }).select("chapterData").first();
+        const data = await u.db("o_novel").where("projectId", resTool.data.projectId).where({ chapterIndex }).select("chapterData").first();
         const text = data && data?.chapterData ? data.chapterData : "";
         thinking.appendText(`获取到原文:\n` + text);
         thinking.updateTitle(`获取小说章节原文完成`);
