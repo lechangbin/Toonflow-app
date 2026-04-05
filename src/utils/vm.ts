@@ -94,9 +94,9 @@ export async function pollTask(
     try {
       const result = await fn();
       if (result.completed) return result;
-      if(result?.error) return result;
+      if (result?.error) return result;
     } catch (e: any) {
-      return { completed: false, error: e?.message || "poll error" };
+      return { completed: false, error: u.error(e).message || "poll error" };
     }
     await new Promise((res) => setTimeout(res, interval));
   }

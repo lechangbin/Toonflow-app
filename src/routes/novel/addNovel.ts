@@ -22,10 +22,15 @@ export default router.post(
   async (req, res) => {
     const { projectId, data } = req.body;
     const totalNovelId = [];
+    const getLastChapterIndex = await u.db("o_novel").where("projectId", projectId).select("chapterIndex").orderBy("chapterIndex", "desc").first();
+    let lastChapterIndex = 0;
+    if (getLastChapterIndex) {
+      lastChapterIndex = getLastChapterIndex.chapterIndex!;
+    }
     for (const item of data) {
       const [id] = await u.db("o_novel").insert({
         projectId,
-        chapterIndex: item.index,
+        chapterIndex: ++lastChapterIndex,
         reel: item.reel,
         chapter: item.chapter,
         chapterData: item.chapterData,
