@@ -16,17 +16,8 @@ env:
 jobs:
   # ==================== Windows 构建 ====================
   build-Windows:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            name: x64
-          - arch: arm64
-            name: ARM64
-
     runs-on: windows-latest
-    name: 构建 Windows (${{ matrix.name }})
+    name: 构建 Windows
 
     steps:
       - name: 检出代码
@@ -39,23 +30,16 @@ jobs:
 
       - name: 安装依赖
         run: yarn install --frozen-lockfile
-        env:
-          npm_config_arch: ${{ matrix.arch }}
-
-      - name: 安装目标平台 sharp
-        if: matrix.arch == 'arm64'
-        run: |
-          npm install --no-save --ignore-scripts --force @img/sharp-win32-arm64 @img/sharp-libvips-win32-arm64
 
       - name: 打包 Windows 安装程序
-        run: yarn dist:win --${{ matrix.arch }}
+        run: yarn dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: windows-${{ matrix.arch }}
+          name: windows
           path: dist/*.exe
           retention-days: 7
 
