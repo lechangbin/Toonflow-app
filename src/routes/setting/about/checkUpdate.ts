@@ -23,11 +23,12 @@ export default router.post(
   "/",
   validateFields({
     source: z.enum(["toonflow", "github", "gitee", "atomgit"]),
+    url: z.url().optional(),
   }),
   async (req, res) => {
-    const { source } = req.body;
+    const { source, url } = req.body;
 
-    const getUrl = "https://toonflow.oss-cn-beijing.aliyuncs.com/update.json";
+    const getUrl = url ?? "https://toonflow.oss-cn-beijing.aliyuncs.com/update.json";
 
     const versionInfo = await fetch(getUrl).then((res) => res.json());
     if (!versionInfo) return res.status(400).send(error("无法获取版本信息"));
@@ -66,6 +67,6 @@ export default router.post(
       if (!zipItem) return res.status(400).send(error("该源暂无增量更新包"));
       return res.status(200).send(success({ needUpdate: true, latestVersion: tagger, reinstall: false, time, url: zipItem.url, version: tagger }));
     }
-    return res.status(200).send(success({ needUpdate: false, latestVersion: tagger, reinstall: false, time ,version: tagger}));
+    return res.status(200).send(success({ needUpdate: false, latestVersion: tagger, reinstall: false, time, version: tagger }));
   },
 );
