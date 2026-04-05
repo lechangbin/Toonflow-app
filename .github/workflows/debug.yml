@@ -98,10 +98,10 @@ jobs:
       matrix:
         include:
           - arch: arm64
-            os: macos-14
+            os: macos-latest
             name: Apple Silicon
           - arch: x64
-            os: macos-13
+            os: macos-latest
             name: Intel
 
     runs-on: ${{ matrix.os }}
