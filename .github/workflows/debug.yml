@@ -84,6 +84,9 @@ jobs:
         env:
           npm_config_arch: ${{ matrix.arch }}
 
+      - name: 安装目标平台 sharp
+        run: npm install --os=darwin --cpu=${{ matrix.arch }} sharp
+
       - name: 打包 macOS 安装程序
         run: yarn dist:mac --${{ matrix.arch }}
         env:
