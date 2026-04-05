@@ -15,26 +15,20 @@ declare const __APP_VERSION__: string | undefined;
 
 function getVersionFromUpdateJson(filePath: string): string | null {
   try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8")).version ?? null;
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      return data.version ?? null;
+    }
   } catch {}
   return null;
 }
 
-const SKIP_ENTRIES = new Set(["logs", "oss", "db2.sqlite"]);
-
-function copyDir(src: string, dest: string, overwrite = false): void {
+function copyDirForce(src: string, dest: string): void {
   if (!fs.existsSync(src)) return;
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    if (SKIP_ENTRIES.has(entry.name)) continue;
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDir(srcPath, destPath, overwrite);
-    } else if (overwrite || !fs.existsSync(destPath)) {
-      fs.copyFileSync(srcPath, destPath);
-    }
+  if (fs.existsSync(dest)) {
+    fs.rmSync(dest, { recursive: true, force: true });
   }
+  copyDirRecursive(src, dest);
 }
 
 function initializeData(): void {
@@ -44,23 +38,34 @@ function initializeData(): void {
   const currentVersion = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
   const userVersion = getVersionFromUpdateJson(updateJsonFile);
 
-  if (!userVersion) {
-    copyDir(srcDir, destDir);
+  // 首次安装或无update.json，直接全量拷贝
+  if (!fs.existsSync(destDir) || !userVersion) {
+    copyDirRecursive(srcDir, destDir);
     return;
   }
 
+  // 版本号不同则覆盖 serve 和 web 目录
   if (userVersion !== currentVersion) {
-    for (const dir of ["serve", "web"]) {
-      const dest = path.join(destDir, dir);
-      if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
-      copyDir(path.join(srcDir, dir), dest);
+    copyDirForce(path.join(srcDir, "serve"), path.join(destDir, "serve"));
+    copyDirForce(path.join(srcDir, "web"), path.join(destDir, "web"));
+  }
+}
+
+function copyDirRecursive(src: string, dest: string): void {
+  if (!fs.existsSync(src)) return;
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    // 跳过 oss 文件夹和 db2.sqlite 文件
+    if (entry.isDirectory() && entry.name === "logs") continue;
+    if (entry.isDirectory() && entry.name === "oss") continue;
+    if (!entry.isDirectory() && entry.name === "db2.sqlite") continue;
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirRecursive(srcPath, destPath);
+    } else if (!fs.existsSync(destPath)) {
+      fs.copyFileSync(srcPath, destPath);
     }
-    copyDir(srcDir, destDir);
-    try {
-      const data = JSON.parse(fs.readFileSync(updateJsonFile, "utf8"));
-      data.version = currentVersion;
-      fs.writeFileSync(updateJsonFile, JSON.stringify(data, null, 4), "utf8");
-    } catch {}
   }
 }
 

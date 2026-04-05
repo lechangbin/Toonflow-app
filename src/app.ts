@@ -12,13 +12,31 @@ import fs from "fs";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
+import path from "path";
+
+declare const __APP_VERSION__: string;
+
+const APP_VERSION: string = (() => {
+  if (typeof __APP_VERSION__ !== "undefined") {
+    return __APP_VERSION__;
+  }
+  // 开发环境回退：从 package.json 读取
+  const pkgPath = path.resolve(process.cwd(), "package.json");
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+  return pkg.version;
+})();
 
 const app = express();
 const server = http.createServer(app);
 
 export default async function startServe(randomPort: Boolean = false) {
+  const verJsonPath = path.join(u.getPath(), "update.json");
+  const data = JSON.parse(fs.readFileSync(verJsonPath, "utf8"));
+  if (data.version !== APP_VERSION) {
+    await fs.promises.writeFile(u.getPath("update.json"), JSON.stringify({ version: APP_VERSION }), "utf-8");
+  }
 
-  await u.writeVersion()
+  await u.writeVersion();
 
   const io = new Server(server, { cors: { origin: "*" } });
   socketInit(io);

@@ -15,22 +15,21 @@ const APP_VERSION: string = (() => {
 })();
 
 export default async (version?: string) => {
-  const versionFile = path.join(getPath(), "update.json");
+  const versionFile = path.join(getPath(), "version.txt");
   if (!fs.existsSync(versionFile)) {
     fs.mkdirSync(path.dirname(versionFile), { recursive: true });
   }
-  await fs.promises.writeFile(versionFile, JSON.stringify({ version: version ?? APP_VERSION }, null, 4), "utf8");
+  await fs.promises.writeFile(versionFile, version ?? APP_VERSION, "utf8");
 };
 
 export const getVersion = async () => {
-  const versionFile = path.join(getPath(), "update.json");
+  const versionFile = path.join(getPath(), "version.txt");
   if (fs.existsSync(versionFile)) {
-    const data = JSON.parse(fs.readFileSync(versionFile, "utf8"));
-    return data.version || null;
+    return fs.readFileSync(versionFile, "utf8");
   }
   if (!fs.existsSync(versionFile)) {
     fs.mkdirSync(path.dirname(versionFile), { recursive: true });
   }
-  await fs.promises.writeFile(versionFile, JSON.stringify({ version: APP_VERSION }, null, 4), "utf8");
+  await fs.promises.writeFile(versionFile, APP_VERSION, "utf8");
   return APP_VERSION;
 };
