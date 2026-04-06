@@ -116,10 +116,17 @@ export default router.post(
         state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
         reason: item?.reason ?? "",
         selectVideoId: Number(item?.videoId)!,
-        medias: [
-          ...(storyboardTrackRecord[trackId] ?? []),
-          ...(storyboardTrackRecord[trackId] ?? []).flatMap((s) => otherDataMap[s.id] ?? []),
-        ],
+        medias: (() => {
+          const storyboardMedias = storyboardTrackRecord[trackId] ?? [];
+          const assetMedias = storyboardMedias.flatMap((s) => otherDataMap[s.id] ?? []);
+          const seenAssetIds = new Set<number>();
+          const uniqueAssets = assetMedias.filter((a) => {
+            if (seenAssetIds.has(a.id)) return false;
+            seenAssetIds.add(a.id);
+            return true;
+          });
+          return [...storyboardMedias, ...uniqueAssets];
+        })(),
         videoList: await Promise.all(
           videoList
             .filter((v) => v.videoTrackId === trackId)
