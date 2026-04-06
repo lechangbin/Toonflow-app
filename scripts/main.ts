@@ -19,13 +19,59 @@ function copyDir(src: string, dest: string): void {
   }
 }
 
+declare const __APP_VERSION__: string;
+
+function compareVersions(a: string, b: string): number {
+  const pa = a
+    .split(".")
+    .map((n) => Number.parseInt(n, 10))
+    .filter((n) => Number.isFinite(n));
+  const pb = b
+    .split(".")
+    .map((n) => Number.parseInt(n, 10))
+    .filter((n) => Number.isFinite(n));
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const va = pa[i] ?? 0;
+    const vb = pb[i] ?? 0;
+    if (va > vb) return 1;
+    if (va < vb) return -1;
+  }
+  return 0;
+}
+
 function initializeData(): void {
   const srcDir = path.join(process.resourcesPath, "data");
   const destDir = path.join(app.getPath("userData"), "data");
-  for (const dir of TARGET_ENTRIES) {
-    if (!fs.existsSync(path.join(destDir, dir))) {
-      copyDir(path.join(srcDir, dir), path.join(destDir, dir));
+  const versionFilePath = path.join(destDir, "version.txt");
+
+  let shouldForceReplace = false;
+  if (!fs.existsSync(versionFilePath)) {
+    shouldForceReplace = true;
+  } else {
+    const localVersion = fs.readFileSync(versionFilePath, "utf-8").trim();
+    if (compareVersions(localVersion, __APP_VERSION__) < 0) {
+      shouldForceReplace = true;
     }
+  }
+
+  console.log("%c Line:55 🍕 shouldForceReplace", "background:#2eafb0", shouldForceReplace);
+
+  for (const dir of TARGET_ENTRIES) {
+    const targetDir = path.join(destDir, dir);
+    if (shouldForceReplace) {
+      fs.rmSync(targetDir, { recursive: true, force: true });
+      copyDir(path.join(srcDir, dir), targetDir);
+      continue;
+    }
+    if (!fs.existsSync(targetDir)) {
+      copyDir(path.join(srcDir, dir), targetDir);
+    }
+  }
+
+  if (shouldForceReplace) {
+    fs.mkdirSync(destDir, { recursive: true });
+    fs.writeFileSync(versionFilePath, `${__APP_VERSION__}\n`, "utf-8");
   }
 }
 
@@ -206,7 +252,7 @@ app.whenReady().then(async () => {
       const url = new URL(request.url);
       const pathname = url.hostname.toLowerCase();
       const handlers: Record<string, () => object> = {
-        getport: () => ({ port: port }),
+        getappurl: () => ({ url: process.env.URL ?? `http://localhost:${port}/api` }),
         windowminimize: () => {
           mainWindow?.minimize();
           return { ok: true };
