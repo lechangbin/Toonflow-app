@@ -5,19 +5,8 @@ import u from "@/utils";
 import fs from "fs";
 import axios from "axios";
 import compressing from "compressing";
-import path from "path";
-import { success, error } from "@/lib/responseFormat";
+import { success } from "@/lib/responseFormat";
 const router = express.Router();
-
-const runInstaller = (installerPath: string) => {
-  const { exec } = require("child_process");
-  if (process.platform === "darwin") {
-    exec(`open "${installerPath}"`);
-  } else {
-    if (process.platform !== "win32") fs.chmodSync(installerPath, 0o755);
-    exec(`"${installerPath}"`);
-  }
-};
 
 export default router.post(
   "/",
@@ -28,17 +17,11 @@ export default router.post(
   }),
   async (req, res) => {
     const { reinstall, url, version } = req.body;
-    const rootDir = u.getPath(["temp"]);
-    fs.mkdirSync(rootDir, { recursive: true });
     if (reinstall) {
-      const response = await axios.get(url, { responseType: "arraybuffer" });
-      const ext =
-        path.extname(new URL(url).pathname) || (process.platform === "win32" ? ".exe" : process.platform === "darwin" ? ".dmg" : ".AppImage");
-      const installerPath = path.join(rootDir, `latest${ext}`);
-      fs.writeFileSync(installerPath, response.data);
-      runInstaller(installerPath);
-      res.status(200).send(success("安装包已下载并启动"));
+      res.status(200).send(success("请在浏览器中手动下载并安装最新版本"));
     } else {
+      const rootDir = u.getPath(["temp"]);
+      fs.mkdirSync(rootDir, { recursive: true });
       const zip = await axios.get(url, { responseType: "arraybuffer" }).then((res) => res.data);
       fs.writeFileSync(`${rootDir}/latest.zip`, zip);
       await compressing.zip.uncompress(`${rootDir}/latest.zip`, rootDir);
@@ -59,8 +42,7 @@ export default router.post(
         fs.cpSync(tempModelsPath, u.getPath(["models"]), { recursive: true, force: true });
       }
       fs.rmSync(rootDir, { recursive: true, force: true });
-      await u.writeVersion(version);
-      res.status(200).send(success("更新成功，5秒后重启"));
+      res.status(200).send(success(`更新${version}成功，5秒后重启`));
     }
   },
 );

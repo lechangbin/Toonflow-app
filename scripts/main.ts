@@ -7,64 +7,24 @@ import Module from "module";
 app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
 app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 
-declare const __APP_VERSION__: string | undefined;
+const TARGET_ENTRIES = new Set(["assets", "models", "serve", "skills", "web"]);
 
-/**
- * 将 extraResources 中的 data 目录复制到用户数据目录（跳过已存在的文件，保留用户修改）
- */
-
-function getVersionFromUpdateJson(filePath: string): string | null {
-  try {
-    if (fs.existsSync(filePath)) {
-      const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
-      return data.version ?? null;
-    }
-  } catch {}
-  return null;
-}
-
-function copyDirForce(src: string, dest: string): void {
+function copyDir(src: string, dest: string): void {
   if (!fs.existsSync(src)) return;
-  if (fs.existsSync(dest)) {
-    fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dest, entry.name);
+    entry.isDirectory() ? copyDir(s, d) : fs.existsSync(d) || fs.copyFileSync(s, d);
   }
-  copyDirRecursive(src, dest);
 }
 
 function initializeData(): void {
   const srcDir = path.join(process.resourcesPath, "data");
   const destDir = path.join(app.getPath("userData"), "data");
-  const updateJsonFile = path.join(destDir, "update.json");
-  const currentVersion = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
-  const userVersion = getVersionFromUpdateJson(updateJsonFile);
-
-  // 首次安装或无update.json，直接全量拷贝
-  if (!fs.existsSync(destDir) || !userVersion) {
-    copyDirRecursive(srcDir, destDir);
-    return;
-  }
-
-  // 版本号不同则覆盖 serve 和 web 目录
-  if (userVersion !== currentVersion) {
-    copyDirForce(path.join(srcDir, "serve"), path.join(destDir, "serve"));
-    copyDirForce(path.join(srcDir, "web"), path.join(destDir, "web"));
-  }
-}
-
-function copyDirRecursive(src: string, dest: string): void {
-  if (!fs.existsSync(src)) return;
-  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    // 跳过 oss 文件夹和 db2.sqlite 文件
-    if (entry.isDirectory() && entry.name === "logs") continue;
-    if (entry.isDirectory() && entry.name === "oss") continue;
-    if (!entry.isDirectory() && entry.name === "db2.sqlite") continue;
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDirRecursive(srcPath, destPath);
-    } else if (!fs.existsSync(destPath)) {
-      fs.copyFileSync(srcPath, destPath);
+  for (const dir of TARGET_ENTRIES) {
+    if (!fs.existsSync(path.join(destDir, dir))) {
+      copyDir(path.join(srcDir, dir), path.join(destDir, dir));
     }
   }
 }
