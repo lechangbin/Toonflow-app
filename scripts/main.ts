@@ -55,8 +55,6 @@ function initializeData(): void {
     }
   }
 
-  console.log("%c Line:55 🍕 shouldForceReplace", "background:#2eafb0", shouldForceReplace);
-
   for (const dir of TARGET_ENTRIES) {
     const targetDir = path.join(destDir, dir);
     if (shouldForceReplace) {
