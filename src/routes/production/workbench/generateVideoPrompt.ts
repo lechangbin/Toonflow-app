@@ -75,6 +75,12 @@ export default router.post(
     const [id, modelData] = model.split(":");
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
+    let videoPromptGeneration = "" as string | undefined;
+    if (videoPrompt && videoPrompt.useData) {
+      videoPromptGeneration = videoPrompt.useData;
+    } else {
+      videoPromptGeneration = videoPrompt?.data ?? undefined;
+    }
     const artStyle = projectData?.artStyle || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const content = `
@@ -94,7 +100,7 @@ export default router.post(
 
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({
-        system: videoPrompt?.data!,
+        system: videoPromptGeneration,
         messages: [
           {
             role: "assistant",

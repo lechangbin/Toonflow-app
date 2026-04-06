@@ -47,4 +47,5 @@ export default async (knex: Knex): Promise<void> => {
     state: "生成失败",
     errorReason: "软件退出导致失败",
   });
+  await addColumn("o_prompt", "useData", "text");
 };

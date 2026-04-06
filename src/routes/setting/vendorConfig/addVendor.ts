@@ -35,7 +35,6 @@ const vendorConfigSchema = z.object({
         modelName: z.string(),
         type: z.literal("image"),
         mode: z.array(z.enum(["text", "singleImage", "multiReference"])),
-        associationSkills: z.string().optional(),
       }),
       z.object({
         name: z.string(),
