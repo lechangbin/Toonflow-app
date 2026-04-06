@@ -22,7 +22,7 @@ description: >-
 
 | 操作 | 调用 |
 |------|------|
-| 读取剧本与资产 | `get_flowData("script")` / `get_flowData("assets")` |
+| 读取剧本与资产 | `get_flowData("script")` / `get_flowData("assets")` / `get_flowData("scriptPlan")` |
 
 ### 风格技法参考
 
@@ -30,10 +30,9 @@ description: >-
 
 ### 执行流程
 
-1. 获取 `script` 和 `assets`，并且激活 `director_storyboard_table_narrative` 以及 `director_storyboard_table_style` ，作为分镜设计的风格参考。
-2. 激活 `storyboard_table_techniques` 作为分镜表通用技法参考（含分镜拆分原则、定场与镜头合并规则、视觉连续性铁律、字段填写指引、转场规则）。
-3. 按通用技法规则将剧本拆分为分镜，**每写一行前**回顾上一行状态，确保符合「视觉连续性铁律」后再填写当前行所有字段
-4. 严格按照XML格式写出导演规划<scriptPlan>内容</scriptPlan>，XML 标签及其全部内容必须一次性完整输出，禁止拆分为多次 XML 输出
+1. 获取 `script`、`assets` 和 `scriptPlan`，并激活 `director_storyboard_table_narrative`、`director_storyboard_table_style` 作为分镜设计的风格参考，同时激活 `storyboard_table_techniques` 作为分镜表通用技法参考（含分镜拆分原则、定场与镜头合并规则、视觉连续性铁律、字段填写指引、转场规则）。
+2. 按通用技法规则将剧本拆分为分镜，**每写一行前**回顾上一行状态，确保符合「视觉连续性铁律」后再填写当前行所有字段
+3. 严格按照XML格式写出导演规划<storyboardTable>内容</storyboardTable>，XML 标签及其全部内容必须一次性完整输出，禁止拆分为多次 XML 输出
 
 ### 示例
 
