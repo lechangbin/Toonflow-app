@@ -27,9 +27,15 @@ class CleanNovel {
   private async processChapter(novel: o_novel): Promise<EventType | null> {
     try {
       const prompt = await u.getPrompts("event");
-      const data = await u.db("o_prompt").where("type", "eventExtraction").first("data");
+      const promptData = await u.db("o_prompt").where("type", "eventExtraction").first();
+      let eventExtraction = "" as string | undefined;
+      if (promptData && promptData.useData) {
+        eventExtraction = promptData.useData;
+      } else {
+        eventExtraction = promptData?.data ?? undefined;
+      }
       const resData = await u.Ai.Text("universalAi").invoke({
-        system: data ? JSON.stringify(data.data) : (prompt as string),
+        system: eventExtraction ? JSON.stringify(eventExtraction) : (prompt as string),
         messages: [
           {
             role: "user",

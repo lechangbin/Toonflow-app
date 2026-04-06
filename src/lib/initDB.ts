@@ -196,6 +196,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.string("name");
         table.string("type");
         table.text("data");
+        table.text("useData");
         table.primary(["id"]);
         table.unique(["id"]);
       },

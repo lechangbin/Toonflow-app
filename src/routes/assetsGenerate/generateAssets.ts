@@ -96,7 +96,6 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
   const relatedObjects = { id, projectId, type: cfg.label };
 
   try {
-    // 4. 调用 AI 生成图片
     const aiImage = u.Ai.Image(model);
     await aiImage.run(
       {
@@ -113,11 +112,10 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
       },
     );
     aiImage.save(imagePath);
-
     // 5. 更新记录 & 返回结果
     const imageData = await u.db("o_image").where("id", imageId).select("*").first();
     if (!imageData) return res.status(500).send("资产已被删除");
-
+    if (imageData.state === "生成失败") return;
     await u
       .db("o_image")
       .where("id", imageId)
