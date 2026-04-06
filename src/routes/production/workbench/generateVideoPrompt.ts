@@ -109,7 +109,6 @@ export default router.post(
         }
       }
     }
-
     const [id, modelData] = model.split(":");
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
