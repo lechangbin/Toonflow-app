@@ -98,6 +98,10 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
   const tasks = items.map((item: { id: number; type: string; name: string; prompt: string; base64: string | null | undefined }, index: number) =>
     limit(async () => {
       const imageId = totalNovelId[index];
+      const data = await u.db("o_image").where("id", imageId).select("state").first();
+      if (data?.state === "生成失败") {
+        return;
+      }
       const cfg = assetTypeConfig[item.type as AssetType];
       if (!cfg) return;
 
@@ -126,8 +130,10 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
         aiImage.save(imagePath);
 
         const imageData = await u.db("o_image").where("id", imageId).select("*").first();
+        console.log("%c Line:133 🥒 imageData", "background:#465975", imageData);
+        if (!imageData) return res.status(500).send("资产已被删除");
         if (!imageData) return;
-
+        if (imageData.state === "生成失败") return;
         await u
           .db("o_image")
           .where("id", imageId)

@@ -33,7 +33,6 @@ export default router.post(
           modelName: z.string(),
           type: z.literal("image"),
           mode: z.array(z.enum(["text", "singleImage", "multiReference"])),
-          associationSkills: z.string().optional(),
         }),
         z.object({
           name: z.string(),
@@ -45,7 +44,6 @@ export default router.post(
               z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
             ]),
           ),
-          associationSkills: z.string().optional(),
           audio: z.union([z.literal("optional"), z.boolean()]),
           durationResolutionMap: z.array(
             z.object({
