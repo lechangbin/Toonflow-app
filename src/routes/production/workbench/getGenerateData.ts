@@ -50,7 +50,7 @@ export default router.post(
         i.filePath = i.filePath ? await u.oss.getFileUrl(i.filePath) : "";
       }),
     );
-    const storyboardTrackRecord:Record<number,any[]> = {};
+    const storyboardTrackRecord: Record<number, any[]> = {};
     storyboardList.forEach((i) => {
       if (storyboardTrackRecord[i.trackId!]) {
         storyboardTrackRecord[i.trackId!].push({
@@ -61,13 +61,15 @@ export default router.post(
           ...(i.id != null ? { id: i.id } : {}),
         });
       } else {
-        storyboardTrackRecord[i.trackId!] = [{
-          src: i.filePath,
-          fileType: "image",
-          sources: "storyboard",
-          ...(i.prompt != null ? { prompt: i.videoDesc } : {}),
-          ...(i.id != null ? { id: i.id } : {}),
-        }];
+        storyboardTrackRecord[i.trackId!] = [
+          {
+            src: i.filePath,
+            fileType: "image",
+            sources: "storyboard",
+            ...(i.prompt != null ? { prompt: i.videoDesc } : {}),
+            ...(i.id != null ? { id: i.id } : {}),
+          },
+        ];
       }
     });
     // 按 storyboardId 分组的资产数据，key 为 storyboardId
@@ -88,7 +90,7 @@ export default router.post(
             name: i.name,
             describe: i.describe,
             type: i.type,
-                  fileType: "image" as const,
+            fileType: "image" as const,
             sources: "assets",
             src: i.filePath ? await u.oss.getFileUrl(i.filePath) : "",
           };
@@ -143,7 +145,7 @@ export default router.post(
         storyboardList: await Promise.all(
           storyboardList.map(async (s) => ({
             ...s,
-            src: s.filePath ? await u.oss.getFileUrl(s.filePath) : "",
+            src: s.filePath,
           })),
         ),
         trackList,
