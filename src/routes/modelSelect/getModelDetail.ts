@@ -13,7 +13,7 @@ export default router.post(
   async (req, res) => {
     const { modelId } = req.body;
     const [id, name] = modelId.split(":");
-    const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
+    const data = await u.db("o_vendorConfig").where("id", id).andWhere("enable", 1).select("models").first();
     if (!data) {
       return res.status(404).send({ error: "模型未找到" });
     }
