@@ -30,14 +30,7 @@ const app = express();
 const server = http.createServer(app);
 
 export default async function startServe(randomPort: Boolean = false) {
-  const verJsonPath = path.join(u.getPath(), "update.json");
-  const data = JSON.parse(fs.readFileSync(verJsonPath, "utf8"));
-  if (data.version !== APP_VERSION) {
-    await fs.promises.writeFile(u.getPath("update.json"), JSON.stringify({ version: APP_VERSION }), "utf-8");
-  }
-
   await u.writeVersion();
-
   const io = new Server(server, { cors: { origin: "*" } });
   socketInit(io);
 
