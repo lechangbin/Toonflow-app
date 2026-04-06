@@ -50,29 +50,6 @@ export default router.post(
         }
       }),
     );
-    const assetsIds = images.map((i) => {
-      if (i._type == "storyboard") {
-        return i.associateAssetsIds;
-      }
-    });
-    const setIds = new Set(assetsIds.filter(Boolean).flat());
-
-    const assetsData = await u
-      .db("o_assets")
-      .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .where("o_assets.id", "in", Array.from(setIds))
-      .select("o_assets.id", "o_image.filePath", "o_assets.name", "o_assets.type");
-    await Promise.all(
-      assetsData.map(async (i) => {
-        if (i.filePath) {
-          i.filePath = await u.oss.getFileUrl(i.filePath);
-        }
-      }),
-    );
-    const assetsRecord: Record<number, any> = {};
-    assetsData.forEach((i) => {
-      assetsRecord[i.id] = i;
-    });
 
     // 拆分 assets 和 storyboard
     const assets: any[] = [];
@@ -85,7 +62,7 @@ export default router.post(
           type: item.type,
           name: item.name,
         });
-      if (item._type === "storyboard") {
+      if (item._type === "storyboard")
         storyboard.push({
           videoDesc: item.videoDesc,
           prompt: item.prompt,
@@ -94,30 +71,10 @@ export default router.post(
           associateAssetsIds: item.associateAssetsIds,
           shouldGenerateImage: item.shouldGenerateImage,
         });
-        if (item.associateAssetsIds && item.associateAssetsIds.length) {
-          item.associateAssetsIds.forEach((i: number) => {
-            const data = assetsRecord[i];
-            const extingIndex = assets.find((sub) => sub.id == data.id);
-            if (data && !extingIndex) {
-              assets.push({
-                id: data.id,
-                type: data.type,
-                name: data.name,
-              });
-            }
-          });
-        }
-      }
     }
     const [id, modelData] = model.split(":");
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
-    let videoPromptGeneration = "" as string | undefined;
-    if (videoPrompt && videoPrompt.useData) {
-      videoPromptGeneration = videoPrompt.useData;
-    } else {
-      videoPromptGeneration = videoPrompt?.data ?? undefined;
-    }
     const artStyle = projectData?.artStyle || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const content = `
@@ -137,7 +94,7 @@ export default router.post(
 
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({
-        system: videoPromptGeneration,
+        system: videoPrompt?.data!,
         messages: [
           {
             role: "assistant",

@@ -56,3 +56,4 @@ database.d.ts
 .devtools
 data/oss/*
 data/test.sqlite
+version.txt

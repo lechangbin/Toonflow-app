@@ -1,6 +1,6 @@
 import express from "express";
 import { success } from "@/lib/responseFormat";
-import {getVersion} from "@/utils/writeVersion";
+import { getVersion } from "@/utils/writeVersion";
 
 const router = express.Router();
 

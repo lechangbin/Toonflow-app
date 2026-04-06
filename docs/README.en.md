@@ -8,18 +8,17 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:16px"/>
-    Atomgit
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
   </a>
 </p>
 
 <p align="center">
-  <a href="/README.md">简体中文</a> | 
+  <a href="../README.md">简体中文</a> | 
   <a href="./README.zhtw.md">繁體中文</a> | 
   <strong>English</strong> | 
   <a href="./README.th.md">ไทย</a> | 
   <a href="./README.vi.md">Tiếng Việt</a> | 
-  <a href="./README.jp.md">日本語</a> | 
+  <a href="./README.ja.md">日本語</a> | 
   <a href="./README.ru.md">Русский</a>
 </p>
 
@@ -33,9 +32,9 @@
     <b>
       AI Short Drama Factory
       <br />
-      With a tap, novels instantly become episodes!
+      Turn your novel into episodes with just a few clicks!
       <br />
-      AI scripts × AI visuals × Turbo generation 🔥
+      AI Scripts × AI Visuals × Ultra-fast Generation 🔥
     </b>
   </p>
   <p align="center">
@@ -50,49 +49,57 @@
     </a>
   </p>
   
-  > 🚀 **One-stop short drama production**: From text to characters, from storyboard to video, 0 barrier full-process AI, 10x+ creation efficiency!
+> 🚀 **All-in-One Short Drama Studio**: From text to characters, from storyboard to final video.  
+> Fully AI-powered workflow with zero barrier to entry — boosting your creative efficiency by 10x or more!
 </div>
 
 ---
 
-# 🌐 Multilingual Support
+# 🌐 Multi-Language Support
 
 Toonflow supports the following interface languages:
 
-| Language | Native Name |
-|----------|-------------|
-| Chinese (Simplified) | 简体中文 |
-| Chinese (Traditional) | 繁體中文 |
+| Language | Language Name |
+|------|----------|
+| 简体中文 | Chinese (Simplified) |
+| 繁體中文 | Chinese (Traditional) |
 | English | English |
-| Thai | ไทย |
-| Vietnamese | Tiếng Việt |
-| Japanese | 日本語 |
-| Russian | Русский |
+| ไทย | Thai |
+| Tiếng Việt | Vietnamese |
+| 日本語 | Japanese |
+| Русский | Russian |
+
+> 💡 More languages are on the way. Translation contributions are highly welcome!
 
 ---
 
-# �🌟 Main Features
+# 🌟 Main Features
 
-Toonflow is an AI short drama comic tool that leverages AI technology to automatically convert novels into scripts, and uses AI-generated images and videos for efficient short drama creation. With Toonflow, you can easily complete the entire process from text to images, making short drama production more intelligent and convenient.
+Toonflow is an AI-powered tool for creating short dramas, short films, and comics. It can automatically transform novels into scripts, then combine AI-generated characters, images, and videos to produce high-quality content efficiently.  
+
+With Toonflow, you can complete the entire workflow from text to final video with ease — making short-form video and drama production significantly smarter and more convenient.
 
 - ✅ **Character Generation**  
-   Automatically analyzes the original novel text, intelligently identifies and generates character settings, including appearance, personality, identity, etc., providing a reliable foundation for subsequent script and visual creation.
+  Automatically analyzes the original novel text, intelligently identifies key elements, and generates detailed character profiles including appearance, personality, background, and relationships — laying a strong foundation for scriptwriting and visual production.
+
 - ✅ **Script Generation**  
-   Based on selected events and chapters, the system automatically generates structured scripts, covering dialogue, scene descriptions, and plot direction, enabling efficient transformation from literary texts to film/TV scripts.
-- ✅ **Storyboard Production**  
-   Based on the script content, intelligently generates storyboard prompts and visual design, detailing foreground/midground/background, character dynamics, prop settings, and scene layout; automatically turns scripts into storyboards, providing a complete route blueprint for video production.
-- ✅ **Video Composition**  
-   Integrates AI image and video technologies to generate video clips using AI. Includes online editing and supports personalized output adjustments, making film & TV production collaborative and efficient.
+  Based on selected events and chapters, the system automatically creates well-structured scripts with natural dialogue, scene descriptions, and plot development, enabling efficient adaptation from literature to cinematic format.
+
+- ✅ **Storyboard Creation**  
+  From the generated script, Toonflow intelligently creates storyboard prompts and visual layouts. It details foreground, midground, and background elements, character movements, props, and scene composition — providing a complete and ready-to-use blueprint for video production.
+
+- ✅ **Video Synthesis**  
+  Integrates advanced AI image and video generation technologies to produce high-quality video clips. The built-in online editor allows flexible personalization and fine-tuning, making the entire creative process smooth, fast, and highly efficient.
 
 ---
 
-# 📦 Application Scenarios
+# 📦 Use Cases
 
-- Short video content creation
-- Novel-to-film/TV experiments
-- AI literature adaptation tools
+- Short video content creation (Shorts, Reels, TikTok)
+- Novel-to-film / drama adaptation experiments
+- AI-powered literary adaptation tool
 - Script development and rapid prototyping
-- Video material generation
+- Video asset and footage generation
 
 ---
 
@@ -100,15 +107,15 @@ Toonflow is an AI short drama comic tool that leverages AI technology to automat
 
 ## 📺 Video Tutorial
 
-https://www.bilibili.com/video/BV1na6wB6Ea2
-[![Toonflow 8-Minute Quick Start AI Video](./videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
+[https://www.bilibili.com/video/BV1na6wB6Ea2](https://www.bilibili.com/video/BV1na6wB6Ea2)
+[![Toonflow 8-Minute AI Video Quick Start](./videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
 
-**Toonflow 8-Minute Quick Start AI Video**
-👉 [Click to watch](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+**Toonflow: 8-Minute AI Video Quick Start**
+👉 [Click to Watch](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
 
-📱 Scan with WeChat on your phone to watch
+📱 Scan the QR code to watch on mobile
 
-<img src="./videoQR.png" alt="Scan WeChat to Watch" width="150"/>
+<img src="./videoQR.png" alt="Scan QR code to watch on mobile" width="150"/>
 
 ---
 
@@ -116,34 +123,34 @@ https://www.bilibili.com/video/BV1na6wB6Ea2
 
 ## Prerequisites
 
-Before installing and using this software, please prepare the following:
+Before installing and using Toonflow, please prepare the following:
 
-- ✅ Large language model AI service API address
-- ✅ Sora or Doubao video service API address
-- ✅ Nano Banana Pro image generation model service API
+- ✅ API endpoint for Large Language Model (LLM)
+- ✅ API endpoint for video generation services (Sora or Doubao)
+- ✅ API endpoint for image generation model (Nano Banana Pro)
 
 ## Local Installation
 
-### 1. Download & Install
+### 1. Download and Install
 
-| Operating System | GitHub                                                  | Atomgit                                               | Quark Cloud Download                                    | Description           |
-| :--------------: | :------------------------------------------------------ | :---------------------------------------------------- | :------------------------------------------------------ | :-------------------- |
-| Windows          | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
-| Linux            | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
-| macOS            | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Cloud](https://pan.quark.cn/s/94ef07509df0)      | Official release package |
+| OS | GitHub | Atomgit | Quark Drive Download | Description |
+| :------: | :----------------------------------------------------------- | :------------------------------------------------------------ | :---------------------------------------------- | :------------- |
+| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Official Installer |
+|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Official Installer |
+|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Official Installer |
 
 > [!CAUTION]
-> On MacOS, please go to Settings - Privacy & Security to configure security settings, otherwise, you may not be able to open the app due to certificate issues.
+> **MacOS Users:** Please go to `System Settings > Privacy & Security` to allow the application to run; otherwise, it may fail to open due to certificate issues.
 >
-> See Zhihu documentation: [https://www.zhihu.com/question/433389276](https://www.zhihu.com/question/433389276)
+> Reference (Zhihu): [https://www.zhihu.com/question/433389276](https://www.zhihu.com/question/433389276)
 
-> Due to Gitee OS environment and Release file upload size limits, Gitee Release download is currently not available.
+> Due to Gitee OS environment constraints and Release file size upload limits, Gitee Release download links are currently unavailable.
 
-### 2. Start Service
+### 2. Start the Service
 
-After installation, launch the program to start using this service.
+After installation, simply launch the program to start using the service.
 
-> ⚠️ **First-time Login**  
+> ⚠️ **Default Login** 
 > Username: `admin`  
 > Password: `admin123`
 
@@ -151,45 +158,45 @@ After installation, launch the program to start using this service.
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) installed (version 20.10+)
+- [Docker](https://docs.docker.com/get-docker/) installed (Version 20.10+)
 
 ### Method 1: Online Deployment
 
-To be developed; please use local build for now.
+To be updated. Please use local build for now.
 
 ### Method 2: Local Build
 
-Build directly from local source code, suitable for developers or users who have cloned the repo; requires Git installed locally:
+Build directly using the local source code. This is suitable for developers or users who have cloned the repository. You will need `git` installed locally:
 
 ```shell
-# Clone the project (skip if already cloned)
+# Clone the repository first (skip if already cloned)
 git clone https://github.com/HBAI-Ltd/Toonflow-app.git
 cd Toonflow-app
 
-# Build and start locally with docker-compose
+# Build and start locally using docker-compose
 yarn docker:local
 
 # Or build manually
 docker build -t toonflow .
-docker run -d -p <local_port>:10588 -v <local_data_path>:/app/data toonflow
+docker run -d -p <Local_Port>:10588 -v <Local_Data_Path>:/app/data toonflow
 
-# After this, the site can be accessed at /web/index.html on the mapped port
-# e.g. http://localhost:10588/web/index.html
+# You can now access the page at the corresponding port at /web/index.html
+# Example: http://localhost:10588/web/index.html
 ```
 
 ### Service Port Description
 
-| Port     | Purpose       | Deployment Mapping    |
-| -------- | ------------ | -------------------- |
-| `10588`  | App Interface | `10588:10588`         |
+| Port    | Purpose  | Deployment Mapping |
+| ------- | -------- | ------------- |
+| `10588` | Software UI | `10588:10588` |
 
-**Environment variable descriptions:**
+**Environment Variables:**
 
-| Variable      | Description                                 |
-| ------------- | ------------------------------------------- |
-| `NODE_ENV`    | Environment; `prod` for production          |
-| `PORT`        | Service listening port (default 10588)      |
-| `OSSURL`      | File storage access address for static files |
+| Variable   | Description                               |
+| ---------- | ----------------------------------------- |
+| `NODE_ENV` | Operating environment, `prod` for production |
+| `PORT`     | Service listening port (Default: 10588)   |
+| `OSSURL`   | File storage access URL, used for static resources |
 
 ---
 
@@ -197,9 +204,9 @@ docker run -d -p <local_port>:10588 -v <local_data_path>:/app/data toonflow
 
 ### 1. Server Requirements
 
-- **OS:** Ubuntu 20.04+ / CentOS 7+
-- **Node.js:** 24.x (recommended, minimum 23.11.1+)
-- **RAM:** 2GB+
+- **OS**: Ubuntu 20.04+ / CentOS 7+
+- **Node.js**: 24.x (Recommended, Minimum 23.11.1+)
+- **Memory**: 2GB+
 
 ### 2. Server Deployment
 
@@ -226,7 +233,7 @@ yarn install
 yarn build
 ```
 
-**Clone from Gitee (Mainland China recommended):**
+**Clone from Gitee (Recommended for users in China):**
 
 ```bash
 cd /opt
@@ -254,17 +261,17 @@ Create a `pm2.json` file:
 }
 ```
 
-**Environment variable descriptions:**
+**Environment Variables:**
 
-| Variable      | Description                                 |
-| ------------- | ------------------------------------------- |
-| `NODE_ENV`    | Environment; `prod` for production          |
-| `PORT`        | Service listening port                      |
-| `OSSURL`      | File storage access address for static files |
+| Variable   | Description                                           |
+| ---------- | ----------------------------------------------------- |
+| `NODE_ENV` | Operating environment (`prod` = Production)           |
+| `PORT`     | Service listening port (default: 10588)               |
+| `OSSURL`   | Object Storage URL for storing and serving static files |
 
 ---
 
-#### 4. Start Service
+#### 4. Start the Service
 
 ```bash
 pm2 start pm2.json
@@ -275,147 +282,150 @@ pm2 save
 #### 5. Common Commands
 
 ```bash
-pm2 list              # View process list
+pm2 list              # View processes
 pm2 logs toonflow-app # View logs
-pm2 restart all       # Restart service
-pm2 monit             # Monitoring panel
+pm2 restart all       # Restart services
+pm2 monit             # Monitoring dashboard
 ```
 
-> ⚠️ **First-time Login**  
+> ⚠️ **Default Login** 
 > Username: `admin`  
 > Password: `admin123`
 
-#### 6. Deploying the Frontend Website
+#### 6. Deploy Frontend
 
-For standalone frontend deployment or customization, refer to the frontend repository:
+If you need to deploy or customize the frontend interface separately, please refer to the frontend repository:
 
 - **GitHub**: [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
 - **Gitee**: [Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
 
-> 💡 **Note:** This repo already contains a compiled frontend by default. Regular users do NOT need to separately deploy the frontend. The frontend repo is for developers requiring secondary development.
+> 💡 **Note**: This repository already includes the compiled frontend resources.  
+> Regular users do not need to deploy the frontend separately. The Toonflow-web repository is intended only for developers who want to make custom modifications or contribute to the frontend.
 
 ---
 
-# 🔧 Developer Guide
+# 🔧 Development Workflow Guide
 
 > [!CAUTION]
 > 🚧 **PR Submission Guidelines** 🚧
 >
-> ⛔ `master` branch does NOT accept PRs | ✅ Please submit PRs to the `develop` branch
->
-> Developers are invited to co-develop Toonflow. To join, contact owner ACT in the group chat.
+> ⛔ **No PRs accepted on the `master` branch**  
+> ✅ **Please submit all Pull Requests to the `develop` branch**
+
+We welcome all developers who want to contribute to Toonflow.  
+If you're interested in joining, please contact the project maintainer (ACT) in our community group.
 
 ## 🛠️ Tech Stack
 
-| Category     | Technology                                                                              |
-| ------------ | --------------------------------------------------------------------------------------- |
-| Runtime      | Node.js 23.11.1+                                                                        |
-| Language     | TypeScript 5.x                                                                          |
-| Backend      | Express 5                                                                               |
-| Database     | SQLite (better-sqlite3 / knex)                                                          |
-| AI Integration | Vercel AI SDK (OpenAI / Anthropic / Google / DeepSeek / Zhipu / MiniMax / Qwen / xAI)|
-| Local Inference | @huggingface/transformers (ONNX)                                                     |
-| Real-Time    | Socket.IO                                                                               |
-| Desktop      | Electron 40                                                                             |
-| Image Proc.  | Sharp                                                                                   |
-| Container    | Docker                                                                                  |
+| Category   | Technology                                                                                |
+| ---------- | ----------------------------------------------------------------------------------------- |
+| Runtime    | Node.js 23.11.1+                                                                          |
+| Language   | TypeScript 5.x                                                                            |
+| Backend    | Express 5                                                                                 |
+| Database   | SQLite (better-sqlite3 / knex)                                                            |
+| AI Integ.  | Vercel AI SDK (OpenAI / Anthropic / Google / DeepSeek / Zhipu / MiniMax / Qwen / xAI)     |
+| Local Inf. | @huggingface/transformers (ONNX)                                                          |
+| Real-time  | Socket.IO                                                                                 |
+| Desktop UI | Electron 40                                                                               |
+| Image Proc.| Sharp                                                                                     |
+| Container  | Docker                                                                                    |
 
-## Development Environment Preparation
+## Development Environment Prep
 
-- **Node.js:** version 23.11.1 or above required
-- **Yarn:** recommended as the package manager
+- **Node.js**: Version 23.11.1 or higher required
+- **Yarn**: Recommended package manager
 
 ## Quick Start
 
-1. **Clone the project**
+1. **Clone the Project**
 
-   **Clone from GitHub:**
+   **From GitHub:**
 
    ```bash
    git clone https://github.com/HBAI-Ltd/Toonflow-app.git
    cd Toonflow-app
    ```
 
-   **Clone from Gitee (Mainland China recommended):**
+   **From Gitee (Recommended for China):**
 
    ```bash
    git clone https://gitee.com/HBAI-Ltd/Toonflow-app.git
    cd Toonflow-app
    ```
 
-2. **Install dependencies**
+2. **Install Dependencies**
 
-   In the project root directory, install dependencies:
+   Run the following command in the project root directory:
 
    ```bash
    yarn install
    ```
 
-3. **Start development environment**
+3. **Start the Development Environment**
 
-   This project includes both **backend API service** and **frontend interface**. Start as needed:
+   This project consists of two parts: the **Backend API Service** and the **Frontend Pages**. Choose your startup method based on your needs:
 
-   - **Option 1: Start backend service only**
+   - **Method 1: Start Backend Service Only**
 
      ```bash
      yarn dev
      ```
 
-     > ⚠️ This command starts only the backend API (port 10588), **without the web interface**. Accessing `http://localhost:10588` allows API calls only; the full web UI is unavailable. To use the frontend, start the frontend project separately or use GUI mode below.
+     > ⚠️ This command only starts the backend API service (Port 10588) and **does not include the frontend pages**. Visiting `http://localhost:10588` directly will only allow API calls without a UI. To use the frontend, start the frontend project separately or use the GUI mode below.
 
-   - **Option 2: Start Electron desktop client**
+   - **Method 2: Start Electron Desktop Client**
 
      ```bash
      yarn dev:gui
      ```
 
-     > This command starts both backend and Electron window, with built-in web UI. Out-of-the-box, no extra config needed. Recommended for a full experience.
+     > This command launches both the backend service and the Electron desktop window simultaneously. It comes with built-in frontend pages ready out-of-the-box, requiring no extra configuration. Ideal for developers who want to experience the full feature set.
 
-   - **Option 3: Production mode**
+   - **Method 3: Start in Production Mode**
 
      ```bash
      yarn start
      ```
 
-     > Runs compiled service in production mode (requires `yarn build` first).
+     > Run the compiled service directly in production mode (requires running `yarn build` first).
 
-4. **Build the project**
+4. **Project Build & Packaging**
 
-   - Compile TypeScript files:
+   - Compile and generate TypeScript files:
 
      ```bash
      yarn build
      ```
 
-   - Build executable for Windows:
+   - Package as a Windows executable:
 
      ```bash
      yarn dist:win
      ```
 
-   - Build executable for Mac:
+   - Package as a Mac executable:
 
      ```bash
      yarn dist:mac
      ```
 
-   - Build executable for Linux:
+   - Package as a Linux executable:
 
      ```bash
      yarn dist:linux
      ```
 
-5. **Code quality check**
+5. **Code Quality Checks (Linting)**
 
-   - Perform lint check:
+   - Run global syntax and styling checks:
 
      ```bash
      yarn lint
      ```
 
-6. **AI Debug panel (Optional)**
+6. **AI Debug Panel (Optional)**
 
-   Start the Vercel AI SDK visual debugging tool for easier AI integration debugging:
+   Launch the AI SDK visual debugging tool to easily trace AI calls:
 
    ```bash
    yarn debug:ai
@@ -423,129 +433,131 @@ For standalone frontend deployment or customization, refer to the frontend repos
 
 ## Frontend Development
 
-To modify the frontend UI, develop in the frontend repository:
+If you need to modify or customize the frontend interface, please go to the frontend repository:
 
 - **GitHub**: [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
 - **Gitee**: [Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
 
-After frontend build, copy the `dist` contents to this project's `data/web` to integrate.
+After building the frontend, copy the entire `dist` folder into the `data/web` directory of this project to integrate it.
 
 ## Project Structure
 
 ```
-📂 build/                    # Compiled output
+📂 build/                    # Build artifacts
 📂 data/                     # Runtime data
-│  ├─ 📂 models/            # Local inference models (ONNX)
-│  ├─ 📂 oss/               # Object storage (assets/characters/scenes)
-│  ├─ 📂 serve/             # Production entry
-│  ├─ 📂 skills/            # Agent skill prompts
-│  └─ 📂 web/               # Built-in frontend assets
-📂 ./                     # Documentation assets
-📂 env/                      # Environment configs
-📂 scripts/                  # Build and helper scripts
+│  ├─ 📂 models/             # Local inference models (ONNX)
+│  ├─ 📂 oss/                # Object storage (images, characters, scenes)
+│  ├─ 📂 serve/              # Production environment entry point
+│  ├─ 📂 skills/             # Agent skill prompts
+│  └─ 📂 web/                # Built frontend assets (embedded)
+📂 docs/                     # Documentation and resources
+📂 env/                      # Environment configurations
+📂 scripts/                  # Build and utility scripts
 📂 src/
-├─ 📂 agents/               # AI Agent modules
-│  ├─ 📂 productionAgent/   # Production Agent
-│  └─ 📂 scriptAgent/       # Script Agent
-├─ 📂 lib/                  # Common libraries (db, responses)
-├─ 📂 middleware/           # Middleware
-├─ 📂 routes/               # API routes
-│  ├─ 📂 agents/            # Agent memory management
-│  ├─ 📂 artStyle/          # Art style management
-│  ├─ 📂 assets/            # Asset management
-│  ├─ 📂 assetsGenerate/    # Asset generation
-│  ├─ 📂 cornerScape/       # Storyboard management
-│  ├─ 📂 general/           # General APIs
-│  ├─ 📂 login/             # Auth
-│  ├─ 📂 migrate/           # Data migration
-│  ├─ 📂 modelSelect/       # Model selection
-│  ├─ 📂 novel/             # Novel management
-│  ├─ 📂 other/             # Other features
-│  ├─ 📂 production/        # Production management
-│  ├─ 📂 project/           # Project management
-│  ├─ 📂 script/            # Script generation
-│  ├─ 📂 scriptAgent/       # Script Agent APIs
-│  ├─ 📂 setting/           # System settings
-│  ├─ 📂 task/              # Task management
-│  └─ 📂 test/              # Test APIs
-├─ 📂 socket/               # WebSocket comms
-├─ 📂 types/                # TypeScript types
-├─ 📂 utils/                # Utility functions
-├─ 📄 app.ts                # App entry point
-├─ 📄 core.ts               # Core initialization
-├─ 📄 env.ts                # Env vars
-├─ 📄 err.ts                # Error handling
-├─ 📄 logger.ts             # Logging module
-├─ 📄 router.ts             # Route registration
-└─ 📄 utils.ts              # General tools
-📄 Dockerfile                # Docker build config
-📄 electron-builder.yml      # Electron packaging config
-📄 skillList.json            # Skills list
-📄 LICENSE                   # (Apache-2.0) License
-📄 NOTICES.txt               # Third-party dependencies
-📄 package.json              # Project config
-📄 tsconfig.json             # TypeScript config
+├─ 📂 agents/                # AI Agent modules
+│  ├─ 📂 productionAgent/    # Production Agent
+│  └─ 📂 scriptAgent/        # Script Agent
+├─ 📂 lib/                   # Shared libraries (DB initialization, response formatting)
+├─ 📂 middleware/            # Express middlewares
+├─ 📂 routes/                # Routing modules
+│  ├─ 📂 agents/             # Agent memory management
+│  ├─ 📂 artStyle/           # Art style management
+│  ├─ 📂 assets/             # Asset management
+│  ├─ 📂 assetsGenerate/     # Asset generation
+│  ├─ 📂 cornerScape/        # Storyboard management
+│  ├─ 📂 general/            # General APIs
+│  ├─ 📂 login/              # Authentication
+│  ├─ 📂 migrate/            # Data migration
+│  ├─ 📂 modelSelect/        # Model selection
+│  ├─ 📂 novel/              # Novel management
+│  ├─ 📂 other/              # Other functionalities
+│  ├─ 📂 production/         # Production and editing management
+│  ├─ 📂 project/            # Project management
+│  ├─ 📂 script/             # Script generation
+│  ├─ 📂 scriptAgent/        # Script Agent interface
+│  ├─ 📂 setting/            # System settings
+│  ├─ 📂 task/               # Task management
+│  └─ 📂 test/               # Test APIs
+├─ 📂 socket/                # Real-time communication via WebSocket
+├─ 📂 types/                 # TypeScript type declarations
+├─ 📂 utils/                 # Utility functions
+├─ 📄 app.ts                 # Application entry point
+├─ 📄 core.ts                # Core system initialization
+├─ 📄 env.ts                 # Environment variables handling
+├─ 📄 err.ts                 # Error handling
+├─ 📄 logger.ts              # Logging module
+├─ 📄 router.ts              # Route registration
+└─ 📄 utils.ts               # General utilities
+📄 Dockerfile                # Docker build file
+📄 electron-builder.yml      # Electron packaging configuration
+📄 skillList.json            # Skill list
+📄 LICENSE                   # License (Apache-2.0)
+📄 NOTICES.txt               # Third-party dependency notices
+📄 package.json              # Project configuration
+📄 tsconfig.json             # TypeScript configuration
 ```
 
 ---
 
 # 🔗 Related Repositories
 
-| Repository        | Description                        | GitHub                                            | Gitee                                             |
-| ---------------- | ---------------------------------- | ------------------------------------------------- | ------------------------------------------------- |
-| **Toonflow-app** | Full client (this repo, for users) | [GitHub](https://github.com/HBAI-Ltd/Toonflow-app)| [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-app)  |
-| **Toonflow-web** | Frontend source (for FE devs)      | [GitHub](https://github.com/HBAI-Ltd/Toonflow-web)| [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-web)  |
+| Repository       | Description                                                                 | GitHub                                             | Gitee                                            |
+|------------------|-----------------------------------------------------------------------------|----------------------------------------------------|--------------------------------------------------|
+| **Toonflow-app** | Full client (This repository — recommended for most users)                  | [GitHub](https://github.com/HBAI-Ltd/Toonflow-app) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-app) |
+| **Toonflow-web** | Frontend source code (For frontend developers)                              | [GitHub](https://github.com/HBAI-Ltd/Toonflow-web) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-web) |
 
-> 💡 **Tip:** If you just want to use Toonflow, download the client from this repo directly. The frontend repo is for developers needing secondary dev or UI customization.
+> 💡 **Tip**: If you just want to use Toonflow, downloading the client from this repository is sufficient. The Toonflow-web repository is intended only for developers who need to customize the UI or perform secondary development.
 
 ---
 
-# 👨‍👩‍👧‍👦 WeChat Groups
+# 👨‍👩‍👧‍👦 Discord Community
 
-Group Assistant:
+Click the icon below to join our Discord:
 
-<img src="./QR.png" alt="Toonflow QR" height="400"/>
+[![Join our Discord](https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/67d00cf7266d2c75571aebde_Example.svg)](https://discord.gg/HEjKmpNpAZ)
+
+Or click the direct link: [https://discord.gg/HEjKmpNpAZ](https://discord.gg/HEjKmpNpAZ)
 
 ---
 
 # 💌 Contact Us
 
-📧 Email: [ltlctools@outlook.com](mailto:ltlctools@outlook.com?subject=Toonflow inquiry)
+📧 Email: [ltlctools@outlook.com](mailto:ltlctools@outlook.com?subject=Toonflow%20Inquiry)
 
 ---
 
 # 📜 License
 
-Toonflow is open source under Apache-2.0 with a supplementary commercial agreement.
+Toonflow is open-sourced under the Apache-2.0 License with an additional supplementary commercial agreement.
 
 License details: https://www.apache.org/licenses/LICENSE-2.0
 
-## Supplementary Agreement
+## Supplementary Commercial Agreement
 
-- If you distribute this software as a product to **2 or more independent third parties**, you must obtain **written commercial authorization** from HBAI-Ltd.
-- **≤ 5 legal entities** operating jointly for internal use without providing services externally are considered **internal use and require no authorization**.
-- You may not remove or modify any trademarks, logos, or copyright notices in Toonflow.
+- If this software is distributed as a product to **2 or more independent third parties**, a **written commercial license** from HBAI-Ltd is required.
+- Joint operation and internal use by **≤ 5 legal entities** (without providing services to external users) is considered internal use and **does not require a license**.
+- It is strictly prohibited to remove or modify any logos or copyright information within Toonflow.
 
-## Always Free — No Authorization Required
+## Forever Free Usage Scenarios
 
-- ✅ Using Toonflow to produce content and earn platform revenue shares
+- ✅ Using Toonflow to create content and earning revenue share from video platforms
 - ✅ Secondary development for internal team use
-- ✅ ≤ 5 legal entities operating jointly, internally only
+- ✅ Joint/internal use by up to 5 legal entities
 - ✅ Personal learning, research, and non-commercial purposes
 
-## Licensing Pricing
+## Commercial License Pricing
 
-| Stage | Annual Revenue | Annual Fee |
-|------|---------|------|
-| 🌱 Nurture | < $10k | **Free** |
-| 🚀 Startup | $10k–$50k | ¥5,000/year |
-| 📈 Growth | $50k–$150k | ¥20,000/year |
-| 🏢 Scale | $150k–$500k | ¥80,000/year |
-| 🌐 Enterprise | > $500k | Negotiable |
+| Phase          | Annual Revenue          | Annual Fee          |
+|----------------|-------------------------|---------------------|
+| 🌱 Incubation  | < $15,000               | **Free** |
+| 🚀 Startup     | $15,000 – $75,000       | $750 / year         |
+| 📈 Growth      | $75,000 – $200,000      | $2,900 / year       |
+| 🏢 Scale       | $200,000 – $750,000     | $11,500 / year      |
+| 🌐 Enterprise  | > $750,000              | Negotiable          |
 
-> **Non-Retroactivity Clause**: Users who used Toonflow under AGPL-3.0 prior to the v1.0.8 release are not affected by this change. Their existing usage continues under AGPL-3.0.
+> **Non-Retroactivity Clause**: Users who were using Toonflow under the AGPL-3.0 license before version v1.0.8 will continue to be governed by AGPL-3.0 and are not affected by this agreement change.
 
-See the full [LICENSE](../LICENSE) file for details.
+For the full agreement, please refer to the [LICENSE](./LICENSE) file.
 
 ---
 
@@ -555,34 +567,34 @@ See the full [LICENSE](../LICENSE) file for details.
 
 ---
 
-# 🙏 Thanks
+# 🙏 Acknowledgements
 
-Thank you to the following open-source projects for supporting Toonflow:
+We sincerely thank the following open-source projects for providing robust support to Toonflow:
 
-- [Express](https://expressjs.com/) - Fast, open, minimalist Node.js Web framework
-- [AI SDK](https://ai-sdk.dev/) - TypeScript-first AI toolkit
-- [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3) - High-performance SQLite3 bindings
-- [Sharp](https://sharp.pixelplumbing.com/) - High-performance Node.js image toolkit
+- [Express](https://expressjs.com/) - Fast, unopinionated, minimalist web framework for Node.js
+- [AI SDK](https://ai-sdk.dev/) - The AI toolkit for TypeScript
+- [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3) - High-performance SQLite3 binding library
+- [Sharp](https://sharp.pixelplumbing.com/) - High-performance Node.js image processing
 - [Axios](https://axios-http.com/) - Promise-based HTTP client
-- [Zod](https://zod.dev/) - TypeScript-first schema validation library
-- [Socket.IO](https://socket.io/) - Real-time bidirectional event framework
-- [Electron](https://www.electronjs.org/) - Cross-platform desktop app framework
-- [Hugging Face Transformers](https://huggingface.co./transformers.js) - Local ML inference library
+- [Zod](https://zod.dev/) - TypeScript-first schema validation
+- [Socket.IO](https://socket.io/) - Real-time bidirectional event-based communication
+- [Electron](https://www.electronjs.org/) - Cross-platform desktop application framework
+- [Hugging Face Transformers](https://huggingface.co/docs/transformers.js) - State-of-the-art Machine Learning for the web
 
-Thanks to the following organizations/individuals for their support:
+Thanks to the following organizations/individuals for supporting Toonflow:
 
 <table>
   <tr>
     <td>
-      <img src="./sponsored/sophnet.png" alt="SophNet Logo" width="48">
+      <img src="./sponsored/sophnet.png" alt="Sophgo Logo" width="48">
     </td>
     <td>
-      <b>SophNet Cloud</b> provides computing power sponsorship
-      <a href="https://www.sophnet.com/">[Official Website]</a>
+      <b>Sophnet</b> for providing computing power sponsorship
+      <a href="[https://www.sophnet.com/](https://www.sophnet.com/)">[Website]</a>
     </td>
   </tr>
 </table>
 
-For a complete list of third-party dependencies, see `NOTICES.txt`
+For a complete list of third-party dependencies, please refer to `NOTICES.txt`.
 
-##### copyright © 淮北艾阿网络科技有限公司
+##### Copyright © Huaibei AIA Network Technology Co., Ltd.

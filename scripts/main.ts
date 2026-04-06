@@ -7,65 +7,69 @@ import Module from "module";
 app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
 app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 
-declare const __APP_VERSION__: string | undefined;
+const TARGET_ENTRIES = new Set(["assets", "models", "serve", "skills", "web"]);
 
-/**
- * 将 extraResources 中的 data 目录复制到用户数据目录（跳过已存在的文件，保留用户修改）
- */
-
-function getVersionFromUpdateJson(filePath: string): string | null {
-  try {
-    if (fs.existsSync(filePath)) {
-      const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
-      return data.version ?? null;
-    }
-  } catch {}
-  return null;
+function copyDir(src: string, dest: string): void {
+  if (!fs.existsSync(src)) return;
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dest, entry.name);
+    entry.isDirectory() ? copyDir(s, d) : fs.existsSync(d) || fs.copyFileSync(s, d);
+  }
 }
 
-function copyDirForce(src: string, dest: string): void {
-  if (!fs.existsSync(src)) return;
-  if (fs.existsSync(dest)) {
-    fs.rmSync(dest, { recursive: true, force: true });
+declare const __APP_VERSION__: string;
+
+function compareVersions(a: string, b: string): number {
+  const pa = a
+    .split(".")
+    .map((n) => Number.parseInt(n, 10))
+    .filter((n) => Number.isFinite(n));
+  const pb = b
+    .split(".")
+    .map((n) => Number.parseInt(n, 10))
+    .filter((n) => Number.isFinite(n));
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const va = pa[i] ?? 0;
+    const vb = pb[i] ?? 0;
+    if (va > vb) return 1;
+    if (va < vb) return -1;
   }
-  copyDirRecursive(src, dest);
+  return 0;
 }
 
 function initializeData(): void {
   const srcDir = path.join(process.resourcesPath, "data");
   const destDir = path.join(app.getPath("userData"), "data");
-  const updateJsonFile = path.join(destDir, "update.json");
-  const currentVersion = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
-  const userVersion = getVersionFromUpdateJson(updateJsonFile);
+  const versionFilePath = path.join(destDir, "version.txt");
 
-  // 首次安装或无update.json，直接全量拷贝
-  if (!fs.existsSync(destDir) || !userVersion) {
-    copyDirRecursive(srcDir, destDir);
-    return;
-  }
-
-  // 版本号不同则覆盖 serve 和 web 目录
-  if (userVersion !== currentVersion) {
-    copyDirForce(path.join(srcDir, "serve"), path.join(destDir, "serve"));
-    copyDirForce(path.join(srcDir, "web"), path.join(destDir, "web"));
-  }
-}
-
-function copyDirRecursive(src: string, dest: string): void {
-  if (!fs.existsSync(src)) return;
-  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    // 跳过 oss 文件夹和 db2.sqlite 文件
-    if (entry.isDirectory() && entry.name === "logs") continue;
-    if (entry.isDirectory() && entry.name === "oss") continue;
-    if (!entry.isDirectory() && entry.name === "db2.sqlite") continue;
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDirRecursive(srcPath, destPath);
-    } else if (!fs.existsSync(destPath)) {
-      fs.copyFileSync(srcPath, destPath);
+  let shouldForceReplace = false;
+  if (!fs.existsSync(versionFilePath)) {
+    shouldForceReplace = true;
+  } else {
+    const localVersion = fs.readFileSync(versionFilePath, "utf-8").trim();
+    if (compareVersions(localVersion, __APP_VERSION__) < 0) {
+      shouldForceReplace = true;
     }
+  }
+
+  for (const dir of TARGET_ENTRIES) {
+    const targetDir = path.join(destDir, dir);
+    if (shouldForceReplace) {
+      fs.rmSync(targetDir, { recursive: true, force: true });
+      copyDir(path.join(srcDir, dir), targetDir);
+      continue;
+    }
+    if (!fs.existsSync(targetDir)) {
+      copyDir(path.join(srcDir, dir), targetDir);
+    }
+  }
+
+  if (shouldForceReplace) {
+    fs.mkdirSync(destDir, { recursive: true });
+    fs.writeFileSync(versionFilePath, `${__APP_VERSION__}\n`, "utf-8");
   }
 }
 
@@ -246,7 +250,7 @@ app.whenReady().then(async () => {
       const url = new URL(request.url);
       const pathname = url.hostname.toLowerCase();
       const handlers: Record<string, () => object> = {
-        getport: () => ({ port: port }),
+        getappurl: () => ({ url: process.env.URL ?? `http://localhost:${port}/api` }),
         windowminimize: () => {
           mainWindow?.minimize();
           return { ok: true };
