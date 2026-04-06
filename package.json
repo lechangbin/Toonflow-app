@@ -97,6 +97,7 @@
   "overrides": {
     "@rmp135/sql-ts": {
       "better-sqlite3": "^12.8.0"
-    }
+    },
+    "sqlite3": "^6.0.1"
   }
 }
