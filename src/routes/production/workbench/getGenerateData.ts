@@ -37,7 +37,69 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, scriptId } = req.body;
+    const projectData = await u.db("o_project").where("id", projectId).select("id", "videoModel").first();
+    const [videoId, videoModelName] = projectData.videoModel.split(":");
+    const vendorData = await u.db("o_vendorConfig").where("id", videoId).select("models").first();
+    const models = JSON.parse(vendorData!.models!);
+    const findData = models.find((i: any) => i.modelName == videoModelName);
+    const isRef = findData.mode.every((i: any) => Array.isArray(i));
+
     const storyboardList = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
+    await Promise.all(
+      storyboardList.map(async (i) => {
+        i.filePath = i.filePath ? await u.oss.getFileUrl(i.filePath) : "";
+      }),
+    );
+    const storyboardTrackRecord:Record<number,any[]> = {};
+    storyboardList.forEach((i) => {
+      if (storyboardTrackRecord[i.trackId!]) {
+        storyboardTrackRecord[i.trackId!].push({
+          src: i.filePath,
+          fileType: "image",
+          sources: "storyboard",
+          ...(i.prompt != null ? { prompt: i.videoDesc } : {}),
+          ...(i.id != null ? { id: i.id } : {}),
+        });
+      } else {
+        storyboardTrackRecord[i.trackId!] = [{
+          src: i.filePath,
+          fileType: "image",
+          sources: "storyboard",
+          ...(i.prompt != null ? { prompt: i.videoDesc } : {}),
+          ...(i.id != null ? { id: i.id } : {}),
+        }];
+      }
+    });
+    // 按 storyboardId 分组的资产数据，key 为 storyboardId
+    const otherDataMap: Record<number, any[]> = {};
+    if (isRef) {
+      const storyIds = storyboardList.map((s) => s.id);
+      const assetDatas = await u
+        .db("o_assets2Storyboard")
+        .leftJoin("o_assets", "o_assets2Storyboard.assetId", "o_assets.id")
+        .leftJoin("o_image", "o_image.id", "o_assets.imageId")
+        .whereIn("o_assets2Storyboard.storyboardId", storyIds as number[])
+        .select("o_assets.*", "o_image.filePath", "o_assets2Storyboard.storyboardId");
+
+      await Promise.all(
+        assetDatas.map(async (i) => {
+          const item = {
+            id: i.id,
+            name: i.name,
+            describe: i.describe,
+            type: i.type,
+                  fileType: "image" as const,
+            sources: "assets",
+            src: i.filePath ? await u.oss.getFileUrl(i.filePath) : "",
+          };
+          const sid = i.storyboardId as number;
+          if (!otherDataMap[sid]) otherDataMap[sid] = [];
+          otherDataMap[sid].push(item);
+        }),
+      );
+    }
+
+    const id = await u.db("o_project").where({ id: projectId }).select("id").first();
     const trackData = await u.db("o_videoTrack").where({ projectId, scriptId });
     const videoList = await u.db("o_video").whereIn(
       "videoTrackId",
@@ -54,18 +116,17 @@ export default router.post(
         state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
         reason: item?.reason ?? "",
         selectVideoId: Number(item?.videoId)!,
-        medias: await Promise.all(
-          storyboardList
-            .filter((s) => s.trackId === trackId)
-            .map(
-              async (s): Promise<TrackMedia> => ({
-                src: s.filePath ? await u.oss.getFileUrl(s.filePath) : "",
-                fileType: "image",
-                ...(s.prompt != null ? { prompt: s.videoDesc } : {}),
-                ...(s.id != null ? { id: s.id } : {}),
-              }),
-            ),
-        ),
+        medias: (() => {
+          const storyboardMedias = storyboardTrackRecord[trackId] ?? [];
+          const assetMedias = storyboardMedias.flatMap((s) => otherDataMap[s.id] ?? []);
+          const seenAssetIds = new Set<number>();
+          const uniqueAssets = assetMedias.filter((a) => {
+            if (seenAssetIds.has(a.id)) return false;
+            seenAssetIds.add(a.id);
+            return true;
+          });
+          return [...storyboardMedias, ...uniqueAssets];
+        })(),
         videoList: await Promise.all(
           videoList
             .filter((v) => v.videoTrackId === trackId)
@@ -77,7 +138,6 @@ export default router.post(
         ),
       });
     }
-
     res.status(200).send(
       success({
         storyboardList: await Promise.all(
