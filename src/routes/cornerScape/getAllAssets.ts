@@ -16,7 +16,15 @@ export default router.post(
     const data = await u
       .db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.model", "o_image.resolution", "o_image.errorReason")
+      .select(
+        "o_assets.*",
+        "o_image.filePath",
+        "o_image.state",
+        "o_image.model",
+        "o_image.resolution",
+        "o_image.errorReason",
+        "o_image.id as imageId",
+      )
       .where("o_assets.projectId", projectId)
       .andWhere("o_assets.type", "<>", "clip")
       .andWhere("o_assets.assetsId", null)
