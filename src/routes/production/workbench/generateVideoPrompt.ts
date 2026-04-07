@@ -75,26 +75,31 @@ export default router.post(
     const [id, modelData] = model.split(":");
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
+    let videoPromptGeneration = "" as string | undefined;
+    if (videoPrompt && videoPrompt.useData) {
+      videoPromptGeneration = videoPrompt.useData;
+    } else {
+      videoPromptGeneration = videoPrompt?.data ?? undefined;
+    }
     const artStyle = projectData?.artStyle || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const content = `
           **模型名称**：${modelData},
-          **资产信息**（角色、场景、道具):${assets.map((i) => `[id:${i.id},type:${i.type},name:${i.name}]`).join("，")},
+          **资产信息**（角色、场景、道具):${assets.map((i) => `[${i.id},${i.type},${i.name}]`).join("，")},
           **分镜信息**：${storyboard.map(
             (i) => `<storyboardItem
-  videoDesc=${i.videoDesc}
-  prompt=${i.prompt}
-  track=${i.track}
-  duration=${i.duration}
-  associateAssetsIds=${i.associateAssetsIds}
+  videoDesc='${i.videoDesc}'
+  prompt='${i.prompt}'
+  track='${i.track}'
+  duration='${i.duration}'
+  associateAssetsIds='[${i.associateAssetsIds}]'
   shouldGenerateImage='${i.shouldGenerateImage == 1 ? "true" : "false"}'
 ></storyboardItem>`,
           )},
           `;
-
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({
-        system: videoPrompt?.data!,
+        system: videoPromptGeneration,
         messages: [
           {
             role: "assistant",
