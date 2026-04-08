@@ -38,6 +38,9 @@ export default router.post(
   async (req, res) => {
     const { projectId, scriptId } = req.body;
     const projectData = await u.db("o_project").where("id", projectId).select("id", "videoModel").first();
+    if (!projectData?.videoModel) {
+      return res.status(400).json(success("项目未配置视频模型"));
+    }
     const [videoId, videoModelName] = projectData.videoModel.split(":");
     const vendorData = await u.db("o_vendorConfig").where("id", videoId).select("models").first();
     const models = JSON.parse(vendorData!.models!);
