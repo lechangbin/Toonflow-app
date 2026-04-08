@@ -57,12 +57,19 @@ async function withTaskRecord<T>(
   }
 }
 
-async function urlToBase64(url: string): Promise<string> {
-  const res = await axios.get(url, { responseType: "arraybuffer" });
-  const base64 = Buffer.from(res.data).toString("base64");
-  return `${base64}`;
+async function urlToBase64(url: string, retries = 3, delay = 1000): Promise<string> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await axios.get(url, { responseType: "arraybuffer" });
+      const base64 = Buffer.from(res.data).toString("base64");
+      return `${base64}`;
+    } catch (e) {
+      if (attempt === retries) throw e;
+      await new Promise((resolve) => setTimeout(resolve, delay * attempt));
+    }
+  }
+  throw new Error("urlToBase64 failed");
 }
-
 class AiText {
   private AiType: AiType | `${string}:${string}`;
   constructor(AiType: AiType | `${string}:${string}`) {
