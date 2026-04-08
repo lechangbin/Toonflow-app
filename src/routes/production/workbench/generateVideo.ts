@@ -38,6 +38,13 @@ export default router.post(
   }),
   async (req, res) => {
     const { scriptId, projectId, prompt, uploadData, model, duration, resolution, audio, mode, trackId } = req.body;
+    let modeData = [];
+    if (Array.isArray(mode)) {
+    } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
+      try {
+        modeData = JSON.parse(mode);
+      } catch (e) {}
+    }
     //获取生成视频比例
     const ratio = await u.db("o_project").select("videoRatio").where("id", projectId).first();
     const videoPath = `/${projectId}/video/${uuidv4()}.mp4`; //视频保存路径
@@ -89,7 +96,7 @@ export default router.post(
           {
             prompt,
             imageBase64: base64.filter((item) => item !== null) as string[],
-            mode,
+            mode: modeData.length > 0 ? modeData : mode,
             duration,
             aspectRatio: (ratio?.videoRatio as `${number}:${number}`) || "16:9",
             resolution,

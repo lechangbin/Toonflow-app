@@ -9,12 +9,14 @@ export default router.post(
   validateFields({
     projectId: z.number(),
     scriptId: z.number(),
+    duration: z.number().optional(),
   }),
   async (req, res) => {
-    const { projectId, scriptId } = req.body;
+    const { projectId, scriptId, duration } = req.body;
     const [id] = await u.db("o_videoTrack").insert({
       projectId,
       scriptId,
+      duration,
     });
     res.status(200).send(success(id));
   },
