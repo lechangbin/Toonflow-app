@@ -38,6 +38,9 @@ export default router.post(
   async (req, res) => {
     const { projectId, scriptId } = req.body;
     const projectData = await u.db("o_project").where("id", projectId).select("id", "videoModel").first();
+    if (!projectData?.videoModel) {
+      return res.status(400).json(success("项目未配置视频模型"));
+    }
     const [videoId, videoModelName] = projectData.videoModel.split(":");
     const vendorData = await u.db("o_vendorConfig").where("id", videoId).select("models").first();
     const models = JSON.parse(vendorData!.models!);
@@ -135,7 +138,7 @@ export default router.post(
             .map(async (v) => ({
               id: v.id!,
               src: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
-              state: v.state === "done" ? "已完成" : v.state === "generating" ? "生成中" : v.state === "error" ? "生成失败" : "未生成",
+              state: v.state === "已完成" ? "已完成" : v.state === "生成中" ? "生成中" : v.state === "生成失败" ? "生成失败" : "未生成",
             })),
         ),
       });

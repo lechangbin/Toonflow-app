@@ -13,7 +13,7 @@ export default router.post(
     describe: z.string(),
     type: z.string(),
     projectId: z.number(),
-    remark: z.string(),
+    remark: z.string().optional().nullable(),
     prompt: z.string().optional().nullable(),
   }),
   async (req, res) => {
