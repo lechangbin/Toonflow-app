@@ -35,16 +35,29 @@ export default router.post(
       filePath: ending,
       type: "clip",
     });
-    // 查询o_video表
-    const videoRows = await u.db("o_video").where("state", "生成成功").andWhere("scriptId", scriptId).andWhere("projectId", projectId).select("*");
-    // 处理并返回结果
+    // 查询视频轨道
+    const trackRows = await u
+      .db("o_videoTrack")
+      .where("o_videoTrack.scriptId", scriptId)
+      .andWhere("o_videoTrack.projectId", projectId)
+      .select("o_videoTrack.id as trackId");
+    // 按轨道分组处理视频
     const video = await Promise.all(
-      videoRows.map(async (row) => ({
-        id: row.id,
-        filePath: row.filePath ? await u.oss.getFileUrl(row.filePath) : "",
-        videoTrackId: row.videoTrackId,
-      })),
-    );
+      trackRows.map(async (track) => {
+        const videoItems = await u.db("o_video").where("o_video.videoTrackId", track.trackId).andWhere("o_video.state", "生成成功").select("*");
+        const videoList = await Promise.all(
+          videoItems.map(async (v) => ({
+            id: v.id,
+            filePath: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
+            videoTrackId: v.videoTrackId,
+          })),
+        );
+        return {
+          id: track.trackId,
+          video: videoList,
+        };
+      }),
+    ).then((tracks) => tracks.filter((track) => track.video.length > 0));
 
     res.status(200).send(success({ data, video }));
   },
