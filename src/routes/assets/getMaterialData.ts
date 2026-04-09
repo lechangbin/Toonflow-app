@@ -18,8 +18,7 @@ export default router.post(
       .db("o_assets")
       .leftJoin("o_image", "o_assets.id", "=", "o_image.assetsId")
       .where("o_assets.type", "clip")
-      .andWhere("projectId", projectId)
-      .andWhere("scriptId", scriptId)
+      .andWhere("o_assets.projectId", projectId)
       .select("*");
     const data = await Promise.all(
       list.map(async (item) => ({
@@ -40,7 +39,7 @@ export default router.post(
       .db("o_videoTrack")
       .where("o_videoTrack.scriptId", scriptId)
       .andWhere("o_videoTrack.projectId", projectId)
-      .select("o_videoTrack.id as trackId");
+      .select("o_videoTrack.id as trackId","o_videoTrack.videoId");
     // 按轨道分组处理视频
     const video = await Promise.all(
       trackRows.map(async (track) => {
@@ -54,6 +53,7 @@ export default router.post(
         );
         return {
           id: track.trackId,
+          videoId: track.videoId,
           video: videoList,
         };
       }),
