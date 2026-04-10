@@ -5,7 +5,6 @@ import sharp from "sharp";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { Output, tool } from "ai";
-import { urlToBase64 } from "@/utils/vm";
 import { assetItemSchema } from "@/agents/productionAgent/tools";
 const router = express.Router();
 export type AssetData = z.infer<typeof assetItemSchema>;
@@ -143,7 +142,7 @@ async function getAssetsImageBase64(imageIds: number[]) {
       const filePath = id2Path.get(id);
       if (filePath) {
         try {
-          return await urlToBase64(await u.oss.getFileUrl(filePath));
+          return await u.oss.getImageBase64(filePath);
         } catch {
           return null;
         }

@@ -7,6 +7,9 @@ import axios from "axios";
 const router = express.Router();
 
 async function urlToBase64(imageUrl: string): Promise<string> {
+  if (imageUrl.startsWith("/oss/")) {
+    return await u.oss.getImageBase64(u.replaceUrl(imageUrl));
+  }
   const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
   const contentType = response.headers["content-type"] || "image/png";
   const base64 = Buffer.from(response.data, "binary").toString("base64");
