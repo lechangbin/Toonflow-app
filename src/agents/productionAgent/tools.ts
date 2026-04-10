@@ -86,7 +86,12 @@ export default (toolCpnfig: ToolConfig) => {
       description: "新增或更新衍生资产",
       inputSchema: z.object({
         assetsId: z.number().describe("关联的资产ID"),
-        id: z.number().nullable().describe("衍生资产ID,如果新增则为空"),
+        id: z.preprocess(
+          (val) => {
+            if (val === "null" || val === "" || val === undefined) return null;
+            return val;
+          },
+          z.number().nullable().describe("衍生资产ID,如果新增则为空")),
         name: z.string().describe("衍生资产名称"),
         desc: z.string().describe("衍生资产描述"),
       }),

@@ -55,7 +55,6 @@ export default router.post(
       .leftJoin("o_assets2Storyboard", "o_assets.id", "o_assets2Storyboard.assetId")
       .whereIn("o_assets2Storyboard.storyboardId", finalStoryboardIds)
       .select("o_assets2Storyboard.storyboardId", "o_assets.imageId");
-    console.log("%c Line:42 🥪 assetData", "background:#ea7e5c", assetData);
 
     const assetRecord: Record<number, number[]> = {};
     assetData.forEach((item: any) => {

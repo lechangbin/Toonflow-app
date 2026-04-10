@@ -935,6 +935,15 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.index(["isolationKey", "summarized"]);
       },
     },
+    {
+      name: "o_assetsRole2Audio",
+      builder: (table) => {
+        table.integer("assetsRoleId").notNullable();
+        table.integer("assetsAudioId").notNullable();
+        table.primary(["assetsAudioId", "assetsRoleId"]);
+        table.unique(["assetsAudioId", "assetsRoleId"]);
+      },
+    },
   ];
 
   for (const t of tables) {
