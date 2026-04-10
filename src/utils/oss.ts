@@ -50,7 +50,7 @@ class OSS {
     await this.ensureInit();
     const safePath = normalizeUserPath(userRelPath);
     // URL 始终使用 /，所以这里需要将系统分隔符转回 /
-    let url = `http://127.0.0.1:10588/${prefix}/`;
+    let url = `/${prefix}/`;
     if (isEletron()) url = `http://localhost:${process.env.PORT}/${prefix}/`;
     return `${url}${safePath.split(path.sep).join("/")}`;
   }
