@@ -12,9 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { id, enable } = req.body;
-    await u.db("o_vendorConfig").where("id", id).update({
-      enable,
-    });
+    await u.db("o_vendorConfig").where("id", id).update({ enable });
     res.status(200).send(success("更新成功"));
   },
 );
