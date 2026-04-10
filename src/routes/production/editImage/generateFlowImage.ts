@@ -1,6 +1,6 @@
 import express from "express";
 import u from "@/utils";
-import { z } from "zod";
+import { base64, z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import axios from "axios";
@@ -28,7 +28,8 @@ export default router.post(
     const imageClass = await u.Ai.Image(model).run(
       {
         prompt: prompt,
-        imageBase64: references && references.length ? await Promise.all(references.map((url: string) => urlToBase64(url))) : [],
+        referenceList:
+          references && references.length ? await Promise.all(references.map((url: string) => ({ type: "image", base64: urlToBase64(url) }))) : [],
         size: quality,
         aspectRatio: ratio,
       },

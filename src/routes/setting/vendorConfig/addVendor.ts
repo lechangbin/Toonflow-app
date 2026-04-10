@@ -103,7 +103,6 @@ export default router.post(
       inputs: JSON.stringify(vendor.inputs ?? []),
       inputValues: JSON.stringify(vendor.inputValues ?? {}),
       models: JSON.stringify(vendor.models ?? []),
-      code: tsCode,
       createTime: Date.now(),
       enable: vendor.id == "toonflow" ? 1 : 0,
     });

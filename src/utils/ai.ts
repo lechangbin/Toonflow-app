@@ -133,10 +133,7 @@ class AiText {
   }
 }
 
-type ReferenceList =
-  | ({ type: "image" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }))
-  | ({ type: "audio" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }))
-  | ({ type: "video" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }));
+type ReferenceList = { type: "image"; base64: string } | { type: "audio"; base64: string } | { type: "video"; base64: string };
 
 interface ImageConfig {
   prompt: string;

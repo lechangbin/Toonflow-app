@@ -100,7 +100,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
     await aiImage.run(
       {
         prompt: userPrompt,
-        imageBase64: base64 ? [base64] : [],
+        referenceList: base64 ? [{ type: "image", base64 }] : [],
         size: resolution,
         aspectRatio: "16:9",
       },

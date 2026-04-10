@@ -95,10 +95,10 @@ export default router.post(
         await aiVideo.run(
           {
             prompt,
-            imageBase64: base64.filter((item) => item !== null) as string[],
+            referenceList: base64.filter((item) => item !== null).map((item) => ({ type: "image" as const, base64: item! })),
             mode: modeData.length > 0 ? modeData : mode,
             duration,
-            aspectRatio: (ratio?.videoRatio as `${number}:${number}`) || "16:9",
+            aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",
             resolution,
             audio,
           },

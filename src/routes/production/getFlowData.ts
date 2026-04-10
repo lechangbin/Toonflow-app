@@ -73,6 +73,7 @@ export default router.post(
         storyboardTable: "",
         storyboard: [],
         //todo：矫正workbench数据
+        //@ts-ignore
         workbench: {
           videoList: [],
         },
