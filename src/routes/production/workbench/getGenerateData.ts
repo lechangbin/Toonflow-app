@@ -130,7 +130,7 @@ export default router.post(
             seenAssetIds.add(a.id);
             return true;
           });
-          return [...storyboardMedias, ...uniqueAssets];
+          return [ ...uniqueAssets,...storyboardMedias];
         })(),
         videoList: await Promise.all(
           videoList
