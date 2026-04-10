@@ -1869,11 +1869,14 @@ cross-spawn@^7.0.1, cross-spawn@^7.0.6:
     shebang-command "^2.0.0"
     which "^2.0.1"
 
+<<<<<<< HEAD
 custom-electron-titlebar@^4.2.8:
   version "4.4.1"
   resolved "https://registry.npmmirror.com/custom-electron-titlebar/-/custom-electron-titlebar-4.4.1.tgz"
   integrity sha512-I+sOGBdslrGpuCWlhda8P0vtRAZK+W2NzjHLsxTiE2bNmhAIs9YLDe6iRBExwU1xVZt+J1hSXzUT67BlAuMWLA==
 
+=======
+>>>>>>> develop
 debug@2.6.9:
   version "2.6.9"
   resolved "https://registry.npmmirror.com/debug/-/debug-2.6.9.tgz"

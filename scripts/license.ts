@@ -61,7 +61,34 @@ checker.init({ start: process.cwd() }, (err: Error, packages: Record<string, any
 
   // 排除名单过滤
   const filteredDeclare = needDeclare.filter((pkg) => pkg.name && !excludeNames.some((exName) => pkg.name.startsWith(exName)));
-  const content = filteredDeclare
+
+  // 去重：同一个 name@version 只保留一条，并合并 licenses
+  const dedupedDeclare = Array.from(
+    filteredDeclare
+      .reduce((acc, pkg) => {
+        const key = `${pkg.name}@${pkg.version}`;
+        const licenseList = Array.isArray(pkg.licenses) ? pkg.licenses : [pkg.licenses];
+        const existing = acc.get(key);
+
+        if (!existing) {
+          acc.set(key, {
+            ...pkg,
+            licenses: [...new Set(licenseList.filter(Boolean))],
+          });
+          return acc;
+        }
+
+        const existingLicenses = Array.isArray(existing.licenses) ? existing.licenses : [existing.licenses];
+        existing.licenses = [...new Set([...existingLicenses, ...licenseList].filter(Boolean))];
+        if (!existing.repository && pkg.repository) {
+          existing.repository = pkg.repository;
+        }
+        return acc;
+      }, new Map<string, PackageInfo>())
+      .values()
+  );
+
+  const content = dedupedDeclare
     .map(
       (pkg) =>
         `Name: ${pkg.name}\nLicense: ${Array.isArray(pkg.licenses) ? pkg.licenses.join(", ") : pkg.licenses}\nRepository: ${pkg.repository ?? "N/A"}`

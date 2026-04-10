@@ -43,7 +43,7 @@ const vendorConfigSchema = z.object({
         mode: z.array(
           z.union([
             z.enum(["singleImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text", "audioReference", "videoReference"]),
-            z.array(z.enum(["videoReference", "imageReference", "audioReference", "textReference"])),
+            z.array(z.string().regex(/^(videoReference|imageReference|audioReference):\d+$/)),
           ]),
         ),
         audio: z.union([z.literal("optional"), z.boolean()]),
@@ -75,26 +75,39 @@ export default router.post(
     const vendor = exports.vendor;
     const result = vendorConfigSchema.safeParse(vendor);
     if (!result.success) {
-      const errorMsg = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join("; ");
-      return res.status(400).send(error(`vendor配置校验失败: ${errorMsg}`));
+      const issueLines = result.error.issues.map((issue, index) => {
+        const path = issue.path.length ? issue.path.join(".") : "root";
+        let detail = issue.message;
+
+        if (issue.code === "invalid_union") {
+          const unionDetails = [
+            ...new Set(
+              issue.errors
+                .flat()
+                .map((e) => e.message)
+                .filter(Boolean),
+            ),
+          ];
+          if (unionDetails.length > 0) {
+            detail = `${issue.message}（${unionDetails.join("；")}）`;
+          }
+        }
+        return `${index + 1}. ${path}: ${detail}`;
+      });
+
+      return res.status(400).send(error(`vendor配置校验失败，共 ${issueLines.length} 处:\n${issueLines.join("\n")}`));
     }
 
     if ((vendor.id as string).includes(":")) return res.status(400).send(error("id不能包含英文冒号"));
     const data = await u.db("o_vendorConfig").where("id", vendor.id).first();
     if (data) return res.status(500).send(error("供应商id已存在"));
-    await u.db("o_vendorConfig").insert({
+    const [id] = await u.db("o_vendorConfig").insert({
       id: vendor.id,
-      author: vendor.author,
-      description: vendor.description || "",
-      name: vendor.name,
-      icon: vendor.icon || "",
-      inputs: JSON.stringify(vendor.inputs ?? []),
       inputValues: JSON.stringify(vendor.inputValues ?? {}),
-      models: JSON.stringify(vendor.models ?? []),
-      code: tsCode,
-      createTime: Date.now(),
+      models: JSON.stringify([]),
       enable: vendor.id == "toonflow" ? 1 : 0,
     });
+    u.vendor.writeCode(vendor.id, tsCode);
     res.status(200).send(success(result.data));
   },
 );

@@ -42,8 +42,7 @@ export default router.post(
       return res.status(400).json(success("项目未配置视频模型"));
     }
     const [videoId, videoModelName] = projectData.videoModel.split(":");
-    const vendorData = await u.db("o_vendorConfig").where("id", videoId).select("models").first();
-    const models = JSON.parse(vendorData!.models!);
+    const models = await u.vendor.getModelList(videoId);
     const findData = models.find((i: any) => i.modelName == videoModelName);
     const isRef = findData.mode.every((i: any) => Array.isArray(i));
 
@@ -62,6 +61,7 @@ export default router.post(
           sources: "storyboard",
           ...(i.prompt != null ? { prompt: i.videoDesc } : {}),
           ...(i.id != null ? { id: i.id } : {}),
+          index: i.index,
         });
       } else {
         storyboardTrackRecord[i.trackId!] = [
@@ -71,6 +71,7 @@ export default router.post(
             sources: "storyboard",
             ...(i.prompt != null ? { prompt: i.videoDesc } : {}),
             ...(i.id != null ? { id: i.id } : {}),
+            index: i.index,
           },
         ];
       }
@@ -130,7 +131,10 @@ export default router.post(
             seenAssetIds.add(a.id);
             return true;
           });
-          return [...storyboardMedias, ...uniqueAssets];
+          const hasImageAssetData = uniqueAssets.filter(i => i.src)
+          const notHasImageAssetData = uniqueAssets.filter(i => !i.src)
+
+          return [...hasImageAssetData, ...storyboardMedias, ...notHasImageAssetData];
         })(),
         videoList: await Promise.all(
           videoList

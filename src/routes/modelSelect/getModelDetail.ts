@@ -13,11 +13,7 @@ export default router.post(
   async (req, res) => {
     const { modelId } = req.body;
     const [id, name] = modelId.split(":");
-    const data = await u.db("o_vendorConfig").where("id", id).andWhere("enable", 1).select("models").first();
-    if (!data) {
-      return res.status(404).send({ error: "模型未找到" });
-    }
-    const models = JSON.parse(data.models!);
+    const models = await u.vendor.getModelList(id);
     const findData = models.find((i: any) => i.modelName == name);
     res.status(200).send(success(findData));
   },

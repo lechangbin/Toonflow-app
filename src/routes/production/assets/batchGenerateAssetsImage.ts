@@ -101,7 +101,7 @@ export default router.post(
         };
         const imageCls = await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`).run(
           {
-            imageBase64: imageBase64 ? [imageBase64] : [],
+            referenceList: imageBase64 ? [{ type: "image", base64: imageBase64 }] : [],
             ...repeloadObj,
           },
           {
