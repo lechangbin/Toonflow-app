@@ -1,3 +1,11 @@
+import dotenv from "dotenv";
+import path from "node:path";
+
+dotenv.config({
+  path: path.resolve(process.cwd(), ".env"),
+});
+
+
 // 判断是否为打包后的 Electron 环境
 const isElectron = typeof process.versions?.electron !== "undefined";
 let isPackaged = false;
