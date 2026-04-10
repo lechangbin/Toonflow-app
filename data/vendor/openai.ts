@@ -115,7 +115,7 @@ const vendor: VendorConfig = {
   version: "2.0",
   author: "Toonflow",
   name: "OpenAI标准接口",
-  description: "## OpenAI标准格式接口，可修改请求地址并手动添加模型。",
+  description: "OpenAI标准格式接口，可修改请求地址并手动添加模型。",
   icon: "",
   inputs: [
     { key: "apiKey", label: "API密钥", type: "password", required: true },

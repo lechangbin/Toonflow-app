@@ -60,9 +60,9 @@ interface VendorConfig {
 }
 
 type ReferenceList =
-  | ({ type: "image" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }))
-  | ({ type: "audio" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }))
-  | ({ type: "video" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }));
+  | { type: "image"; sourceType: "base64"; base64: string }
+  | { type: "audio"; sourceType: "base64"; base64: string }
+  | { type: "video"; sourceType: "base64"; base64: string };
 
 interface ImageConfig {
   prompt: string;
@@ -137,7 +137,7 @@ const vendor: VendorConfig = {
   version: "2.0",
   author: "Toonflow",
   name: "MiniMax(海螺AI)",
-  description: "## MiniMax官方接口适配，支持M系列推理文本模型、文生图/图生图、视频生成（文生视频、图生视频、首尾帧生成）能力",
+  description: "MiniMax官方接口适配，支持M系列推理文本模型、文生图/图生图、视频生成（文生视频、图生视频、首尾帧生成）能力 \n [前往平台](https://minimaxi.com/)",
   inputs: [
     { key: "apiKey", label: "API密钥", type: "password", required: true },
     { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "示例：https://api.minimaxi.com" },
@@ -218,9 +218,6 @@ const getBaseUrl = (): string => {
  * 从 ReferenceList 条目中提取有头 base64 字符串
  */
 const extractBase64WithHead = (ref: ReferenceList): string => {
-  if (ref.sourceType === "url") {
-    return ref.url;
-  }
   return ref.base64.startsWith("data:") ? ref.base64 : `data:image/png;base64,${ref.base64}`;
 };
 

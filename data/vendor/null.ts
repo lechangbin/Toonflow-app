@@ -60,9 +60,9 @@ interface VendorConfig {
 }
 
 type ReferenceList =
-  | ({ type: "image" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }))
-  | ({ type: "audio" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }))
-  | ({ type: "video" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }));
+  | { type: "image"; sourceType: "base64"; base64: string }
+  | { type: "audio"; sourceType: "base64"; base64: string }
+  | { type: "video"; sourceType: "base64"; base64: string };
 
 interface ImageConfig {
   prompt: string;
@@ -120,7 +120,6 @@ declare const createGoogleGenerativeAI: any;
 declare const exports: {
   vendor: VendorConfig;
   textRequest: (m: TextModel) => any; //文本模型
-  uploadReference: (base64: string, fileType: "image" | "audio" | "video") => Promise<ReferenceList>; // reference前置处理器，专门用于处理referenceList中的条目，将有头base64上传并返回URL，然后reference才会传入videoRequest/imageRequest/ttsRequest中
   imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>; //图片模型，返回有头base64字符串
   videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>; //视频模型，返回有头base64字符串
   ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>; //（暂未开放）语音模型，返回有头base64字符串
@@ -133,10 +132,10 @@ declare const exports: {
 // ============================================================
 
 const vendor: VendorConfig = {
-  id: "openai",
+  id: "bull",
   version: "2.0",
   author: "Toonflow",
-  name: "OpenAI标准接口",
+  name: "空模板",
   description: "## OpenAI标准格式接口，可修改请求地址并手动添加模型。",
   inputs: [
     { key: "apiKey", label: "API密钥", type: "password", required: true },
@@ -154,10 +153,6 @@ const textRequest = (model: TextModel) => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
   const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "");
   return createOpenAI({ baseURL: vendor.inputValues.baseUrl, apiKey }).chat(model.modelName);
-};
-
-const uploadReference = async (base64: string, fileType: "image" | "audio" | "video"): Promise<ReferenceList> => {
-  return { type: fileType, sourceType: "base64", base64 };
 };
 
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
@@ -186,7 +181,6 @@ const updateVendor = async (): Promise<string> => {
 
 exports.vendor = vendor;
 exports.textRequest = textRequest;
-exports.uploadReference = uploadReference;
 exports.imageRequest = imageRequest;
 exports.videoRequest = videoRequest;
 exports.ttsRequest = ttsRequest;
@@ -228,7 +222,7 @@ export {};
  *    如果是纯逻辑内部使用的临时变量，应内联在对应的 exports.* 函数体内部，使用小驼峰命名。
  *
  * 3. 逻辑尽量聚合在 exports.* 对应的函数内部
- *    每个适配函数（textRequest / uploadReference / imageRequest / videoRequest / ttsRequest）
+ *    每个适配函数（textRequest / imageRequest / videoRequest / ttsRequest）
  *    应自包含，将请求构造、发送、轮询、结果解析等逻辑写在函数体内，避免拆分出大量外部辅助函数。
  *    如果多个函数确实存在公共逻辑（如签名计算、Token 生成、请求头构造），
  *    可提取为文件内的小驼峰命名函数，放在「适配器函数」区块之前的「辅助工具」区块中，
@@ -244,17 +238,12 @@ export {};
  *
  * 6. 返回值规范
  *    - textRequest(model)：返回 AI SDK 的 chat model 实例（通过 createOpenAI 等工厂函数创建）。
- *    - uploadReference(base64, fileType)：reference 前置处理器，用于将 referenceList 中的
- *      有头 base64 条目上传到供应商的文件服务并返回 ReferenceList 对象（通常转为 URL 形式）。
- *      如果供应商 API 直接接受 base64，可以原样返回 { type: fileType, sourceType: "base64", base64 }。
- *      上传后应返回 { type: fileType, sourceType: "url", url: "..." }。
- *      该函数在 imageRequest / videoRequest / ttsRequest 被调用前执行，
- *      处理后的 referenceList 才会传入后续函数。
  *    - imageRequest(config, model)：返回有头 base64 字符串（如 "data:image/png;base64,..."）。
  *      config.referenceList 为 Extract<ReferenceList, { type: "image" }>[] 类型，
- *      包含经过 uploadReference 处理后的图片引用（可能是 URL 或 base64）。
+ *      每个引用条目均为 base64 形式（sourceType 固定为 "base64"）。
  *    - videoRequest(config, model)：返回有头 base64 字符串（如 "data:video/mp4;base64,..."）。
- *      config.referenceList 为 ReferenceList[] 类型，可包含 image / video / audio 三种引用。
+ *      config.referenceList 为 ReferenceList[] 类型，可包含 image / video / audio 三种引用，
+ *      每个引用条目均为 base64 形式（sourceType 固定为 "base64"）。
  *      config.mode 为当前激活的视频模式数组，需根据 mode 决定如何使用 referenceList。
  *    - ttsRequest(config, model)：返回有头 base64 字符串（如 "data:audio/mp3;base64,..."）。
  *      config.referenceList 为 Extract<ReferenceList, { type: "audio" }>[] 类型（音频参考）。
@@ -263,8 +252,8 @@ export {};
  * 7. ReferenceList 与 VideoMode 说明
  *    ReferenceList 是统一的多媒体引用类型，每个条目包含：
  *      - type: "image" | "audio" | "video"（媒体类型）
- *      - sourceType: "url" | "base64"（数据来源）
- *      - url 或 base64（对应的数据）
+ *      - sourceType: "base64"（当前模板固定为 base64）
+ *      - base64（对应的数据）
  *
  *    VideoMode 定义了视频模型支持的输入模式：
  *      - "text"：纯文本生成视频
@@ -326,7 +315,6 @@ export {};
  *     必须导出以下字段（通过 exports.xxx = xxx 赋值）：
  *       - exports.vendor（必须）
  *       - exports.textRequest（必须）
- *       - exports.uploadReference（必须）
  *       - exports.imageRequest（必须）
  *       - exports.videoRequest（必须）
  *       - exports.ttsRequest（必须）
@@ -340,8 +328,7 @@ export {};
  *   1. 确认用户已提供 curl 示例或 API 文档。
  *   2. 分析 API 的认证方式、端点地址、请求/响应结构。
  *   3. 基于本模板结构，填充 vendor 配置和对应的适配器函数。
- *   4. 实现 uploadReference：如果 API 需要 URL 引用，则上传 base64 到供应商文件服务并返回 URL；
- *      如果 API 直接接受 base64，则原样返回。
+ *   4. 根据当前模板的 ReferenceList 定义，按 base64 形式构造和消费 referenceList。
  *   5. 仅实现用户需要的模型类型，未用到的函数保留空实现（return ""）。
  *   6. 生成完整可用的代码，确保无语法错误、无遗漏导出。
  */

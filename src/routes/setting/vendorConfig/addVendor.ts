@@ -43,7 +43,7 @@ const vendorConfigSchema = z.object({
         mode: z.array(
           z.union([
             z.enum(["singleImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text", "audioReference", "videoReference"]),
-            z.array(z.enum(["videoReference", "imageReference", "audioReference", "textReference"])),
+            z.array(z.string().regex(/^(videoReference|imageReference|audioReference):\d+$/)),
           ]),
         ),
         audio: z.union([z.literal("optional"), z.boolean()]),
@@ -75,8 +75,20 @@ export default router.post(
     const vendor = exports.vendor;
     const result = vendorConfigSchema.safeParse(vendor);
     if (!result.success) {
-      const errorMsg = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join("; ");
-      return res.status(400).send(error(`vendor配置校验失败: ${errorMsg}`));
+      const issueLines = result.error.issues.map((issue, index) => {
+        const path = issue.path.length ? issue.path.join(".") : "root";
+        let detail = issue.message;
+
+        if (issue.code === "invalid_union") {
+          const unionDetails = [...new Set(issue.errors.flat().map((e) => e.message).filter(Boolean))];
+          if (unionDetails.length > 0) {
+            detail = `${issue.message}（${unionDetails.join("；")}）`;
+          }
+        }
+        return `${index + 1}. ${path}: ${detail}`;
+      });
+
+      return res.status(400).send(error(`vendor配置校验失败，共 ${issueLines.length} 处:\n${issueLines.join("\n")}`));
     }
 
     if ((vendor.id as string).includes(":")) return res.status(400).send(error("id不能包含英文冒号"));

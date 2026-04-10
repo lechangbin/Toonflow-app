@@ -32,7 +32,7 @@ export default function runCode(code: string, vendor?: Record<string, any>) {
     urlToBase64,
     mergeImages,
     pollTask,
-    fetch,
+    fetch: fetch,
     exports,
     axios,
     FormData,

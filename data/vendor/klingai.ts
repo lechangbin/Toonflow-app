@@ -60,9 +60,9 @@ interface VendorConfig {
 }
 
 type ReferenceList =
-  | ({ type: "image" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }))
-  | ({ type: "audio" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }))
-  | ({ type: "video" } & ({ sourceType: "url"; url: string } | { sourceType: "base64"; base64: string }));
+  | { type: "image"; sourceType: "base64"; base64: string }
+  | { type: "audio"; sourceType: "base64"; base64: string }
+  | { type: "video"; sourceType: "base64"; base64: string };
 
 interface ImageConfig {
   prompt: string;
@@ -120,7 +120,6 @@ declare const createGoogleGenerativeAI: any;
 declare const exports: {
   vendor: VendorConfig;
   textRequest: (m: TextModel) => any;
-  uploadReference: (base64: string, fileType: "image" | "audio" | "video") => Promise<ReferenceList>;
   imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;
   videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;
   ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;
@@ -138,11 +137,11 @@ const vendor: VendorConfig = {
   author: "Toonflow",
   name: "可灵AI",
   description:
-    "## 可灵AI视频生成\n\n支持可灵全系列视频模型，包括 kling-video-o1、kling-v3-omni、kling-v3、kling-v2-6、kling-v2-5-turbo、kling-v2-1、kling-v2-master、kling-v1-6、kling-v1-5、kling-v1 等。\n\n需要在[可灵AI开放平台](https://klingai.com)获取 Access Key 和 Secret Key。",
+    "可灵AI视频生成\n\n支持可灵全系列视频模型，包括 kling-video-o1、kling-v3-omni、kling-v3、kling-v2-6、kling-v2-5-turbo、kling-v2-1、kling-v2-master、kling-v1-6、kling-v1-5、kling-v1 等。\n\n需要在[可灵AI开放平台](https://klingai.com)\n\n获取 Access Key 和 Secret Key。",
   inputs: [
     { key: "accessKey", label: "Access Key", type: "password", required: true, placeholder: "请输入可灵AI的Access Key" },
     { key: "secretKey", label: "Secret Key", type: "password", required: true, placeholder: "请输入可灵AI的Secret Key" },
-    { key: "baseUrl", label: "请求地址", type: "url", required: false, placeholder: "默认：https://api-beijing.klingai.com" },
+    { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "默认：https://api-beijing.klingai.com" },
   ],
   inputValues: { accessKey: "", secretKey: "", baseUrl: "https://api-beijing.klingai.com" },
   models: [
@@ -352,9 +351,6 @@ const getBaseUrl = (): string => {
  * 对于 url 类型返回 url，对于 base64 类型返回纯 base64（去掉 data: 前缀）
  */
 const extractRawBase64 = (ref: ReferenceList): string => {
-  if (ref.sourceType === "url") {
-    return ref.url;
-  }
   return ref.base64.replace(/^data:[^;]+;base64,/, "");
 };
 
@@ -363,9 +359,6 @@ const extractRawBase64 = (ref: ReferenceList): string => {
  * 用于 omni-video 接口，该接口的 image_url 支持带前缀的 base64 和 url
  */
 const extractImageUrl = (ref: ReferenceList): string => {
-  if (ref.sourceType === "url") {
-    return ref.url;
-  }
   return ref.base64.startsWith("data:") ? ref.base64 : `data:image/jpeg;base64,${ref.base64}`;
 };
 
@@ -445,15 +438,6 @@ const submitAndPoll = async (submitUrl: string, queryUrlBase: string, requestBod
 
 const textRequest = (model: TextModel) => {
   throw new Error("可灵AI不支持文本模型");
-};
-
-const uploadReference = async (base64: string, fileType: "image" | "audio" | "video"): Promise<ReferenceList> => {
-  // 可灵AI的接口直接接受 base64，压缩图片后原样返回
-  if (fileType === "image") {
-    const compressed = await zipImage(base64, 10240);
-    return { type: "image", sourceType: "base64", base64: compressed };
-  }
-  return { type: fileType, sourceType: "base64", base64 } as ReferenceList;
 };
 
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
@@ -646,7 +630,6 @@ const ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> =
 
 exports.vendor = vendor;
 exports.textRequest = textRequest;
-exports.uploadReference = uploadReference;
 exports.imageRequest = imageRequest;
 exports.videoRequest = videoRequest;
 exports.ttsRequest = ttsRequest;

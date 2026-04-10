@@ -41,7 +41,7 @@ export default router.post(
           mode: z.array(
             z.union([
               z.enum(["singleImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text"]),
-              z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
+            z.array(z.string().regex(/^(videoReference|imageReference|audioReference):\d+$/)),
             ]),
           ),
           audio: z.union([z.literal("optional"), z.boolean()]),

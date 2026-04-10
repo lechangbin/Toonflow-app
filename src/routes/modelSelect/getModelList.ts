@@ -16,8 +16,9 @@ export default router.post(
     if (!dataList || dataList.length === 0) {
       return res.status(404).send({ error: "模型未找到" });
     }
-    const result = dataList.flatMap((data) => {
-      const models = JSON.parse(data.models!);
+    const modelList = await Promise.all(dataList.map(i=> u.vendor.getModelList(i.id!)));
+    const result = dataList.flatMap((data, index) => {
+      const models = modelList[index];
       const filtered =
         type === "all"
           ? models.filter((item: { type: string }) => item.type !== "video")

@@ -37,7 +37,7 @@ export default router.post(
       if (!vendorConfigData) return res.status(500).send(error("未找到该供应商配置"));
       if (!vendorConfigData.models) return res.status(500).send(error("未找到模型列表"));
 
-      const modelList = JSON.parse(vendorConfigData.models);
+      const modelList = await u.vendor.getModelList(vendorConfigData.id!);
 
       const selectedModel = modelList.find((i: any) => i.modelName == modelName);
       if (type == "video") {
@@ -46,7 +46,8 @@ export default router.post(
           duration: selectedModel.durationResolutionMap[0].duration[0],
           resolution: selectedModel.durationResolutionMap[0].resolution[0],
           aspectRatio: "16:9",
-          prompt: "生成一个卖火柴的小女孩，保持镜头稳定，从远景到近景",
+          prompt:
+            "A shirtless middle-aged man with a horse head is standing in a supermarket, carefully comparing two identical bottles of shampoo for 3 seconds, then suddenly bursts into tears, drops to his knees dramatically, a flock of pigeons explodes out of nowhere from behind him, the supermarket lights flicker, an old grandma nearby continues shopping completely unbothered, the horse head man instantly stops crying, puts both shampoo bottles back, and moonwalks away disappearing into the vegetable section. Security camera footage style, slightly grainy, 5 seconds.",
           imageBase64: [],
           audio: false,
           mode: "text",

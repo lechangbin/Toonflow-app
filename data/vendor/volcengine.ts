@@ -2,9 +2,11 @@
  * Toonflow AI供应商模板 - 火山引擎(豆包)
  * @version 2.0
  */
+
 // ============================================================
 // 类型定义
 // ============================================================
+
 type VideoMode =
   | "singleImage"
   | "startEndRequired"
@@ -12,12 +14,14 @@ type VideoMode =
   | "startFrameOptional"
   | "text"
   | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[];
+
 interface TextModel {
   name: string;
   modelName: string;
   type: "text";
   think: boolean;
 }
+
 interface ImageModel {
   name: string;
   modelName: string;
@@ -25,6 +29,7 @@ interface ImageModel {
   mode: ("text" | "singleImage" | "multiReference")[];
   associationSkills?: string;
 }
+
 interface VideoModel {
   name: string;
   modelName: string;
@@ -34,12 +39,14 @@ interface VideoModel {
   audio: "optional" | false | true;
   durationResolutionMap: { duration: number[]; resolution: string[] }[];
 }
+
 interface TTSModel {
   name: string;
   modelName: string;
   type: "tts";
   voices: { title: string; voice: string }[];
 }
+
 interface VendorConfig {
   id: string;
   version: string;
@@ -51,36 +58,48 @@ interface VendorConfig {
   inputValues: Record<string, string>;
   models: (TextModel | ImageModel | VideoModel | TTSModel)[];
 }
+
+type ReferenceList =
+  | { type: "image"; sourceType: "base64"; base64: string }
+  | { type: "audio"; sourceType: "base64"; base64: string }
+  | { type: "video"; sourceType: "base64"; base64: string };
+
 interface ImageConfig {
   prompt: string;
-  imageBase64: string[];
+  referenceList?: Extract<ReferenceList, { type: "image" }>[];
   size: "1K" | "2K" | "4K";
   aspectRatio: `${number}:${number}`;
 }
+
 interface VideoConfig {
   duration: number;
   resolution: string;
   aspectRatio: "16:9" | "9:16";
   prompt: string;
-  referenceList?: string[];
+  referenceList?: ReferenceList[];
   audio?: boolean;
   mode: VideoMode[];
 }
+
 interface TTSConfig {
   text: string;
   voice: string;
   speechRate: number;
   pitchRate: number;
   volume: number;
+  referenceList?: Extract<ReferenceList, { type: "audio" }>[];
 }
+
 interface PollResult {
   completed: boolean;
   data?: string;
   error?: string;
 }
+
 // ============================================================
 // 全局声明
 // ============================================================
+
 declare const axios: any;
 declare const logger: (msg: string) => void;
 declare const jsonwebtoken: any;
@@ -107,15 +126,18 @@ declare const exports: {
   checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;
   updateVendor?: () => Promise<string>;
 };
+
 // ============================================================
 // 供应商配置
 // ============================================================
+
 const vendor: VendorConfig = {
-  id: "volcengine-doubao",
+  id: "volcengine",
   version: "2.0",
-  author: "Toonflow",
+  author: "leeqi",
   name: "火山引擎(豆包)",
-  description: "## 火山引擎豆包大模型，支持文本、图片生成、视频生成等能力。\n\n需要在[火山引擎控制台](https://console.volcengine.com/ark)获取API密钥。",
+  description:
+    "火山引擎豆包大模型，支持文本、图片生成、视频生成等能力。\n\n需要在[火山引擎控制台](https://console.volcengine.com/ark)获取API密钥。",
   icon: "",
   inputs: [
     { key: "apiKey", label: "API密钥", type: "password", required: true, placeholder: "火山引擎API Key" },
@@ -191,95 +213,69 @@ const vendor: VendorConfig = {
       mode: ["text"],
     },
     // ===================== 视频生成模型 =====================
-    // Seedance 2.0: 多模态参考(图0~9+视频0~3+音频0~3) + 首尾帧 + 首帧 + 文生视频
     {
       name: "Seedance-2.0(音画同生)",
       modelName: "doubao-seedance-2-0-260128",
       type: "video",
-      mode: [
-        "text",
-        "startFrameOptional",
-        ["imageReference:9", "videoReference:3", "audioReference:3"],
-      ],
+      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
       audio: "optional",
-      durationResolutionMap: [
-        { duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] },
-      ],
+      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
     },
     {
       name: "Seedance-2.0-Fast(音画同生)",
       modelName: "doubao-seedance-2-0-fast-260128",
       type: "video",
-      mode: [
-        "text",
-        "startFrameOptional",
-        ["imageReference:9", "videoReference:3", "audioReference:3"],
-      ],
+      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
       audio: "optional",
-      durationResolutionMap: [
-        { duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] },
-      ],
+      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
     },
-    // Seedance 1.5 pro: 首尾帧 + 首帧 + 文生视频
     {
       name: "Seedance-1.5-Pro(音画同生)",
       modelName: "doubao-seedance-1-5-pro-251215",
       type: "video",
       mode: ["text", "startFrameOptional"],
       audio: "optional",
-      durationResolutionMap: [
-        { duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] },
-      ],
+      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
     },
-    // Seedance 1.0 pro: 首尾帧 + 首帧 + 文生视频
     {
       name: "Seedance-1.0-Pro",
       modelName: "doubao-seedance-1-0-pro-250528",
       type: "video",
       mode: ["text", "startFrameOptional"],
       audio: false,
-      durationResolutionMap: [
-        { duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] },
-      ],
+      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
     },
-    // Seedance 1.0 pro fast: 首帧 + 文生视频（不支持首尾帧）
     {
       name: "Seedance-1.0-Pro-Fast",
       modelName: "doubao-seedance-1-0-pro-fast-251015",
       type: "video",
       mode: ["text", "singleImage"],
       audio: false,
-      durationResolutionMap: [
-        { duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] },
-      ],
+      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
     },
-    // Seedance 1.0 lite t2v: 仅文生视频
     {
       name: "Seedance-1.0-Lite-T2V",
       modelName: "doubao-seedance-1-0-lite-t2v-250428",
       type: "video",
       mode: ["text"],
       audio: false,
-      durationResolutionMap: [
-        { duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] },
-      ],
+      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
     },
-    // Seedance 1.0 lite i2v: 参考图(1~4) + 首尾帧 + 首帧
     {
       name: "Seedance-1.0-Lite-I2V",
       modelName: "doubao-seedance-1-0-lite-i2v-250428",
       type: "video",
       mode: ["startFrameOptional", ["imageReference:4"]],
       audio: false,
-      durationResolutionMap: [
-        { duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] },
-      ],
+      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
     },
   ],
 };
+
 // ============================================================
 // 辅助工具
 // ============================================================
+
 const getHeaders = () => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
   return {
@@ -294,40 +290,58 @@ const getBaseUrl = () => vendor.inputValues.baseUrl.replace(/\/+$/, "");
 // 适配器函数
 // ============================================================
 
-/** 文本请求 - 直接使用 createOpenAI */
-const textRequest = (model: TextModel) => {
+const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
   const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "");
-  return createOpenAI({ baseURL: getBaseUrl(), apiKey }).chat(model.modelName);
+
+  const effortMap: Record<number, string> = {
+    0: "minimal",
+    1: "low",
+    2: "medium",
+    3: "high",
+  };
+
+  return createOpenAI({
+    baseURL: getBaseUrl(),
+    apiKey,
+    compatibility: "compatible",
+    fetch: async (url: string, options?: RequestInit) => {
+      const rawBody = JSON.parse((options?.body as string) ?? "{}");
+      const modifiedBody = {
+        ...rawBody,
+        thinking: {
+          type: "enabled",
+        },
+        reasoning_effort: effortMap[thinkLevel],
+      };
+      return await fetch(url, {
+        ...options,
+        body: JSON.stringify(modifiedBody),
+      });
+    },
+  }).chat(model.modelName);
 };
 
-/** 图片生成请求 */
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
   const baseUrl = getBaseUrl();
   const headers = getHeaders();
 
-  // 构建 content
   const content: any[] = [];
 
-  // 文本提示词
   if (config.prompt) {
     content.push({ type: "text", text: config.prompt });
   }
 
-  // 图片输入
-  if (config.imageBase64 && config.imageBase64.length > 0) {
-    for (const base64 of config.imageBase64) {
+  if (config.referenceList && config.referenceList.length > 0) {
+    for (const ref of config.referenceList) {
       content.push({
         type: "image_url",
-        image_url: { url: `data:image/png;base64,${base64}` },
+        image_url: { url: ref.base64 },
       });
     }
   }
 
-  // 解析宽高比
   const [w, h] = config.aspectRatio.split(":").map(Number);
-
-  // 解析尺寸到像素
   const sizeMap: Record<string, { width: number; height: number }> = {
     "1K": { width: 1024, height: Math.round(1024 * (h / w)) },
     "2K": { width: 2048, height: Math.round(2048 * (h / w)) },
@@ -354,101 +368,136 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   throw new Error("图片生成失败：未返回有效结果");
 };
 
-/** 视频生成请求 */
 const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
   const baseUrl = getBaseUrl();
   const headers = getHeaders();
 
-  // 构建 content
   const content: any[] = [];
 
-  // 文本提示词
   if (config.prompt) {
     content.push({ type: "text", text: config.prompt });
   }
 
-  // 判断当前使用的 mode
   const activeMode = config.mode && config.mode.length > 0 ? config.mode[0] : "text";
 
   if (typeof activeMode === "string") {
     switch (activeMode) {
-      case "singleImage":
-        // 首帧模式：单张图片，role 为 first_frame
-        if (config.imageBase64 && config.imageBase64.length > 0) {
+      case "singleImage": {
+        const firstImage = config.referenceList?.find((r) => r.type === "image");
+        if (firstImage) {
           content.push({
             type: "image_url",
-            image_url: { url: `data:image/png;base64,${config.imageBase64[0]}` },
+            image_url: { url: firstImage.base64 },
             role: "first_frame",
           });
         }
         break;
-      case "startFrameOptional":
-        // 首帧 + 可选尾帧模式
-        if (config.imageBase64 && config.imageBase64.length > 0) {
+      }
+      case "startFrameOptional": {
+        const images = config.referenceList?.filter((r) => r.type === "image") ?? [];
+        if (images.length > 0) {
           content.push({
             type: "image_url",
-            image_url: { url: `data:image/png;base64,${config.imageBase64[0]}` },
+            image_url: { url: images[0].base64 },
             role: "first_frame",
           });
-          if (config.imageBase64.length > 1) {
+          if (images.length > 1) {
             content.push({
               type: "image_url",
-              image_url: { url: `data:image/png;base64,${config.imageBase64[1]}` },
+              image_url: { url: images[1].base64 },
               role: "last_frame",
             });
           }
         }
         break;
+      }
+      case "startEndRequired": {
+        const images = config.referenceList?.filter((r) => r.type === "image") ?? [];
+        if (images.length >= 2) {
+          content.push({
+            type: "image_url",
+            image_url: { url: images[0].base64 },
+            role: "first_frame",
+          });
+          content.push({
+            type: "image_url",
+            image_url: { url: images[1].base64 },
+            role: "last_frame",
+          });
+        }
+        break;
+      }
+      case "endFrameOptional": {
+        const images = config.referenceList?.filter((r) => r.type === "image") ?? [];
+        if (images.length > 0) {
+          content.push({
+            type: "image_url",
+            image_url: { url: images[0].base64 },
+            role: "first_frame",
+          });
+          if (images.length > 1) {
+            content.push({
+              type: "image_url",
+              image_url: { url: images[1].base64 },
+              role: "last_frame",
+            });
+          }
+        }
+        break;
+      }
       case "text":
-        // 纯文生视频，无需额外处理
+      default:
         break;
     }
   } else if (Array.isArray(activeMode)) {
-    // 多模态参考模式
-    let imageIndex = 0;
-    for (const ref of activeMode) {
-      if (typeof ref === "string") {
-        if (ref.startsWith("imageReference:")) {
-          // 参考图片
-          const maxCount = parseInt(ref.split(":")[1], 10);
-          if (config.imageBase64) {
-            const images = config.imageBase64.slice(imageIndex, imageIndex + maxCount);
-            for (const base64 of images) {
-              content.push({
-                type: "image_url",
-                image_url: { url: `data:image/png;base64,${base64}` },
-                role: "reference_image",
-              });
-            }
-            imageIndex += images.length;
+    // 多模态参考模式：按类型分别提取并添加
+    const imageRefs = config.referenceList?.filter((r) => r.type === "image") ?? [];
+    const videoRefs = config.referenceList?.filter((r) => r.type === "video") ?? [];
+    const audioRefs = config.referenceList?.filter((r) => r.type === "audio") ?? [];
+
+    for (const refDef of activeMode) {
+      if (typeof refDef === "string") {
+        if (refDef.startsWith("imageReference:")) {
+          const maxCount = parseInt(refDef.split(":")[1], 10);
+          for (const ref of imageRefs.slice(0, maxCount)) {
+            content.push({
+              type: "image_url",
+              image_url: { url: ref.base64 },
+              role: "reference_image",
+            });
+          }
+        } else if (refDef.startsWith("videoReference:")) {
+          const maxCount = parseInt(refDef.split(":")[1], 10);
+          for (const ref of videoRefs.slice(0, maxCount)) {
+            content.push({
+              type: "video_url",
+              video_url: { url: ref.base64 },
+              role: "reference_video",
+            });
+          }
+        } else if (refDef.startsWith("audioReference:")) {
+          const maxCount = parseInt(refDef.split(":")[1], 10);
+          for (const ref of audioRefs.slice(0, maxCount)) {
+            content.push({
+              type: "audio_url",
+              audio_url: { url: ref.base64 },
+              role: "reference_audio",
+            });
           }
         }
-        // videoReference 和 audioReference 需要 URL，当前框架暂不支持直接传入
       }
     }
   }
 
-  // 映射宽高比
-  const ratioMap: Record<string, string> = {
-    "16:9": "16:9",
-    "9:16": "9:16",
-    "4:3": "4:3",
-    "3:4": "3:4",
-    "1:1": "1:1",
-    "21:9": "21:9",
-  };
-  const ratio = ratioMap[config.aspectRatio] || "16:9";
-
   const body: any = {
     model: model.modelName,
     content,
-    ratio,
+    ratio: config.aspectRatio,
     duration: config.duration,
     resolution: config.resolution || "720p",
     watermark: false,
   };
 
-  // 音频控制
   if (model.audio === "optional") {
     body.generate_audio = config.audio !== false;
   } else if (model.audio === true) {
@@ -459,7 +508,6 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
 
   logger(`[视频生成] 提交任务, 模型: ${model.modelName}, 时长: ${config.duration}s, 分辨率: ${config.resolution}`);
 
-  // 提交创建任务
   const createResponse = await axios.post(`${baseUrl}/contents/generations/tasks`, body, { headers });
   const taskId = createResponse.data?.id;
 
@@ -469,39 +517,40 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
 
   logger(`[视频生成] 任务已创建, ID: ${taskId}`);
 
-  // 轮询查询任务状态
-  const result = await pollTask(async (): Promise<PollResult> => {
-    const queryResponse = await axios.get(`${baseUrl}/contents/generations/tasks/${taskId}`, { headers });
-    const task = queryResponse.data;
+  const result = await pollTask(
+    async (): Promise<PollResult> => {
+      const queryResponse = await axios.get(`${baseUrl}/contents/generations/tasks/${taskId}`, { headers });
+      const task = queryResponse.data;
 
-    logger(`[视频生成] 任务状态: ${task.status}`);
+      logger(`[视频生成] 任务状态: ${task.status}`);
 
-    switch (task.status) {
-      case "succeeded":
-        if (task.content?.video_url) {
-          return { completed: true, data: task.content.video_url };
-        }
-        return { completed: true, error: "任务成功但未返回视频URL" };
-      case "failed":
-        return { completed: true, error: task.error?.message || "视频生成失败" };
-      case "expired":
-        return { completed: true, error: "视频生成任务超时" };
-      case "cancelled":
-        return { completed: true, error: "视频生成任务已取消" };
-      default:
-        // queued / running
-        return { completed: false };
-    }
-  }, 10000, 600000); // 每10秒查询一次，最长等待10分钟
+      switch (task.status) {
+        case "succeeded":
+          if (task.content?.video_url) {
+            return { completed: true, data: task.content.video_url };
+          }
+          return { completed: true, error: "任务成功但未返回视频URL" };
+        case "failed":
+          return { completed: true, error: task.error?.message || "视频生成失败" };
+        case "expired":
+          return { completed: true, error: "视频生成任务超时" };
+        case "cancelled":
+          return { completed: true, error: "视频生成任务已取消" };
+        default:
+          return { completed: false };
+      }
+    },
+    10000,
+    600000,
+  );
 
   if (result.error) {
     throw new Error(result.error);
   }
 
-  return result.data || "";
+  return await urlToBase64(result.data!);
 };
 
-/** TTS请求（火山引擎暂无TTS模型配置，预留接口） */
 const ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> => {
   return "";
 };
@@ -517,6 +566,7 @@ const updateVendor = async (): Promise<string> => {
 // ============================================================
 // 导出
 // ============================================================
+
 exports.vendor = vendor;
 exports.textRequest = textRequest;
 exports.imageRequest = imageRequest;
@@ -524,4 +574,5 @@ exports.videoRequest = videoRequest;
 exports.ttsRequest = ttsRequest;
 exports.checkForUpdates = checkForUpdates;
 exports.updateVendor = updateVendor;
+
 export {};
