@@ -1,4 +1,4 @@
-// @db-hash 32fc2b4cbb0daffa7f8df1dabb511518
+// @db-hash 71e339c0a728c10bedb294a93976dcd8
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -58,6 +58,10 @@ export interface o_assets {
 export interface o_assets2Storyboard {
   'assetId'?: number;
   'storyboardId'?: number;
+}
+export interface o_assetsRole2Audio {
+  'assetsAudioId'?: number;
+  'assetsRoleId'?: number;
 }
 export interface o_event {
   'createTime'?: number | null;
@@ -198,6 +202,7 @@ export interface o_user {
 }
 export interface o_vendorConfig {
   'author'?: string | null;
+  'code'?: string | null;
   'createTime'?: number | null;
   'description'?: string | null;
   'enable'?: number | null;
@@ -237,6 +242,7 @@ export interface DB {
   "o_artStyle": o_artStyle;
   "o_assets": o_assets;
   "o_assets2Storyboard": o_assets2Storyboard;
+  "o_assetsRole2Audio": o_assetsRole2Audio;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_image": o_image;

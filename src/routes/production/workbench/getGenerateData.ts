@@ -62,6 +62,7 @@ export default router.post(
           sources: "storyboard",
           ...(i.prompt != null ? { prompt: i.videoDesc } : {}),
           ...(i.id != null ? { id: i.id } : {}),
+          index: i.index,
         });
       } else {
         storyboardTrackRecord[i.trackId!] = [
@@ -71,6 +72,7 @@ export default router.post(
             sources: "storyboard",
             ...(i.prompt != null ? { prompt: i.videoDesc } : {}),
             ...(i.id != null ? { id: i.id } : {}),
+            index: i.index,
           },
         ];
       }
@@ -130,7 +132,10 @@ export default router.post(
             seenAssetIds.add(a.id);
             return true;
           });
-          return [...storyboardMedias, ...uniqueAssets];
+          const hasImageAssetData = uniqueAssets.filter(i => i.src)
+          const notHasImageAssetData = uniqueAssets.filter(i => !i.src)
+
+          return [...hasImageAssetData, ...storyboardMedias, ...notHasImageAssetData];
         })(),
         videoList: await Promise.all(
           videoList
