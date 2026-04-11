@@ -119,7 +119,7 @@ declare const createMinimax: any;
 declare const createGoogleGenerativeAI: any;
 declare const exports: {
   vendor: VendorConfig;
-  textRequest: (m: TextModel) => any; //文本模型
+  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any; //文本模型
   imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>; //图片模型，返回有头base64字符串
   videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>; //视频模型，返回有头base64字符串
   ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>; //（暂未开放）语音模型，返回有头base64字符串
@@ -132,11 +132,11 @@ declare const exports: {
 // ============================================================
 
 const vendor: VendorConfig = {
-  id: "bull",
+  id: "null",
   version: "2.0",
   author: "Toonflow",
   name: "空模板",
-  description: "## OpenAI标准格式接口，可修改请求地址并手动添加模型。",
+  description: "## 开发模板，您可以使用此模板进行Vibe Coding",
   inputs: [
     { key: "apiKey", label: "API密钥", type: "password", required: true },
     { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "示例：https://api.openai.com/v1" },
@@ -149,7 +149,7 @@ const vendor: VendorConfig = {
 // 适配器函数
 // ============================================================
 
-const textRequest = (model: TextModel) => {
+const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
   const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "");
   return createOpenAI({ baseURL: vendor.inputValues.baseUrl, apiKey }).chat(model.modelName);

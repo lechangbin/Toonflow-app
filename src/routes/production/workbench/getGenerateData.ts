@@ -42,8 +42,7 @@ export default router.post(
       return res.status(400).json(success("项目未配置视频模型"));
     }
     const [videoId, videoModelName] = projectData.videoModel.split(":");
-    const vendorData = await u.db("o_vendorConfig").where("id", videoId).select("models").first();
-    const models = JSON.parse(vendorData!.models!);
+    const models = await u.vendor.getModelList(videoId);
     const findData = models.find((i: any) => i.modelName == videoModelName);
     const isRef = findData.mode.every((i: any) => Array.isArray(i));
 

@@ -85,16 +85,10 @@ export default router.post(
         .db("o_vendorConfig")
         .where("id", id)
         .update({
-          author: vendor.author,
-          description: vendor.description || "",
-          name: vendor.name,
-          icon: vendor.icon || "",
-          inputs: JSON.stringify(vendor.inputs ?? []),
           inputValues: JSON.stringify(vendor.inputValues ?? {}),
           models: JSON.stringify(vendor.models ?? []),
-          createTime: Date.now(),
         });
-      u.vendor.upCode(id, tsCode);
+      u.vendor.writeCode(id, tsCode);
 
       res.status(200).send(success(result.data));
     } catch (err) {

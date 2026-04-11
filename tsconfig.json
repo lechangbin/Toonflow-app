@@ -26,6 +26,8 @@
   },
   "exclude": [
     "node_modules",
-    "data/**/*.ts"
+    "data/**/*.ts",
+    "dist",
+    "build"
   ]
 }

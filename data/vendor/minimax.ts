@@ -119,7 +119,7 @@ declare const createMinimax: any;
 declare const createGoogleGenerativeAI: any;
 declare const exports: {
   vendor: VendorConfig;
-  textRequest: (m: TextModel) => any;
+  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;
   uploadReference: (base64: string, fileType: "image" | "audio" | "video") => Promise<ReferenceList>;
   imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;
   videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;
@@ -225,7 +225,7 @@ const extractBase64WithHead = (ref: ReferenceList): string => {
 // 适配器函数
 // ============================================================
 
-const textRequest = (model: TextModel) => {
+const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
   const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "");
   const baseUrl = getBaseUrl();

@@ -133,6 +133,15 @@ class AiText {
   }
 }
 
+function referenceList2imageBase642(id: string, input: any) {
+  const version = u.vendor.getVendor(id).version;
+  if (!version || isNaN(parseFloat(version)) || parseFloat(version) < 2.0) {
+    input.imageBase64 = input.referenceList.map((item: any) => item.base64);
+    return input;
+  }
+  return input;
+}
+
 type ReferenceList = { type: "image"; base64: string } | { type: "audio"; base64: string } | { type: "video"; base64: string };
 
 interface ImageConfig {
@@ -159,6 +168,7 @@ class AiImage {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("imageRequest", mn);
+      await referenceList2imageBase642(mn.split(":")[0], input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
@@ -202,6 +212,7 @@ class AiVideo {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("videoRequest", mn);
+      await referenceList2imageBase642(mn.split(":")[0], input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
@@ -226,6 +237,7 @@ class AiAudio {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("ttsRequest", mn);
+      await referenceList2imageBase642(mn.split(":")[0], input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;

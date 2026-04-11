@@ -7,17 +7,22 @@ export default router.post("/", async (req, res) => {
   const data = await u.db("o_vendorConfig").select("*");
 
   const list = await Promise.all(
-    data.map(async (item) => ({
-      ...item,
-      inputValues: JSON.parse(item.inputValues ?? "{}"),
-      models: await u.vendor.getModelList(item.id!),
-      code: u.vendor.getCode(item.id!),
-      description: u.vendor.getVendor(item.id!).description,
-      inputs: u.vendor.getVendor(item.id!).inputs,
-      author: u.vendor.getVendor(item.id!).author,
-      name: u.vendor.getVendor(item.id!).name,
-    })),
+    data.map(async (item) => {
+      const vendor = u.vendor.getVendor(item.id!);
+      return {
+        ...item,
+        inputValues: JSON.parse(item.inputValues ?? "{}"),
+        models: await u.vendor.getModelList(item.id!),
+        code: u.vendor.getCode(item.id!),
+        description: vendor.description,
+        inputs: vendor.inputs,
+        author: vendor.author,
+        name: vendor.name,
+        version: vendor.version ?? "1.0",
+      };
+    }),
   );
 
+  list.sort((a, b) => (a.id === "toonflow" ? -1 : b.id === "toonflow" ? 1 : 0));
   res.status(200).send(success(list));
 });

@@ -119,7 +119,7 @@ declare const createMinimax: any;
 declare const createGoogleGenerativeAI: any;
 declare const exports: {
   vendor: VendorConfig;
-  textRequest: (m: TextModel) => any; //文本模型
+  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any; //文本模型
   imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>; //图片模型，返回有头base64字符串
   videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>; //视频模型，返回有头base64字符串
   ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>; //（暂未开放）语音模型，返回有头base64字符串
@@ -133,7 +133,7 @@ declare const exports: {
 
 const vendor: VendorConfig = {
   id: "grsai",
-  version: "1.0",
+  version: "2.0",
   author: "Toonflow",
   name: "Grsai",
   description: "Grsai AI平台适配，支持文生图、图生图、文生视频、Gemini兼容文本模型 \n [前往中转平台](https://tf.grsai.ai/zh)",
@@ -165,7 +165,7 @@ const getHeaders = () => {
 // 适配器函数
 // ============================================================
 
-const textRequest = (model: TextModel) => {
+const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
   const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "");
   return createGoogleGenerativeAI({

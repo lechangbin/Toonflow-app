@@ -1,37 +1,6 @@
-// @db-hash 1447c7bc591208825cce903d05b0045c
+// @db-hash 9248d7bcfe0a1bc57e5b9bc33d8c7d83
 //该文件由脚本自动生成，请勿手动修改
 
-export interface _o_project_old_20260404 {
-  'artStyle'?: string | null;
-  'createTime'?: number | null;
-  'directorManual'?: string | null;
-  'id'?: number | null;
-  'imageModel'?: string | null;
-  'imageQuality'?: string | null;
-  'intro'?: string | null;
-  'mode'?: string | null;
-  'name'?: string | null;
-  'projectType'?: string | null;
-  'type'?: string | null;
-  'userId'?: number | null;
-  'videoModel'?: string | null;
-  'videoRatio'?: string | null;
-}
-export interface _o_prompt_old_20260406 {
-  'data'?: string | null;
-  'id'?: number;
-  'name'?: string | null;
-  'type'?: string | null;
-  'useData'?: string | null;
-}
-export interface _o_prompt_old_20260406_1 {
-  'data'?: string | null;
-  'id'?: number;
-  'name'?: string | null;
-  'TEXT'?: any | null;
-  'type'?: string | null;
-  'useData'?: string | null;
-}
 export interface memories {
   'content': string;
   'createTime': number;
@@ -232,16 +201,10 @@ export interface o_user {
   'password'?: string | null;
 }
 export interface o_vendorConfig {
-  'author'?: string | null;
-  'createTime'?: number | null;
-  'description'?: string | null;
   'enable'?: number | null;
-  'icon'?: string | null;
   'id'?: string;
-  'inputs'?: string | null;
   'inputValues'?: string | null;
   'models'?: string | null;
-  'name'?: string | null;
 }
 export interface o_video {
   'errorReason'?: string | null;
@@ -266,9 +229,6 @@ export interface o_videoTrack {
 }
 
 export interface DB {
-  "_o_project_old_20260404": _o_project_old_20260404;
-  "_o_prompt_old_20260406": _o_prompt_old_20260406;
-  "_o_prompt_old_20260406_1": _o_prompt_old_20260406_1;
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;

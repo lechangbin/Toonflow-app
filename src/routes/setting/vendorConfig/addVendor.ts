@@ -80,7 +80,14 @@ export default router.post(
         let detail = issue.message;
 
         if (issue.code === "invalid_union") {
-          const unionDetails = [...new Set(issue.errors.flat().map((e) => e.message).filter(Boolean))];
+          const unionDetails = [
+            ...new Set(
+              issue.errors
+                .flat()
+                .map((e) => e.message)
+                .filter(Boolean),
+            ),
+          ];
           if (unionDetails.length > 0) {
             detail = `${issue.message}（${unionDetails.join("；")}）`;
           }
@@ -94,18 +101,13 @@ export default router.post(
     if ((vendor.id as string).includes(":")) return res.status(400).send(error("id不能包含英文冒号"));
     const data = await u.db("o_vendorConfig").where("id", vendor.id).first();
     if (data) return res.status(500).send(error("供应商id已存在"));
-    await u.db("o_vendorConfig").insert({
+    const [id] = await u.db("o_vendorConfig").insert({
       id: vendor.id,
-      author: vendor.author,
-      description: vendor.description || "",
-      name: vendor.name,
-      icon: vendor.icon || "",
-      inputs: JSON.stringify(vendor.inputs ?? []),
       inputValues: JSON.stringify(vendor.inputValues ?? {}),
-      models: JSON.stringify(vendor.models ?? []),
-      createTime: Date.now(),
+      models: JSON.stringify([]),
       enable: vendor.id == "toonflow" ? 1 : 0,
     });
+    u.vendor.writeCode(vendor.id, tsCode);
     res.status(200).send(success(result.data));
   },
 );
