@@ -228,8 +228,11 @@ const extractBase64WithHead = (ref: ReferenceList): string => {
 const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
   const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "");
+  const baseUrl = getBaseUrl();
+
+  const openaiBaseUrl = `${baseUrl}/v1`;
   const extraBody = model.think ? { reasoning_split: true } : {};
-  return createOpenAI({ baseURL: getBaseUrl(), apiKey, extraBody }).chat(model.modelName);
+  return createOpenAI({ baseURL: openaiBaseUrl, apiKey, extraBody }).chat(model.modelName);
 };
 
 const uploadReference = async (base64: string, fileType: "image" | "audio" | "video"): Promise<ReferenceList> => {
