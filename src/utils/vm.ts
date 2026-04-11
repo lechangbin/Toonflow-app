@@ -14,6 +14,7 @@ import FormData from "form-data";
 import jsonwebtoken from "jsonwebtoken";
 import u from "@/utils";
 export default function runCode(code: string, vendor?: Record<string, any>) {
+  code = code.replace(/export\s*\{\s*\};?/g, ""); // 去掉 export {} 以免沙盒环境报错
   // 创建一个沙盒
   const exports = {};
   const sandbox: Record<string, any> = {
@@ -31,7 +32,7 @@ export default function runCode(code: string, vendor?: Record<string, any>) {
     urlToBase64,
     mergeImages,
     pollTask,
-    fetch,
+    fetch: fetch,
     exports,
     axios,
     FormData,

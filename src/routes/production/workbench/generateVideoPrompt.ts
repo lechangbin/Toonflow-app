@@ -42,7 +42,7 @@ export default router.post(
         }
         if (item.sources === "assets") {
           // 查询素材
-          const assetsData = await u.db("o_assets").where("o_assets.id", item.id).select("id", "type", "name").first();
+          const assetsData = await u.db("o_assets").leftJoin("o_image","o_image.id","o_assets.imageId").where("o_assets.id", item.id).select("o_assets.id", "o_assets.type", "o_assets.name","o_image.filePath").first();
           return {
             ...assetsData,
             _type: "assets", // 标记类型
@@ -61,6 +61,7 @@ export default router.post(
           id: item.id,
           type: item.type,
           name: item.name,
+          filePath:item.filePath
         });
       if (item._type === "storyboard")
         storyboard.push({
@@ -85,18 +86,16 @@ export default router.post(
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const content = `
           **模型名称**：${modelData},
-          **资产信息**（角色、场景、道具):${assets.map((i) => `[${i.id},${i.type},${i.name}]`).join("，")},
+          **资产信息**（角色、场景、道具):${assets.filter(i => i.filePath).map((i) => `[${i.id},${i.type},${i.name}]`).join("，")},
           **分镜信息**：${storyboard.map(
             (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
-  prompt='${i.prompt}'
-  track='${i.track}'
   duration='${i.duration}'
-  associateAssetsIds='[${i.associateAssetsIds}]'
-  shouldGenerateImage='${i.shouldGenerateImage == 1 ? "true" : "false"}'
 ></storyboardItem>`,
           )},
           `;
+    console.log("%c Line:87 🌮 content", "background:#2eafb0", content);
+
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({
         system: videoPromptGeneration,

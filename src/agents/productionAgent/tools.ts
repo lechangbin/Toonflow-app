@@ -145,7 +145,7 @@ export default (toolCpnfig: ToolConfig) => {
       },
     }),
     generate_deriveAsset: tool({
-      description: "生成衍生资产",
+      description: "生成衍生资产图片",
       inputSchema: z.object({
         ids: z.array(z.number()).describe("需要生成的 衍生资产ID"),
       }),
