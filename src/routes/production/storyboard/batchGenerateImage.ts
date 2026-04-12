@@ -54,7 +54,6 @@ export default router.post(
       .leftJoin("o_assets2Storyboard", "o_assets.id", "o_assets2Storyboard.assetId")
       .whereIn("o_assets2Storyboard.storyboardId", finalStoryboardIds)
       .select("o_assets2Storyboard.storyboardId", "o_assets.imageId");
-    console.log("%c Line:42 🥪 assetData", "background:#ea7e5c", assetData);
 
     const assetRecord: Record<number, number[]> = {};
     assetData.forEach((item: any) => {
@@ -87,7 +86,7 @@ export default router.post(
       await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`)
         .run(
           {
-            imageBase64: await getAssetsImageBase64(assetRecord[item.id!] || []),
+            referenceList: await getAssetsImageBase64(assetRecord[item.id!] || []),
             ...repeloadObj,
           },
           {
@@ -151,5 +150,5 @@ async function getAssetsImageBase64(imageIds: number[]) {
     }),
   );
   // 保留顺序，并且过滤掉无效项
-  return imageUrls.filter(Boolean) as string[];
+  return (imageUrls.filter(Boolean) as string[]).map((url) => ({ type: "image" as const, base64: url }));
 }

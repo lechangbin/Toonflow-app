@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "5.0",
     "target": "ESNext",
     "module": "CommonJS",
     "moduleResolution": "Node",
@@ -12,10 +13,21 @@
     "outDir": "build",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     },
     "incremental": true,
-    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ],
     "resolveJsonModule": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "data/**/*.ts",
+    "dist",
+    "build"
+  ]
 }

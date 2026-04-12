@@ -59,6 +59,10 @@ export interface o_assets2Storyboard {
   'assetId'?: number;
   'storyboardId'?: number;
 }
+export interface o_assetsRole2Audio {
+  'assetsAudioId'?: number;
+  'assetsRoleId'?: number;
+}
 export interface o_event {
   'createTime'?: number | null;
   'detail'?: string | null;
@@ -197,17 +201,10 @@ export interface o_user {
   'password'?: string | null;
 }
 export interface o_vendorConfig {
-  'author'?: string | null;
-  'code'?: string | null;
-  'createTime'?: number | null;
-  'description'?: string | null;
   'enable'?: number | null;
-  'icon'?: string | null;
   'id'?: string;
-  'inputs'?: string | null;
   'inputValues'?: string | null;
   'models'?: string | null;
-  'name'?: string | null;
 }
 export interface o_video {
   'errorReason'?: string | null;
@@ -238,6 +235,7 @@ export interface DB {
   "o_artStyle": o_artStyle;
   "o_assets": o_assets;
   "o_assets2Storyboard": o_assets2Storyboard;
+  "o_assetsRole2Audio": o_assetsRole2Audio;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_image": o_image;

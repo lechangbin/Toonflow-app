@@ -70,6 +70,12 @@ Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
 
 -----------------------------
 
+Name: @types/graphlib
+License: MIT
+Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+
+-----------------------------
+
 Name: @types/jsonwebtoken
 License: MIT
 Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
@@ -142,15 +148,15 @@ Repository: https://github.com/motdotla/dotenv
 
 -----------------------------
 
-Name: dotenv
-License: BSD-2-Clause
-Repository: https://github.com/motdotla/dotenv
-
------------------------------
-
 Name: electron-builder
 License: MIT
 Repository: https://github.com/electron-userland/electron-builder
+
+-----------------------------
+
+Name: electron-rebuild
+License: MIT
+Repository: https://github.com/electron/electron-rebuild
 
 -----------------------------
 
@@ -244,15 +250,15 @@ Repository: https://github.com/remy/nodemon
 
 -----------------------------
 
-Name: qwen-ai-provider-v5
-License: Apache-2.0
-Repository: https://github.com/bolechen/qwen-ai-provider-v5
+Name: p-limit
+License: MIT
+Repository: https://github.com/sindresorhus/p-limit
 
 -----------------------------
 
-Name: serialize-error
-License: MIT
-Repository: https://github.com/sindresorhus/serialize-error
+Name: qwen-ai-provider-v5
+License: Apache-2.0
+Repository: https://github.com/bolechen/qwen-ai-provider-v5
 
 -----------------------------
 
@@ -301,6 +307,12 @@ Repository: https://github.com/microsoft/TypeScript
 Name: uuid
 License: MIT
 Repository: https://github.com/uuidjs/uuid
+
+-----------------------------
+
+Name: vercel-minimax-ai-provider
+License: Apache-2.0
+Repository: https://github.com/MiniMax-AI/vercel-minimax-ai-provider
 
 -----------------------------
 

@@ -44,7 +44,7 @@ const vendorConfigSchema = z.object({
         mode: z.array(
           z.union([
             z.enum(["singleImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text", "audioReference", "videoReference"]),
-            z.array(z.enum(["audioReference", "videoReference", "textReference", "imageReference"])),
+            z.array(z.string().regex(/^(videoReference|imageReference|audioReference):\d+$/)),
           ]),
         ),
         audio: z.union([z.literal("optional"), z.boolean()]),
@@ -85,16 +85,11 @@ export default router.post(
         .db("o_vendorConfig")
         .where("id", id)
         .update({
-          author: vendor.author,
-          description: vendor.description || "",
-          name: vendor.name,
-          icon: vendor.icon || "",
-          inputs: JSON.stringify(vendor.inputs ?? []),
           inputValues: JSON.stringify(vendor.inputValues ?? {}),
           models: JSON.stringify(vendor.models ?? []),
-          code: tsCode,
-          createTime: Date.now(),
         });
+      u.vendor.writeCode(id, tsCode);
+
       res.status(200).send(success(result.data));
     } catch (err) {
       console.log(err);

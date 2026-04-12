@@ -73,6 +73,7 @@ export default router.post(
         storyboardTable: "",
         storyboard: [],
         //todo：矫正workbench数据
+        //@ts-ignore
         workbench: {
           videoList: [],
         },
@@ -99,7 +100,8 @@ export default router.post(
           }),
         );
         const storyboardIds = storyboardData.map((i) => i.id);
-        const assetsIds = await u.db("o_assets2Storyboard").whereIn("storyboardId", storyboardIds);
+        const assetsIds = await u.db("o_assets2Storyboard").whereIn("storyboardId", storyboardIds).orderBy("rowid");
+
         const assets2StoryboardMap: Record<number, number[]> = {};
         assetsIds.forEach((i) => {
           if (!assets2StoryboardMap[i.storyboardId!]) {
