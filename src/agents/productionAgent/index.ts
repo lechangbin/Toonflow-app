@@ -50,8 +50,8 @@ export async function runDecisionAI(ctx: AgentContext) {
 
   const projectInfo = await u.db("o_project").where("id", ctx.resTool.data.projectId).first();
   if (!projectInfo) throw new Error(`项目不存在，ID: ${ctx.resTool.data.projectId}`);
-  const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/)
-  const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/)
+  const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/);
+  const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/);
   const models = await u.vendor.getModelList(id);
   if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   const findData = models.find((i: any) => i.modelName == videoModelName);
@@ -60,7 +60,7 @@ export async function runDecisionAI(ctx: AgentContext) {
 
   const mem = buildMemPrompt(await memory.get(text));
 
-  const { fullStream } = await u.Ai.Text("productionAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
+  const { fullStream } = await u.Ai.Text("productionAgent:decisionAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
     messages: [
       { role: "system", content: prompt },
       { role: "assistant", content: mem + "\n" + modelInfo },
@@ -90,6 +90,7 @@ async function createSubAgent(parentCtx: AgentContext) {
   const { resTool, abortSignal } = parentCtx;
   const memory = new Memory("productionAgent", parentCtx.isolationKey);
   async function runAgent({
+    key,
     prompt,
     system,
     name,
@@ -97,6 +98,7 @@ async function createSubAgent(parentCtx: AgentContext) {
     tools: extraTools,
     messages,
   }: {
+    key: `${string}:${string}`;
     prompt: string;
     system: string;
     name: string;
@@ -107,7 +109,7 @@ async function createSubAgent(parentCtx: AgentContext) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
 
-    const { fullStream } = await u.Ai.Text("productionAgent", parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel).stream({
+    const { fullStream } = await u.Ai.Text(key, parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel).stream({
       system,
       messages: messages ?? [{ role: "user", content: prompt }],
       abortSignal,
@@ -135,8 +137,8 @@ async function createSubAgent(parentCtx: AgentContext) {
   if (!projectInfo) throw new Error(`项目不存在，ID: ${resTool.data.projectId}`);
   const artSkills = await createArtSkills(projectInfo?.artStyle!, projectInfo?.directorManual!);
 
-  const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/)
-  const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/)
+  const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/);
+  const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/);
   const models = await u.vendor.getModelList(id);
   if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   const findData = models.find((i: any) => i.modelName == videoModelName);
@@ -181,6 +183,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "production_execution_derive_assets.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
       return runAgent({
+        key: "productionAgent:deriveAssetsAgent",
         prompt,
         system: systemPrompt,
         name: "执行导演",
@@ -202,6 +205,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "production_execution_generate_assets.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
       return runAgent({
+        key: "productionAgent:generateAssetsAgent",
         prompt,
         system: systemPrompt,
         name: "执行导演",
@@ -226,6 +230,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const addPrompt = "\n你必须使用如下XML格式写入工作区：\n```\n<scriptPlan>内容</scriptPlan>\n```";
 
       return runAgent({
+        key: "productionAgent:directorPlanAgent",
         prompt,
         system: systemPrompt + addPrompt,
         name: "执行导演",
@@ -247,6 +252,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "production_execution_storyboard_gen.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
       return runAgent({
+        key: "productionAgent:storyboardGenAgent",
         prompt,
         system: systemPrompt,
         name: "执行导演",
@@ -284,6 +290,7 @@ async function createSubAgent(parentCtx: AgentContext) {
         "\n你必须使用如下XML格式写入工作区：\n```\n<storyboardItem videoDesc='视频描述' prompt=提示词内容 track='分组' duration='视频推荐时间' associateAssetsIds='[该分镜所需的资产ID列表]'></storyboardItem>\n```";
 
       return runAgent({
+        key: "productionAgent:storyboardPanelAgent",
         prompt,
         system: systemPrompt + addPrompt,
         name: "执行导演",
@@ -308,6 +315,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const addPrompt = "\n你必须使用如下XML格式写入工作区：\n```\n<storyboardTable>内容</storyboardTable>\n```";
 
       return runAgent({
+        key: "productionAgent:storyboardTableAgent",
         prompt,
         system: systemPrompt + addPrompt,
         name: "执行导演",
@@ -328,6 +336,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "production_agent_supervision.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
       return runAgent({
+        key: "productionAgent:supervisionAgent",
         prompt,
         system: systemPrompt,
         name: "监制",

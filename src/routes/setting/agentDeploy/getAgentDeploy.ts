@@ -4,6 +4,8 @@ import u from "@/utils";
 const router = express.Router();
 
 export default router.post("/", async (req, res) => {
-  const data = await u.db("o_agentDeploy").leftJoin("o_vendorConfig", "o_vendorConfig.id", "o_agentDeploy.vendorId").select("o_agentDeploy.*");
-  res.status(200).send(success(data));
+  const allData = await u.db("o_agentDeploy").leftJoin("o_vendorConfig", "o_vendorConfig.id", "o_agentDeploy.vendorId").select("o_agentDeploy.*");
+  const qrdinaryData = allData.filter((item: any) => !item.key?.includes(":"));
+  const advancedData = allData.filter((item: any) => item.key?.includes(":"));
+  res.status(200).send(success({ qrdinaryData, advancedData }));
 });

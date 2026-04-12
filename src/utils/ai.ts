@@ -4,17 +4,73 @@ import axios from "axios";
 import { transform } from "sucrase";
 import u from "@/utils";
 
-type AiType = "scriptAgent" | "productionAgent" | "universalAi";
+type AiType =
+  | "scriptAgent"
+  | "productionAgent"
+  | "universalAi"
+  | "scriptAgent:decisionAgent"
+  | "scriptAgent:supervisionAgent"
+  | "scriptAgent:storySkeletonAgent"
+  | "scriptAgent:adaptationStrategyAgent"
+  | "scriptAgent:scriptAgent"
+  | "productionAgent:decisionAgent"
+  | "productionAgent:supervisionAgent"
+  | "productionAgent:deriveAssetsAgent"
+  | "productionAgent:generateAssetsAgent"
+  | "productionAgent:directorPlanAgent"
+  | "productionAgent:storyboardGenAgent"
+  | "productionAgent:storyboardPanelAgent"
+  | "productionAgent:storyboardTableAgent";
+
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
-const AiTypeValues: AiType[] = ["scriptAgent", "productionAgent", "universalAi"];
+const AiTypeValues: AiType[] = [
+  "scriptAgent",
+  "productionAgent",
+  "universalAi",
+  "scriptAgent:decisionAgent",
+  "scriptAgent:supervisionAgent",
+  "scriptAgent:storySkeletonAgent",
+  "scriptAgent:adaptationStrategyAgent",
+  "scriptAgent:scriptAgent",
+  "productionAgent:decisionAgent",
+  "productionAgent:supervisionAgent",
+  "productionAgent:deriveAssetsAgent",
+  "productionAgent:generateAssetsAgent",
+  "productionAgent:directorPlanAgent",
+  "productionAgent:storyboardGenAgent",
+  "productionAgent:storyboardPanelAgent",
+  "productionAgent:storyboardTableAgent",
+  "universalAi",
+];
 async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {
   if (AiTypeValues.includes(value as AiType)) {
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
-    if (!agentDeployData?.modelName) throw new Error(`${value}模型未配置`);
-    return agentDeployData.modelName as `${number}:${string}`;
+    let modelName = null;
+    if (!agentDeployData?.modelName) {
+      const [mainly] = agentDeployData!.key!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
+      modelName = mainlyData.modelName;
+    }
+    modelName = agentDeployData?.modelName || modelName;
+    return modelName as `${number}:${string}`;
   }
   return value as `${number}:${string}`;
+}
+
+async function getModelConfig(value: AiType | `${string}:${string}`) {
+  if (AiTypeValues.includes(value as AiType)) {
+    const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+    if (!agentDeployData?.modelName) {
+      const [mainly] = agentDeployData!.key!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
+      return mainlyData;
+    }
+    return agentDeployData;
+  }
+  return null;
 }
 
 async function getVendorTemplateFn(
@@ -101,21 +157,26 @@ class AiText {
     return mws.length > 0 ? wrapLanguageModel({ model: baseModel, middleware: mws.length === 1 ? mws[0] : mws }) : baseModel;
   }
   async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
+    const config = await getModelConfig(this.AiType);
+    console.log("%c Line:161 🥃 config", "background:#3f7cff", config);
+
     return generateText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(),
-      temperature: 2,
+      ...(config?.temperature && { temperature: config.temperature }),
+      ...(config?.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
+    const config = await getModelConfig(this.AiType);
+
     return streamText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
-      topP: 1,
-      temperature: 2,
-      maxOutputTokens: 9999999999,
+      ...(config?.temperature && { temperature: config.temperature }),
+      ...(config?.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
     } as Parameters<typeof streamText>[0]);
   }
 }
