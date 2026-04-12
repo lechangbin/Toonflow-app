@@ -47,7 +47,7 @@
     "ai": "^6.0.67",
     "axios": "^1.13.2",
     "axios-retry": "^4.5.0",
-    "better-sqlite3": "^12.8.0",
+    "better-sqlite3": "^12.9.0",
     "compressing": "^2.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
