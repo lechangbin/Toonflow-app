@@ -58,7 +58,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => {},
+      initData: async (knex) => { },
     },
     //Agent配置表
     {
@@ -71,6 +71,10 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("vendorId");
         table.string("desc");
         table.string("name");
+        table.string("type");
+        table.integer("topP");
+        table.integer("temperature");
+        table.integer("maxOutputTokens");
         table.boolean("disabled").defaultTo(false);
         table.primary(["id"]);
         table.unique(["id"]);
@@ -84,6 +88,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             key: "scriptAgent",
             name: "剧本Agent",
             desc: "用于读取原文生成故事骨架、改编策略，建议使用具备强大文本理解和生成能力的模型",
+            type: "普通",
             disabled: false,
           },
           {
@@ -93,6 +98,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             key: "productionAgent",
             name: "生产Agent",
             desc: "对工作流进行调度和管理，建议使用具备较强的逻辑推理和任务管理能力的模型",
+            type: "普通",
             disabled: false,
           },
           {
@@ -102,6 +108,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             key: "universalAi",
             name: "通用AI",
             desc: "用于小说事件提取、资产提示词生成、台词提取等边缘功能，建议使用具备较强文本处理能力的模型",
+            type: "普通",
             disabled: false,
           },
           {
@@ -111,8 +118,179 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             key: "ttsDubbing",
             name: "TTS配音",
             desc: "根据剧本内容生成角色配音，支持多种声音风格和情绪",
+            type: "普通",
             disabled: true,
           },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "scriptAgent:decisionAgent",
+            name: "剧本Agent:决策层",
+            desc: "决策层",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "scriptAgent:supervisionAgent",
+            name: "剧本Agent:监督层",
+            desc: "监督层",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "scriptAgent:storySkeletonAgent",
+            name: "剧本Agent:故事骨架",
+            desc: "故事骨架生成",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "scriptAgent:adaptationStrategyAgent",
+            name: "剧本Agent:改编策略",
+            desc: "改编策略生成",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "scriptAgent:scriptAgent",
+            name: "剧本Agent:剧本生成",
+            desc: "剧本生成",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "productionAgent:decisionAgent",
+            name: "生产Agent:决策层",
+            desc: "决策层",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "productionAgent:supervisionAgent",
+            name: "生产Agent:监督层",
+            desc: "监督层",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "productionAgent:deriveAssetsAgent",
+            name: "生产Agent:衍生资产",
+            desc: "衍生资产",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "productionAgent:generateAssetsAgent",
+            name: "生产Agent:生成资产",
+            desc: "生成资产",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "productionAgent:directorPlanAgent",
+            name: "生产Agent:导演规划",
+            desc: "导演规划",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "productionAgent:storyboardGenAgent",
+            name: "生产Agent:分镜生成",
+            desc: "分镜生成",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "productionAgent:storyboardPanelAgent",
+            name: "生产Agent:分镜面板",
+            desc: "分镜面板生成",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+          {
+            model: "",
+            modelName: "",
+            vendorId: null,
+            key: "productionAgent:storyboardTableAgent",
+            name: "生产Agent:分镜表格",
+            desc: "分镜表格生成",
+            type: "高级",
+            topP: 1,
+            temperature: 1,
+            maxOutputTokens: 0,
+            disabled: false,
+          },
+
         ]);
       },
     },
@@ -186,7 +364,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => {},
+      initData: async (knex) => { },
     },
     //提示词表
     {
@@ -231,7 +409,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => {},
+      initData: async (knex) => { },
     },
     //小说原文表
     {
@@ -310,7 +488,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => {},
+      initData: async (knex) => { },
     },
     //生成图片表
     {

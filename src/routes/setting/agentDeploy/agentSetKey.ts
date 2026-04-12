@@ -43,6 +43,110 @@ export default router.post(
           modelName: "toonflow:claude-haiku-4-5-20251001",
           vendorId: "toonflow",
         });
+        await u.db("o_agentDeploy").where("key", "scriptAgent:decisionAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "scriptAgent:supervisionAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "scriptAgent:storySkeletonAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "scriptAgent:adaptationStrategyAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "scriptAgent:scriptAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "productionAgent:decisionAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "productionAgent:supervisionAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "productionAgent:deriveAssetsAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "productionAgent:generateAssetsAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "productionAgent:directorPlanAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "productionAgent:storyboardGenAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "productionAgent:storyboardPanelAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
+        await u.db("o_agentDeploy").where("key", "productionAgent:storyboardTableAgent").update({
+          model: "claude-sonnet-4-6",
+          modelName: "toonflow:claude-sonnet-4-6",
+          vendorId: "toonflow",
+          topP: 1,
+          temperature: 1,
+          maxOutputTokens: 8192,
+        });
         res.status(200).send(success("一键填入成功"));
       }
     } catch (err) {
