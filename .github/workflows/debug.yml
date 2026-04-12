@@ -16,8 +16,17 @@ env:
 jobs:
   # ==================== Windows 构建 ====================
   build-Windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            name: x64
+          - arch: arm64
+            name: ARM64
+
     runs-on: windows-latest
-    name: 构建 Windows
+    name: 构建 Windows (${{ matrix.name }})
 
     steps:
       - name: 检出代码
@@ -32,14 +41,14 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: 打包 Windows 安装程序
-        run: yarn dist:win
+        run: yarn dist:win --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: windows
+          name: windows-${{ matrix.arch }}
           path: dist/*.exe
           retention-days: 7
 
@@ -146,7 +155,8 @@ jobs:
       - name: 输出构建结果
         run: |
           echo "===== 构建测试完成 ====="
-          echo "Windows: ${{ needs.build-Windows.result }}"
+          echo "Windows x64: ${{ needs.build-Windows.result }}"
+          echo "Windows arm64: ${{ needs.build-Windows.result }}"
           echo "macOS Apple Silicon: ${{ needs.build-macOS.result }}"
           echo "macOS Intel: ${{ needs.build-macOS.result }}"
           echo "Linux x64: ${{ needs.build-Linux.result }}"
