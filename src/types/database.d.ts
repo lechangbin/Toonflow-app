@@ -1,4 +1,4 @@
-// @db-hash 630ea42aa4b21853ca104d1fbdb87706
+// @db-hash 5364c2db0bf42b520761b813ce040489
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -18,9 +18,13 @@ export interface o_agentDeploy {
   'disabled'?: boolean | null;
   'id'?: number;
   'key'?: string | null;
+  'maxOutputTokens'?: number | null;
   'model'?: string | null;
   'modelName'?: string | null;
   'name'?: string | null;
+  'temperature'?: number | null;
+  'topP'?: number | null;
+  'type'?: string | null;
   'vendorId'?: string | null;
 }
 export interface o_agentWorkData {
