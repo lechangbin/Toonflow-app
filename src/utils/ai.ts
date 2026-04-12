@@ -105,7 +105,8 @@ class AiText {
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(),
-      temperature: 2,
+      temperature: 1,
+      maxOutputTokens: 8129,
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
@@ -113,9 +114,8 @@ class AiText {
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
-      topP: 1,
-      temperature: 2,
-      maxOutputTokens: 9999999999,
+      temperature: 1,
+      maxOutputTokens: 8129,
     } as Parameters<typeof streamText>[0]);
   }
 }

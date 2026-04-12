@@ -114,10 +114,10 @@ Toonflow 是面向短剧生产的 AI 工作台，围绕“策划 → 编剧 → 
 
 ## 📺 视频教程
 
-https://www.bilibili.com/video/BV1na6wB6Ea2
-[![Toonflow 8 分钟快速上手 AI 视频](./docs/videoCover.png)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+https://www.bilibili.com/video/BV1oXD7BqEqJ
+[![Toonflow 12 分钟快速上手 AI 视频](./docs/videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
-**Toonflow 8 分钟快速上手 AI 视频**
+**Toonflow 12 分钟快速上手 AI 视频**
 👉 [点击观看](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 📱 手机微信扫码观看

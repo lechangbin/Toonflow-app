@@ -105,11 +105,11 @@ Toonflow — это мощный ИИ-инструмент для создани
 
 ## 📺 Видеоуроки
 
-[https://www.bilibili.com/video/BV1na6wB6Ea2](https://www.bilibili.com/video/BV1na6wB6Ea2)
-[![Toonflow: Быстрый старт за 8 минут](./videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
+[https://www.bilibili.com/video/BV1oXD7BqEqJ](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+[![Toonflow: Быстрый старт за 12 минут](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
-**Toonflow: Быстрый старт в AI-видео за 8 минут**
-👉 [Нажмите для просмотра](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+**Toonflow: Быстрый старт в AI-видео за 12 минут**
+👉 [Нажмите для просмотра](https://www.bilibili.com/video/BV1oXD7BqEqJ/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
 
 📱 Отсканируйте QR-код для просмотра видео на телефоне
 
