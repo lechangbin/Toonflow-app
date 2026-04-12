@@ -220,6 +220,19 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         ]);
       },
     },
+    //模型绑定提示词表
+    {
+      name: "o_modelPrompt",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.string("vendorId");
+        table.string("model");
+        table.text("prompt");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+      initData: async (knex) => {},
+    },
     //小说原文表
     {
       name: "o_novel",

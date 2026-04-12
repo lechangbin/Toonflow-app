@@ -1,4 +1,4 @@
-// @db-hash 9248d7bcfe0a1bc57e5b9bc33d8c7d83
+// @db-hash 630ea42aa4b21853ca104d1fbdb87706
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -87,6 +87,12 @@ export interface o_image {
 export interface o_imageFlow {
   'flowData': string;
   'id'?: number;
+}
+export interface o_modelPrompt {
+  'id'?: number;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'vendorId'?: string | null;
 }
 export interface o_novel {
   'chapter'?: string | null;
@@ -240,6 +246,7 @@ export interface DB {
   "o_eventChapter": o_eventChapter;
   "o_image": o_image;
   "o_imageFlow": o_imageFlow;
+  "o_modelPrompt": o_modelPrompt;
   "o_novel": o_novel;
   "o_outline": o_outline;
   "o_outlineNovel": o_outlineNovel;
