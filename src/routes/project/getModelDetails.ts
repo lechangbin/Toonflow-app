@@ -8,11 +8,12 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    key: z.string().optional(),
+    key: z.enum(["scriptAgent", "productionAgent"]),
   }),
   async (req, res) => {
     const { key } = req.body;
-    const [id, modelName] = key ? key.split(":") : [];
+    const data = await u.db("o_agentDeploy").select("o_agentDeploy.*").where("o_agentDeploy.key", key).first();
+    const [id, modelName] = data ? data.modelName.split(/:(.+)/) : [];
     const models = await u.vendor.getModelList(id);
     const model = models.find((m) => m.modelName === modelName);
     if (!model) return res.status(400).send(error("未找到模型"));

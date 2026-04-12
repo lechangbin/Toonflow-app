@@ -123,7 +123,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
         state: "已完成",
         filePath: imagePath,
         type,
-        model: model.split(":")[1],
+        model: model.split(/:(.+)/)[1],
         resolution,
       });
 

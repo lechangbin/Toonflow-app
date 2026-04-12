@@ -111,7 +111,7 @@ function createSubAgent(parentCtx: AgentContext) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
 
-    const { fullStream } = await u.Ai.Text("scriptAgent", parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel ).stream({
+    const { fullStream } = await u.Ai.Text("scriptAgent", parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel).stream({
       system,
       messages: messages ?? [{ role: "user", content: prompt }],
       abortSignal,
@@ -260,14 +260,18 @@ async function consumeFullStream(
       } else if (chunk.type === "text-delta") {
         text.append(chunk.text);
         fullResponse += chunk.text;
+      } else if (chunk.type === "error") {
+        throw chunk.error;
       }
     }
     text.complete();
     msg.complete();
   } catch (err: any) {
     thinking?.complete();
-    text.complete();
-    msg.stop();
+    const errMsg = err?.message ?? String(err);
+    text.append(errMsg);
+    text.error();
+    msg.error();
     throw err;
   }
 
