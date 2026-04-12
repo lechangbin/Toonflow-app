@@ -5,6 +5,9 @@ import { transform } from "sucrase";
 import u from "@/utils";
 
 type AiType =
+  | "scriptAgent"
+  | "productionAgent"
+  | "universalAi"
   | "scriptAgent:decisionAgent"
   | "scriptAgent:supervisionAgent"
   | "scriptAgent:storySkeletonAgent"
@@ -17,11 +20,14 @@ type AiType =
   | "productionAgent:directorPlanAgent"
   | "productionAgent:storyboardGenAgent"
   | "productionAgent:storyboardPanelAgent"
-  | "productionAgent:storyboardTableAgent"
-  | "universalAi";
+  | "productionAgent:storyboardTableAgent";
+
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
 const AiTypeValues: AiType[] = [
+  "scriptAgent",
+  "productionAgent",
+  "universalAi",
   "scriptAgent:decisionAgent",
   "scriptAgent:supervisionAgent",
   "scriptAgent:storySkeletonAgent",
@@ -42,7 +48,7 @@ async function resolveModelName(value: AiType | `${string}:${string}`): Promise<
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
     let modelName = null;
     if (!agentDeployData?.modelName) {
-      const [mainly] = value.split(/:(.+)/);
+      const [mainly] = agentDeployData!.key!.split(/:(.+)/);
       const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
       if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
       modelName = mainlyData.modelName;
@@ -54,14 +60,17 @@ async function resolveModelName(value: AiType | `${string}:${string}`): Promise<
 }
 
 async function getModelConfig(value: AiType | `${string}:${string}`) {
-  const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
-  if (!agentDeployData?.modelName) {
-    const [mainly] = value.split(/:(.+)/);
-    const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
-    if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
-    return mainlyData;
+  if (AiTypeValues.includes(value as AiType)) {
+    const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+    if (!agentDeployData?.modelName) {
+      const [mainly] = agentDeployData!.key!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
+      return mainlyData;
+    }
+    return agentDeployData;
   }
-  return agentDeployData;
+  return null;
 }
 
 async function getVendorTemplateFn(
@@ -149,13 +158,14 @@ class AiText {
   }
   async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
     const config = await getModelConfig(this.AiType);
+    console.log("%c Line:161 🥃 config", "background:#3f7cff", config);
 
     return generateText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(),
-      ...(config.temperature && { temperature: config.temperature }),
-      ...(config.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
+      ...(config?.temperature && { temperature: config.temperature }),
+      ...(config?.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
@@ -165,8 +175,8 @@ class AiText {
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
-      ...(config.temperature && { temperature: config.temperature }),
-      ...(config.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
+      ...(config?.temperature && { temperature: config.temperature }),
+      ...(config?.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
     } as Parameters<typeof streamText>[0]);
   }
 }
