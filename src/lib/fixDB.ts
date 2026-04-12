@@ -59,6 +59,14 @@ export default async (knex: Knex): Promise<void> => {
 
   // 添加新字段
   await addColumn("o_prompt", "useData", "text");
+  // 添加新字段
+  await addColumn("o_agentDeploy", "type", "string");
+  // 添加新字段
+  await addColumn("o_agentDeploy", "topP", "integer");
+  // 添加新字段
+  await addColumn("o_agentDeploy", "temperature", "integer");
+  // 添加新字段
+  await addColumn("o_agentDeploy", "maxOutputTokens", "integer");
 
   //矫正提示词
   await db("o_prompt").where("type", "scriptAssetExtraction").update({
