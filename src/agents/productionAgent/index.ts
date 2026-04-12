@@ -17,6 +17,11 @@ export interface AgentContext {
   abortSignal?: AbortSignal;
   resTool: ResTool;
   msg: ReturnType<ResTool["newMessage"]>;
+  messages?: { role: "user" | "assistant" | "system"; content: string }[];
+  thinkConfig: {
+    think: boolean;
+    thinlLevel: 0 | 1 | 2 | 3;
+  };
 }
 
 function buildMemPrompt(mem: Awaited<ReturnType<Memory["get"]>>): string {
@@ -35,7 +40,7 @@ function buildMemPrompt(mem: Awaited<ReturnType<Memory["get"]>>): string {
   return `## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
 }
 
-export async function decisionAI(ctx: AgentContext) {
+export async function runDecisionAI(ctx: AgentContext) {
   const { isolationKey, text, abortSignal } = ctx;
   const memory = new Memory("productionAgent", isolationKey);
   await memory.add("user", text);
@@ -45,17 +50,17 @@ export async function decisionAI(ctx: AgentContext) {
 
   const projectInfo = await u.db("o_project").where("id", ctx.resTool.data.projectId).first();
   if (!projectInfo) throw new Error(`项目不存在，ID: ${ctx.resTool.data.projectId}`);
-  const [_, imageModelName] = projectInfo.imageModel!.split(":");
-  const [id, videoModelName] = projectInfo.videoModel!.split(":");
+  const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/)
+  const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/)
   const models = await u.vendor.getModelList(id);
-  if(!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
+  if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   const findData = models.find((i: any) => i.modelName == videoModelName);
   const isRef = findData.mode.every((i: any) => Array.isArray(i));
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 
   const mem = buildMemPrompt(await memory.get(text));
 
-  const { textStream } = await u.Ai.Text("productionAgent").stream({
+  const { fullStream } = await u.Ai.Text("productionAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
     messages: [
       { role: "system", content: prompt },
       { role: "assistant", content: mem + "\n" + modelInfo },
@@ -72,7 +77,13 @@ export async function decisionAI(ctx: AgentContext) {
     },
   });
 
-  return textStream;
+  let currentMsg = ctx.msg;
+  await consumeFullStream(fullStream, currentMsg, () => {
+    if (ctx.msg === currentMsg) return currentMsg;
+    currentMsg.complete();
+    currentMsg = ctx.msg;
+    return currentMsg;
+  });
 }
 
 async function createSubAgent(parentCtx: AgentContext) {
@@ -95,29 +106,15 @@ async function createSubAgent(parentCtx: AgentContext) {
   }) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
-    const text = subMsg.text();
-    let fullResponse = "";
 
-    const { textStream } = await u.Ai.Text("productionAgent").stream({
+    const { fullStream } = await u.Ai.Text("productionAgent", parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel).stream({
       system,
       messages: messages ?? [{ role: "user", content: prompt }],
       abortSignal,
       tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
     });
 
-    try {
-      for await (const chunk of textStream) {
-        await new Promise<void>((resolve) => setTimeout(() => resolve(), 1));
-        text.append(chunk);
-        fullResponse += chunk;
-      }
-      text.complete();
-      subMsg.complete();
-    } catch (err: any) {
-      text.complete();
-      subMsg.stop();
-      throw err;
-    }
+    const fullResponse = await consumeFullStream(fullStream, subMsg);
 
     if (fullResponse.trim()) {
       await memory.add(memoryKey, removeAllXmlTags(fullResponse), {
@@ -138,10 +135,10 @@ async function createSubAgent(parentCtx: AgentContext) {
   if (!projectInfo) throw new Error(`项目不存在，ID: ${resTool.data.projectId}`);
   const artSkills = await createArtSkills(projectInfo?.artStyle!, projectInfo?.directorManual!);
 
-  const [_, imageModelName] = projectInfo.imageModel!.split(":");
-  const [id, videoModelName] = projectInfo.videoModel!.split(":");
+  const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/)
+  const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/)
   const models = await u.vendor.getModelList(id);
-  if(!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
+  if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   const findData = models.find((i: any) => i.modelName == videoModelName);
   const isRef = findData.mode.every((i: any) => Array.isArray(i));
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
@@ -370,7 +367,53 @@ ${buildSkillPrompt(mainSkills)}`,
   };
   return res;
 }
+async function consumeFullStream(
+  fullStream: AsyncIterable<any>,
+  initialMsg: ReturnType<ResTool["newMessage"]>,
+  syncMsg?: () => ReturnType<ResTool["newMessage"]>,
+): Promise<string> {
+  let msg = initialMsg;
+  let text = msg.text();
+  let thinking: ReturnType<typeof msg.thinking> | null = null;
+  let thinkTime = 0;
+  let fullResponse = "";
 
+  try {
+    for await (const chunk of fullStream) {
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), 1));
+      if (syncMsg) {
+        const newMsg = syncMsg();
+        if (newMsg !== msg) {
+          msg = newMsg;
+          text = msg.text();
+        }
+      }
+      if (chunk.type === "reasoning-start") {
+        thinkTime = Date.now();
+        thinking = msg.thinking("思考中...");
+      } else if (chunk.type === "reasoning-delta") {
+        thinking?.append(chunk.text);
+      } else if (chunk.type === "reasoning-end") {
+        thinkTime = Date.now() - thinkTime;
+        thinking?.updateTitle(`思考完毕（${(thinkTime / 1000).toFixed(1)} 秒）`);
+        thinking?.complete();
+        thinking = null;
+      } else if (chunk.type === "text-delta") {
+        text.append(chunk.text);
+        fullResponse += chunk.text;
+      }
+    }
+    text.complete();
+    msg.complete();
+  } catch (err: any) {
+    thinking?.complete();
+    text.complete();
+    msg.stop();
+    throw err;
+  }
+
+  return fullResponse;
+}
 function removeAllXmlTags(text: string): string {
   text = text.replace(/<([a-zA-Z][\w-]*)(\s+[^>]*)?>([\s\S]*?)<\/\1>/g, "");
   text = text.replace(/<([a-zA-Z][\w-]*)(\s+[^>]*)?\/>/g, "");

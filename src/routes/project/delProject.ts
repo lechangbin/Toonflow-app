@@ -18,9 +18,6 @@ export default router.post(
     await u.db("o_agentWorkData").where("projectId", id).delete();
     const novelData = await u.db("o_novel").where("projectId", id).select("id");
     const novelId = novelData.map((item: any) => item.id);
-    if (novelId.length > 0) {
-      await u.db("o_outlineNovel").whereIn("novelId", novelId).delete();
-    }
     //删除项目下的原文
     await u.db("o_novel").where("projectId", id).delete();
     // 删除项目下的剧本信息

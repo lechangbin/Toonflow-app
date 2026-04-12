@@ -133,7 +133,7 @@ declare const exports: {
 
 const vendor: VendorConfig = {
   id: "volcengine",
-  version: "2.1",
+  version: "2.2",
   author: "leeqi",
   name: "火山引擎(豆包)",
   description:
@@ -301,10 +301,10 @@ const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3
     3: "high",
   };
 
-  return createOpenAI({
+  return createOpenAICompatible({
+    name: "volcengine",
     baseURL: getBaseUrl(),
     apiKey,
-    compatibility: "compatible",
     fetch: async (url: string, options?: RequestInit) => {
       const rawBody = JSON.parse((options?.body as string) ?? "{}");
       const modifiedBody = {
@@ -319,7 +319,7 @@ const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3
         body: JSON.stringify(modifiedBody),
       });
     },
-  }).chat(model.modelName);
+  }).chatModel(model.modelName);
 };
 
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {

@@ -261,29 +261,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["id"]);
       },
     },
-    //大纲表
-    {
-      name: "o_outline",
-      builder: (table) => {
-        table.integer("id").notNullable();
-        table.integer("episode");
-        table.text("data");
-        table.integer("projectId");
-        table.primary(["id"]);
-        table.unique(["id"]);
-      },
-    },
-    //大纲-原文表
-    {
-      name: "o_outlineNovel",
-      builder: (table) => {
-        table.integer("id").notNullable();
-        table.integer("outlineId").unsigned().references("id").inTable("o_outline");
-        table.integer("novelId").unsigned().references("id").inTable("o_novel");
-        table.primary(["id"]);
-        table.unique(["id"]);
-      },
-    },
     //剧本
     {
       name: "o_script",

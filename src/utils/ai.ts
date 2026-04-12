@@ -23,7 +23,7 @@ async function getVendorTemplateFn(
 ): Promise<(think?: boolean, thinkLevel?: 0 | 1 | 2 | 3) => any>;
 async function getVendorTemplateFn(fnName: Exclude<FnName, "textRequest">, modelName: `${string}:${string}`): Promise<(input: any) => any>;
 async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${string}`): Promise<any> {
-  const [id, name] = modelName.split(":");
+  const [id, name] = modelName.split(/:(.+)/);
   const vendorConfigData = await u.db("o_vendorConfig").where("id", id).first();
   if (!vendorConfigData) throw new Error(`未找到供应商配置 id=${id}`);
   const modelList = await u.vendor.getModelList(id);
@@ -55,7 +55,7 @@ async function withTaskRecord<T>(
   fn: (modelName: `${string}:${string}`, think: Boolean, thinkLevel: 0 | 1 | 2 | 3) => Promise<T>,
 ): Promise<T> {
   const modelName = await resolveModelName(modelKey);
-  const [id, model] = modelName.split(":");
+  const [_, model] = modelName.split(/:(.+)/);
   const taskRecord = await u.task(projectId, taskClass, model, { describe: describe, content: relatedObjects });
   try {
     const result = await fn(modelName, false, 0);
@@ -89,46 +89,29 @@ class AiText {
     this.think = think;
     this.thinkLevel = thinkLevel;
   }
-  async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
+  private async resolveModel(middleware?: any | any[]) {
     const switchAiDevTool = await u.db("o_setting").where("key", "switchAiDevTool").first();
     const modelName = await resolveModelName(this.AiType);
     const sdkFn = await getVendorTemplateFn("textRequest", modelName);
+    const baseModel = await sdkFn(this.think, this.thinkLevel);
+    const mws = [
+      ...(switchAiDevTool?.value === "1" ? [devToolsMiddleware()] : []),
+      ...(middleware ? (Array.isArray(middleware) ? middleware : [middleware]) : []),
+    ];
+    return mws.length > 0 ? wrapLanguageModel({ model: baseModel, middleware: mws.length === 1 ? mws[0] : mws }) : baseModel;
+  }
+  async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
     return generateText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
-      model:
-        switchAiDevTool?.value === "1"
-          ? wrapLanguageModel({
-              model: await sdkFn(this.think, this.thinkLevel),
-              middleware: devToolsMiddleware(),
-            })
-          : await sdkFn(this.think, this.thinkLevel),
+      model: await this.resolveModel(),
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
-    const switchAiDevTool = await u.db("o_setting").where("key", "switchAiDevTool").first();
-    const modelName = await resolveModelName(this.AiType);
-    const sdkFn = await getVendorTemplateFn("textRequest", modelName);
     return streamText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
-      model:
-        switchAiDevTool?.value == "1"
-          ? wrapLanguageModel({
-              model: sdkFn(this.think, this.thinkLevel),
-              middleware: [
-                devToolsMiddleware(),
-                extractReasoningMiddleware({
-                  tagName: "reasoning_content",
-                }),
-              ],
-            })
-          : wrapLanguageModel({
-              model: sdkFn(this.think, this.thinkLevel),
-              middleware: extractReasoningMiddleware({
-                tagName: "reasoning_content",
-              }),
-            }),
+      model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
     } as Parameters<typeof streamText>[0]);
   }
 }

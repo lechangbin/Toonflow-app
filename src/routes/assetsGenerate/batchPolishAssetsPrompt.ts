@@ -27,22 +27,6 @@ interface NovelChapter {
 
 type ItemType = "characters" | "props" | "scenes";
 
-interface ResultItem {
-  type: ItemType;
-  name: string;
-  chapterRange: number[];
-}
-function findItemByName(items: ResultItem[], name: string, type?: ItemType): ResultItem | undefined {
-  return items.find((item) => (!type || item.type === type) && item.name === name);
-}
-function mergeNovelText(novelData: NovelChapter[]): string {
-  if (!Array.isArray(novelData)) return "";
-  return novelData
-    .map((chap) => {
-      return `${chap.chapter.trim()}\n\n${chap.chapterData.trim().replace(/\r?\n/g, "\n")}\n`;
-    })
-    .join("\n");
-}
 //润色提示词
 export default router.post(
   "/",
@@ -66,23 +50,6 @@ export default router.post(
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
     // 预加载公共数据
-    const allOutlineDataList: { data: string }[] = await u.db("o_outline").where("projectId", projectId).select("data");
-    const itemMap: Record<string, ResultItem> = {};
-    if (allOutlineDataList.length > 0)
-      allOutlineDataList.forEach((row) => {
-        const data: OutlineData = JSON.parse(row?.data || "{}");
-        (["characters", "props", "scenes"] as ItemType[]).forEach((type) => {
-          (data[type] || []).forEach((item) => {
-            const key = `${type}-${item.name}`;
-            if (!itemMap[key]) {
-              itemMap[key] = { type, name: item.name, chapterRange: [...(data.chapterRange || [])] };
-            } else {
-              itemMap[key].chapterRange = Array.from(new Set([...itemMap[key].chapterRange, ...(data.chapterRange || [])]));
-            }
-          });
-        });
-      });
-    const result: ResultItem[] = Object.values(itemMap);
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);
     //查询所有资产，用于判断每个资产是否是衍生资产
     const assetsDataList = await u.db("o_assets").whereIn("id", assetsIds).select("id", "assetsId");
@@ -132,7 +99,6 @@ export default router.post(
           await u.db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败", promptErrorReason: "视觉手册未定义" });
           return;
         }
-        findItemByName(result, item.name, config.itemType);
         const systemPrompt = visualManual;
         try {
           const { _output } = (await u.Ai.Text("universalAi").invoke({
