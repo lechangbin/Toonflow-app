@@ -1,4 +1,4 @@
-// @db-hash 3296433eb24314b094ac5d3839c049c5
+// @db-hash 8669d907d827a8f55da1f1724d7ece06
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -201,6 +201,7 @@ export interface o_user {
   'password'?: string | null;
 }
 export interface o_vendorConfig {
+  'code'?: string | null;
   'enable'?: number | null;
   'id'?: string;
   'inputValues'?: string | null;
