@@ -85,7 +85,6 @@ export default router.post(
         .db("o_vendorConfig")
         .where("id", id)
         .update({
-          inputValues: JSON.stringify(vendor.inputValues ?? {}),
           models: JSON.stringify(vendor.models ?? []),
         });
       u.vendor.writeCode(id, tsCode);

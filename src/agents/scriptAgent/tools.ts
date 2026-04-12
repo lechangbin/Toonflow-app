@@ -93,7 +93,7 @@ export default (toolCpnfig: ToolConfig) => {
         const thinking = msg.thinking(`正在获取脚本内容...`);
         const data = await u.db("o_script").whereIn("id", ids).select("content", "name");
         const text = data && data.length ? data.map((d) => `<scriptItem name="${d.name}">${d.content}</scriptItem>`).join("\n") : "";
-        thinking.appendText(`获取到脚本内容:\n` + text);
+        thinking.appendText(`获取到脚本内容:\n` + JSON.stringify(data, null, 2));
         thinking.updateTitle(`获取脚本内容完成`);
         thinking.complete();
         return text ?? "无数据";

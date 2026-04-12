@@ -133,7 +133,7 @@ declare const exports: {
 
 const vendor: VendorConfig = {
   id: "volcengine",
-  version: "2.0",
+  version: "2.1",
   author: "leeqi",
   name: "火山引擎(豆包)",
   description:
@@ -326,43 +326,120 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   const baseUrl = getBaseUrl();
   const headers = getHeaders();
 
-  const content: any[] = [];
+  const body: any = {
+    model: model.modelName,
+    prompt: config.prompt || "",
+    response_format: "url",
+    watermark: false,
+  };
 
-  if (config.prompt) {
-    content.push({ type: "text", text: config.prompt });
+  const isOldModel = model.modelName.includes("seedream-3-0");
+  const is5Lite = model.modelName.includes("seedream-5-0-lite");
+
+  // sequential_image_generation 仅 seedream 5.0-lite/4.5/4.0 支持
+  if (!isOldModel) {
+    body.sequential_image_generation = "disabled";
   }
 
-  if (config.referenceList && config.referenceList.length > 0) {
-    for (const ref of config.referenceList) {
-      content.push({
-        type: "image_url",
-        image_url: { url: ref.base64 },
-      });
+  // 参考图片：单图为 string，多图为 array（seedream-3.0-t2i 不支持 image 参数）
+  if (!isOldModel && config.referenceList && config.referenceList.length > 0) {
+    const images = config.referenceList.map((ref) => ref.base64);
+    body.image = images.length === 1 ? images[0] : images;
+  }
+
+  // 尺寸处理：优先使用推荐像素值，未匹配则直接传分辨率字符串让模型自行决定
+  const [w, h] = config.aspectRatio.split(":").map(Number);
+  const sizeTable: Record<string, Record<string, string>> = {
+    "1K": {
+      "1:1": "1024x1024",
+      "4:3": "1152x864",
+      "3:4": "864x1152",
+      "16:9": "1280x720",
+      "9:16": "720x1280",
+      "3:2": "1248x832",
+      "2:3": "832x1248",
+      "21:9": "1512x648",
+    },
+    "2K": {
+      "1:1": "2048x2048",
+      "4:3": "2304x1728",
+      "3:4": "1728x2304",
+      "16:9": "2848x1600",
+      "9:16": "1600x2848",
+      "3:2": "2496x1664",
+      "2:3": "1664x2496",
+      "21:9": "3136x1344",
+    },
+    "4K": {
+      "1:1": "4096x4096",
+      "4:3": "4704x3520",
+      "3:4": "3520x4704",
+      "16:9": "5504x3040",
+      "9:16": "3040x5504",
+      "3:2": "4992x3328",
+      "2:3": "3328x4992",
+      "21:9": "6240x2656",
+    },
+  };
+
+  const sizeKey = config.size || "2K";
+  const ratioKey = config.aspectRatio;
+  const table = sizeTable[sizeKey];
+
+  if (table && table[ratioKey]) {
+    // 推荐像素值匹配到了，但需要检查是否满足模型最低像素要求
+    const [pw, ph] = table[ratioKey].split("x").map(Number);
+    const totalPixels = pw * ph;
+    if (isOldModel) {
+      // seedream-3.0-t2i: 像素范围 [512x512, 2048x2048]
+      body.size = table[ratioKey];
+    } else if (totalPixels < 3686400) {
+      // 1K 像素值不满足新模型最低要求，直接传 "2K" 让模型自行决定
+      body.size = "2K";
+    } else if (is5Lite && totalPixels > 10404496) {
+      // seedream-5.0-lite 最高 10404496，4K 超限，回退传 "2K"
+      body.size = "2K";
+    } else {
+      body.size = table[ratioKey];
+    }
+  } else if (isOldModel) {
+    // seedream-3.0-t2i: 像素范围 [512x512, 2048x2048]，直接按比例计算
+    const base = sizeKey === "1K" ? 1024 : 2048;
+    const calcW = Math.min(2048, Math.round(base * Math.sqrt(w / h)));
+    const calcH = Math.min(2048, Math.round(base * Math.sqrt(h / w)));
+    body.size = `${Math.max(512, calcW)}x${Math.max(512, calcH)}`;
+  } else {
+    // 新模型未匹配推荐值时，直接传分辨率字符串（方式1），由模型根据 prompt 自行决定尺寸
+    // seedream 5.0-lite 支持 "2K"/"3K"，seedream 4.5 支持 "2K"/"4K"，seedream 4.0 支持 "1K"/"2K"/"4K"
+    if (is5Lite) {
+      body.size = sizeKey === "4K" ? "3K" : sizeKey === "1K" ? "2K" : sizeKey;
+    } else {
+      body.size = sizeKey === "1K" ? "2K" : sizeKey;
     }
   }
 
-  const [w, h] = config.aspectRatio.split(":").map(Number);
-  const sizeMap: Record<string, { width: number; height: number }> = {
-    "1K": { width: 1024, height: Math.round(1024 * (h / w)) },
-    "2K": { width: 2048, height: Math.round(2048 * (h / w)) },
-    "4K": { width: 4096, height: Math.round(4096 * (h / w)) },
-  };
-  const size = sizeMap[config.size] || sizeMap["1K"];
-
-  const body = {
-    model: model.modelName,
-    content,
-    size: `${size.width}x${size.height}`,
-    response_format: "url",
-  };
-
-  logger(`[图片生成] 请求模型: ${model.modelName}`);
+  logger(`[图片生成] 请求模型: ${model.modelName}, 尺寸: ${body.size}`);
 
   const response = await axios.post(`${baseUrl}/images/generations`, body, { headers });
   const data = response.data;
 
-  if (data?.data?.[0]?.url) {
-    return await urlToBase64(data.data[0].url);
+  if (data?.error) {
+    throw new Error(`图片生成失败：${data.error.message || data.error.code}`);
+  }
+
+  // 从 data 数组中提取第一张成功的图片
+  if (data?.data && data.data.length > 0) {
+    for (const item of data.data) {
+      if (item.url) {
+        return await urlToBase64(item.url);
+      }
+      if (item.b64_json) {
+        return item.b64_json;
+      }
+      if (item.error) {
+        throw new Error(`图片生成失败：${item.error.message || item.error.code}`);
+      }
+    }
   }
 
   throw new Error("图片生成失败：未返回有效结果");
