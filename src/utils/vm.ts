@@ -54,8 +54,8 @@ export default function runCode(code: string, vendor?: Record<string, any>) {
 
   return exports as Record<string, any>;
 }
-export function logger(logstring: string) {
-  console.log("【VM】" + logstring);
+export function logger(logstring: any) {
+  console.log("【VM】" + JSON.stringify(logstring));
 }
 /**
  * 压缩图片，目标字节数不高于 size

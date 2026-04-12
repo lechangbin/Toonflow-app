@@ -200,6 +200,8 @@ class AiVideo {
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("videoRequest", mn);
       await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
+      console.log("%c Line:204 🍡 input", "background:#465975", input);
+
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;

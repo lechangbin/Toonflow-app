@@ -37,16 +37,16 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, scriptId } = req.body;
-    const projectData = await u.db("o_project").where("id", projectId).select("id", "videoModel","mode").first();
+    const projectData = await u.db("o_project").where("id", projectId).select("id", "videoModel", "mode").first();
 
     if (!projectData?.videoModel) {
       return res.status(400).json(success("项目未配置视频模型"));
     }
-    let videoMode = ""
-    try{
-      videoMode = JSON.parse(projectData?.mode ?? "")
-    }catch(e){
-      videoMode = projectData?.mode ?? ""
+    let videoMode = "";
+    try {
+      videoMode = JSON.parse(projectData?.mode ?? "");
+    } catch (e) {
+      videoMode = projectData?.mode ?? "";
     }
     const isRef = Array.isArray(videoMode) ? true : false;
 
@@ -134,8 +134,8 @@ export default router.post(
             seenAssetIds.add(a.id);
             return true;
           });
-          const hasImageAssetData = uniqueAssets.filter(i => i.src)
-          const notHasImageAssetData = uniqueAssets.filter(i => !i.src)
+          const hasImageAssetData = uniqueAssets.filter((i) => i.src);
+          const notHasImageAssetData = uniqueAssets.filter((i) => !i.src);
 
           return [...hasImageAssetData, ...storyboardMedias, ...notHasImageAssetData];
         })(),
@@ -146,6 +146,7 @@ export default router.post(
               id: v.id!,
               src: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
               state: v.state === "已完成" ? "已完成" : v.state === "生成中" ? "生成中" : v.state === "生成失败" ? "生成失败" : "未生成",
+              errorReason: v?.errorReason ?? "",
             })),
         ),
       });
