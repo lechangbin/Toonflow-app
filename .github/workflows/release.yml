@@ -17,8 +17,17 @@ env:
 jobs:
   # ==================== Windows 构建 ====================
   build-Windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            name: x64
+          - arch: arm64
+            name: ARM64
+
     runs-on: windows-latest
-    name: 构建 Windows
+    name: 构建 Windows (${{ matrix.name }})
 
     steps:
       - name: 检出代码
@@ -33,14 +42,14 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: 打包 Windows 安装程序
-        run: yarn dist:win
+        run: yarn dist:win --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: windows
+          name: windows-${{ matrix.arch }}
           path: dist/*.exe
           retention-days: 7
 

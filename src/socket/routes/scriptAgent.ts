@@ -41,9 +41,9 @@ export default (nsp: Namespace) => {
     let abortController: AbortController | null = null;
 
     const thinkConfig: agent.AgentContext["thinkConfig"] = {
-      think:false,
+      think: false,
       thinlLevel: 0,
-    }
+    };
 
     socket.on("chat", async (data: { content: string }) => {
       const { content } = data;
@@ -67,10 +67,7 @@ export default (nsp: Namespace) => {
         await agent.runDecisionAI(ctx);
       } catch (err: any) {
         if (err.name !== "AbortError" && !currentController.signal.aborted) {
-          const errorMsg = u.error(err).message;
-          console.error("[scriptAgent] chat error:", errorMsg);
-          ctx.msg.text(errorMsg).complete();
-          ctx.msg.error();
+          console.error("[scriptAgent] chat error:", u.error(err).message);
         }
       } finally {
         if (abortController === currentController) {

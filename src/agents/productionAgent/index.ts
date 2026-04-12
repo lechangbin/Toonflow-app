@@ -401,14 +401,18 @@ async function consumeFullStream(
       } else if (chunk.type === "text-delta") {
         text.append(chunk.text);
         fullResponse += chunk.text;
+      } else if (chunk.type === "error") {
+        throw chunk.error;
       }
     }
     text.complete();
     msg.complete();
   } catch (err: any) {
     thinking?.complete();
-    text.complete();
-    msg.stop();
+    const errMsg = err?.message ?? String(err);
+    text.append(errMsg);
+    text.error();
+    msg.error();
     throw err;
   }
 

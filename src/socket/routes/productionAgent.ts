@@ -78,10 +78,7 @@ export default (nsp: Namespace) => {
         await agent.runDecisionAI(ctx);
       } catch (err: any) {
         if (err.name !== "AbortError" && !currentController.signal.aborted) {
-          const errorMsg = u.error(err).message;
-          console.error("[productionAgent] chat error:", errorMsg);
-          ctx.msg.text(errorMsg).complete();
-          ctx.msg.error();
+          console.error("[productionAgent] chat error:", u.error(err).message);
         }
       } finally {
         if (abortController === currentController) {

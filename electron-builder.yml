@@ -37,9 +37,6 @@ extraResources:
 win:
   target:
     - target: nsis
-      arch:
-        - x64
-        - arm64
   icon: ./scripts/logo.ico
 
 nsis:
