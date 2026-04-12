@@ -63,7 +63,7 @@ export async function runDecisionAI(ctx: AgentContext) {
     `章节数量：${novelData.length}章`,
   ].join("\n");
 
-  const { fullStream } = await u.Ai.Text("scriptAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
+  const { fullStream } = await u.Ai.Text("scriptAgent:decisionAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
     messages: [
       { role: "system", content: prompt },
       { role: "assistant", content: projectInfo + "\n" + mem },
@@ -94,6 +94,7 @@ function createSubAgent(parentCtx: AgentContext) {
   const memory = new Memory("scriptAgent", parentCtx.isolationKey);
 
   async function runAgent({
+    key,
     prompt,
     system,
     name,
@@ -101,6 +102,7 @@ function createSubAgent(parentCtx: AgentContext) {
     tools: extraTools,
     messages,
   }: {
+    key: `${string}:${string}`;
     prompt: string;
     system: string;
     name: string;
@@ -111,7 +113,7 @@ function createSubAgent(parentCtx: AgentContext) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
 
-    const { fullStream } = await u.Ai.Text("scriptAgent", parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel).stream({
+    const { fullStream } = await u.Ai.Text(key, parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel).stream({
       system,
       messages: messages ?? [{ role: "user", content: prompt }],
       abortSignal,
@@ -145,6 +147,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const formatPrompt = "\n你必须使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>";
 
       return runAgent({
+        key: "scriptAgent:storySkeletonAgent",
         prompt,
         system: systemPrompt + formatPrompt,
         name: "编剧",
@@ -164,6 +167,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const formatPrompt = "\n你必须使用如下XML格式写入工作区：\n<adaptationStrategy>改编策略内容</adaptationStrategy>";
 
       return runAgent({
+        key: "scriptAgent:adaptationStrategyAgent",
         prompt,
         system: systemPrompt + formatPrompt,
         name: "编剧",
@@ -190,6 +194,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const formatPrompt = `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`;
 
       return runAgent({
+        key: "scriptAgent:scriptAgent",
         prompt,
         system: systemPrompt + formatPrompt,
         messages: [
@@ -210,6 +215,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
       return runAgent({
+        key: "scriptAgent:supervisionAgent",
         prompt,
         system: systemPrompt,
         name: "编辑",
