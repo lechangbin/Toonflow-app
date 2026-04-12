@@ -32,7 +32,7 @@ export default router.post(
             .select("videoDesc", "prompt", "track", "duration", "shouldGenerateImage")
             .first();
           // 查询分镜关联的资产ID
-          const assetRows = await u.db("o_assets2Storyboard").where("storyboardId", item.id).select("assetId");
+          const assetRows = await u.db("o_assets2Storyboard").where("storyboardId", item.id).orderBy("rowid").select("assetId");
           const associateAssetsIds = assetRows.map((row: any) => row.assetId);
           return {
             ...storyboard,
@@ -91,6 +91,7 @@ export default router.post(
             (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
   duration='${i.duration}'
+  associateAssetsIds='${i.associateAssetsIds}'
 ></storyboardItem>`,
           )},
           `;
