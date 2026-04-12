@@ -53,6 +53,17 @@ async function resolveModelName(value: AiType | `${string}:${string}`): Promise<
   return value as `${number}:${string}`;
 }
 
+async function getModelConfig(value: AiType | `${string}:${string}`) {
+  const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+  if (!agentDeployData?.modelName) {
+    const [mainly] = value.split(/:(.+)/);
+    const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+    if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
+    return mainlyData;
+  }
+  return agentDeployData;
+}
+
 async function getVendorTemplateFn(
   fnName: "textRequest",
   modelName: `${string}:${string}`,
@@ -137,21 +148,25 @@ class AiText {
     return mws.length > 0 ? wrapLanguageModel({ model: baseModel, middleware: mws.length === 1 ? mws[0] : mws }) : baseModel;
   }
   async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
+    const config = await getModelConfig(this.AiType);
+
     return generateText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(),
-      temperature: 1,
-      maxOutputTokens: 8129,
+      ...(config.temperature && { temperature: config.temperature }),
+      ...(config.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
+    const config = await getModelConfig(this.AiType);
+
     return streamText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
-      temperature: 1,
-      maxOutputTokens: 8129,
+      ...(config.temperature && { temperature: config.temperature }),
+      ...(config.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
     } as Parameters<typeof streamText>[0]);
   }
 }
