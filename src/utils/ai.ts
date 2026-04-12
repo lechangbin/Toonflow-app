@@ -4,15 +4,51 @@ import axios from "axios";
 import { transform } from "sucrase";
 import u from "@/utils";
 
-type AiType = "scriptAgent" | "productionAgent" | "universalAi";
+type AiType =
+  | "scriptAgent:decisionAgent"
+  | "scriptAgent:supervisionAgent"
+  | "scriptAgent:storySkeletonAgent"
+  | "scriptAgent:adaptationStrategyAgent"
+  | "scriptAgent:scriptAgent"
+  | "productionAgent:decisionAgent"
+  | "productionAgent:supervisionAgent"
+  | "productionAgent:deriveAssetsAgent"
+  | "productionAgent:generateAssetsAgent"
+  | "productionAgent:directorPlanAgent"
+  | "productionAgent:storyboardGenAgent"
+  | "productionAgent:storyboardPanelAgent"
+  | "productionAgent:storyboardTableAgent"
+  | "universalAi";
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
-const AiTypeValues: AiType[] = ["scriptAgent", "productionAgent", "universalAi"];
+const AiTypeValues: AiType[] = [
+  "scriptAgent:decisionAgent",
+  "scriptAgent:supervisionAgent",
+  "scriptAgent:storySkeletonAgent",
+  "scriptAgent:adaptationStrategyAgent",
+  "scriptAgent:scriptAgent",
+  "productionAgent:decisionAgent",
+  "productionAgent:supervisionAgent",
+  "productionAgent:deriveAssetsAgent",
+  "productionAgent:generateAssetsAgent",
+  "productionAgent:directorPlanAgent",
+  "productionAgent:storyboardGenAgent",
+  "productionAgent:storyboardPanelAgent",
+  "productionAgent:storyboardTableAgent",
+  "universalAi",
+];
 async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {
   if (AiTypeValues.includes(value as AiType)) {
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
-    if (!agentDeployData?.modelName) throw new Error(`${value}模型未配置`);
-    return agentDeployData.modelName as `${number}:${string}`;
+    let modelName = null;
+    if (!agentDeployData?.modelName) {
+      const [mainly] = value.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
+      modelName = mainlyData.modelName;
+    }
+    modelName = agentDeployData?.modelName || modelName;
+    return modelName as `${number}:${string}`;
   }
   return value as `${number}:${string}`;
 }
