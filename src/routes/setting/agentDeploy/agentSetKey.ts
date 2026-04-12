@@ -47,7 +47,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -55,7 +54,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -63,7 +61,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -71,7 +68,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -79,7 +75,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -87,7 +82,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -95,7 +89,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -103,7 +96,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -111,7 +103,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -119,7 +110,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -127,7 +117,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -135,7 +124,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });
@@ -143,7 +131,6 @@ export default router.post(
           model: "claude-sonnet-4-6",
           modelName: "toonflow:claude-sonnet-4-6",
           vendorId: "toonflow",
-          topP: 1,
           temperature: 1,
           maxOutputTokens: 8192,
         });

@@ -14,13 +14,12 @@ export default router.post(
     modelName: z.string(),
     vendorId: z.string().nullable(),
     desc: z.string(),
-    topP: z.number().optional(),
     temperature: z.number().optional(),
     maxOutputTokens: z.number().optional(),
   }),
   async (req, res) => {
-    const { id, name, model, modelName, vendorId, desc, topP, temperature, maxOutputTokens } = req.body;
-    await u.db("o_agentDeploy").where({ id }).update({ id, name, model, modelName, vendorId, desc, topP, temperature, maxOutputTokens });
+    const { id, name, model, modelName, vendorId, desc, temperature, maxOutputTokens } = req.body;
+    await u.db("o_agentDeploy").where({ id }).update({ id, name, model, modelName, vendorId, desc, temperature, maxOutputTokens });
     res.status(200).send(success("配置成功"));
   },
 );
