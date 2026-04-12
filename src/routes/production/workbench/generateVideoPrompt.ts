@@ -95,8 +95,6 @@ export default router.post(
 ></storyboardItem>`,
           )},
           `;
-    console.log("%c Line:87 🌮 content", "background:#2eafb0", content);
-
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({
         system: videoPromptGeneration,

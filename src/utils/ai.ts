@@ -105,6 +105,7 @@ class AiText {
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(),
+      temperature: 2,
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
@@ -112,6 +113,9 @@ class AiText {
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
+      topP: 1,
+      temperature: 2,
+      maxOutputTokens: 9999999999,
     } as Parameters<typeof streamText>[0]);
   }
 }
@@ -151,7 +155,7 @@ class AiImage {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("imageRequest", mn);
-      await referenceList2imageBase642(mn.split(":")[0], input);
+      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
@@ -195,7 +199,7 @@ class AiVideo {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("videoRequest", mn);
-      await referenceList2imageBase642(mn.split(":")[0], input);
+      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
@@ -220,7 +224,7 @@ class AiAudio {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("ttsRequest", mn);
-      await referenceList2imageBase642(mn.split(":")[0], input);
+      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
