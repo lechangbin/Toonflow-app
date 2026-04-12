@@ -112,13 +112,13 @@ Toonflow 是面向短剧生产的 AI 工作台，围绕“策划 → 编剧 → 
 5. 切换到 ProductionAgent，在无限画布中组织分镜、素材与视频节点。
 6. 对分镜图进行节点化精调后回流工作台，完成视频拼接与导出。
 
-## 📺 视频教程(待更新，老版本教程已无参考价值)
+## 📺 视频教程
 
 https://www.bilibili.com/video/BV1na6wB6Ea2
-[![Toonflow 8 分钟快速上手 AI 视频](./docs/videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
+[![Toonflow 8 分钟快速上手 AI 视频](./docs/videoCover.png)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 **Toonflow 8 分钟快速上手 AI 视频**
-👉 [点击观看](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+👉 [点击观看](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 📱 手机微信扫码观看
 

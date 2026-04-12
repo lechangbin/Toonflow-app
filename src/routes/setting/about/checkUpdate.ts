@@ -23,7 +23,7 @@ export default router.post(
   "/",
   validateFields({
     source: z.enum(["toonflow", "github", "gitee", "atomgit"]),
-    url: z.url().optional(),
+    url: z.url().nullable().optional(),
   }),
   async (req, res) => {
     const { source, url } = req.body;

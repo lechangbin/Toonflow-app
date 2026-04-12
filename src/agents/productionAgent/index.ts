@@ -47,8 +47,8 @@ export async function decisionAI(ctx: AgentContext) {
   if (!projectInfo) throw new Error(`项目不存在，ID: ${ctx.resTool.data.projectId}`);
   const [_, imageModelName] = projectInfo.imageModel!.split(":");
   const [id, videoModelName] = projectInfo.videoModel!.split(":");
-  const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
-  const models = JSON.parse(data!.models!);
+  const models = await u.vendor.getModelList(id);
+  if(!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   const findData = models.find((i: any) => i.modelName == videoModelName);
   const isRef = findData.mode.every((i: any) => Array.isArray(i));
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
@@ -140,8 +140,8 @@ async function createSubAgent(parentCtx: AgentContext) {
 
   const [_, imageModelName] = projectInfo.imageModel!.split(":");
   const [id, videoModelName] = projectInfo.videoModel!.split(":");
-  const data = await u.db("o_vendorConfig").where("id", id).select("models").first();
-  const models = JSON.parse(data!.models!);
+  const models = await u.vendor.getModelList(id);
+  if(!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   const findData = models.find((i: any) => i.modelName == videoModelName);
   const isRef = findData.mode.every((i: any) => Array.isArray(i));
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
