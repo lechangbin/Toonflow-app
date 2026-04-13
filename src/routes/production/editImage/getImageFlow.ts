@@ -21,6 +21,11 @@ export default router.post(
             node.data.image = node.data.image ? await u.oss.getFileUrl(node.data.image) : "";
           } else if (node.type === "generated") {
             node.data.generatedImage = node.data.generatedImage ? await u.oss.getFileUrl(node.data.generatedImage) : "";
+            node.data.references = await node.data.references.map(async (item: { image: string }) => {
+              return {
+                image: await u.oss.getFileUrl(item.image)
+              }
+            });
           }
         }),
       );
