@@ -40,7 +40,6 @@ export default router.post(
         data.map((i:any) => i.id!),
       )
       .select( "o_assets.id", "o_assets.name");
-    console.log("%c Line:36 🍎 assets2AudioData", "background:#3f7cff", assets2AudioData);
     const repleAssets:Record<number,{id:number;name:string}[]> = {};
     assets2AudioData.forEach((item) => {
       if (!repleAssets[item.id]) repleAssets[item.id] = [item];
