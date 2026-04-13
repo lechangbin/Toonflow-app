@@ -89,6 +89,9 @@ export default router.post(
     }
     const artStyle = projectData?.artStyle || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
+            console.log("%c Line:99 🍧 storyboard", "background:#e41a6a", storyboard);
+            console.log("%c Line:97 🍣 assets", "background:#7f2b82", assets);
+
     const content = `
           **模型名称**：${modelData},
           **资产信息**（角色、场景、道具):${assets
@@ -99,7 +102,6 @@ export default router.post(
             (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
   duration='${i.duration}'
-  associateAssetsIds='${i.associateAssetsIds}'
 ></storyboardItem>`,
           )},
           `;
