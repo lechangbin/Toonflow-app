@@ -116,6 +116,7 @@ export default async (knex: Knex): Promise<void> => {
     if (!fs.existsSync(rootDir)) fs.mkdirSync(rootDir, { recursive: true });
     if (!fs.existsSync(path.join(rootDir, filename))) {
       code = vendorData[filename] || code;
+      code = code ?? "";
       fs.writeFileSync(path.join(rootDir, filename), code);
     }
   }
