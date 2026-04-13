@@ -327,7 +327,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   const lowerName = model.modelName.toLowerCase();
 
   // 当前激活的单一 VideoMode（取第一个非数组模式，或数组模式）
-  const activeMode = config.mode[0];
+  const activeMode = config.mode;
   const imageRefs = (config.referenceList ?? []).filter((r) => r.type === "image").map((r) => r.base64);
   const videoRefs = (config.referenceList ?? []).filter((r) => r.type === "video").map((r) => r.base64);
   const audioRefs = (config.referenceList ?? []).filter((r) => r.type === "audio").map((r) => r.base64);

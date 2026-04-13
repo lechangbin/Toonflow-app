@@ -82,6 +82,7 @@ export default router.post(
           },
         ],
       });
+        await u.db("o_assets").where("id", item.id).update({ prompt: text });
 
       const imageBase64 = imageUrlRecord[item.assetsId!] ? await u.oss.getImageBase64(imageUrlRecord[item.assetsId!]) : null;
       try {
@@ -104,7 +105,6 @@ export default router.post(
         );
         const savePath = `/${projectId}/assets/${scriptId}/${item.type}/${u.uuid()}.jpg`;
         await imageCls.save(savePath);
-        await u.db("o_assets").where("id", item.id).update({ prompt: text });
         await u.db("o_image").where({ id: imageId }).update({ state: "已完成", filePath: savePath });
         return {
           id: item.id!,
