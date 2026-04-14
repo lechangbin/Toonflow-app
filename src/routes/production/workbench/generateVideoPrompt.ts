@@ -92,17 +92,16 @@ export default router.post(
     const content = `
           **模型名称**：${modelData},
           **资产信息**（角色、场景、道具):${assets
-            .filter((i) => i.filePath)
-            .map((i) => `[${i.id},${i.type},${i.name}]`)
-            .join("，")},
+        .filter((i) => i.filePath)
+        .map((i) => `[${i.id},${i.type},${i.name}]`)
+        .join("，")},
           **分镜信息**：${storyboard.map(
-            (i) => `<storyboardItem
+          (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
   duration='${i.duration}'
 ></storyboardItem>`,
-          )},
+        )},
           `;
-    console.log("%c Line:93 🥥 content", "background:#e41a6a", content);
 
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({

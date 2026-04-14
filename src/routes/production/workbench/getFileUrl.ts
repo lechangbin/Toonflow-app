@@ -28,8 +28,6 @@ export default router.post(
             const assetsPaths = await u.db("o_assets").leftJoin("o_image", "o_image.id", "o_assets.imageId").whereIn("o_assets.id", assetsIds).select("o_assets.id", "o_image.filePath");
             totalFilePaths.push(...assetsPaths.map(i => ({ id: i.id, filePath: i.filePath, sources: "assets" })))
         }
-        console.log("%c Line:30 🍇 totalFilePaths", "background:#93c0a4", totalFilePaths);
-
 
         await Promise.all(
             totalFilePaths.map(async (item: { id: string, filePath: string, sources: string }) => {

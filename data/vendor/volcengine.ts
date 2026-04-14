@@ -615,7 +615,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
       }
     },
     10000,
-    600000,
+    600000 * 3,
   );
 
   if (result.error) {
