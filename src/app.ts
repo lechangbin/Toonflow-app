@@ -8,15 +8,43 @@ import expressWs from "express-ws";
 import logger from "morgan";
 import cors from "cors";
 import buildRoute from "@/core";
+import path from "path";
 import fs from "fs";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
+import { isEletron } from "@/utils/getPath";
 
 const app = express();
 const server = http.createServer(app);
 
+async function checkPermissions() {
+  if (!isEletron()) return true;
+  const userDataPath = u.getPath();
+  try {
+    fs.mkdirSync(userDataPath, { recursive: true });
+    const testFile = path.join(userDataPath, ".access_test");
+    fs.writeFileSync(testFile, "test");
+    fs.unlinkSync(testFile);
+  } catch (e) {
+    const { dialog, app } = require("electron");
+    const { response } = await dialog.showMessageBox({
+      type: "warning",
+      title: "权限不足",
+      message: "应用无法访问数据目录",
+      detail: `无法读写以下目录：\n${userDataPath}\n\n请联系管理员授予权限，或以管理员身份运行本程序。`,
+      buttons: ["确认退出"],
+      defaultId: 0,
+    });
+    if (response === 0) {
+      app.quit();
+    }
+  }
+}
+
 export default async function startServe(randomPort: Boolean = false) {
+  await checkPermissions();
+
   await u.writeVersion();
   const io = new Server(server, { cors: { origin: "*" } });
   socketInit(io);
