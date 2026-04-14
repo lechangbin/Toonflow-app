@@ -5,7 +5,6 @@ import sharp from "sharp";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { Output, tool } from "ai";
-import { urlToBase64 } from "@/utils/vm";
 import { assetItemSchema } from "@/agents/productionAgent/tools";
 const router = express.Router();
 export type AssetData = z.infer<typeof assetItemSchema>;
@@ -50,18 +49,33 @@ export default router.post(
     const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle", "videoRatio").first();
 
     const storyboardData = await u.db("o_storyboard").where("scriptId", scriptId).whereIn("id", finalStoryboardIds);
-    const assetData = await u
-      .db("o_assets")
-      .leftJoin("o_assets2Storyboard", "o_assets.id", "o_assets2Storyboard.assetId")
-      .whereIn("o_assets2Storyboard.storyboardId", finalStoryboardIds)
-      .select("o_assets2Storyboard.storyboardId", "o_assets.imageId");
+    // 按 rowid 顺序查出每个 storyboard 关联的 assetId 有序列表
+    const assets2StoryboardRows = await u
+      .db("o_assets2Storyboard")
+      .whereIn("storyboardId", finalStoryboardIds)
+      .orderBy("rowid")
+      .select("storyboardId", "assetId");
 
+    // 收集所有 assetId，批量查对应的 imageId
+    const allAssetIds = [...new Set(assets2StoryboardRows.map((r: any) => r.assetId))];
+    const assetImageMap: Record<number, number> = {};
+    if (allAssetIds.length > 0) {
+      const assetRows = await u.db("o_assets").whereIn("id", allAssetIds).select("id", "imageId");
+      assetRows.forEach((row: any) => {
+        assetImageMap[row.id] = row.imageId;
+      });
+    }
+
+    // 按 rowid 顺序重建 assetRecord，值为有序的 imageId 列表
     const assetRecord: Record<number, number[]> = {};
-    assetData.forEach((item: any) => {
+    assets2StoryboardRows.forEach((item: any) => {
       if (!assetRecord[item.storyboardId]) {
         assetRecord[item.storyboardId] = [];
       }
-      assetRecord[item.storyboardId].push(item.imageId);
+      const imageId = assetImageMap[item.assetId];
+      if (imageId != null) {
+        assetRecord[item.storyboardId].push(imageId);
+      }
     });
 
     res.status(200).send(
@@ -142,7 +156,7 @@ async function getAssetsImageBase64(imageIds: number[]) {
       const filePath = id2Path.get(id);
       if (filePath) {
         try {
-          return await urlToBase64(await u.oss.getFileUrl(filePath));
+          return await u.oss.getImageBase64(filePath);
         } catch {
           return null;
         }

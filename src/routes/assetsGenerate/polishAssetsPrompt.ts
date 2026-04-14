@@ -4,36 +4,10 @@ import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
-interface OutlineItem {
-  description: string;
-  name: string;
-}
 
-interface OutlineData {
-  chapterRange: number[];
-  characters?: OutlineItem[];
-  props?: OutlineItem[];
-  scenes?: OutlineItem[];
-}
-
-interface NovelChapter {
-  id: number;
-  reel: string;
-  chapter: string;
-  chapterData: string;
-  projectId: number;
-}
 
 type ItemType = "characters" | "props" | "scenes";
 
-interface ResultItem {
-  type: ItemType;
-  name: string;
-  chapterRange: number[];
-}
-function findItemByName(items: ResultItem[], name: string, type?: ItemType): ResultItem | undefined {
-  return items.find((item) => (!type || item.type === type) && item.name === name);
-}
 //润色提示词
 export default router.post(
   "/",
@@ -51,31 +25,8 @@ export default router.post(
     //如果没有找到对应的项目，返回错误
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
-    const allOutlineDataList: { data: string }[] = await u.db("o_outline").where("projectId", projectId).select("data");
     await u.db("o_assets").where("id", assetsId).update({ promptState: "生成中" });
 
-    const itemMap: Record<string, ResultItem> = {};
-
-    if (allOutlineDataList.length > 0)
-      allOutlineDataList.forEach((row) => {
-        const data: OutlineData = JSON.parse(row?.data || "{}");
-        (["characters", "props", "scenes"] as ItemType[]).forEach((type) => {
-          (data[type] || []).forEach((item) => {
-            const key = `${type}-${item.name}`;
-            if (!itemMap[key]) {
-              itemMap[key] = {
-                type,
-                name: item.name,
-                chapterRange: [...(data.chapterRange || [])],
-              };
-            } else {
-              itemMap[key].chapterRange = Array.from(new Set([...itemMap[key].chapterRange, ...(data.chapterRange || [])]));
-            }
-          });
-        });
-      });
-
-    const result: ResultItem[] = Object.values(itemMap);
     //查询资产是否是衍生资产
     const assetsData = await u.db("o_assets").where("id", assetsId).select("assetsId").first();
     if (!assetsData) return { code: 500, message: "资产不存在" };
@@ -109,7 +60,6 @@ export default router.post(
     //获取到视觉手册
     const visualManual = await u.getArtPrompt(project.artStyle as string, "art_skills", config.visualManual);
     if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
-    findItemByName(result, name, config.itemType);
     const systemPrompt = visualManual;
     try {
       const { _output } = (await u.Ai.Text("universalAi").invoke({

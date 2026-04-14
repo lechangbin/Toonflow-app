@@ -133,11 +133,10 @@ declare const exports: {
 
 const vendor: VendorConfig = {
   id: "volcengine",
-  version: "2.1",
+  version: "2.3",
   author: "leeqi",
   name: "火山引擎(豆包)",
-  description:
-    "火山引擎豆包大模型，支持文本、图片生成、视频生成等能力。\n\n需要在[火山引擎控制台](https://console.volcengine.com/ark)获取API密钥。",
+  description: "火山引擎豆包大模型，支持文本、图片生成、视频生成等能力。\n\n需要在[火山引擎控制台](https://console.volcengine.com/ark)获取API密钥。",
   icon: "",
   inputs: [
     { key: "apiKey", label: "API密钥", type: "password", required: true, placeholder: "火山引擎API Key" },
@@ -301,10 +300,10 @@ const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3
     3: "high",
   };
 
-  return createOpenAI({
+  return createOpenAICompatible({
+    name: "volcengine",
     baseURL: getBaseUrl(),
     apiKey,
-    compatibility: "compatible",
     fetch: async (url: string, options?: RequestInit) => {
       const rawBody = JSON.parse((options?.body as string) ?? "{}");
       const modifiedBody = {
@@ -319,7 +318,7 @@ const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3
         body: JSON.stringify(modifiedBody),
       });
     },
-  }).chat(model.modelName);
+  }).chatModel(model.modelName);
 };
 
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
@@ -455,10 +454,8 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
     content.push({ type: "text", text: config.prompt });
   }
 
-  const activeMode = config.mode && config.mode.length > 0 ? config.mode[0] : "text";
-
-  if (typeof activeMode === "string") {
-    switch (activeMode) {
+  if (typeof config.mode === "string") {
+    switch (config.mode) {
       case "singleImage": {
         const firstImage = config.referenceList?.find((r) => r.type === "image");
         if (firstImage) {
@@ -526,13 +523,13 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
       default:
         break;
     }
-  } else if (Array.isArray(activeMode)) {
+  } else if (Array.isArray(config.mode)) {
     // 多模态参考模式：按类型分别提取并添加
     const imageRefs = config.referenceList?.filter((r) => r.type === "image") ?? [];
     const videoRefs = config.referenceList?.filter((r) => r.type === "video") ?? [];
     const audioRefs = config.referenceList?.filter((r) => r.type === "audio") ?? [];
 
-    for (const refDef of activeMode) {
+    for (const refDef of config.mode) {
       if (typeof refDef === "string") {
         if (refDef.startsWith("imageReference:")) {
           const maxCount = parseInt(refDef.split(":")[1], 10);
@@ -618,7 +615,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
       }
     },
     10000,
-    600000,
+    600000 * 3,
   );
 
   if (result.error) {

@@ -5,7 +5,6 @@ import sharp from "sharp";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { Output } from "ai";
-import { urlToBase64 } from "@/utils/vm";
 const router = express.Router();
 
 export default router.post(
@@ -28,14 +27,6 @@ export default router.post(
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .whereIn("o_assets.id", parentIds as number[])
       .select("o_assets.id", "o_image.filePath", "o_assets.describe");
-    const assetsSrcArr = await Promise.all(
-      parentAssetsData.map(async (item) => {
-        return {
-          src: await u.oss.getFileUrl(item.filePath),
-          id: item.id,
-        };
-      }),
-    );
     assetsDataArr.forEach((i: any) => {
       const parent = parentAssetsData.find((item) => item.id === i.assetsId);
       if (parent) {
@@ -43,8 +34,8 @@ export default router.post(
       }
     });
     const imageUrlRecord: Record<number, string> = {};
-    assetsSrcArr.forEach((item) => {
-      imageUrlRecord[item.id] = item.src;
+    parentAssetsData.forEach((item) => {
+      if (item.filePath) imageUrlRecord[item.id] = item.filePath;
     });
     const rolePrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_skills", "art_character_derivative");
     const toolPrompt = u.getArtPrompt(projectSettingData!.artStyle!, "art_skills", "art_prop_derivative");
@@ -91,8 +82,9 @@ export default router.post(
           },
         ],
       });
+        await u.db("o_assets").where("id", item.id).update({ prompt: text });
 
-      const imageBase64 = imageUrlRecord[item.assetsId!] ? await urlToBase64(imageUrlRecord[item.assetsId!]) : null;
+      const imageBase64 = imageUrlRecord[item.assetsId!] ? await u.oss.getImageBase64(imageUrlRecord[item.assetsId!]) : null;
       try {
         const repeloadObj = {
           prompt: text,
@@ -113,7 +105,6 @@ export default router.post(
         );
         const savePath = `/${projectId}/assets/${scriptId}/${item.type}/${u.uuid()}.jpg`;
         await imageCls.save(savePath);
-        await u.db("o_assets").where("id", item.id).update({ prompt: text });
         await u.db("o_image").where({ id: imageId }).update({ state: "已完成", filePath: savePath });
         return {
           id: item.id!,

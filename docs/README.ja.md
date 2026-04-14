@@ -101,11 +101,11 @@ Toonflow は、AI技術を活用して小説を自動的に脚本へ変換し、
 
 ## 📺 動画チュートリアル
 
-[https://www.bilibili.com/video/BV1na6wB6Ea2](https://www.bilibili.com/video/BV1na6wB6Ea2)
-[![Toonflow 8分でわかるAI動画作成](./videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
+[https://www.bilibili.com/video/BV1oXD7BqEqJ](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+[![Toonflow 12分でわかるAI動画作成](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
-**Toonflow 8分でわかるクイックスタート AI動画作成**
-👉 [クリックして視聴](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+**Toonflow 12分でわかるクイックスタート AI動画作成**
+👉 [クリックして視聴](https://www.bilibili.com/video/BV1oXD7BqEqJ/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
 
 📱 QRコードをスキャンして視聴
 

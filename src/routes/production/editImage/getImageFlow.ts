@@ -21,6 +21,13 @@ export default router.post(
             node.data.image = node.data.image ? await u.oss.getFileUrl(node.data.image) : "";
           } else if (node.type === "generated") {
             node.data.generatedImage = node.data.generatedImage ? await u.oss.getFileUrl(node.data.generatedImage) : "";
+            console.log("%c Line:25 🍋 node.data.references", "background:#42b983", node.data.references);
+
+            node.data.references = await Promise.all(node.data.references.map(async (item: { image: string }) => {
+              return {
+                image: await u.oss.getFileUrl(item.image)
+              }
+            }));
           }
         }),
       );

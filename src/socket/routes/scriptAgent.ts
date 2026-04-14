@@ -40,6 +40,11 @@ export default (nsp: Namespace) => {
     });
     let abortController: AbortController | null = null;
 
+    const thinkConfig: agent.AgentContext["thinkConfig"] = {
+      think: false,
+      thinlLevel: 0,
+    };
+
     socket.on("chat", async (data: { content: string }) => {
       const { content } = data;
       abortController?.abort();
@@ -55,57 +60,26 @@ export default (nsp: Namespace) => {
         abortSignal: currentController.signal,
         resTool,
         msg,
+        thinkConfig,
       };
 
       try {
-        const textStream = await agent.decisionAI(ctx);
-
-        let currentMsg = ctx.msg;
-        let text = currentMsg.text();
-
-        const syncCurrentMessage = () => {
-          if (ctx.msg === currentMsg) return;
-          text.complete();
-          currentMsg.complete();
-          currentMsg = ctx.msg;
-          text = currentMsg.text();
-        };
-
-        let aborted = false;
-        try {
-          for await (const chunk of textStream) {
-            await new Promise<void>((resolve) => setTimeout(() => resolve(), 1));
-            syncCurrentMessage();
-            text.append(chunk);
-          }
-        } catch (err: any) {
-          if (err.name === "AbortError" || currentController.signal.aborted) {
-            aborted = true;
-          } else {
-            throw err;
-          }
-        } finally {
-          syncCurrentMessage();
-          if (aborted) {
-            text.complete();
-            currentMsg.stop();
-          } else {
-            text.complete();
-            currentMsg.complete();
-          }
-        }
+        await agent.runDecisionAI(ctx);
       } catch (err: any) {
         if (err.name !== "AbortError" && !currentController.signal.aborted) {
-          const errorMsg = u.error(err).message;
-          console.error("[scriptAgent] chat error:", errorMsg);
-          ctx.msg.text(errorMsg).complete();
-          ctx.msg.error();
+          console.error("[scriptAgent] chat error:", u.error(err).message);
         }
       } finally {
         if (abortController === currentController) {
           abortController = null;
         }
       }
+    });
+
+    socket.on("updateThinkConfig", (data: { think: boolean; thinlLevel: 0 | 1 | 2 | 3 }) => {
+      thinkConfig.think = data.think;
+      thinkConfig.thinlLevel = data.thinlLevel;
+      console.log("[scriptAgent] 更新思考配置:", thinkConfig);
     });
 
     socket.on("stop", () => {

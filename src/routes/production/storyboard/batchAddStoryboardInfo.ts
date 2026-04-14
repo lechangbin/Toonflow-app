@@ -32,9 +32,9 @@ export default router.post(
         state: item.state,
         scriptId,
         projectId,
-        track:item.track,
-        videoDesc:item.videoDesc,
-        shouldGenerateImage:item.shouldGenerateImage,
+        track: item.track,
+        videoDesc: item.videoDesc,
+        shouldGenerateImage: item.shouldGenerateImage,
         createTime: Date.now(),
       });
       if (item.associateAssetsIds?.length) {
@@ -91,7 +91,7 @@ export default router.post(
     const storyboardData = await Promise.all(
       lastStoryboard.map(async (i) => {
         return {
-          associateAssetsIds: await u.db("o_assets2Storyboard").where("storyboardId", i.id).select("assetId").pluck("assetId"),
+          associateAssetsIds: await u.db("o_assets2Storyboard").where("storyboardId", i.id).orderBy("rowid").select("assetId").pluck("assetId"),
           src: i.filePath ? await u.oss.getFileUrl(i.filePath) : "",
           id: i.id,
           trackId: i.trackId,
@@ -100,6 +100,7 @@ export default router.post(
           state: i.state,
           scriptId: i.scriptId,
           reason: i.reason,
+          videoDesc: i.videoDesc
         };
       }),
     );

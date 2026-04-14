@@ -9,13 +9,11 @@ export default router.post(
   validateFields({
     id: z.number(),
     prompt: z.string().optional(),
-    duration: z.number().optional(),
   }),
   async (req, res) => {
     const { id, prompt, duration } = req.body;
     await u.db("o_videoTrack").where("id", id).update({
       prompt,
-      duration,
     });
     res.status(200).send(success("更新成功"));
   },

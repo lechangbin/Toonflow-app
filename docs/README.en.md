@@ -107,11 +107,11 @@ With Toonflow, you can complete the entire workflow from text to final video wit
 
 ## 📺 Video Tutorial
 
-[https://www.bilibili.com/video/BV1na6wB6Ea2](https://www.bilibili.com/video/BV1na6wB6Ea2)
-[![Toonflow 8-Minute AI Video Quick Start](./videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
+[https://www.bilibili.com/video/BV1oXD7BqEqJ](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+[![Toonflow 12-Minute AI Video Quick Start](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 **Toonflow: 8-Minute AI Video Quick Start**
-👉 [Click to Watch](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+👉 [Click to Watch](https://www.bilibili.com/video/BV1oXD7BqEqJ/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
 
 📱 Scan the QR code to watch on mobile
 

@@ -104,11 +104,11 @@ Toonflow 是一款 AI 短劇與漫畫創作工具，能夠利用 AI 技術將小
 
 ## 📺 影片教學
 
-[https://www.bilibili.com/video/BV1na6wB6Ea2](https://www.bilibili.com/video/BV1na6wB6Ea2)
-[![Toonflow 8 分鐘快速上手 AI 影片](./videoCover.png)](https://www.bilibili.com/video/BV1na6wB6Ea2)
+[https://www.bilibili.com/video/BV1oXD7BqEqJ](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+[![Toonflow 12 分鐘快速上手 AI 影片](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
-**Toonflow 8 分鐘快速上手 AI 影片**
-👉 [點擊觀看](https://www.bilibili.com/video/BV1na6wB6Ea2/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+**Toonflow 12 分鐘快速上手 AI 影片**
+👉 [點擊觀看](https://www.bilibili.com/video/BV1oXD7BqEqJ/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
 
 📱 使用手機掃描 QR Code 觀看
 

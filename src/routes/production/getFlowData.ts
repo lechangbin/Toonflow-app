@@ -86,6 +86,7 @@ export default router.post(
     } else {
       try {
         const storyboardData = await u.db("o_storyboard").where("scriptId", episodesId);
+
         await Promise.all(
           storyboardData.map(async (i) => {
             if (i.filePath) {

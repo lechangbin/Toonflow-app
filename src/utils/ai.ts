@@ -4,17 +4,73 @@ import axios from "axios";
 import { transform } from "sucrase";
 import u from "@/utils";
 
-type AiType = "scriptAgent" | "productionAgent" | "universalAi";
+type AiType =
+  | "scriptAgent"
+  | "productionAgent"
+  | "universalAi"
+  | "scriptAgent:decisionAgent"
+  | "scriptAgent:supervisionAgent"
+  | "scriptAgent:storySkeletonAgent"
+  | "scriptAgent:adaptationStrategyAgent"
+  | "scriptAgent:scriptAgent"
+  | "productionAgent:decisionAgent"
+  | "productionAgent:supervisionAgent"
+  | "productionAgent:deriveAssetsAgent"
+  | "productionAgent:generateAssetsAgent"
+  | "productionAgent:directorPlanAgent"
+  | "productionAgent:storyboardGenAgent"
+  | "productionAgent:storyboardPanelAgent"
+  | "productionAgent:storyboardTableAgent";
+
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
-const AiTypeValues: AiType[] = ["scriptAgent", "productionAgent", "universalAi"];
+const AiTypeValues: AiType[] = [
+  "scriptAgent",
+  "productionAgent",
+  "universalAi",
+  "scriptAgent:decisionAgent",
+  "scriptAgent:supervisionAgent",
+  "scriptAgent:storySkeletonAgent",
+  "scriptAgent:adaptationStrategyAgent",
+  "scriptAgent:scriptAgent",
+  "productionAgent:decisionAgent",
+  "productionAgent:supervisionAgent",
+  "productionAgent:deriveAssetsAgent",
+  "productionAgent:generateAssetsAgent",
+  "productionAgent:directorPlanAgent",
+  "productionAgent:storyboardGenAgent",
+  "productionAgent:storyboardPanelAgent",
+  "productionAgent:storyboardTableAgent",
+  "universalAi",
+];
 async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {
   if (AiTypeValues.includes(value as AiType)) {
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
-    if (!agentDeployData?.modelName) throw new Error(`${value}模型未配置`);
-    return agentDeployData.modelName as `${number}:${string}`;
+    let modelName = null;
+    if (!agentDeployData?.modelName) {
+      const [mainly] = agentDeployData!.key!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
+      modelName = mainlyData.modelName;
+    }
+    modelName = agentDeployData?.modelName || modelName;
+    return modelName as `${number}:${string}`;
   }
   return value as `${number}:${string}`;
+}
+
+async function getModelConfig(value: AiType | `${string}:${string}`) {
+  if (AiTypeValues.includes(value as AiType)) {
+    const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+    if (!agentDeployData?.modelName) {
+      const [mainly] = agentDeployData!.key!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`未找到部署配置 ${value}`);
+      return mainlyData;
+    }
+    return agentDeployData;
+  }
+  return null;
 }
 
 async function getVendorTemplateFn(
@@ -23,7 +79,7 @@ async function getVendorTemplateFn(
 ): Promise<(think?: boolean, thinkLevel?: 0 | 1 | 2 | 3) => any>;
 async function getVendorTemplateFn(fnName: Exclude<FnName, "textRequest">, modelName: `${string}:${string}`): Promise<(input: any) => any>;
 async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${string}`): Promise<any> {
-  const [id, name] = modelName.split(":");
+  const [id, name] = modelName.split(/:(.+)/);
   const vendorConfigData = await u.db("o_vendorConfig").where("id", id).first();
   if (!vendorConfigData) throw new Error(`未找到供应商配置 id=${id}`);
   const modelList = await u.vendor.getModelList(id);
@@ -55,7 +111,7 @@ async function withTaskRecord<T>(
   fn: (modelName: `${string}:${string}`, think: Boolean, thinkLevel: 0 | 1 | 2 | 3) => Promise<T>,
 ): Promise<T> {
   const modelName = await resolveModelName(modelKey);
-  const [id, model] = modelName.split(":");
+  const [_, model] = modelName.split(/:(.+)/);
   const taskRecord = await u.task(projectId, taskClass, model, { describe: describe, content: relatedObjects });
   try {
     const result = await fn(modelName, false, 0);
@@ -89,46 +145,37 @@ class AiText {
     this.think = think;
     this.thinkLevel = thinkLevel;
   }
-  async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
+  private async resolveModel(middleware?: any | any[]) {
     const switchAiDevTool = await u.db("o_setting").where("key", "switchAiDevTool").first();
     const modelName = await resolveModelName(this.AiType);
     const sdkFn = await getVendorTemplateFn("textRequest", modelName);
+    const baseModel = await sdkFn(this.think, this.thinkLevel);
+    const mws = [
+      ...(switchAiDevTool?.value === "1" ? [devToolsMiddleware()] : []),
+      ...(middleware ? (Array.isArray(middleware) ? middleware : [middleware]) : []),
+    ];
+    return mws.length > 0 ? wrapLanguageModel({ model: baseModel, middleware: mws.length === 1 ? mws[0] : mws }) : baseModel;
+  }
+  async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
+    const config = await getModelConfig(this.AiType);
+
     return generateText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
-      model:
-        switchAiDevTool?.value === "1"
-          ? wrapLanguageModel({
-              model: await sdkFn(this.think, this.thinkLevel),
-              middleware: devToolsMiddleware(),
-            })
-          : await sdkFn(this.think, this.thinkLevel),
+      model: await this.resolveModel(),
+      ...(config?.temperature && { temperature: config.temperature }),
+      ...(config?.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
-    const switchAiDevTool = await u.db("o_setting").where("key", "switchAiDevTool").first();
-    const modelName = await resolveModelName(this.AiType);
-    const sdkFn = await getVendorTemplateFn("textRequest", modelName);
+    const config = await getModelConfig(this.AiType);
+
     return streamText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
-      model:
-        switchAiDevTool?.value == "1"
-          ? wrapLanguageModel({
-              model: sdkFn(this.think, this.thinkLevel),
-              middleware: [
-                devToolsMiddleware(),
-                extractReasoningMiddleware({
-                  tagName: "reasoning_content",
-                }),
-              ],
-            })
-          : wrapLanguageModel({
-              model: sdkFn(this.think, this.thinkLevel),
-              middleware: extractReasoningMiddleware({
-                tagName: "reasoning_content",
-              }),
-            }),
+      model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
+      ...(config?.temperature && { temperature: config.temperature }),
+      ...(config?.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
     } as Parameters<typeof streamText>[0]);
   }
 }
@@ -168,7 +215,7 @@ class AiImage {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("imageRequest", mn);
-      await referenceList2imageBase642(mn.split(":")[0], input);
+      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
@@ -212,7 +259,8 @@ class AiVideo {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("videoRequest", mn);
-      await referenceList2imageBase642(mn.split(":")[0], input);
+      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
+
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;
@@ -237,7 +285,7 @@ class AiAudio {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       const fn = await getVendorTemplateFn("ttsRequest", mn);
-      await referenceList2imageBase642(mn.split(":")[0], input);
+      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
       this.result = await fn(input);
       if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
       return this;

@@ -1,4 +1,4 @@
-// @db-hash 9248d7bcfe0a1bc57e5b9bc33d8c7d83
+// @db-hash 88c167ba73e2771e7b043419ca5089dd
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -18,9 +18,12 @@ export interface o_agentDeploy {
   'disabled'?: boolean | null;
   'id'?: number;
   'key'?: string | null;
+  'maxOutputTokens'?: number | null;
   'model'?: string | null;
   'modelName'?: string | null;
   'name'?: string | null;
+  'temperature'?: number | null;
+  'type'?: string | null;
   'vendorId'?: string | null;
 }
 export interface o_agentWorkData {
@@ -87,6 +90,12 @@ export interface o_image {
 export interface o_imageFlow {
   'flowData': string;
   'id'?: number;
+}
+export interface o_modelPrompt {
+  'id'?: number;
+  'model'?: string | null;
+  'prompt'?: string | null;
+  'vendorId'?: string | null;
 }
 export interface o_novel {
   'chapter'?: string | null;
@@ -201,6 +210,7 @@ export interface o_user {
   'password'?: string | null;
 }
 export interface o_vendorConfig {
+  'code'?: string | null;
   'enable'?: number | null;
   'id'?: string;
   'inputValues'?: string | null;
@@ -240,6 +250,7 @@ export interface DB {
   "o_eventChapter": o_eventChapter;
   "o_image": o_image;
   "o_imageFlow": o_imageFlow;
+  "o_modelPrompt": o_modelPrompt;
   "o_novel": o_novel;
   "o_outline": o_outline;
   "o_outlineNovel": o_outlineNovel;

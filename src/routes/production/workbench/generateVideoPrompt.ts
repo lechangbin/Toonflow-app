@@ -1,7 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { z } from "zod";
-import { success } from "@/lib/responseFormat";
+import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { info } from "node:console";
 const router = express.Router();
@@ -32,7 +32,7 @@ export default router.post(
             .select("videoDesc", "prompt", "track", "duration", "shouldGenerateImage")
             .first();
           // 查询分镜关联的资产ID
-          const assetRows = await u.db("o_assets2Storyboard").where("storyboardId", item.id).select("assetId");
+          const assetRows = await u.db("o_assets2Storyboard").where("storyboardId", item.id).orderBy("rowid").select("assetId");
           const associateAssetsIds = assetRows.map((row: any) => row.assetId);
           return {
             ...storyboard,
@@ -42,7 +42,12 @@ export default router.post(
         }
         if (item.sources === "assets") {
           // 查询素材
-          const assetsData = await u.db("o_assets").leftJoin("o_image","o_image.id","o_assets.imageId").where("o_assets.id", item.id).select("o_assets.id", "o_assets.type", "o_assets.name","o_image.filePath").first();
+          const assetsData = await u
+            .db("o_assets")
+            .leftJoin("o_image", "o_image.id", "o_assets.imageId")
+            .where("o_assets.id", item.id)
+            .select("o_assets.id", "o_assets.type", "o_assets.name", "o_image.filePath")
+            .first();
           return {
             ...assetsData,
             _type: "assets", // 标记类型
@@ -61,7 +66,7 @@ export default router.post(
           id: item.id,
           type: item.type,
           name: item.name,
-          filePath:item.filePath
+          filePath: item.filePath,
         });
       if (item._type === "storyboard")
         storyboard.push({
@@ -73,7 +78,7 @@ export default router.post(
           shouldGenerateImage: item.shouldGenerateImage,
         });
     }
-    const [id, modelData] = model.split(":");
+    const [id, modelData] = model.split(/:(.+)/);
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
     let videoPromptGeneration = "" as string | undefined;
@@ -86,15 +91,17 @@ export default router.post(
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const content = `
           **模型名称**：${modelData},
-          **资产信息**（角色、场景、道具):${assets.filter(i => i.filePath).map((i) => `[${i.id},${i.type},${i.name}]`).join("，")},
+          **资产信息**（角色、场景、道具):${assets
+        .filter((i) => i.filePath)
+        .map((i) => `[${i.id},${i.type},${i.name}]`)
+        .join("，")},
           **分镜信息**：${storyboard.map(
-            (i) => `<storyboardItem
+          (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
   duration='${i.duration}'
 ></storyboardItem>`,
-          )},
+        )},
           `;
-    console.log("%c Line:87 🌮 content", "background:#2eafb0", content);
 
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({
@@ -114,8 +121,8 @@ export default router.post(
         prompt: text,
       });
       res.status(200).send(success(text));
-    } catch (error) {
-      res.status(500).send(error);
+    } catch (e) {
+      res.status(400).send(error(u.error(e).message));
     }
   },
 );
