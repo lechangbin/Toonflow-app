@@ -15,7 +15,7 @@ export default router.post("/", async (req, res) => {
       const promptMap = new Map(promptList.map((p) => [p.model, p.prompt]));
       const models = await u.vendor.getModelList(item.id!);
       const filteredModels = models
-        .filter((m: any) => m.type === "image" || m.type === "video")
+        .filter((m: any) => m.type === "video")
         .map((m: any) => ({
           name: m.name,
           type: m.type as "image" | "video",
