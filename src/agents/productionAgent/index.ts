@@ -54,8 +54,15 @@ export async function runDecisionAI(ctx: AgentContext) {
   const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/);
   const models = await u.vendor.getModelList(id);
   if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
-  const findData = models.find((i: any) => i.modelName == videoModelName);
-  const isRef = findData.mode.every((i: any) => Array.isArray(i));
+  let videoMode = "";
+  try {
+    videoMode = JSON.parse(projectInfo.mode ?? "");
+  } catch (e) {
+    videoMode = projectInfo.mode ?? "";
+  }
+  const isRef = Array.isArray(videoMode) ? true : false;
+  // const findData = models.find((i: any) => i.modelName == videoModelName);
+  // const isRef = findData.mode.every((i: any) => Array.isArray(i));
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 
   const mem = buildMemPrompt(await memory.get(text));
