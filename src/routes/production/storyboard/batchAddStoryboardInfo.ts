@@ -32,9 +32,9 @@ export default router.post(
         state: item.state,
         scriptId,
         projectId,
-        track:item.track,
-        videoDesc:item.videoDesc,
-        shouldGenerateImage:item.shouldGenerateImage,
+        track: item.track,
+        videoDesc: item.videoDesc,
+        shouldGenerateImage: item.shouldGenerateImage,
         createTime: Date.now(),
       });
       if (item.associateAssetsIds?.length) {
@@ -100,6 +100,7 @@ export default router.post(
           state: i.state,
           scriptId: i.scriptId,
           reason: i.reason,
+          videoDesc: i.videoDesc
         };
       }),
     );
