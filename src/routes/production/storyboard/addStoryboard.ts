@@ -26,8 +26,9 @@ export default router.post(
   }),
   async (req, res) => {
     const { prompt, duration, state, src, scriptId, projectId, videoDesc, shouldGenerateImage } = req.body;
-
-    const [trackId] = await u.db("o_videoTrack").insert({
+    const trackId = Date.now()
+    await u.db("o_videoTrack").insert({
+      id: trackId,
       scriptId: scriptId,
       projectId,
     });

@@ -134,7 +134,7 @@ export default router.post(
       const uniqueRows = [
         ...new Map(scriptAssetRows.map((r) => [`${r.scriptId}_${r.assetId}`, r])).values(),
       ];
-      console.log("%c Line:135 🥝 uniqueRows", "background:#7f2b82", uniqueRows);
+
 
       // 先删除本批 scriptId 的旧关联，再插入新的
       await u.db("o_scriptAssets").whereIn("scriptId", batchScriptIds).delete();
@@ -197,7 +197,7 @@ export default router.post(
                 .describe("已有资产的引用列表（在已有资产列表中已存在的），只需给出资产名称和使用该资产的 scriptIds"),
             }),
             execute: async ({ newAssets, existingAssetRefs }) => {
-              console.log("[tools] extractAssets result", { newAssets, existingAssetRefs });
+
               if (newAssets?.length) collectedNew = newAssets;
               if (existingAssetRefs?.length) collectedExisting = existingAssetRefs;
               return "无需回复用户任何内容";

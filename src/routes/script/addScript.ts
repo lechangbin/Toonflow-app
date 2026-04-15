@@ -16,7 +16,6 @@ export default router.post(
   }),
   async (req, res) => {
     const { name, content, projectId, assets } = req.body;
-    if (content.length >= 3000) return res.status(400).send(error("内容不能超过3000字"));
     const [scriptId] = await u.db("o_script").insert({
       name,
       content,

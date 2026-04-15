@@ -77,7 +77,9 @@ export default router.post(
         await u.db("o_videoTrack").where("id", trackId).update({ duration: trackDuration });
       } else {
         // 不存在，新建videoTrack
-        const [newTrackId] = await u.db("o_videoTrack").insert({
+        const newTrackId = Date.now()
+        await u.db("o_videoTrack").insert({
+          id: newTrackId,
           scriptId,
           projectId,
           duration: trackDuration,
