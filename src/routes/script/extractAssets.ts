@@ -130,10 +130,16 @@ export default router.post(
         }
       }
 
+      // 去重：相同 scriptId + assetId 只保留一条
+      const uniqueRows = [
+        ...new Map(scriptAssetRows.map((r) => [`${r.scriptId}_${r.assetId}`, r])).values(),
+      ];
+      console.log("%c Line:135 🥝 uniqueRows", "background:#7f2b82", uniqueRows);
+
       // 先删除本批 scriptId 的旧关联，再插入新的
       await u.db("o_scriptAssets").whereIn("scriptId", batchScriptIds).delete();
-      if (scriptAssetRows.length) {
-        await u.db("o_scriptAssets").insert(scriptAssetRows);
+      if (uniqueRows.length) {
+        await u.db("o_scriptAssets").insert(uniqueRows);
       }
 
       // 本批成功的剧本状态更新为 1（成功）
