@@ -143,7 +143,7 @@ const vendor: VendorConfig = {
     { key: "secretKey", label: "Secret Key", type: "password", required: true, placeholder: "请输入可灵AI的Secret Key" },
     { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "默认：https://api-beijing.klingai.com" },
   ],
-  inputValues: { accessKey: "", secretKey: "", baseUrl: "https://api-beijing.klingai.com" },
+  inputValues: { accessKey: "", secretKey: "", apiKey: "可灵接口采用AK+SK模式", baseUrl: "https://api-beijing.klingai.com" },
   models: [
     // kling-video-o1 (Omni)
     {
@@ -465,7 +465,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   const isStartEndRequired = currentMode.includes("startEndRequired");
   const isEndFrameOptional = currentMode.includes("endFrameOptional");
   const isStartFrameOptional = currentMode.includes("startFrameOptional");
-  const hasMultiRef = currentMode.some((m) => Array.isArray(m));
+  const hasMultiRef = Array.isArray(currentMode) && currentMode.some((m) => Array.isArray(m));
 
   // 提取不同类型的引用
   const imageRefs = (config.referenceList || []).filter((r) => r.type === "image");
