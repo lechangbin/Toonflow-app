@@ -33,7 +33,7 @@ export default router.post(
           id: i.id,
           prompt: i.prompt,
           state: i.state,
-          src: i.filePath ? await u.oss.getFileUrl(i.filePath!) : "",
+          src: i.filePath ? await u.oss.getSmallImageUrl(i.filePath!) : "",
         };
       }),
     );

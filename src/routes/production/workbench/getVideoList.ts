@@ -23,7 +23,7 @@ export default router.post(
         await Promise.all(
           videoList.map(async (s) => ({
             ...s,
-            src: s.filePath ? await u.oss.getFileUrl(s.filePath) : "",
+            src: s.filePath ? await u.oss.getSmallImageUrl(s.filePath) : "",
           })),
         ),
       ),

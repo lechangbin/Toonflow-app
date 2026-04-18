@@ -21,7 +21,7 @@ export default router.post(
     const result = await Promise.all(
       data.map(async (item: any) => ({
         ...item,
-        src: item.filePath ? await u.oss.getFileUrl(item.filePath) : null,
+        src: item.filePath ? await u.oss.getSmallImageUrl(item.filePath) : null,
       })),
     );
     res.status(200).send(success(result));

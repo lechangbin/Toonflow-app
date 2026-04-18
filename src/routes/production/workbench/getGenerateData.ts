@@ -53,7 +53,7 @@ export default router.post(
     const storyboardList = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
     await Promise.all(
       storyboardList.map(async (i) => {
-        i.filePath = i.filePath ? await u.oss.getFileUrl(i.filePath) : "";
+        i.filePath = i.filePath ? await u.oss.getSmallImageUrl(i.filePath) : "";
       }),
     );
     const storyboardTrackRecord: Record<number, any[]> = {};
@@ -100,7 +100,7 @@ export default router.post(
             type: i.type,
             fileType: "image" as const,
             sources: "assets",
-            src: i.filePath ? await u.oss.getFileUrl(i.filePath) : "",
+            src: i.filePath ? await u.oss.getSmallImageUrl(i.filePath) : "",
           };
           const sid = i.storyboardId as number;
           if (!otherDataMap[sid]) otherDataMap[sid] = [];

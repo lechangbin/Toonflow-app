@@ -51,12 +51,12 @@ export default router.post(
         const historyImagesWithUrl = await Promise.all(
           historyImages.map(async (img: any) => ({
             id: img.id,
-            filePath: img.filePath && (await u.oss.getFileUrl(img.filePath)),
+            filePath: img.filePath && (await u.oss.getSmallImageUrl(img.filePath)),
           })),
         );
         return {
           ...parent,
-          filePath: parent.filePath && (await u.oss.getFileUrl(parent.filePath!)),
+          filePath: parent.filePath && (await u.oss.getSmallImageUrl(parent.filePath!)),
           historyImages: historyImagesWithUrl,
           relepedAudio:repleAssets[parent.id] ?? []
         };

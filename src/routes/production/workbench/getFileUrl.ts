@@ -31,7 +31,7 @@ export default router.post(
 
         await Promise.all(
             totalFilePaths.map(async (item: { id: string, filePath: string, sources: string }) => {
-                result[`${item.id}:${item.sources}`] = item.filePath ? await u.oss.getFileUrl(item.filePath) : "";
+                result[`${item.id}:${item.sources}`] = item.filePath ? await u.oss.getSmallImageUrl(item.filePath) : "";
             }))
 
         res.status(200).send(success({ data: result }));

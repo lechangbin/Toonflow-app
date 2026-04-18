@@ -127,7 +127,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
         resolution,
       });
 
-    const path = await u.oss.getFileUrl(imagePath);
+    const path = await u.oss.getSmallImageUrl(imagePath);
     await u.db("o_assets").where("id", id).update({ imageId });
 
     return res.status(200).send(success({ path, assetsId: id }));

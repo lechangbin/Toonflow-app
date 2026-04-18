@@ -7,7 +7,7 @@ export default router.post("/", async (req, res) => {
   const list = await u.db("o_artStyle").select("*");
   const data = await Promise.all(
     list.map(async (item: any) => {
-      const fileUrl = await u.oss.getFileUrl(item.fileUrl);
+      const fileUrl = await u.oss.getSmallImageUrl(item.fileUrl);
       return { ...item, fileUrl };
     }),
   );
