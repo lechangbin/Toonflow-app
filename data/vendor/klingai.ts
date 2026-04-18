@@ -143,7 +143,7 @@ const vendor: VendorConfig = {
     { key: "secretKey", label: "Secret Key", type: "password", required: true, placeholder: "请输入可灵AI的Secret Key" },
     { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "默认：https://api-beijing.klingai.com" },
   ],
-  inputValues: { accessKey: "", secretKey: "", apiKey: "可灵接口采用AK+SK模式", baseUrl: "https://api-beijing.klingai.com" },
+  inputValues: { accessKey: "", secretKey: "", baseUrl: "https://api-beijing.klingai.com" },
   models: [
     // kling-video-o1 (Omni)
     {
