@@ -47,7 +47,7 @@ export default router.post(
     const childAssetsWithSrc = await Promise.all(
       childAssets.map(async (child) => ({
         ...child,
-        src: child.filePath && (await u.oss.getFileUrl(child.filePath!)),
+        src: child.filePath && (await filterTypeGetFileUrl(child.filePath!, child.type)),
       })),
     );
 
@@ -56,7 +56,7 @@ export default router.post(
       parentAssets.map(async (parent) => ({
         ...parent,
         sonAssets: childAssetsWithSrc.filter((child) => child.assetsId === parent.id),
-        src: parent.filePath && (await u.oss.getFileUrl(parent.filePath!)),
+        src: parent.filePath && (await filterTypeGetFileUrl(parent.filePath!, parent.type)),
         ...(parent.type == "audio" ? { sex: parent.describe?.split("|")[0], describe: parent.describe?.split("|")[1] } : {}),
       })),
     );
@@ -77,3 +77,11 @@ export default router.post(
     res.status(200).send(success({ data: result, total: totalQuery?.total }));
   },
 );
+
+async function filterTypeGetFileUrl(url: string, type: string) {
+  if (type == 'role' || type == 'tool' || type == 'scene') {
+    return await u.oss.getSmallImageUrl(url)
+  } else {
+    return await u.oss.getFileUrl(url)
+  }
+}

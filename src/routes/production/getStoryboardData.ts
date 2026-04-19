@@ -17,7 +17,7 @@ export default router.post(
       storyboardData.map(async (i) => {
         return {
           ...i,
-          filePath: i.filePath ? await u.oss.getFileUrl(i.filePath!) : "",
+          filePath: i.filePath ? await u.oss.getSmallImageUrl(i.filePath!) : "",
         };
       }),
     );
@@ -58,7 +58,7 @@ export default router.post(
         const charactersWithUrl = await Promise.all(
           characters.map(async (c) => {
             if (c.avatar) {
-              return { ...c, avatar: await u.oss.getFileUrl(c.avatar) };
+              return { ...c, avatar: await u.oss.getSmallImageUrl(c.avatar) };
             }
             return c;
           }),

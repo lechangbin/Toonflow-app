@@ -109,7 +109,7 @@ export default router.post(
         return {
           id: item.id!,
           state: "已完成",
-          src: await u.oss.getFileUrl(savePath),
+          src: await u.oss.getSmallImageUrl(savePath),
         };
       } catch (e) {
         await u

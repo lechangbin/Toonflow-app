@@ -94,7 +94,7 @@ export default router.post(
       lastStoryboard.map(async (i) => {
         return {
           associateAssetsIds: await u.db("o_assets2Storyboard").where("storyboardId", i.id).orderBy("rowid").select("assetId").pluck("assetId"),
-          src: i.filePath ? await u.oss.getFileUrl(i.filePath) : "",
+          src: i.filePath ? await u.oss.getSmallImageUrl(i.filePath) : "",
           id: i.id,
           trackId: i.trackId,
           prompt: i.prompt,

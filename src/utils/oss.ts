@@ -2,6 +2,7 @@ import isPathInside from "is-path-inside";
 import getPath, { isEletron } from "@/utils/getPath";
 import fs from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 
 // 规范化路径：去除前导斜杠，并将路径分隔符统一转换为系统分隔符
 function normalizeUserPath(userPath: string): string {
@@ -167,6 +168,43 @@ class OSS {
       return stat.isFile();
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * 获取图片的缩略图 URL（最长边不超过 512px，等比缩放）。
+   * 缩略图保存在原路径同目录下的 smallImage 子文件夹中。
+   * 若缩略图已存在则直接返回其 URL；若不存在则同步生成并保存后返回缩略图 URL，
+   * 生成失败时返回原图 URL。
+   * @param userRelPath 用户传入的相对文件路径（使用 / 作为分隔符）
+   * @returns 缩略图 URL（已存在或生成成功）或原图 URL（生成失败时）
+   */
+  async getSmallImageUrl(userRelPath: string): Promise<string> {
+    // 构造缩略图相对路径：在原路径的目录层级前插入 smallImage 目录
+    // 例如：123/abc.jpg => smallImage/123/abc.jpg
+    const smallImageRelPath = `smallImage/${userRelPath.replace(/^[/\\]+/, "")}`;
+
+    if (await this.fileExists(smallImageRelPath)) {
+      return this.getFileUrl(smallImageRelPath);
+    }
+
+    // 缩略图不存在：同步生成，生成失败则返回原图 URL
+    const originalUrl = await this.getFileUrl(userRelPath);
+
+    try {
+      await this.ensureInit();
+      const srcAbsPath = resolveSafeLocalPath(userRelPath, this.rootDir);
+      const dstAbsPath = resolveSafeLocalPath(smallImageRelPath, this.rootDir);
+      await fs.mkdir(path.dirname(dstAbsPath), { recursive: true });
+      await sharp(srcAbsPath)
+        .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+        .toFile(dstAbsPath);
+      console.info(`[${dstAbsPath}]小图写入成功`);
+      return this.getFileUrl(smallImageRelPath);
+    } catch (e) {
+      // 生成失败返回原图
+      console.warn("[OSS] 生成缩略图失败:", e);
+      return originalUrl;
     }
   }
 }

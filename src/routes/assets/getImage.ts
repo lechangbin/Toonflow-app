@@ -21,7 +21,7 @@ export default router.post(
     const tempAssets = await Promise.all(
       rawTempAssets.map(async (item) => ({
         ...item,
-        filePath: item.filePath ? await u.oss.getFileUrl(item.filePath) : "",
+        filePath: item.filePath ? await u.oss.getSmallImageUrl(item.filePath) : "",
         selected: assets?.imageId != null && Number(item.id) === Number(assets.imageId),
       })),
     );

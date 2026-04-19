@@ -3,7 +3,7 @@ export default function replaceUrl(url: string): string {
     let cleanedPath = '';
     try {
         const pathname = new URL(url).pathname;
-        cleanedPath = pathname.replace(/^\/oss/, '');
+        cleanedPath = pathname.replace(/^\/oss/, '').replace(/^\/smallImage/, '');
     } catch (e) {
         // 如果不是有效的URL，则直接返回原字符串
         cleanedPath = url;
