@@ -602,10 +602,10 @@ Thanks to the following organizations/individuals for supporting Toonflow:
       <td align="center"><a href="https://www.sophnet.com/">Website</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./sponsored/atlascloud.ico" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
       <td align="center">💻 Computing Sponsor</td>
-      <td>The world's first full-modal inference platform built for developers. Run AI across every modality—chat, reasoning, image, audio, video—through one unified API. 300+ models including DeepSeek, GPT, Claude, Flux. OpenAI-compatible, no provider switching. Explore, test, scale inference seamlessly.</td>
+      <td>The world's first full-modal inference platform built for developers. Run AI across every modality—chat, reasoning, image, audio, video—through one unified API. 300+ models including DeepSeek, Minimax, Seedance 2.0, Flux. OpenAI-compatible, no provider switching. Explore, test, scale inference seamlessly.</td>
       <td align="center"><a href="https://www.atlascloud.ai/">Website</a></td>
     </tr>
   </tbody>

@@ -604,7 +604,7 @@ Toonflow распространяется как open-source проект под
       <td align="center"><a href="https://www.sophnet.com/">Сайт</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./sponsored/atlascloud.ico" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
       <td align="center">💻 Спонсор</td>
       <td>Первая в мире мультимодальная платформа вывода. Чат, изображения, видео, аудио — единый API. 300+ моделей, совместимость с OpenAI.</td>

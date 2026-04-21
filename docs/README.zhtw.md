@@ -596,7 +596,7 @@ Toonflow 基於 Apache-2.0 協定開源發佈，並附有補充商業協議。
       <td align="center"><a href="https://www.sophnet.com/">官網</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./sponsored/atlascloud.ico" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
       <td align="center">💻 算力贊助</td>
       <td>全球首個全模態推理平台。對話、圖像、視頻、音頻——全部統一 API。300+ 模型，OpenAI 兼容。</td>

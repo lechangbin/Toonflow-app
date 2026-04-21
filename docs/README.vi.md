@@ -588,7 +588,7 @@ Xin cảm ơn các tổ chức/đơn vị/cá nhân sau đây đã hỗ trợ ch
       <td align="center"><a href="https://www.sophnet.com/">Website</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./sponsored/atlascloud.ico" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
       <td align="center">💻 Tài trợ điện toán</td>
       <td>Nền tảng suy luận đa phương thức đầu tiên trên thế giới. Chat, hình ảnh, video, âm thanh — tất cả qua một API thống nhất. 300+ mô hình, tương thích OpenAI.</td>
