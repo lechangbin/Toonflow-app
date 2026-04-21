@@ -578,15 +578,31 @@ Toonflow 基於 Apache-2.0 協定開源發佈，並附有補充商業協議。
 感謝以下組織/單位/個人為 Toonflow 提供支援：
 
 <table>
-  <tr>
-    <td>
-      <img src="./sponsored/sophnet.png" alt="算能雲 Logo" width="48">
-    </td>
-    <td>
-      <b>算能雲</b> 提供算力贊助
-      <a href="[https://www.sophnet.com/](https://www.sophnet.com/)">[官網]</a>
-    </td>
-  </tr>
+  <thead>
+    <tr>
+      <th align="center">Logo</th>
+      <th align="center">名稱</th>
+      <th align="center">支持方式</th>
+      <th>簡介</th>
+      <th align="center">官網</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="算能雲 Logo" width="48"></td>
+      <td align="center"><b>算能雲</b></td>
+      <td align="center">💻 算力贊助</td>
+      <td>致力於打造更快、更穩、更省的一站式模型推理 API 服務平台</td>
+      <td align="center"><a href="https://www.sophnet.com/">官網</a></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/atlascloud.ico" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><b>Atlas Cloud</b></td>
+      <td align="center">💻 算力贊助</td>
+      <td>全球首個全模態推理平台。對話、圖像、視頻、音頻——全部統一 API。300+ 模型，OpenAI 兼容。</td>
+      <td align="center"><a href="https://www.atlascloud.ai/">官網</a></td>
+    </tr>
+  </tbody>
 </table>
 
 完整的第三方相依性清單請查閱 `NOTICES.txt`

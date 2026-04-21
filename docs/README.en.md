@@ -584,15 +584,31 @@ We sincerely thank the following open-source projects for providing robust suppo
 Thanks to the following organizations/individuals for supporting Toonflow:
 
 <table>
-  <tr>
-    <td>
-      <img src="./sponsored/sophnet.png" alt="Sophgo Logo" width="48">
-    </td>
-    <td>
-      <b>Sophnet</b> for providing computing power sponsorship
-      <a href="[https://www.sophnet.com/](https://www.sophnet.com/)">[Website]</a>
-    </td>
-  </tr>
+  <thead>
+    <tr>
+      <th align="center">Logo</th>
+      <th align="center">Name</th>
+      <th align="center">Support Type</th>
+      <th>Description</th>
+      <th align="center">Website</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
+      <td align="center"><b>Sophnet</b></td>
+      <td align="center">💻 Computing Sponsor</td>
+      <td>Committed to creating a faster, more stable, and more cost-effective one-stop model inference API service platform</td>
+      <td align="center"><a href="https://www.sophnet.com/">Website</a></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/atlascloud.ico" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><b>Atlas Cloud</b></td>
+      <td align="center">💻 Computing Sponsor</td>
+      <td>The world's first full-modal inference platform built for developers. Run AI across every modality—chat, reasoning, image, audio, video—through one unified API. 300+ models including DeepSeek, GPT, Claude, Flux. OpenAI-compatible, no provider switching. Explore, test, scale inference seamlessly.</td>
+      <td align="center"><a href="https://www.atlascloud.ai/">Website</a></td>
+    </tr>
+  </tbody>
 </table>
 
 For a complete list of third-party dependencies, please refer to `NOTICES.txt`.
