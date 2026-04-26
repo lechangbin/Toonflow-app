@@ -4,7 +4,7 @@ import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { useSkill } from "@/utils/agent/skillsTools";
-import { tool } from "ai";
+import { tool, jsonSchema } from "ai";
 import { o_script } from "@/types/database";
 
 const router = express.Router();
@@ -188,13 +188,40 @@ export default router.post(
         try {
           const resultTool = tool({
             description: "返回结果时必须调用这个工具",
-            inputSchema: z.object({
-              newAssets: z
-                .array(NewAssetSchema)
-                .describe("新发现的资产列表（不在已有资产列表中的），需要完整的 prompt、name、desc、type 和使用该资产的 scriptIds"),
-              existingAssetRefs: z
-                .array(ExistingAssetRefSchema)
-                .describe("已有资产的引用列表（在已有资产列表中已存在的），只需给出资产名称和使用该资产的 scriptIds"),
+            inputSchema: jsonSchema<{ newAssets: NewAsset[]; existingAssetRefs: ExistingAssetRef[] }>({
+              type: "object",
+              properties: {
+                newAssets: {
+                  type: "array",
+                  description: "新发现的资产列表（不在已有资产列表中的），需要完整的 prompt、name、desc、type 和使用该资产的 scriptIds",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string", description: "资产名称,仅为名称不做其他任何表述" },
+                      desc: { type: "string", description: "资产描述" },
+                      type: { type: "string", enum: ["role", "tool", "scene"], description: "资产类型" },
+                      scriptIds: { type: "array", items: { type: "number" }, description: "使用该资产的剧本id数组" },
+                    },
+                    required: ["name", "desc", "type", "scriptIds"],
+                    additionalProperties: false,
+                  },
+                },
+                existingAssetRefs: {
+                  type: "array",
+                  description: "已有资产的引用列表（在已有资产列表中已存在的），只需给出资产名称和使用该资产的 scriptIds",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string", description: "已有资产的名称,必须与已有资产列表中的名称完全一致" },
+                      scriptIds: { type: "array", items: { type: "number" }, description: "使用该资产的剧本id数组" },
+                    },
+                    required: ["name", "scriptIds"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["newAssets", "existingAssetRefs"],
+              additionalProperties: false,
             }),
             execute: async ({ newAssets, existingAssetRefs }) => {
 

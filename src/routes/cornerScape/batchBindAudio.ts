@@ -3,7 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { tool } from "ai";
+import { tool, jsonSchema } from "ai";
 const router = express.Router();
 
 // 获取资产
@@ -30,11 +30,25 @@ export default router.post(
       try {
         const resultTool = tool({
           description: "返回结果时必须调用这个工具",
-          inputSchema: z.object({
-            result: z.array(z.object({
-              id: z.number(),
-              audioIds: z.array(z.number()).describe("适配的音频id 无适配内容可以为 空数组")
-            })).describe("适配的音色列表，id为资产id，audioIds为适配的音频id 无适配内容可以为 空数组")
+          inputSchema: jsonSchema<{ result: { id: number; audioIds: number[] }[] }>({
+            type: "object",
+            properties: {
+              result: {
+                type: "array",
+                description: "适配的音色列表，id为资产id，audioIds为适配的音频id 无适配内容可以为 空数组",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "number" },
+                    audioIds: { type: "array", items: { type: "number" }, description: "适配的音频id 无适配内容可以为 空数组" },
+                  },
+                  required: ["id", "audioIds"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["result"],
+            additionalProperties: false,
           }),
           execute: async ({ result }) => {
             console.log("[tools] extractAssets result", result);
