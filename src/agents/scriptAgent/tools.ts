@@ -16,7 +16,7 @@ export const planData = z.object({
 
 export type planData = z.infer<typeof planData>;
 
-const planDataKeys = Object.keys(planData.shape) as (keyof planData)[];
+const keySchema = z.enum(Object.keys(planData.shape) as [keyof planData, ...Array<keyof planData>]);
 const planDataKeyLabels = Object.fromEntries(
   Object.entries(planData.shape).map(([key, schema]) => [key, (schema as z.ZodTypeAny).description ?? key]),
 ) as Record<keyof planData, string>;
@@ -33,14 +33,13 @@ export default (toolCpnfig: ToolConfig) => {
   const tools: Record<string, Tool> = {
     get_novel_events: tool({
       description: "获取章节事件",
-      inputSchema: jsonSchema<{ chapterIndexs: number[] }>({
-        type: "object",
-        properties: {
-          chapterIndexs: { type: "array", items: { type: "number" }, description: "章节的编号" },
-        },
-        required: ["chapterIndexs"],
-        additionalProperties: false,
-      }),
+      inputSchema: jsonSchema<{ chapterIndexs: number[] }>(
+        z
+          .object({
+            chapterIndexs: z.array(z.number()).describe("章节的编号"),
+          })
+          .toJSONSchema(),
+      ),
       execute: async ({ chapterIndexs }) => {
         console.log("[tools] get_novel_events", chapterIndexs);
         const thinking = msg.thinking("正在查询章节事件...");
@@ -59,14 +58,13 @@ export default (toolCpnfig: ToolConfig) => {
     }),
     get_planData: tool({
       description: "获取工作区数据",
-      inputSchema: jsonSchema<{ key: keyof planData }>({
-        type: "object",
-        properties: {
-          key: { type: "string", enum: planDataKeys as string[], description: "数据key" },
-        },
-        required: ["key"],
-        additionalProperties: false,
-      }),
+      inputSchema: jsonSchema<{ key: keyof planData }>(
+        z
+          .object({
+            key: keySchema.describe("数据key"),
+          })
+          .toJSONSchema(),
+      ),
       execute: async ({ key }) => {
         console.log("[tools] get_planData", key);
         const thinking = msg.thinking(`正在获取${planDataKeyLabels[key]}工作区数据...`);
@@ -79,14 +77,13 @@ export default (toolCpnfig: ToolConfig) => {
     }),
     get_novel_text: tool({
       description: "获取小说章节原始文本内容",
-      inputSchema: jsonSchema<{ chapterIndex: string }>({
-        type: "object",
-        properties: {
-          chapterIndex: { type: "string", description: "章节编号" },
-        },
-        required: ["chapterIndex"],
-        additionalProperties: false,
-      }),
+      inputSchema: jsonSchema<{ chapterIndex: string }>(
+        z
+          .object({
+            chapterIndex: z.string().describe("章节编号"),
+          })
+          .toJSONSchema(),
+      ),
       execute: async ({ chapterIndex }) => {
         console.log("[tools] get_novel_text", "[tools] get_novel_text", chapterIndex);
         const thinking = msg.thinking(`正在获取小说章节原文...`);
@@ -100,14 +97,13 @@ export default (toolCpnfig: ToolConfig) => {
     }),
     get_script_content: tool({
       description: "获取剧本本内容",
-      inputSchema: jsonSchema<{ ids: string[] }>({
-        type: "object",
-        properties: {
-          ids: { type: "array", items: { type: "string" }, description: "脚本id" },
-        },
-        required: ["ids"],
-        additionalProperties: false,
-      }),
+      inputSchema: jsonSchema<{ ids: string[] }>(
+        z
+          .object({
+            ids: z.array(z.string()).describe("脚本id"),
+          })
+          .toJSONSchema(),
+      ),
       execute: async ({ ids }) => {
         console.log("[tools] get_script_content", "[tools] get_script_content", ids);
         const thinking = msg.thinking(`正在获取脚本内容...`);

@@ -1,5 +1,6 @@
 import { Socket } from "socket.io";
 import { tool, jsonSchema } from "ai";
+import { z } from "zod";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
 import useTools from "@/agents/scriptAgent/tools";
@@ -132,18 +133,15 @@ function createSubAgent(parentCtx: AgentContext) {
     return fullResponse;
   }
 
-  const promptInput = jsonSchema<{ prompt: string }>({
-    type: "object",
-    properties: {
-      prompt: { type: "string", description: "交给子Agent的任务简约描述，100字以内" },
-    },
-    required: ["prompt"],
-    additionalProperties: false,
-  });
+  const promptInput = z
+    .object({
+      prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
+    })
+    .toJSONSchema();
 
   const run_sub_agent_storySkeleton = tool({
     description: "运行执行subAgent来完成故事骨架相关任务",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "script_execution_skeleton.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
@@ -163,7 +161,7 @@ function createSubAgent(parentCtx: AgentContext) {
 
   const run_sub_agent_adaptationStrategy = tool({
     description: "运行执行subAgent来完成改编策略相关任务",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "script_execution_adaptation.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");

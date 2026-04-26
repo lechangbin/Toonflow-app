@@ -57,14 +57,13 @@ export default router.post(
 
       const getWeatherTool = tool({
         description: "Get the weather in a location",
-        inputSchema: jsonSchema<{ location: string }>({
-          type: "object",
-          properties: {
-            location: { type: "string", description: "The location to get the weather for" },
-          },
-          required: ["location"],
-          additionalProperties: false,
-        }),
+        inputSchema: jsonSchema<{ location: string }>(
+          z
+            .object({
+              location: z.string().describe("The location to get the weather for"),
+            })
+            .toJSONSchema(),
+        ),
         execute: async ({ location }) => {
           return {
             location,

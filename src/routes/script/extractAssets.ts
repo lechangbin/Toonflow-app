@@ -131,10 +131,7 @@ export default router.post(
       }
 
       // 去重：相同 scriptId + assetId 只保留一条
-      const uniqueRows = [
-        ...new Map(scriptAssetRows.map((r) => [`${r.scriptId}_${r.assetId}`, r])).values(),
-      ];
-
+      const uniqueRows = [...new Map(scriptAssetRows.map((r) => [`${r.scriptId}_${r.assetId}`, r])).values()];
 
       // 先删除本批 scriptId 的旧关联，再插入新的
       await u.db("o_scriptAssets").whereIn("scriptId", batchScriptIds).delete();
@@ -188,43 +185,19 @@ export default router.post(
         try {
           const resultTool = tool({
             description: "返回结果时必须调用这个工具",
-            inputSchema: jsonSchema<{ newAssets: NewAsset[]; existingAssetRefs: ExistingAssetRef[] }>({
-              type: "object",
-              properties: {
-                newAssets: {
-                  type: "array",
-                  description: "新发现的资产列表（不在已有资产列表中的），需要完整的 prompt、name、desc、type 和使用该资产的 scriptIds",
-                  items: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string", description: "资产名称,仅为名称不做其他任何表述" },
-                      desc: { type: "string", description: "资产描述" },
-                      type: { type: "string", enum: ["role", "tool", "scene"], description: "资产类型" },
-                      scriptIds: { type: "array", items: { type: "number" }, description: "使用该资产的剧本id数组" },
-                    },
-                    required: ["name", "desc", "type", "scriptIds"],
-                    additionalProperties: false,
-                  },
-                },
-                existingAssetRefs: {
-                  type: "array",
-                  description: "已有资产的引用列表（在已有资产列表中已存在的），只需给出资产名称和使用该资产的 scriptIds",
-                  items: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string", description: "已有资产的名称,必须与已有资产列表中的名称完全一致" },
-                      scriptIds: { type: "array", items: { type: "number" }, description: "使用该资产的剧本id数组" },
-                    },
-                    required: ["name", "scriptIds"],
-                    additionalProperties: false,
-                  },
-                },
-              },
-              required: ["newAssets", "existingAssetRefs"],
-              additionalProperties: false,
-            }),
+            inputSchema: jsonSchema<{ newAssets: NewAsset[]; existingAssetRefs: ExistingAssetRef[] }>(
+              z
+                .object({
+                  newAssets: z
+                    .array(NewAssetSchema)
+                    .describe("新发现的资产列表（不在已有资产列表中的），需要完整的 prompt、name、desc、type 和使用该资产的 scriptIds"),
+                  existingAssetRefs: z
+                    .array(ExistingAssetRefSchema)
+                    .describe("已有资产的引用列表（在已有资产列表中已存在的），只需给出资产名称和使用该资产的 scriptIds"),
+                })
+                .toJSONSchema(),
+            ),
             execute: async ({ newAssets, existingAssetRefs }) => {
-
               if (newAssets?.length) collectedNew = newAssets;
               if (existingAssetRefs?.length) collectedExisting = existingAssetRefs;
               return "无需回复用户任何内容";
