@@ -1,6 +1,5 @@
 import { Socket } from "socket.io";
-import { tool } from "ai";
-import { z } from "zod";
+import { tool, jsonSchema } from "ai";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
 import useTools from "@/agents/scriptAgent/tools";
@@ -133,8 +132,13 @@ function createSubAgent(parentCtx: AgentContext) {
     return fullResponse;
   }
 
-  const promptInput = z.object({
-    prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
+  const promptInput = jsonSchema<{ prompt: string }>({
+    type: "object",
+    properties: {
+      prompt: { type: "string", description: "交给子Agent的任务简约描述，100字以内" },
+    },
+    required: ["prompt"],
+    additionalProperties: false,
   });
 
   const run_sub_agent_storySkeleton = tool({
