@@ -27,6 +27,7 @@ export default router.post(
       )
       .where("o_assets.projectId", projectId)
       .andWhere("o_assets.type", "<>", "clip")
+      .andWhere("o_assets.type", "<>", "audio")
       .andWhere("o_assets.assetsId", null)
       .modify((qb) => {
         if (type && type.length > 0) qb.whereIn("o_assets.type", type);
@@ -34,16 +35,16 @@ export default router.post(
       .orderByRaw(`CASE o_assets.type WHEN 'role' THEN 1 WHEN 'scene' THEN 2 WHEN 'tool' THEN 3 ELSE 4 END`);
     const assets2AudioData = await u
       .db("o_assetsRole2Audio")
-      .leftJoin("o_assets", "o_assets.id", "o_assetsRole2Audio.assetsRoleId")
+      .leftJoin("o_assets", "o_assets.id", "o_assetsRole2Audio.assetsAudioId")
       .whereIn(
-        "assetsRoleId",
-        data.map((i:any) => i.id!),
+        "o_assetsRole2Audio.assetsRoleId",
+        data.map((i: any) => i.id!),
       )
-      .select( "o_assets.id", "o_assets.name");
-    const repleAssets:Record<number,{id:number;name:string}[]> = {};
+      .select("o_assets.id", "o_assets.name", "o_assetsRole2Audio.assetsRoleId");
+    const repleAssets: Record<number, { id: number; name: string }[]> = {};
     assets2AudioData.forEach((item) => {
-      if (!repleAssets[item.id]) repleAssets[item.id] = [item];
-      else repleAssets[item.id].push(item);
+      if (!repleAssets[item.assetsRoleId]) repleAssets[item.assetsRoleId] = [item];
+      else repleAssets[item.assetsRoleId].push(item);
     });
     const result = await Promise.all(
       data.map(async (parent: any) => {
@@ -58,7 +59,7 @@ export default router.post(
           ...parent,
           filePath: parent.filePath && (await u.oss.getSmallImageUrl(parent.filePath!)),
           historyImages: historyImagesWithUrl,
-          relepedAudio:repleAssets[parent.id] ?? []
+          relepedAudio: repleAssets[parent.id] ?? [],
         };
       }),
     );
