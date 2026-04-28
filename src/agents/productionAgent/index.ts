@@ -1,6 +1,6 @@
 import { Socket } from "socket.io";
-import { tool } from "ai";
 import { z } from "zod";
+import { tool, jsonSchema } from "ai";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
 import { createSkillTools, parseFrontmatter, scanSkills, useSkill } from "@/utils/agent/skillsTools";
@@ -138,9 +138,11 @@ async function createSubAgent(parentCtx: AgentContext) {
     return fullResponse;
   }
 
-  const promptInput = z.object({
-    prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
-  });
+  const promptInput = z
+    .object({
+      prompt: z.string().describe("交给子Agent的任务简约描述，100字以内"),
+    })
+    .toJSONSchema();
 
   const projectInfo = await u.db("o_project").where("id", resTool.data.projectId).first();
   if (!projectInfo) throw new Error(`项目不存在，ID: ${resTool.data.projectId}`);
@@ -195,7 +197,7 @@ async function createSubAgent(parentCtx: AgentContext) {
   //衍生资产分析与信息写入
   const run_sub_agent_derive_assets = tool({
     description: "运行执行subAgent来完成衍生资产分析与信息写入相关任务",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "production_execution_derive_assets.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
@@ -217,7 +219,7 @@ async function createSubAgent(parentCtx: AgentContext) {
   //衍生资产图片生成
   const run_sub_agent_generate_assets = tool({
     description: "运行执行subAgent来完成衍生资产图片生成相关任务",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "production_execution_generate_assets.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
@@ -239,7 +241,7 @@ async function createSubAgent(parentCtx: AgentContext) {
   //拍摄计划
   const run_sub_agent_director_plan = tool({
     description: "运行执行subAgent来完成导演规划相关任务",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "production_execution_director_plan.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
@@ -264,7 +266,7 @@ async function createSubAgent(parentCtx: AgentContext) {
   //分镜图生成
   const run_sub_agent_storyboard_gen = tool({
     description: "运行执行subAgent来完成分镜图生成相关任务",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "production_execution_storyboard_gen.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
@@ -298,7 +300,7 @@ async function createSubAgent(parentCtx: AgentContext) {
   //分镜面板写入
   const run_sub_agent_storyboard_panel = tool({
     description: "运行执行subAgent来完成分镜面板写入相关任务",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "production_execution_storyboard_panel.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
@@ -324,7 +326,7 @@ async function createSubAgent(parentCtx: AgentContext) {
   //分镜表写入
   const run_sub_agent_storyboard_table = tool({
     description: "运行执行subAgent来完成分镜表构建相关任务",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "production_execution_storyboard_table.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
@@ -348,7 +350,7 @@ async function createSubAgent(parentCtx: AgentContext) {
 
   const run_sub_agent_supervision = tool({
     description: "运行监督层subAgent执行独立任务，完成后返回结果",
-    inputSchema: promptInput,
+    inputSchema: jsonSchema<{ prompt: string }>(promptInput),
     execute: async ({ prompt }) => {
       const skill = path.join(u.getPath("skills"), "production_agent_supervision.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");

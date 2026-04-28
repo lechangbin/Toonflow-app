@@ -25,6 +25,7 @@ export async function getModelList(id: string): Promise<Array<any>> {
   const code = getCode(id);
   const jsCode = transform(code, { transforms: ["typescript"] }).code;
   const vendorData = u.vm(jsCode);
+  if(!vendorData || !vendorData.vendor || !vendorData.vendor.models) return [];
   const combined = [...JSON.parse(JSON.stringify(vendorData.vendor.models)), ...JSON.parse(models?.models ?? "[]")];
   const map = new Map<string, any>();
   for (const m of combined) {
