@@ -26,8 +26,19 @@ export default router.post(
     await Promise.all(
       assetsItem.map(async (i: { src?: string; base64: string; prompt: string }) => {
         if (i.base64) {
-          const savePath = `/${projectId}/assets/audio/${u.uuid()}.mp4`;
-          await u.oss.writeFile(savePath, i.base64);
+          const mimeMatch = i.base64.match(/^data:audio\/([^;]+);base64,/);
+          const mimeExt = mimeMatch ? mimeMatch[1] : "mp3";
+          const mimeToExt: Record<string, string> = {
+            mpeg: "mp3",
+            "x-wav": "wav",
+            "x-aiff": "aiff",
+            "x-m4a": "m4a",
+            "x-flac": "flac",
+          };
+          const ext = mimeToExt[mimeExt] ?? mimeExt;
+          const savePath = `/${projectId}/assets/audio/${u.uuid()}.${ext}`;
+          const base64Data = i.base64.replace(/^data:[^;]+;base64,/, "");
+          await u.oss.writeFile(savePath, base64Data);
           i.src = savePath;
         }
       }),

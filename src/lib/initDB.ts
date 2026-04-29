@@ -58,7 +58,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //Agent配置表
     {
@@ -258,7 +258,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             maxOutputTokens: 0,
             disabled: false,
           },
-
         ]);
       },
     },
@@ -332,7 +331,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //提示词表
     {
@@ -377,7 +376,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //小说原文表
     {
@@ -452,11 +451,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("flowId"); //工作流id
         table.integer("startTime");
         table.string("promptState");
+        table.integer("audioBindState");
         table.text("promptErrorReason");
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => { },
+      initData: async (knex) => {},
     },
     //生成图片表
     {

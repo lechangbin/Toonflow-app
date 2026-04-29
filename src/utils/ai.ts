@@ -189,7 +189,7 @@ function referenceList2imageBase642(id: string, input: any) {
   return input;
 }
 
-type ReferenceList = { type: "image"; base64: string } | { type: "audio"; base64: string } | { type: "video"; base64: string };
+export type ReferenceList = { type: "image"; base64: string } | { type: "audio"; base64: string } | { type: "video"; base64: string };
 
 interface ImageConfig {
   prompt: string;

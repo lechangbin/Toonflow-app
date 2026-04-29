@@ -1,7 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { z } from "zod";
-import { success } from "@/lib/responseFormat";
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { tool, jsonSchema } from "ai";
 const router = express.Router();
@@ -16,12 +16,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, assetsIds, concurrentCount } = req.body;
-    const assetsData = await u
-      .db("o_assets")
-      .where("type", "audio")
-      .whereIn("id", assetsIds)
-      .andWhere("projectId", projectId)
-      .select("id", "name", "describe");
+    const assetsData = await u.db("o_assets").whereIn("id", assetsIds).andWhere("projectId", projectId).select("id", "name", "describe");
 
     const audioData = await u
       .db("o_assets")
@@ -29,57 +24,81 @@ export default router.post(
       .whereNull("assetsId")
       .andWhere("projectId", projectId)
       .select("id", "name", "describe");
-    async function processGroup() {
+
+    if (!audioData.length) return res.status(400).send(error("暂无设置音频，请先前往资产中心上传音频"));
+
+    const batchSize = concurrentCount ?? 1;
+
+    async function processAsset(asset: (typeof assetsData)[number]) {
       try {
         const resultTool = tool({
-          description: "返回结果时必须调用这个工具",
-          inputSchema: jsonSchema<{ result: { id: number; audioIds: number[] }[] }>(
+          description: "匹配完成后必须调用此工具提交结果",
+          inputSchema: jsonSchema<{ id: number; audioId: number }>(
             z
               .object({
-                result: z
-                  .array(
-                    z.object({
-                      id: z.number(),
-                      audioIds: z.array(z.number()).describe("适配的音频id 无适配内容可以为 空数组"),
-                    }),
-                  )
-                  .describe("适配的音色列表，id为资产id，audioIds为适配的音频id 无适配内容可以为 空数组"),
+                id: z.number().describe("资产ID"),
+                audioId: z.number().nullable().optional().describe("与该资产匹配的音频ID列表，若无合适匹配则返回空数组"),
               })
               .toJSONSchema(),
           ),
-          execute: async ({ result }) => {
-            console.log("[tools] extractAssets result", result);
-            for (const item of result) {
-              await u.db("o_assetsRole2Audio").where("assetsRoleId", item.id).delete();
-              if (item.audioIds.length)
-                await u.db("o_assetsRole2Audio").insert(item.audioIds.map((i) => ({ assetsRoleId: item.id, assetsAudioId: i })));
-            }
+          execute: async (result) => {
+            await u.db("o_assetsRole2Audio").where("assetsRoleId", asset.id).delete();
+            if (result?.audioId) await u.db("o_assetsRole2Audio").insert({ assetsRoleId: asset.id, assetsAudioId: result.audioId });
+            await u.db("o_assets").where("id", asset.id).update("audioBindState", "已完成");
             return "无需回复用户任何内容";
           },
         });
+
+        const audioList = audioData.map((i) => `- ID:${i.id} | 名称:${i.name} | 描述:${i.describe ?? "无"}`).join("\n");
 
         const { text } = await u.Ai.Text("universalAi").invoke({
           messages: [
             {
               role: "system",
-              content: `请根据提供的资产内容描述 与 提供的音色 进行匹配，返回适配的音色,结果必须调用 resultTool 工具返回， 调用工具之后你无需回复用户任何内容。`,
+              content: `
+                你是一个音色匹配助手。
+                你的任务是：根据给定角色资产的名称与描述，从候选音频列表中选出最合适的音色。
+                匹配规则：
+                1. 优先根据角色性别、年龄、性格等特征与音色描述进行语义匹配；
+                2. 可以为同一角色匹配多个音色（例如主备选）；
+                3. 若候选列表中没有合适的音色，则返回空数组；
+                4. 匹配完成后必须调用 resultTool 工具提交结果，无需额外回复用户。
+              `,
             },
             {
               role: "user",
-              content: `音频内容：${audioData.map((i) => `Id:${i.id},音色名称:${i.name},描述:${i.describe}`).join("\n")}\n\n
-                资产内容：${assetsData.map((i) => `ID:${i.id},名称:${i.name},描述:${i.describe}`).join("\n")}\n\n
-                请根据提供的资产内容描述 与 对应已有的音色 进行匹配，返回适配的音色`,
+              content: `
+                ## 候选音频列表
+                ${audioList}
+                ## 待匹配资产
+                - ID:${asset.id} | 名称:${asset.name} | 描述:${asset.describe ?? "无"}
+                请从候选音频列表中为该资产选出来一个最符合该角色设定的音色，并调用 resultTool 提交结果。
+           `,
             },
           ],
           tools: { resultTool },
         });
-        console.log("%c Line:44 🍞 text", "background:#f5ce50", text);
       } catch (e) {
-        console.error(`提取失败:`, e);
-        return;
+        await u.db("o_assets").where("id", asset.id).update("audioBindState", "生成失败");
+        console.error(`[bindAudio] 资产 ${asset.id} 处理失败:`, e);
       }
     }
-    await processGroup();
+
+    async function runWithConcurrency() {
+      for (let i = 0; i < assetsData.length; i += batchSize) {
+        const batch = assetsData.slice(i, i + batchSize);
+
+        await Promise.all(batch.map((asset) => processAsset(asset)));
+      }
+    }
+    await u
+      .db("o_assets")
+      .whereIn(
+        "id",
+        assetsData.map((i) => i.id),
+      )
+      .update("audioBindState", "生成中");
+    runWithConcurrency();
     res.status(200).send(success());
   },
 );

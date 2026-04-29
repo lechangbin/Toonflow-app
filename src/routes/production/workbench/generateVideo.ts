@@ -4,6 +4,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { ReferenceList } from "@/utils/ai";
 const router = express.Router();
 
 type Type = "imageReference" | "startImage" | "endImage" | "videoReference" | "audioReference";
@@ -43,7 +44,7 @@ export default router.post(
     } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
       try {
         modeData = JSON.parse(mode);
-      } catch (e) { }
+      } catch (e) {}
     }
     //获取生成视频比例
     const ratio = await u.db("o_project").select("videoRatio").where("id", projectId).first();
@@ -53,16 +54,16 @@ export default router.post(
       uploadData.map(async (item: UploadItem) => {
         if (item.sources === "storyboard") {
           const filePath = await u.db("o_storyboard").where("id", item.id).select("filePath").first();
-          return filePath?.filePath;
+          return { path: filePath?.filePath, sources: "storyBoard" };
         }
         if (item.sources === "assets") {
           const filePath = await u
             .db("o_assets")
             .where("o_assets.id", item.id)
             .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-            .select("o_image.filePath")
+            .select("o_image.filePath", "o_image.type")
             .first();
-          return filePath?.filePath;
+          return { path: filePath?.filePath, sources: filePath.type };
         }
       }),
     );
@@ -70,7 +71,7 @@ export default router.post(
     const base64 = await Promise.all(
       images.map(async (item) => {
         if (!item) return null;
-        return await u.oss.getImageBase64(item);
+        return { base64: await u.oss.getImageBase64(item.path), type: item.sources == "audio" ? "audio" : "image" };
       }),
     );
     //新增
@@ -95,7 +96,7 @@ export default router.post(
         await aiVideo.run(
           {
             prompt,
-            referenceList: base64.filter((item) => item !== null).map((item) => ({ type: "image" as const, base64: item! })),
+            referenceList: base64.filter(Boolean) as ReferenceList[],
             mode: modeData.length > 0 ? modeData : mode,
             duration,
             aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",

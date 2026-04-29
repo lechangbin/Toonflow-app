@@ -20,7 +20,6 @@ export default router.post(
     const { path: folderPath } = req.body;
     const platform = process.platform;
     const target = u.getPath(folderPath);
-    console.log("%c Line:23 🎂 target", "background:#fca650", target);
     const cmd = platform === "win32" ? `explorer "${target}"` : platform === "darwin" ? `open "${target}"` : `xdg-open "${target}"`;
     exec(cmd, (err) => {
       if (err) {

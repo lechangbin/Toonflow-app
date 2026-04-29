@@ -61,10 +61,9 @@ export async function runDecisionAI(ctx: AgentContext) {
     videoMode = projectInfo.mode ?? "";
   }
   const isRef = Array.isArray(videoMode) ? true : false;
-  // console.log("%c Line:64 🍯 isRef", "background:#b03734", isRef);
   // const findData = models.find((i: any) => i.modelName == videoModelName);
   // const isRef = findData.mode.every((i: any) => Array.isArray(i));
-  console.log("%c Line:67 🍪 isRef", "background:#fca650", isRef);
+
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 
   const mem = buildMemPrompt(await memory.get(text));
@@ -153,7 +152,7 @@ async function createSubAgent(parentCtx: AgentContext) {
   const models = await u.vendor.getModelList(id);
   if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   // const findData = models.find((i: any) => i.modelName == videoModelName);
-  // console.log("%c Line:153 🍿 findData.mode", "background:#93c0a4", findData.mode);
+  //
   let videoMode = "";
   try {
     videoMode = JSON.parse(projectInfo.mode ?? "");
@@ -161,7 +160,7 @@ async function createSubAgent(parentCtx: AgentContext) {
     videoMode = projectInfo.mode ?? "";
   }
   const isRef = Array.isArray(videoMode) ? true : false;
-  console.log("%c Line:153 🥤 isRef", "background:#42b983", isRef);
+
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 
   // const run_sub_agent_execution = tool({

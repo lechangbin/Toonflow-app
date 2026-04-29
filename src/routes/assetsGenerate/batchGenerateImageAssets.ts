@@ -130,7 +130,6 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
         aiImage.save(imagePath);
 
         const imageData = await u.db("o_image").where("id", imageId).select("*").first();
-        console.log("%c Line:133 🥒 imageData", "background:#465975", imageData);
         if (!imageData) return res.status(500).send("资产已被删除");
         if (!imageData) return;
         if (imageData.state === "生成失败") return;

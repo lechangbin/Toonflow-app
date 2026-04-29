@@ -65,6 +65,7 @@ export default async (knex: Knex): Promise<void> => {
   await addColumn("o_agentDeploy", "temperature", "integer");
   // 添加新字段
   await addColumn("o_agentDeploy", "maxOutputTokens", "integer");
+  await addColumn("o_assets", "audioBindState", "integer");
 
   //添加数据高级配置
   const advancedAgentList = [

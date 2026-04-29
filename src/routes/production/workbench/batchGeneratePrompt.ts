@@ -9,12 +9,16 @@ const router = express.Router();
 export default router.post(
   "/",
   validateFields({
-    trackId: z.number(),
     projectId: z.number(),
-    info: z.array(
+    trackData: z.array(
       z.object({
-        id: z.number(),
-        sources: z.string(),
+        trackId: z.number(),
+        info: z.array(
+          z.object({
+            id: z.number(),
+            sources: z.string(),
+          }),
+        ),
       }),
     ),
     model: z.string(),
@@ -93,15 +97,15 @@ export default router.post(
     const content = `
           **模型名称**：${modelData},
           **资产信息**（角色、场景、道具、音频):${assets
-        .filter((i) => i.filePath)
-        .map((i) => `[${i.id},${i.type},${i.name}]`)
-        .join("，")},
+            .filter((i) => i.filePath)
+            .map((i) => `[${i.id},${i.type},${i.name}]`)
+            .join("，")},
           **分镜信息**：${storyboard.map(
-          (i) => `<storyboardItem
+            (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
   duration='${i.duration}'
 ></storyboardItem>`,
-        )},
+          )},
           `;
 
     try {

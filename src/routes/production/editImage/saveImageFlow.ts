@@ -14,7 +14,6 @@ export default router.post(
   async (req, res) => {
     const { edges, nodes } = req.body;
     nodes.forEach((node: any) => {
-      console.log("%c Line:17 🌮 node", "background:#465975", node);
       if (node.type == "upload") {
         node.data.image = node.data.image ? u.replaceUrl(node.data.image) : "";
       }
