@@ -81,7 +81,12 @@ export default router.post(
           shouldGenerateImage: item.shouldGenerateImage,
         });
     }
-
+    const assetsNotAudioIds = assets.filter((i) => i.type != "audio").map((i) => i.id);
+    const assets2Audio = await u.db("o_assetsRole2Audio").whereIn("assetsRoleId", assetsNotAudioIds);
+    const assetsAudioRecord: Record<number, number> = {};
+    assets2Audio.forEach((i) => {
+      assetsAudioRecord[i.assetsRoleId!] = i.assetsAudioId!;
+    });
     const [id, modelData] = model.split(/:(.+)/);
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
@@ -144,7 +149,7 @@ export default router.post(
           **模型名称**：${modelData},
           **资产信息**（角色、场景、道具、音频):${assets
             .filter((i) => i.filePath)
-            .map((i) => `[${i.id},${i.type},${i.name}]`)
+            .map((i) => `[${i.id},${i.type},${i.name} ${assetsAudioRecord[i.id] ? `audio:${assetsAudioRecord[i.id]}` : ""} ] `)
             .join("，")},
           **分镜信息**：${storyboard.map(
             (i) => `<storyboardItem
