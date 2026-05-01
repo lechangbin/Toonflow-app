@@ -16,7 +16,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, assetsIds, concurrentCount } = req.body;
-    const assetsData = await u.db("o_assets").whereIn("id", assetsIds).andWhere("projectId", projectId).select("id", "name", "describe");
+    const assetsData = await u.db("o_assets").whereIn("id", assetsIds).andWhere("projectId", projectId).select("id", "name", "describe", "type");
 
     const audioData = await u
       .db("o_assets")
@@ -36,7 +36,6 @@ export default router.post(
           inputSchema: jsonSchema<{ id: number; audioId: number }>(
             z
               .object({
-                id: z.number().describe("资产ID"),
                 audioId: z.number().nullable().optional().describe("与该资产匹配的音频ID列表，若无合适匹配则返回空数组"),
               })
               .toJSONSchema(),
@@ -50,19 +49,19 @@ export default router.post(
         });
 
         const audioList = audioData.map((i) => `- ID:${i.id} | 名称:${i.name} | 描述:${i.describe ?? "无"}`).join("\n");
-
+        const promptData = await u.db("o_prompt").where("type", "audioBindPrompt").first();
+        let audioBindPrompt = "" as string | undefined;
+        if (promptData && promptData.useData) {
+          audioBindPrompt = promptData.useData;
+        } else {
+          audioBindPrompt = promptData?.data ?? undefined;
+        }
         const { text } = await u.Ai.Text("universalAi").invoke({
           messages: [
             {
               role: "system",
               content: `
-                你是一个音色匹配助手。
-                你的任务是：根据给定角色资产的名称与描述，从候选音频列表中选出最合适的音色。
-                匹配规则：
-                1. 优先根据角色性别、年龄、性格等特征与音色描述进行语义匹配；
-                2. 可以为同一角色匹配多个音色（例如主备选）；
-                3. 若候选列表中没有合适的音色，则返回空数组；
-                4. 匹配完成后必须调用 resultTool 工具提交结果，无需额外回复用户。
+              ${audioBindPrompt}
               `,
             },
             {
@@ -71,7 +70,7 @@ export default router.post(
                 ## 候选音频列表
                 ${audioList}
                 ## 待匹配资产
-                - ID:${asset.id} | 名称:${asset.name} | 描述:${asset.describe ?? "无"}
+                - ID:${asset.id} | 名称:${asset.name} | 描述:${asset.describe ?? "无"} | 类型：${asset.type}
                 请从候选音频列表中为该资产选出来一个最符合该角色设定的音色，并调用 resultTool 提交结果。
            `,
             },

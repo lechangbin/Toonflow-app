@@ -45,8 +45,27 @@ const AiTypeValues: AiType[] = [
 ];
 async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {
   if (AiTypeValues.includes(value as AiType)) {
+    const agentUseModeVal = await u.db("o_setting").where("key", "agentUseMode").first();
+
+    //正常流程
+    //高级配置
+    if (agentUseModeVal?.value == "1") {
+      const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+      if (!agentDeployData?.modelName) throw new Error(`高级配置模式下，未找到对应的模型配置 ${value}`);
+      return agentDeployData?.modelName as `${number}:${string}`;
+    }
+    //简易配置
+    if (agentUseModeVal?.value == "0") {
+      const [mainly] = value!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`简易配置模式下，未找到部署配置 ${value}`);
+      return mainlyData?.modelName as `${number}:${string}`;
+    }
+
+    //未查到agentUseModeVal 维持原判断
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
     let modelName = null;
+
     if (!agentDeployData?.modelName) {
       const [mainly] = agentDeployData!.key!.split(/:(.+)/);
       const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
@@ -61,7 +80,25 @@ async function resolveModelName(value: AiType | `${string}:${string}`): Promise<
 
 async function getModelConfig(value: AiType | `${string}:${string}`) {
   if (AiTypeValues.includes(value as AiType)) {
+    const agentUseModeVal = await u.db("o_setting").where("key", "agentUseMode").first();
+    //正常流程
+    //高级配置
+    if (agentUseModeVal?.value == "1") {
+      const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+      if (!agentDeployData?.modelName) throw new Error(`高级配置模式下，未找到对应的模型配置 ${value}`);
+      return agentDeployData;
+    }
+    //简易配置
+    if (agentUseModeVal?.value == "0") {
+      const [mainly] = value!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`简易配置模式下，未找到部署配置 ${value}`);
+      return mainlyData;
+    }
+
+    //未查到 agentUseModelVal 维持原流程
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+
     if (!agentDeployData?.modelName) {
       const [mainly] = agentDeployData!.key!.split(/:(.+)/);
       const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();

@@ -81,6 +81,7 @@ export default router.post(
 
     /** 一组剧本提取完成后统一入库并建立关联 */
     async function persistGroupResult(result: GroupResult) {
+      console.log("%c Line:84 🍪 result", "background:#6ec1c2", result);
       if (!result) return;
       const { batchScriptIds, newAssets, existingRefs } = result;
       if (!newAssets.length && !existingRefs.length) return;

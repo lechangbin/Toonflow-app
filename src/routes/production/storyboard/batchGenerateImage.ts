@@ -16,6 +16,7 @@ export default router.post(
     projectId: z.number(),
     scriptId: z.number(),
     concurrentCount: z.number().min(1).optional(),
+    compulsory: z.boolean().optional(),
   }),
   async (req, res) => {
     const {
@@ -23,36 +24,34 @@ export default router.post(
       projectId,
       scriptId,
       concurrentCount = 5,
+      compulsory = false,
     }: {
       storyboardIds: number[];
       projectId: number;
       scriptId: number;
       concurrentCount: number;
+      compulsory: boolean;
     } = req.body;
     if (!storyboardIds || storyboardIds.length === 0) return res.status(400).send(error("storyboardIds不能为空"));
     // 当没有 storyboardIds 时，通过 AI 生成新的分镜面板数据
     let finalStoryboardIds: number[] = storyboardIds || [];
     // shouldGenerateImage === 0 的分镜标记为「未生成」，其余标记为「生成中」
-    await u
-      .db("o_storyboard")
-      .whereIn("id", finalStoryboardIds)
-      .where("scriptId", scriptId)
-      .where("shouldGenerateImage", 0)
-      .update({ state: "未生成" });
-    await u
-      .db("o_storyboard")
-      .whereIn("id", finalStoryboardIds)
-      .where("scriptId", scriptId)
-      .where("shouldGenerateImage", 1)
-      .update({ state: "生成中" });
+    const storyboardData = await u.db("o_storyboard").where("scriptId", scriptId).where("projectId", projectId).whereIn("id", finalStoryboardIds);
+    if (!storyboardData.length) return res.status(500).send(error("未查到分镜数据"));
+    const storyIds = storyboardData.map((i) => i.id);
+    if (compulsory) {
+      await u.db("o_storyboard").whereIn("id", storyIds).where("scriptId", scriptId).update({ state: "生成中", shouldGenerateImage: 1 });
+    } else {
+      await u.db("o_storyboard").whereIn("id", storyIds).where("scriptId", scriptId).where("shouldGenerateImage", 0).update({ state: "未生成" });
+      await u.db("o_storyboard").whereIn("id", storyIds).where("scriptId", scriptId).where("shouldGenerateImage", 1).update({ state: "生成中" });
+    }
 
     const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle", "videoRatio").first();
 
-    const storyboardData = await u.db("o_storyboard").where("scriptId", scriptId).whereIn("id", finalStoryboardIds);
     // 按 rowid 顺序查出每个 storyboard 关联的 assetId 有序列表
     const assets2StoryboardRows = await u
       .db("o_assets2Storyboard")
-      .whereIn("storyboardId", finalStoryboardIds)
+      .whereIn("storyboardId", storyIds)
       .orderBy("rowid")
       .select("storyboardId", "assetId");
 
@@ -77,10 +76,10 @@ export default router.post(
         assetRecord[item.storyboardId].push(imageId);
       }
     });
-
+    const realStoryData = await u.db("o_storyboard").where("scriptId", scriptId).where("projectId", projectId).whereIn("id", storyIds);
     res.status(200).send(
       success(
-        storyboardData.map((i) => ({
+        realStoryData.map((i) => ({
           id: i.id,
           prompt: i.prompt,
           associateAssetsIds: assetRecord[i.id!],
@@ -130,9 +129,13 @@ export default router.post(
             });
         });
     };
-
     // 按 concurrentCount 控制并发数，分批执行；跳过 shouldGenerateImage === 0 的分镜
-    const generateList = storyboardData.filter((item) => item.shouldGenerateImage !== 0);
+    let generateList = [];
+    if (compulsory) {
+      generateList = storyboardData;
+    } else {
+      generateList = storyboardData.filter((item) => item.shouldGenerateImage !== 0);
+    }
     for (let i = 0; i < generateList.length; i += concurrentCount) {
       const batch = generateList.slice(i, i + concurrentCount);
       await Promise.all(batch.map(generateTask));

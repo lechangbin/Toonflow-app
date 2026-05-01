@@ -3,7 +3,8 @@ import u from "@/utils";
 import { z } from "zod";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { info } from "node:console";
+import fs from "fs/promises";
+import path from "path";
 const router = express.Router();
 
 export default router.post(
@@ -18,9 +19,11 @@ export default router.post(
       }),
     ),
     model: z.string(),
+    mode: z.string(),
   }),
   async (req, res) => {
-    const { trackId, projectId, info, model } = req.body;
+    const { trackId, projectId, info, model, mode } = req.body;
+
     //查询参数
     const images = await Promise.all(
       info.map(async (item: { id: number; sources: string }) => {
@@ -83,25 +86,72 @@ export default router.post(
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
     let videoPromptGeneration = "" as string | undefined;
-    if (videoPrompt && videoPrompt.useData) {
-      videoPromptGeneration = videoPrompt.useData;
-    } else {
-      videoPromptGeneration = videoPrompt?.data ?? undefined;
+
+    const modelPromptData = await u.db("o_modelPrompt").where("vendorId", id).where("model", modelData).first();
+    //查询到 有绑定对应视频提示词
+    if (modelPromptData) {
+      const modelPromptRoot = u.getPath(["modelPrompt"]);
+      try {
+        const fullPath = path.join(modelPromptRoot, modelPromptData?.path!);
+        const content = await fs.readFile(fullPath, "utf-8");
+        videoPromptGeneration = content ?? "";
+      } catch {}
     }
+
+    // 未查询到绑定，根据模型名称 + mode 自动匹配 modelPrompt/video/ 下的文件
+    if (!videoPromptGeneration) {
+      const modelPromptRoot = u.getPath(["modelPrompt"]);
+      const videoPromptDir = path.join(modelPromptRoot, "video");
+      const modelLower = (modelData ?? "").toLowerCase();
+
+      let fileName: string | null = null;
+
+      if (modelLower.includes("wan") && modelLower.includes("2.6")) {
+        // wan2.6 系列 => 单图首尾帧模式
+        fileName = "wan2.6单图首帧模式.md";
+      } else if (/seedance.*2[.\-]0/i.test(modelData)) {
+        // seedance 2.0 / 2-0 系列
+        fileName = "seedance2多参模式.md";
+      } else if (mode === "startEndRequired" || mode === "endFrameOptional" || mode === "startFrameOptional") {
+        // body.mode 为首尾帧相关 => 通用首尾帧模式
+        fileName = "通用首尾帧模式.md";
+      } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
+        // 其他 => 通用多参模式
+        fileName = "通用多参模式.md";
+      }
+      if (fileName) {
+        try {
+          const fullPath = path.join(videoPromptDir, fileName);
+          videoPromptGeneration = await fs.readFile(fullPath, "utf-8");
+        } catch {
+          // 文件不存在则忽略，继续用备选
+        }
+      }
+    }
+
+    //备选
+    if (!videoPromptGeneration) {
+      if (videoPrompt && videoPrompt.useData) {
+        videoPromptGeneration = videoPrompt.useData;
+      } else {
+        videoPromptGeneration = videoPrompt?.data ?? undefined;
+      }
+    }
+
     const artStyle = projectData?.artStyle || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const content = `
           **模型名称**：${modelData},
           **资产信息**（角色、场景、道具、音频):${assets
-        .filter((i) => i.filePath)
-        .map((i) => `[${i.id},${i.type},${i.name}]`)
-        .join("，")},
+            .filter((i) => i.filePath)
+            .map((i) => `[${i.id},${i.type},${i.name}]`)
+            .join("，")},
           **分镜信息**：${storyboard.map(
-          (i) => `<storyboardItem
+            (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
   duration='${i.duration}'
 ></storyboardItem>`,
-        )},
+          )},
           `;
 
     try {

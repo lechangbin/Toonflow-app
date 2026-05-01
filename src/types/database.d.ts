@@ -1,4 +1,4 @@
-// @db-hash ef0c3cdd7111f4f5d87b82df06bdd72a
+// @db-hash 17b50430f27f3b720ad137e6c30cc477
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_assets_old_20260428 {
@@ -109,8 +109,10 @@ export interface o_imageFlow {
   'id'?: number;
 }
 export interface o_modelPrompt {
+  'fileName'?: string | null;
   'id'?: number;
   'model'?: string | null;
+  'path'?: string | null;
   'prompt'?: string | null;
   'vendorId'?: string | null;
 }

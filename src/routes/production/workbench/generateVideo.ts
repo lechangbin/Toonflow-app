@@ -93,6 +93,8 @@ export default router.post(
           type: "视频",
         };
         const aiVideo = u.Ai.Video(model);
+
+        console.log("%c Line:47 🍩 modeData", "background:#93c0a4", modeData);
         await aiVideo.run(
           {
             prompt,
