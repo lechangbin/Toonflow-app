@@ -13,7 +13,6 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-    console.log("%c Line:16 🌭 id", "background:#2eafb0", id);
     await u.db("o_image").where("id", id).update({
       state: "生成失败",
     });

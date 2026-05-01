@@ -12,7 +12,7 @@ export default router.post("/", async (req, res) => {
     dataList.map(async (item) => {
       const vendor = u.vendor.getVendor(item.id!);
       const promptList = await u.db("o_modelPrompt").andWhere("vendorId", vendor.id).select("*");
-      const promptMap = new Map(promptList.map((p) => [p.model, p.prompt]));
+      const promptMap = new Map(promptList.map((p) => [p.model, { fileName: p.fileName, path: p.path }]));
       const models = await u.vendor.getModelList(item.id!);
       const filteredModels = models
         .filter((m: any) => m.type === "video")
@@ -20,7 +20,7 @@ export default router.post("/", async (req, res) => {
           name: m.name,
           type: m.type as "image" | "video",
           model: m.modelName,
-          prompt: promptMap.get(m.modelName) ?? "",
+          ...(promptMap.get(m.modelName) ? { ...promptMap.get(m.modelName) } : {}),
         }));
       return {
         id: item.id,

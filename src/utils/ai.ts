@@ -45,8 +45,27 @@ const AiTypeValues: AiType[] = [
 ];
 async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {
   if (AiTypeValues.includes(value as AiType)) {
+    const agentUseModeVal = await u.db("o_setting").where("key", "agentUseMode").first();
+
+    //正常流程
+    //高级配置
+    if (agentUseModeVal?.value == "1") {
+      const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+      if (!agentDeployData?.modelName) throw new Error(`高级配置模式下，未找到对应的模型配置 ${value}`);
+      return agentDeployData?.modelName as `${number}:${string}`;
+    }
+    //简易配置
+    if (agentUseModeVal?.value == "0") {
+      const [mainly] = value!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`简易配置模式下，未找到部署配置 ${value}`);
+      return mainlyData?.modelName as `${number}:${string}`;
+    }
+
+    //未查到agentUseModeVal 维持原判断
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
     let modelName = null;
+
     if (!agentDeployData?.modelName) {
       const [mainly] = agentDeployData!.key!.split(/:(.+)/);
       const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
@@ -61,7 +80,25 @@ async function resolveModelName(value: AiType | `${string}:${string}`): Promise<
 
 async function getModelConfig(value: AiType | `${string}:${string}`) {
   if (AiTypeValues.includes(value as AiType)) {
+    const agentUseModeVal = await u.db("o_setting").where("key", "agentUseMode").first();
+    //正常流程
+    //高级配置
+    if (agentUseModeVal?.value == "1") {
+      const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+      if (!agentDeployData?.modelName) throw new Error(`高级配置模式下，未找到对应的模型配置 ${value}`);
+      return agentDeployData;
+    }
+    //简易配置
+    if (agentUseModeVal?.value == "0") {
+      const [mainly] = value!.split(/:(.+)/);
+      const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
+      if (!mainlyData?.modelName) throw new Error(`简易配置模式下，未找到部署配置 ${value}`);
+      return mainlyData;
+    }
+
+    //未查到 agentUseModelVal 维持原流程
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
+
     if (!agentDeployData?.modelName) {
       const [mainly] = agentDeployData!.key!.split(/:(.+)/);
       const mainlyData = await u.db("o_agentDeploy").where("key", mainly).first();
@@ -115,11 +152,12 @@ async function withTaskRecord<T>(
   const taskRecord = await u.task(projectId, taskClass, model, { describe: describe, content: relatedObjects });
   try {
     const result = await fn(modelName, false, 0);
+
     taskRecord(1);
     return result;
   } catch (e) {
     taskRecord(-1, u.error(e).message);
-    throw e;
+    throw new Error(u.error(e).message);
   }
 }
 
@@ -189,7 +227,7 @@ function referenceList2imageBase642(id: string, input: any) {
   return input;
 }
 
-type ReferenceList = { type: "image"; base64: string } | { type: "audio"; base64: string } | { type: "video"; base64: string };
+export type ReferenceList = { type: "image"; base64: string } | { type: "audio"; base64: string } | { type: "video"; base64: string };
 
 interface ImageConfig {
   prompt: string;
@@ -221,9 +259,11 @@ class AiImage {
       return this;
     };
     if (taskRecord) {
-      return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+      await withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+      return this;
     }
-    return exec(modelName);
+    await exec(modelName);
+    return this;
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);
@@ -257,18 +297,24 @@ class AiVideo {
   }
   async run(input: VideoConfig, taskRecord?: TaskRecord) {
     const modelName = await resolveModelName(this.key);
-    const exec = async (mn: `${string}:${string}`) => {
-      const fn = await getVendorTemplateFn("videoRequest", mn);
-      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
+    try {
+      const exec = async (mn: `${string}:${string}`) => {
+        const fn = await getVendorTemplateFn("videoRequest", mn);
+        await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
 
-      this.result = await fn(input);
-      if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
+        this.result = await fn(input);
+
+        if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
+      };
+      if (taskRecord) {
+        await withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+        return this;
+      }
+      await exec(modelName);
       return this;
-    };
-    if (taskRecord) {
-      return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+    } catch (e) {
+      throw e;
     }
-    return exec(modelName);
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);
@@ -284,16 +330,19 @@ class AiAudio {
   async run(input: VideoConfig, taskRecord?: TaskRecord) {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
-      const fn = await getVendorTemplateFn("ttsRequest", mn);
-      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
-      this.result = await fn(input);
-      if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
-      return this;
+      try {
+        const fn = await getVendorTemplateFn("ttsRequest", mn);
+        await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
+        this.result = await fn(input);
+
+        if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
+        return this;
+      } catch (e) {}
     };
     if (taskRecord) {
       return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
     }
-    return exec(modelName);
+    return await exec(modelName);
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);

@@ -1,4 +1,4 @@
-// @db-hash 5364c2db0bf42b520761b813ce040489
+// @db-hash 46c86c97b2ffc399387f42c5b7c014eb
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -45,6 +45,7 @@ export interface o_artStyle {
 }
 export interface o_assets {
   'assetsId'?: number | null;
+  'audioBindState'?: number | null;
   'describe'?: string | null;
   'flowId'?: number | null;
   'id'?: number;
@@ -93,8 +94,10 @@ export interface o_imageFlow {
   'id'?: number;
 }
 export interface o_modelPrompt {
+  'fileName'?: string | null;
   'id'?: number;
   'model'?: string | null;
+  'path'?: string | null;
   'prompt'?: string | null;
   'vendorId'?: string | null;
 }

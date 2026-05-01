@@ -1,5 +1,5 @@
-import { tool } from "ai";
 import { z } from "zod";
+import { tool, jsonSchema } from "ai";
 import path from "path";
 import isPathInside from "is-path-inside";
 import getPath from "@/utils/getPath";
@@ -185,9 +185,13 @@ export function createSkillTools(skills: { name: string; description: string }[]
   return {
     activate_skill: tool({
       description: `激活一个技能，加载其完整指令和捆绑资源列表到上下文。可用技能：${skillNames.join(", ")}`,
-      inputSchema: z.object({
-        name: z.enum(skillNames as [string, ...string[]]).describe("要激活的技能名称"),
-      }),
+      inputSchema: jsonSchema<{ name: string }>(
+        z
+          .object({
+            name: z.enum(skillNames as [string, ...string[]]).describe("要激活的技能名称"),
+          })
+          .toJSONSchema(),
+      ),
       execute: async ({ name }) => {
         if (activated.has(name)) {
           console.log(`⚡[主技能] ℹ️ 技能 "${name}" 已激活，跳过重复注入`);
@@ -222,9 +226,13 @@ export function createSkillTools(skills: { name: string; description: string }[]
     }),
     read_skill_file: tool({
       description: "读取已激活技能目录下的资源文件。传入 activate_skill 返回的 skill_resources 中的文件路径。",
-      inputSchema: z.object({
-        filePath: z.string().describe("资源文件的相对路径，来自 activate_skill 返回的 skill_resources"),
-      }),
+      inputSchema: jsonSchema<{ filePath: string }>(
+        z
+          .object({
+            filePath: z.string().describe("资源文件的相对路径，来自 activate_skill 返回的 skill_resources"),
+          })
+          .toJSONSchema(),
+      ),
       execute: async ({ filePath }) => {
         const normalizedInputPath = toUnixPath(filePath).trim();
         if (!normalizedInputPath) {

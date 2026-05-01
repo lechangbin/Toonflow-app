@@ -86,6 +86,8 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
     type,
     state: "生成中",
     assetsId: id,
+    model: model.split(/:(.+)/)[1],
+    resolution,
   });
   await u.db("o_assets").where("id", id).update({ imageId });
 
