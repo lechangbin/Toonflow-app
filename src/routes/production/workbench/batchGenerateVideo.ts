@@ -94,55 +94,45 @@ export default router.post(
     );
 
     res.status(200).send(success(tasks.map((t) => ({ videoId: t.videoId, trackId: t.trackId }))));
-
-    // 分批执行，3个一批
-    (async () => {
-      const batchSize = 3;
-      for (let i = 0; i < tasks.length; i += batchSize) {
-        const batch = tasks.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async ({ videoId, videoPath, prompt, duration, images }) => {
-            // 调用时再转 base64
-            const base64 = await Promise.all(
-              images.map(async (item) => {
-                if (!item) return null;
-                return { base64: await u.oss.getImageBase64(item.path), type: item.sources == "audio" ? "audio" : "image" };
-              }),
-            );
-            const relatedObjects = { projectId, videoId, scriptId, type: "视频" };
-            const aiVideo = u.Ai.Video(model);
-            return aiVideo
-              .run(
-                {
-                  prompt,
-                  referenceList: base64.filter(Boolean) as ReferenceList[],
-                  mode: modeData.length > 0 ? modeData : mode,
-                  duration,
-                  aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",
-                  resolution,
-                  audio,
-                },
-                {
-                  projectId,
-                  taskClass: "视频生成",
-                  describe: "根据提示词生成视频",
-                  relatedObjects: JSON.stringify(relatedObjects),
-                },
-              )
-              .then(() => aiVideo.save(videoPath))
-              .then(() => u.db("o_video").where("id", videoId).update({ state: "生成成功" }))
-              .catch(async (error: any) => {
-                await u
-                  .db("o_video")
-                  .where("id", videoId)
-                  .update({
-                    state: "生成失败",
-                    errorReason: u.error(error).message,
-                  });
-              });
-          }),
-        );
-      }
-    })();
+    for (const { videoId, videoPath, prompt, duration, images } of tasks) {
+      // 所有任务全部并发后台执行，完全不阻塞任何进程
+      const base64 = await Promise.all(
+        images.map(async (item) => {
+          if (!item) return null;
+          return { base64: await u.oss.getImageBase64(item.path), type: item.sources == "audio" ? "audio" : "image" };
+        }),
+      );
+      const relatedObjects = { projectId, videoId, scriptId, type: "视频" };
+      const aiVideo = u.Ai.Video(model);
+      aiVideo
+        .run(
+          {
+            prompt,
+            referenceList: base64.filter(Boolean) as ReferenceList[],
+            mode: modeData.length > 0 ? modeData : mode,
+            duration,
+            aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",
+            resolution,
+            audio,
+          },
+          {
+            projectId,
+            taskClass: "视频生成",
+            describe: "根据提示词生成视频",
+            relatedObjects: JSON.stringify(relatedObjects),
+          },
+        )
+        .then(async () => await aiVideo.save(videoPath))
+        .then(async () => await u.db("o_video").where("id", videoId).update({ state: "生成成功" }))
+        .catch(async (error: any) => {
+          await u
+            .db("o_video")
+            .where("id", videoId)
+            .update({
+              state: "生成失败",
+              errorReason: u.error(error).message,
+            });
+        });
+    }
   },
 );

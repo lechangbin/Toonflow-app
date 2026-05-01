@@ -90,15 +90,15 @@ export default router.post(
         })),
       ),
     );
+
     const generateTask = async (item: (typeof storyboardData)[number]) => {
       const repeloadObj = {
         prompt: item.prompt!,
         size: projectSettingData?.imageQuality as "1K" | "2K" | "4K",
         aspectRatio: projectSettingData?.videoRatio as `${number}:${number}`,
       };
-
-      await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`)
-        .run(
+      try {
+        const imageCls = await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`).run(
           {
             referenceList: await getAssetsImageBase64(assetRecord[item.id!] || []),
             ...repeloadObj,
@@ -109,25 +109,22 @@ export default router.post(
             relatedObjects: JSON.stringify(repeloadObj),
             projectId: projectId,
           },
-        )
-        .then(async (imageCls) => {
-          const savePath = `/${projectId}/assets/${scriptId}/${u.uuid()}.jpg`;
-          await imageCls.save(savePath);
-          await u.db("o_storyboard").where("id", item.id).update({
-            filePath: savePath,
-            state: "已完成",
-          });
-        })
-        .catch(async (e) => {
-          await u
-            .db("o_storyboard")
-            .where("id", item.id)
-            .update({
-              filePath: "",
-              reason: u.error(e).message,
-              state: "生成失败",
-            });
+        );
+        const savePath = `/${projectId}/assets/${scriptId}/${u.uuid()}.jpg`;
+        await imageCls.save(savePath);
+        await u.db("o_storyboard").where("id", item.id).update({
+          filePath: savePath,
+          state: "已完成",
         });
+      } catch (e) {
+        u.db("o_storyboard")
+          .where("id", item.id)
+          .update({
+            filePath: "",
+            reason: u.error(e).message,
+            state: "生成失败",
+          });
+      }
     };
     // 按 concurrentCount 控制并发数，分批执行；跳过 shouldGenerateImage === 0 的分镜
     let generateList = [];

@@ -84,37 +84,34 @@ export default router.post(
       videoTrackId: trackId,
     });
     res.status(200).send(success(videoId));
-    (async () => {
-      try {
-        const relatedObjects = {
+    const relatedObjects = {
+      projectId,
+      videoId,
+      scriptId,
+      type: "视频",
+    };
+    const aiVideo = u.Ai.Video(model);
+    aiVideo
+      .run(
+        {
+          prompt,
+          referenceList: base64.filter(Boolean) as ReferenceList[],
+          mode: modeData.length > 0 ? modeData : mode,
+          duration,
+          aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",
+          resolution,
+          audio,
+        },
+        {
           projectId,
-          videoId,
-          scriptId,
-          type: "视频",
-        };
-        const aiVideo = u.Ai.Video(model);
-
-        console.log("%c Line:47 🍩 modeData", "background:#93c0a4", modeData);
-        await aiVideo.run(
-          {
-            prompt,
-            referenceList: base64.filter(Boolean) as ReferenceList[],
-            mode: modeData.length > 0 ? modeData : mode,
-            duration,
-            aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",
-            resolution,
-            audio,
-          },
-          {
-            projectId,
-            taskClass: "视频生成",
-            describe: "根据提示词生成视频",
-            relatedObjects: JSON.stringify(relatedObjects),
-          },
-        );
-        await aiVideo.save(videoPath);
-        await u.db("o_video").where("id", videoId).update({ state: "生成成功" });
-      } catch (error: any) {
+          taskClass: "视频生成",
+          describe: "根据提示词生成视频",
+          relatedObjects: JSON.stringify(relatedObjects),
+        },
+      )
+      .then(async () => await aiVideo.save(videoPath))
+      .then(async () => await u.db("o_video").where("id", videoId).update({ state: "生成成功" }))
+      .catch(async (error: any) => {
         await u
           .db("o_video")
           .where("id", videoId)
@@ -122,7 +119,6 @@ export default router.post(
             state: "生成失败",
             errorReason: u.error(error).message,
           });
-      }
-    })();
+      });
   },
 );

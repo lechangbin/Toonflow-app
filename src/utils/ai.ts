@@ -152,11 +152,12 @@ async function withTaskRecord<T>(
   const taskRecord = await u.task(projectId, taskClass, model, { describe: describe, content: relatedObjects });
   try {
     const result = await fn(modelName, false, 0);
+
     taskRecord(1);
     return result;
   } catch (e) {
     taskRecord(-1, u.error(e).message);
-    throw e;
+    throw new Error(u.error(e).message);
   }
 }
 
@@ -258,9 +259,11 @@ class AiImage {
       return this;
     };
     if (taskRecord) {
-      return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+      await withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+      return this;
     }
-    return exec(modelName);
+    await exec(modelName);
+    return this;
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);
@@ -294,18 +297,24 @@ class AiVideo {
   }
   async run(input: VideoConfig, taskRecord?: TaskRecord) {
     const modelName = await resolveModelName(this.key);
-    const exec = async (mn: `${string}:${string}`) => {
-      const fn = await getVendorTemplateFn("videoRequest", mn);
-      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
+    try {
+      const exec = async (mn: `${string}:${string}`) => {
+        const fn = await getVendorTemplateFn("videoRequest", mn);
+        await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
 
-      this.result = await fn(input);
-      if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
+        this.result = await fn(input);
+
+        if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
+      };
+      if (taskRecord) {
+        await withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+        return this;
+      }
+      await exec(modelName);
       return this;
-    };
-    if (taskRecord) {
-      return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
+    } catch (e) {
+      throw e;
     }
-    return exec(modelName);
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);
@@ -321,16 +330,19 @@ class AiAudio {
   async run(input: VideoConfig, taskRecord?: TaskRecord) {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
-      const fn = await getVendorTemplateFn("ttsRequest", mn);
-      await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
-      this.result = await fn(input);
-      if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
-      return this;
+      try {
+        const fn = await getVendorTemplateFn("ttsRequest", mn);
+        await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
+        this.result = await fn(input);
+
+        if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
+        return this;
+      } catch (e) {}
     };
     if (taskRecord) {
       return withTaskRecord(this.key, taskRecord.taskClass, taskRecord.describe, taskRecord.relatedObjects, taskRecord.projectId, exec);
     }
-    return exec(modelName);
+    return await exec(modelName);
   }
   async save(path: string) {
     await u.oss.writeFile(path, this.result);
