@@ -81,12 +81,21 @@ export default router.post(
           shouldGenerateImage: item.shouldGenerateImage,
         });
     }
-    const assetsNotAudioIds = assets.filter((i) => i.type != "audio").map((i) => i.id);
-    const assets2Audio = await u.db("o_assetsRole2Audio").whereIn("assetsRoleId", assetsNotAudioIds);
+    const assetsNotAudioIds = assets.filter((i) => i.type == "audio").map((i) => i.id);
+    console.log("%c Line:85 🧀 assetsNotAudioIds", "background:#3f7cff", assetsNotAudioIds);
+
+    const assets2Audio = await u
+      .db("o_assets")
+      .whereIn("o_assets.id", assetsNotAudioIds)
+      .join("o_assetsRole2Audio", "o_assetsRole2Audio.assetsAudioId", "o_assets.assetsId")
+      .select("o_assets.assetsId", "o_assets.id", "o_assetsRole2Audio.assetsAudioId", "o_assetsRole2Audio.assetsRoleId");
+    console.log("%c Line:88 🌶 assets2Audio", "background:#2eafb0", assets2Audio);
+
     const assetsAudioRecord: Record<number, number> = {};
     assets2Audio.forEach((i) => {
-      assetsAudioRecord[i.assetsRoleId!] = i.assetsAudioId!;
+      assetsAudioRecord[i.assetsRoleId!] = i.id!;
     });
+
     const [id, modelData] = model.split(/:(.+)/);
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
@@ -158,6 +167,7 @@ export default router.post(
 ></storyboardItem>`,
           )},
           `;
+    console.log("%c Line:158 🍪 content", "background:#4fff4B", content);
 
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({
