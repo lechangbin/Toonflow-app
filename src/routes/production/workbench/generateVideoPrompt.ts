@@ -82,14 +82,12 @@ export default router.post(
         });
     }
     const assetsNotAudioIds = assets.filter((i) => i.type == "audio").map((i) => i.id);
-    console.log("%c Line:85 🧀 assetsNotAudioIds", "background:#3f7cff", assetsNotAudioIds);
 
     const assets2Audio = await u
       .db("o_assets")
       .whereIn("o_assets.id", assetsNotAudioIds)
       .join("o_assetsRole2Audio", "o_assetsRole2Audio.assetsAudioId", "o_assets.assetsId")
       .select("o_assets.assetsId", "o_assets.id", "o_assetsRole2Audio.assetsAudioId", "o_assetsRole2Audio.assetsRoleId");
-    console.log("%c Line:88 🌶 assets2Audio", "background:#2eafb0", assets2Audio);
 
     const assetsAudioRecord: Record<number, number> = {};
     assets2Audio.forEach((i) => {
@@ -122,16 +120,16 @@ export default router.post(
 
       if (modelLower.includes("wan") && modelLower.includes("2.6")) {
         // wan2.6 系列 => 单图首尾帧模式
-        fileName = "wan2.6单图首帧模式.md";
+        fileName = "wan2.6Single-imageFirstFrameMode.md";
       } else if (/seedance.*2[.\-]0/i.test(modelData)) {
         // seedance 2.0 / 2-0 系列
-        fileName = "seedance2多参模式.md";
+        fileName = "seedance2Multi-parameterMode.md";
       } else if (mode === "startEndRequired" || mode === "endFrameOptional" || mode === "startFrameOptional") {
         // body.mode 为首尾帧相关 => 通用首尾帧模式
-        fileName = "通用首尾帧模式.md";
+        fileName = "universalFirstAndLastFrameMode.md";
       } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
         // 其他 => 通用多参模式
-        fileName = "通用多参模式.md";
+        fileName = "universalMulti-parameterMode.md";
       }
       if (fileName) {
         try {
@@ -153,9 +151,12 @@ export default router.post(
     }
 
     const artStyle = projectData?.artStyle || "无";
+          console.log("%c Line:158 🍢", "background:#ffdd4d",assets);
+
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const content = `
           **模型名称**：${modelData},
+
           **资产信息**（角色、场景、道具、音频):${assets
             .filter((i) => i.filePath)
             .map((i) => `[${i.id},${i.type},${i.name} ${assetsAudioRecord[i.id] ? `audio:${assetsAudioRecord[i.id]}` : ""} ] `)
@@ -167,7 +168,7 @@ export default router.post(
 ></storyboardItem>`,
           )},
           `;
-    console.log("%c Line:158 🍪 content", "background:#4fff4B", content);
+    console.log("%c Line:156 🍬 content", "background:#4fff4B", content);
 
     try {
       const { text } = await u.Ai.Text("universalAi").invoke({
