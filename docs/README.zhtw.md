@@ -602,9 +602,16 @@ Toonflow 基於 Apache-2.0 協定開源發佈，並附有補充商業協議。
       <td>全球首個全模態推理平台。對話、圖像、視頻、音頻——全部統一 API。300+ 模型，OpenAI 兼容。</td>
       <td align="center"><a href="https://www.atlascloud.ai/">官網</a></td>
     </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/hunyuan.webp" alt="騰訊混元3D Logo" width="48"></td>
+      <td align="center"><b>騰訊混元3D</b></td>
+      <td align="center">🌐 世界模型技術支持</td>
+      <td>騰訊混元3D AI創作引擎基於騰訊混元3D生成大模型2.5版本，業界首個一站式3D內容AI創作平台。具備文生、圖生3D、3D動畫生成、紋理生成等功能，支援草圖生3D、3D人物生成，具有低多邊形模型生成優勢。</td>
+      <td align="center"><a href="https://3d.hunyuan.tencent.com/">官網</a></td>
+    </tr>
   </tbody>
 </table>
 
 完整的第三方相依性清單請查閱 `NOTICES.txt`
 
-##### copyright © 淮北艾阿網絡科技有限公司
+##### copyright © 北京艾阿網絡科技有限公司

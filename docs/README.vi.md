@@ -594,9 +594,16 @@ Xin cảm ơn các tổ chức/đơn vị/cá nhân sau đây đã hỗ trợ ch
       <td>Nền tảng suy luận đa phương thức đầu tiên trên thế giới. Chat, hình ảnh, video, âm thanh — tất cả qua một API thống nhất. 300+ mô hình, tương thích OpenAI.</td>
       <td align="center"><a href="https://www.atlascloud.ai/">Website</a></td>
     </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/hunyuan.webp" alt="Tencent Hunyuan3D Logo" width="48"></td>
+      <td align="center"><b>Tencent Hunyuan3D</b></td>
+      <td align="center">🌐 Hỗ trợ kỹ thuật World Model</td>
+      <td>Tencent Hunyuan3D AI Creation Engine dựa trên mô hình Tencent Hunyuan3D 2.5 — nền tảng tạo nội dung 3D AI tích hợp đầu tiên trong ngành. Hỗ trợ text-to-3D, image-to-3D, tạo hoạt hình 3D, tạo kết cấu, sketch-to-3D và tạo nhân vật 3D, với lợi thế trong tạo mô hình low-poly.</td>
+      <td align="center"><a href="https://3d.hunyuan.tencent.com/">Website</a></td>
+    </tr>
   </tbody>
 </table>
 
 Vui lòng xem danh sách đầy đủ các thư viện phụ thuộc của bên thứ ba trong tệp `NOTICES.txt`.
 
-##### Copyright © Huaibei AIA Network Technology Co., Ltd.
+##### Copyright © Beijing AIA Network Technology Co., Ltd.

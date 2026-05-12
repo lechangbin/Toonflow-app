@@ -608,9 +608,16 @@ Thanks to the following organizations/individuals for supporting Toonflow:
       <td>The world's first full-modal inference platform built for developers. Run AI across every modality—chat, reasoning, image, audio, video—through one unified API. 300+ models including DeepSeek, Minimax, Seedance 2.0, Flux. OpenAI-compatible, no provider switching. Explore, test, scale inference seamlessly.</td>
       <td align="center"><a href="https://www.atlascloud.ai/">Website</a></td>
     </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/hunyuan.webp" alt="Tencent Hunyuan3D Logo" width="48"></td>
+      <td align="center"><b>Tencent Hunyuan3D</b></td>
+      <td align="center">🌐 World Model Technical Support</td>
+      <td>Tencent Hunyuan3D AI Creation Engine is based on Tencent Hunyuan3D generative model v2.5 — the industry's first all-in-one 3D content AI creation platform. Supports text-to-3D, image-to-3D, 3D animation generation, texture generation, sketch-to-3D, and 3D character generation, with advantages in low-poly model generation.</td>
+      <td align="center"><a href="https://3d.hunyuan.tencent.com/">Website</a></td>
+    </tr>
   </tbody>
 </table>
 
 For a complete list of third-party dependencies, please refer to `NOTICES.txt`.
 
-##### Copyright © Huaibei AIA Network Technology Co., Ltd.
+##### Copyright © Beijing AIA Network Technology Co., Ltd.

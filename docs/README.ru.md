@@ -610,9 +610,16 @@ Toonflow распространяется как open-source проект под
       <td>Первая в мире мультимодальная платформа вывода. Чат, изображения, видео, аудио — единый API. 300+ моделей, совместимость с OpenAI.</td>
       <td align="center"><a href="https://www.atlascloud.ai/">Сайт</a></td>
     </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/hunyuan.webp" alt="Tencent Hunyuan3D Logo" width="48"></td>
+      <td align="center"><b>Tencent Hunyuan3D</b></td>
+      <td align="center">🌐 Техническая поддержка World Model</td>
+      <td>Tencent Hunyuan3D AI Creation Engine основан на модели Tencent Hunyuan3D v2.5 — первая в отрасли комплексная платформа создания 3D-контента на базе ИИ. Поддерживает текст-в-3D, изображение-в-3D, генерацию 3D-анимации, текстур, эскиз-в-3D и 3D-персонажей, с преимуществами генерации low-poly моделей.</td>
+      <td align="center"><a href="https://3d.hunyuan.tencent.com/">Сайт</a></td>
+    </tr>
   </tbody>
 </table>
 
 Полный список зависимостей третьих сторон находится в файле `NOTICES.txt`.
 
-##### copyright © Huaibei AIA Network Technology Co., Ltd.
+##### copyright © Beijing AIA Network Technology Co., Ltd.
