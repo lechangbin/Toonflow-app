@@ -1,3 +1,5 @@
+﻿<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
+
 <p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
     <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" />
@@ -48,8 +50,46 @@
       <img alt="release" src="https://img.shields.io/github/v/release/HBAI-Ltd/Toonflow-app?style=for-the-badge" />
     </a>
   </p>
+  <p align="center">
+    <a href="https://github.com/HBAI-Ltd/Toonflow-app/network/members">
+      <img src="https://img.shields.io/github/forks/HBAI-Ltd/Toonflow-app?style=for-the-badge&logo=github&color=orange" alt="Forks Badge" />
+    </a>
+    <a href="https://atomgit.com/HBAI-Ltd/Toonflow-app">
+      <img src="https://img.shields.io/badge/AtomGit-G--Star%20No.540-FF6B35?style=for-the-badge&logo=git&logoColor=white" alt="AtomGit G-Star No.540" />
+    </a>
+    <a href="https://discord.gg/HEjKmpNpAZ">
+      <img src="https://img.shields.io/badge/Discord-Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
+    </a>
+  </p>
+  <p align="center">
+    <a href="https://github.com/HBAI-Ltd/Toonflow-app/issues">
+      <img src="https://img.shields.io/github/issues/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=F48D73" alt="Issues" />
+    </a>
+    <a href="https://github.com/HBAI-Ltd/Toonflow-app/graphs/contributors">
+      <img src="https://img.shields.io/github/contributors/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=2088FF" alt="Contributors" />
+    </a>
+    <a href="https://github.com/HBAI-Ltd/Toonflow-app/commits">
+      <img src="https://img.shields.io/github/last-commit/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=blueviolet" alt="Last Commit" />
+    </a>
+  </p>
+  <p align="center">
+    <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/TypeScript/typescript2.svg" alt="TypeScript" />&nbsp;
+    <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/NodeJS/nodejs2.svg" alt="Node.js" />&nbsp;
+    <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Docker/docker2.svg" alt="Docker" />&nbsp;
+    <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Electron/electron2.svg" alt="Electron" />
+  </p>
+  <p align="center">
+    <img src="https://mobaicons.com/icons/typescript,nodejs,electron,docker,socket?perline=5" alt="Tech Stack Icons" />
+  </p>
+  <p align="center">
+    <img src="https://widgetbite.com/stats/HBAI-Ltd" alt="Visitors" />
+  </p>
   
   > 🚀 **一站式短劇工程**：從文字到角色，從分鏡到影片，0 門檻全流程 AI 化，創作效率提升 10 倍+！
+</div>
+
+<div align="center">
+  <img src="./g-star.png" alt="AtomGit G-Star 認證證書" height="300"/>
 </div>
 
 ---
@@ -113,6 +153,61 @@ Toonflow 是一款 AI 短劇與漫畫創作工具，能夠利用 AI 技術將小
 📱 使用手機掃描 QR Code 觀看
 
 <img src="./videoQR.png" alt="掃描 QR Code 觀看" width="150"/>
+
+---
+
+# 📸 演示截圖與影片
+
+以下截圖及影片來自使用 Toonflow 製作的一段 AI 短劇 Demo，全程約 2 小時完成，涵蓋劇本生成、分鏡製作及剪輯環節。
+
+<table>
+<tr>
+<td width="50%"><a href="../screenshot/1.png"><img src="../screenshot/1.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/2.png"><img src="../screenshot/2.png" width="100%"/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="../screenshot/3.png"><img src="../screenshot/3.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/4.png"><img src="../screenshot/4.png" width="100%"/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="../screenshot/5.png"><img src="../screenshot/5.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/6.png"><img src="../screenshot/6.png" width="100%"/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="../screenshot/7.png"><img src="../screenshot/7.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/8.png"><img src="../screenshot/8.png" width="100%"/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="../screenshot/9.png"><img src="../screenshot/9.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/10.png"><img src="../screenshot/10.png" width="100%"/></a></td>
+</tr>
+</table>
+
+## Demo 資訊
+
+| 項目 | 詳情 |
+|------|------|
+| 製作週期 | 約 2 小時 |
+| 影片模型 | Seedance 2.0 |
+| 圖像模型 | GPT Image 2 |
+| 語言模型 | Claude Opus 4.6 |
+| 時長 | 約 2 分鐘（原始素材 3 分鐘，剪除約 1 分鐘）|
+
+## 成本明細
+
+| 項目 | 費用 |
+|------|------|
+| 圖像（270 張 × ¥0.04）| ¥10.8 |
+| 影片（45 段 × ¥3.5）| ¥157.5 |
+| 合計 | **約 ¥168** |
+
+> 📌 Demo 原始解析度為 1080×1882，發布版本已壓縮至 480p。如涉及版權問題，請通過 [ltlctools@outlook.com](mailto:ltlctools@outlook.com) 聯繫我們處理。
+
+## Demo 影片
+
+https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
+
+> 若影片無法播放，請[點此下載](https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9)。
 
 ---
 
@@ -557,9 +652,12 @@ Toonflow 基於 Apache-2.0 協定開源發佈，並附有補充商業協議。
 
 # ⭐️ Star 歷史
 
+[![Star History Rank](https://api.star-history.com/badge?repo=HBAI-Ltd/Toonflow-app)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app)
+
 [![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=timeline&legend=top-left)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app&type=timeline&legend=top-left)
 
 ---
+
 
 # 🙏 致謝
 
@@ -615,3 +713,5 @@ Toonflow 基於 Apache-2.0 協定開源發佈，並附有補充商業協議。
 完整的第三方相依性清單請查閱 `NOTICES.txt`
 
 ##### copyright © 北京艾阿網絡科技有限公司
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=100&section=footer" width="100%"/>

@@ -1,3 +1,5 @@
+﻿<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
+
 <p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
     <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" />
@@ -48,9 +50,47 @@
       <img alt="release" src="https://img.shields.io/github/v/release/HBAI-Ltd/Toonflow-app?style=for-the-badge" />
     </a>
   </p>
+  <p align="center">
+    <a href="https://github.com/HBAI-Ltd/Toonflow-app/network/members">
+      <img src="https://img.shields.io/github/forks/HBAI-Ltd/Toonflow-app?style=for-the-badge&logo=github&color=orange" alt="Forks Badge" />
+    </a>
+    <a href="https://atomgit.com/HBAI-Ltd/Toonflow-app">
+      <img src="https://img.shields.io/badge/AtomGit-G--Star%20No.540-FF6B35?style=for-the-badge&logo=git&logoColor=white" alt="AtomGit G-Star No.540" />
+    </a>
+    <a href="https://discord.gg/HEjKmpNpAZ">
+      <img src="https://img.shields.io/badge/Discord-Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
+    </a>
+  </p>
+  <p align="center">
+    <a href="https://github.com/HBAI-Ltd/Toonflow-app/issues">
+      <img src="https://img.shields.io/github/issues/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=F48D73" alt="Issues" />
+    </a>
+    <a href="https://github.com/HBAI-Ltd/Toonflow-app/graphs/contributors">
+      <img src="https://img.shields.io/github/contributors/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=2088FF" alt="Contributors" />
+    </a>
+    <a href="https://github.com/HBAI-Ltd/Toonflow-app/commits">
+      <img src="https://img.shields.io/github/last-commit/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=blueviolet" alt="Last Commit" />
+    </a>
+  </p>
+  <p align="center">
+    <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/TypeScript/typescript2.svg" alt="TypeScript" />&nbsp;
+    <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/NodeJS/nodejs2.svg" alt="Node.js" />&nbsp;
+    <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Docker/docker2.svg" alt="Docker" />&nbsp;
+    <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Electron/electron2.svg" alt="Electron" />
+  </p>
+  <p align="center">
+    <img src="https://mobaicons.com/icons/typescript,nodejs,electron,docker,socket?perline=5" alt="Tech Stack Icons" />
+  </p>
+  <p align="center">
+    <img src="https://widgetbite.com/stats/HBAI-Ltd" alt="Visitors" />
+  </p>
   
 > 🚀 **All-in-One Short Drama Studio**: From text to characters, from storyboard to final video.  
 > Fully AI-powered workflow with zero barrier to entry — boosting your creative efficiency by 10x or more!
+</div>
+
+<div align="center">
+  <img src="./g-star.png" alt="AtomGit G-Star Certificate" height="300"/>
 </div>
 
 ---
@@ -116,6 +156,61 @@ With Toonflow, you can complete the entire workflow from text to final video wit
 📱 Scan the QR code to watch on mobile
 
 <img src="./videoQR.png" alt="Scan QR code to watch on mobile" width="150"/>
+
+---
+
+# 📸 Screenshots & Demo Video
+
+The screenshots and video below are from an AI short drama Demo created with Toonflow, completed in approximately 2 hours, covering script generation, storyboard production, and editing.
+
+<table>
+<tr>
+<td width="50%"><a href="../screenshot/1.png"><img src="../screenshot/1.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/2.png"><img src="../screenshot/2.png" width="100%"/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="../screenshot/3.png"><img src="../screenshot/3.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/4.png"><img src="../screenshot/4.png" width="100%"/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="../screenshot/5.png"><img src="../screenshot/5.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/6.png"><img src="../screenshot/6.png" width="100%"/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="../screenshot/7.png"><img src="../screenshot/7.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/8.png"><img src="../screenshot/8.png" width="100%"/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="../screenshot/9.png"><img src="../screenshot/9.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/10.png"><img src="../screenshot/10.png" width="100%"/></a></td>
+</tr>
+</table>
+
+## Demo Information
+
+| Item | Details |
+|------|---------|
+| Production Period | ~2 hours |
+| Video Model | Seedance 2.0 |
+| Image Model | GPT Image 2 |
+| Language Model | Claude Opus 4.6 |
+| Runtime | ~2 min (raw footage 3 min, ~1 min removed) |
+
+## Cost Breakdown
+
+| Item | Cost |
+|------|------|
+| Images (270 pics × ¥0.04) | ¥10.8 |
+| Videos (45 clips × ¥3.5) | ¥157.5 |
+| Total | **~¥168** |
+
+> 📌 Demo original resolution is 1080×1882, published version compressed to 480p. For copyright concerns, please contact us at [ltlctools@outlook.com](mailto:ltlctools@outlook.com).
+
+## Demo Video
+
+https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
+
+> If the video doesn't play, [click here to download](https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9).
 
 ---
 
@@ -563,9 +658,12 @@ For the full agreement, please refer to the [LICENSE](./LICENSE) file.
 
 # ⭐️ Star History
 
+[![Star History Rank](https://api.star-history.com/badge?repo=HBAI-Ltd/Toonflow-app)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app)
+
 [![Star History Chart](https://api.star-history.com/svg?repos=HBAI-Ltd/Toonflow-app&type=timeline&legend=top-left)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app&type=timeline&legend=top-left)
 
 ---
+
 
 # 🙏 Acknowledgements
 
@@ -621,3 +719,5 @@ Thanks to the following organizations/individuals for supporting Toonflow:
 For a complete list of third-party dependencies, please refer to `NOTICES.txt`.
 
 ##### Copyright © Beijing AIA Network Technology Co., Ltd.
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=100&section=footer" width="100%"/>
