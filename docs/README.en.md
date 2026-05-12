@@ -1,4 +1,4 @@
-﻿<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
 
 <p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
@@ -10,7 +10,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./docs/atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
   </a>
 </p>
 
@@ -26,7 +26,7 @@
 
 <div align="center">
 
-<img src="./docs/logo.png" alt="Toonflow Logo" height="120"/>
+<img src="./logo.png" alt="Toonflow Logo" height="120"/>
 
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=40&duration=3000&pause=1000&color=000000&center=true&vCenter=true&width=600&lines=Toonflow;AI+Short+Drama+Factory;Just+a+click%2C+novels+turn+into+episodes+in+seconds!)](https://git.io/typing-svg)
 
@@ -80,8 +80,8 @@
 </div>
 
 <div align="center">
-  <a href="./docs/g-star.png" target="_blank">
-    <img src="./docs/g-star.png" alt="AtomGit G-Star Certificate" width="100%"/>
+  <a href="./g-star.png" target="_blank">
+    <img src="./g-star.png" alt="AtomGit G-Star Certificate" width="100%"/>
   </a>
 </div>
 
@@ -148,14 +148,14 @@ Toonflow is an AI workstation designed for short drama production, building a co
 ## 📺 Video Tutorial
 
 https://www.bilibili.com/video/BV1oXD7BqEqJ
-[![Toonflow 12-minute Quick Start AI Video](./docs/videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+[![Toonflow 12-minute Quick Start AI Video](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 **Toonflow 12-minute Quick Start AI Video**
 👉 [Click to Watch](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 📱 Scan with WeChat to watch
 
-<img src="./docs/videoQR.png" alt="Scan with WeChat" width="150"/>
+<img src="./videoQR.png" alt="Scan with WeChat" width="150"/>
 
 ---
 
@@ -166,24 +166,24 @@ The following screenshots and video are from a short AI drama demo made with Too
 <div align="center">
 <table>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/1.png" target="_blank"><img src="./docs/screenshot/1.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/2.png" target="_blank"><img src="./docs/screenshot/2.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/1.png" target="_blank"><img src="./screenshot/1.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/2.png" target="_blank"><img src="./screenshot/2.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/3.png" target="_blank"><img src="./docs/screenshot/3.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/4.png" target="_blank"><img src="./docs/screenshot/4.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/3.png" target="_blank"><img src="./screenshot/3.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/4.png" target="_blank"><img src="./screenshot/4.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/5.png" target="_blank"><img src="./docs/screenshot/5.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/6.png" target="_blank"><img src="./docs/screenshot/6.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/5.png" target="_blank"><img src="./screenshot/5.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/6.png" target="_blank"><img src="./screenshot/6.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/7.png" target="_blank"><img src="./docs/screenshot/7.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/8.png" target="_blank"><img src="./docs/screenshot/8.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/7.png" target="_blank"><img src="./screenshot/7.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/8.png" target="_blank"><img src="./screenshot/8.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/9.png" target="_blank"><img src="./docs/screenshot/9.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/10.png" target="_blank"><img src="./docs/screenshot/10.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/9.png" target="_blank"><img src="./screenshot/9.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/10.png" target="_blank"><img src="./screenshot/10.png" width="100%"/></a></td>
   </tr>
 </table>
 </div>
@@ -194,7 +194,7 @@ The following screenshots and video are from a short AI drama demo made with Too
 
 https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
 
-If the video cannot play, please [click to download](./docs/screenshot/demo.mp4)
+If the video cannot play, please [click to download](./screenshot/demo.mp4)
 
 </div>
 
@@ -613,7 +613,7 @@ After building the frontend, copy the `dist` directory contents into the `data/w
 
 Helper bot:
 
-<img src="./docs/QR.png" alt="Toonflow QR" height="400"/>
+<img src="./QR.png" alt="Toonflow QR" height="400"/>
 
 You can also click the icon to join Discord:
 
@@ -701,21 +701,21 @@ We also thank the following organizations/units/individuals for their support:
   </thead>
   <tbody>
     <tr>
-      <td align="center"><img src="./docs/sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
       <td align="center"><b>Sophnet</b></td>
       <td align="center">💻 Computing Sponsorship</td>
       <td>Committed to building a faster, more stable, and more cost-effective one-stop model inference API service platform</td>
       <td align="center"><a href="https://www.sophnet.com/">Website</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./docs/sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
       <td align="center">💻 Computing Sponsorship</td>
       <td>The world's first full-modality reasoning platform. Dialogue, image, video, audio — all unified API. 300+ models, OpenAI compatible.</td>
       <td align="center"><a href="https://www.atlascloud.ai/">Website</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./docs/sponsored/hunyuan.webp" alt="Tencent Hunyuan 3D Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/hunyuan.webp" alt="Tencent Hunyuan 3D Logo" width="48"></td>
       <td align="center"><b>Tencent Hunyuan 3D</b></td>
       <td align="center">🌐 World Model Technical Support</td>
       <td>Tencent Hunyuan 3D AI creation engine based on version 2.5 of the Hunyuan 3D generation large model, the industry's first one-stop 3D content AI creation platform. Features text-to-3D, image-to-3D, 3D animation generation, texture generation, supports sketch-to-3D, 3D character generation, with advantages in low-poly model generation.</td>

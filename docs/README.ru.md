@@ -1,4 +1,4 @@
-﻿<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
 
 <p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
@@ -10,7 +10,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./docs/atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
   </a>
 </p>
 
@@ -26,7 +26,7 @@
 
 <div align="center">
 
-<img src="./docs/logo.png" alt="Toonflow Logo" height="120"/>
+<img src="./logo.png" alt="Toonflow Logo" height="120"/>
 
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=40&duration=3000&pause=1000&color=000000&center=true&vCenter=true&width=600&lines=Toonflow;AI-%D1%84%D0%B0%D0%B1%D1%80%D0%B8%D0%BA%D0%B0+%D1%81%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D0%BE%D0%B2;%D0%9F%D1%80%D0%BE%D1%81%D1%82%D0%BE+%D0%BF%D0%BE%D1%88%D0%B5%D0%B2%D0%B5%D0%BB%D0%B8+%D0%BF%D0%B0%D0%BB%D1%8C%D1%86%D0%B5%D0%BC%2C+%D1%80%D0%BE%D0%BC%D0%B0%D0%BD+%D0%BC%D0%B3%D0%BD%D0%BE%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE+%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%81%D1%8F+%D1%81%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D0%BE%D0%BC!)](https://git.io/typing-svg)
 
@@ -80,8 +80,8 @@
 </div>
 
 <div align="center">
-  <a href="./docs/g-star.png" target="_blank">
-    <img src="./docs/g-star.png" alt="AtomGit G-Star 认证证书" width="100%"/>
+  <a href="./g-star.png" target="_blank">
+    <img src="./g-star.png" alt="AtomGit G-Star 认证证书" width="100%"/>
   </a>
 </div>
 
@@ -148,14 +148,14 @@ Toonflow — это AI-рабочее место для производства
 ## 📺 Видеоурок
 
 https://www.bilibili.com/video/BV1oXD7BqEqJ
-[![Toonflow 12 分钟快速上手 AI 视频](./docs/videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+[![Toonflow 12 分钟快速上手 AI 视频](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 **Toonflow: быстрый старт с AI-видео за 12 минут**
 👉 [Нажмите для просмотра](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 📱 Отсканируйте QR-код в WeChat для просмотра
 
-<img src="./docs/videoQR.png" alt="微信扫码观看" width="150"/>
+<img src="./videoQR.png" alt="微信扫码观看" width="150"/>
 
 ---
 
@@ -166,24 +166,24 @@ https://www.bilibili.com/video/BV1oXD7BqEqJ
 <div align="center">
 <table>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/1.png" target="_blank"><img src="./docs/screenshot/1.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/2.png" target="_blank"><img src="./docs/screenshot/2.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/1.png" target="_blank"><img src="./screenshot/1.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/2.png" target="_blank"><img src="./screenshot/2.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/3.png" target="_blank"><img src="./docs/screenshot/3.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/4.png" target="_blank"><img src="./docs/screenshot/4.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/3.png" target="_blank"><img src="./screenshot/3.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/4.png" target="_blank"><img src="./screenshot/4.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/5.png" target="_blank"><img src="./docs/screenshot/5.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/6.png" target="_blank"><img src="./docs/screenshot/6.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/5.png" target="_blank"><img src="./screenshot/5.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/6.png" target="_blank"><img src="./screenshot/6.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/7.png" target="_blank"><img src="./docs/screenshot/7.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/8.png" target="_blank"><img src="./docs/screenshot/8.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/7.png" target="_blank"><img src="./screenshot/7.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/8.png" target="_blank"><img src="./screenshot/8.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/9.png" target="_blank"><img src="./docs/screenshot/9.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/10.png" target="_blank"><img src="./docs/screenshot/10.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/9.png" target="_blank"><img src="./screenshot/9.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/10.png" target="_blank"><img src="./screenshot/10.png" width="100%"/></a></td>
   </tr>
 </table>
 </div>
@@ -194,7 +194,7 @@ https://www.bilibili.com/video/BV1oXD7BqEqJ
 
 https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
 
-Если видео не воспроизводится, [скачайте его](./docs/screenshot/demo.mp4)
+Если видео не воспроизводится, [скачайте его](./screenshot/demo.mp4)
 
 </div>
 
@@ -613,7 +613,7 @@ pm2 monit             # Панель мониторинга
 
 Помощник для добавления в группу:
 
-<img src="./docs/QR.png" alt="Toonflow QR" height="400"/>
+<img src="./QR.png" alt="Toonflow QR" height="400"/>
 
 Вы также можете присоединиться к Discord, нажав на иконку:
 
@@ -701,21 +701,21 @@ Toonflow распространяется с открытым исходным �
   </thead>
   <tbody>
     <tr>
-      <td align="center"><img src="./docs/sponsored/sophnet.png" alt="SuanNeng Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="SuanNeng Cloud Logo" width="48"></td>
       <td align="center"><b>SuanNeng Cloud</b></td>
       <td align="center">💻 Спонсорство вычислительных мощностей</td>
       <td>Стремится создать более быструю, стабильную и экономичную универсальную платформу API-сервисов для инференса моделей.</td>
       <td align="center"><a href="https://www.sophnet.com/">Веб-сайт</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./docs/sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
       <td align="center">💻 Спонсорство вычислительных мощностей</td>
       <td>Первая в мире универсальная мультимодальная платформа инференса. Диалог, изображения, видео, аудио — всё через единый API. Более 300 моделей, совместимость с OpenAI.</td>
       <td align="center"><a href="https://www.atlascloud.ai/">Веб-сайт</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./docs/sponsored/hunyuan.webp" alt="Tencent Hunyuan 3D Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/hunyuan.webp" alt="Tencent Hunyuan 3D Logo" width="48"></td>
       <td align="center"><b>Tencent Hunyuan 3D</b></td>
       <td align="center">🌐 Техническая поддержка мировых моделей</td>
       <td>AI-движок создания 3D-контента на основе большой модели генерации 3D Tencent Hunyuan версии 2.5 — первая в отрасли универсальная AI-платформа для создания 3D. Поддерживает генерацию 3D из текста и изображений, 3D-анимацию, генерацию текстур и многое другое, включая генерацию 3D из набросков, создание 3D-персонажей и преимущества в создании low-poly моделей.</td>

@@ -1,4 +1,4 @@
-﻿<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
 
 <p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
@@ -10,7 +10,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./docs/atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
   </a>
 </p>
 
@@ -26,7 +26,7 @@
 
 <div align="center">
 
-<img src="./docs/logo.png" alt="Toonflow Logo" height="120"/>
+<img src="./logo.png" alt="Toonflow Logo" height="120"/>
 
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=40&duration=3000&pause=1000&color=000000&center=true&vCenter=true&width=600&lines=Toonflow;Nhà+máy+phim+ngắn+AI;Nhấc+ngón+tay%2C+tiểu+thuyết+thành+phim+trong+giây+lát!)](https://git.io/typing-svg)
 
@@ -80,8 +80,8 @@
 </div>
 
 <div align="center">
-  <a href="./docs/g-star.png" target="_blank">
-    <img src="./docs/g-star.png" alt="Chứng nhận AtomGit G-Star" width="100%"/>
+  <a href="./g-star.png" target="_blank">
+    <img src="./g-star.png" alt="Chứng nhận AtomGit G-Star" width="100%"/>
   </a>
 </div>
 
@@ -148,14 +148,14 @@ Toonflow là một bàn làm việc AI dành cho sản xuất phim ngắn, xoay 
 ## 📺 Hướng dẫn bằng video
 
 https://www.bilibili.com/video/BV1oXD7BqEqJ
-[![Toonflow 12 phút bắt đầu nhanh với AI Video](./docs/videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+[![Toonflow 12 phút bắt đầu nhanh với AI Video](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 **Toonflow 12 phút bắt đầu nhanh với AI Video**
 👉 [Nhấp để xem](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 📱 Quét mã QR bằng WeChat để xem
 
-<img src="./docs/videoQR.png" alt="Quét mã QR WeChat để xem" width="150"/>
+<img src="./videoQR.png" alt="Quét mã QR WeChat để xem" width="150"/>
 
 ---
 
@@ -166,24 +166,24 @@ Các ảnh chụp màn hình và video dưới đây đến từ một bản dem
 <div align="center">
 <table>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/1.png" target="_blank"><img src="./docs/screenshot/1.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/2.png" target="_blank"><img src="./docs/screenshot/2.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/1.png" target="_blank"><img src="./screenshot/1.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/2.png" target="_blank"><img src="./screenshot/2.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/3.png" target="_blank"><img src="./docs/screenshot/3.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/4.png" target="_blank"><img src="./docs/screenshot/4.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/3.png" target="_blank"><img src="./screenshot/3.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/4.png" target="_blank"><img src="./screenshot/4.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/5.png" target="_blank"><img src="./docs/screenshot/5.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/6.png" target="_blank"><img src="./docs/screenshot/6.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/5.png" target="_blank"><img src="./screenshot/5.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/6.png" target="_blank"><img src="./screenshot/6.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/7.png" target="_blank"><img src="./docs/screenshot/7.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/8.png" target="_blank"><img src="./docs/screenshot/8.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/7.png" target="_blank"><img src="./screenshot/7.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/8.png" target="_blank"><img src="./screenshot/8.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/9.png" target="_blank"><img src="./docs/screenshot/9.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/10.png" target="_blank"><img src="./docs/screenshot/10.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/9.png" target="_blank"><img src="./screenshot/9.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/10.png" target="_blank"><img src="./screenshot/10.png" width="100%"/></a></td>
   </tr>
 </table>
 </div>
@@ -194,7 +194,7 @@ Các ảnh chụp màn hình và video dưới đây đến từ một bản dem
 
 https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
 
-Nếu không phát được, vui lòng [nhấp để tải video](./docs/screenshot/demo.mp4)
+Nếu không phát được, vui lòng [nhấp để tải video](./screenshot/demo.mp4)
 
 </div>
 
@@ -613,7 +613,7 @@ Sau khi xây dựng frontend, sao chép nội dung thư mục `dist` vào thư m
 
 Trợ lý thêm nhóm:
 
-<img src="./docs/QR.png" alt="Toonflow QR" height="400"/>
+<img src="./QR.png" alt="Toonflow QR" height="400"/>
 
 Cũng có thể nhấp vào biểu tượng để tham gia Discord:
 
@@ -701,21 +701,21 @@ Cảm ơn các tổ chức/đơn vị/cá nhân sau đã cung cấp hỗ trợ c
   </thead>
   <tbody>
     <tr>
-      <td align="center"><img src="./docs/sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
       <td align="center"><b>Sophnet</b></td>
       <td align="center">💻 Tài trợ sức mạnh tính toán</td>
       <td>Cam kết tạo nền tảng dịch vụ API suy luận mô hình tất cả trong một nhanh hơn, ổn định hơn, tiết kiệm hơn</td>
       <td align="center"><a href="https://www.sophnet.com/">Trang web</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./docs/sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
       <td align="center">💻 Tài trợ sức mạnh tính toán</td>
       <td>Nền tảng suy luận đa phương thức toàn diện đầu tiên trên thế giới. Hội thoại, hình ảnh, video, âm thanh - tất cả API thống nhất. Hơn 300 mô hình, tương thích OpenAI.</td>
       <td align="center"><a href="https://www.atlascloud.ai/">Trang web</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./docs/sponsored/hunyuan.webp" alt="Tencent Hunyuan 3D Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/hunyuan.webp" alt="Tencent Hunyuan 3D Logo" width="48"></td>
       <td align="center"><b>Tencent Hunyuan 3D</b></td>
       <td align="center">🌐 Hỗ trợ kỹ thuật mô hình thế giới</td>
       <td>Tencent Hunyuan 3D AI Creation Engine dựa trên phiên bản 2.5 của mô hình tạo 3D lớn Hunyuan, nền tảng tạo nội dung 3D AI tất cả trong một đầu tiên trong ngành. Có các chức năng như tạo 3D từ văn bản, hình ảnh, tạo hoạt ảnh 3D, tạo kết cấu, hỗ trợ tạo 3D từ phác thảo, tạo nhân vật 3D, có lợi thế trong việc tạo mô hình đa giác thấp.</td>

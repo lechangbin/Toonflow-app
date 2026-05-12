@@ -1,4 +1,4 @@
-﻿<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
 
 <p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
@@ -10,7 +10,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./docs/atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
+    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
   </a>
 </p>
 
@@ -26,7 +26,7 @@
 
 <div align="center">
 
-<img src="./docs/logo.png" alt="Toonflow Logo" height="120"/>
+<img src="./logo.png" alt="Toonflow Logo" height="120"/>
 
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=40&duration=3000&pause=1000&color=000000&center=true&vCenter=true&width=600&lines=Toonflow;AI%E7%9F%AD%E5%89%A7%E5%B7%A5%E5%8E%82;%E5%8A%A8%E5%8A%A8%E6%89%8B%E6%8C%87%EF%BC%8C%E5%B0%8F%E8%AF%B4%E7%A7%92%E5%8F%98%E5%89%A7%E9%9B%86%EF%BC%81)](https://git.io/typing-svg)
 
@@ -80,8 +80,8 @@
 </div>
 
 <div align="center">
-  <a href="./docs/g-star.png" target="_blank">
-    <img src="./docs/g-star.png" alt="AtomGit G-Star 認證證書" width="100%"/>
+  <a href="./g-star.png" target="_blank">
+    <img src="./g-star.png" alt="AtomGit G-Star 認證證書" width="100%"/>
   </a>
 </div>
 
@@ -148,14 +148,14 @@ Toonflow 是面向短劇生產的 AI 工作檯，圍繞「策劃 → 編劇 → 
 ## 📺 影片教學
 
 https://www.bilibili.com/video/BV1oXD7BqEqJ
-[![Toonflow 12 分鐘快速上手 AI 影片](./docs/videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+[![Toonflow 12 分鐘快速上手 AI 影片](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 **Toonflow 12 分鐘快速上手 AI 影片**
 👉 [點擊觀看](https://www.bilibili.com/video/BV1oXD7BqEqJ)
 
 📱 手機微信掃碼觀看
 
-<img src="./docs/videoQR.png" alt="微信掃碼觀看" width="150"/>
+<img src="./videoQR.png" alt="微信掃碼觀看" width="150"/>
 
 ---
 
@@ -166,24 +166,24 @@ https://www.bilibili.com/video/BV1oXD7BqEqJ
 <div align="center">
 <table>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/1.png" target="_blank"><img src="./docs/screenshot/1.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/2.png" target="_blank"><img src="./docs/screenshot/2.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/1.png" target="_blank"><img src="./screenshot/1.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/2.png" target="_blank"><img src="./screenshot/2.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/3.png" target="_blank"><img src="./docs/screenshot/3.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/4.png" target="_blank"><img src="./docs/screenshot/4.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/3.png" target="_blank"><img src="./screenshot/3.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/4.png" target="_blank"><img src="./screenshot/4.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/5.png" target="_blank"><img src="./docs/screenshot/5.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/6.png" target="_blank"><img src="./docs/screenshot/6.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/5.png" target="_blank"><img src="./screenshot/5.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/6.png" target="_blank"><img src="./screenshot/6.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/7.png" target="_blank"><img src="./docs/screenshot/7.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/8.png" target="_blank"><img src="./docs/screenshot/8.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/7.png" target="_blank"><img src="./screenshot/7.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/8.png" target="_blank"><img src="./screenshot/8.png" width="100%"/></a></td>
   </tr>
   <tr>
-    <td width="50%"><a href="./docs/screenshot/9.png" target="_blank"><img src="./docs/screenshot/9.png" width="100%"/></a></td>
-    <td width="50%"><a href="./docs/screenshot/10.png" target="_blank"><img src="./docs/screenshot/10.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/9.png" target="_blank"><img src="./screenshot/9.png" width="100%"/></a></td>
+    <td width="50%"><a href="./screenshot/10.png" target="_blank"><img src="./screenshot/10.png" width="100%"/></a></td>
   </tr>
 </table>
 </div>
@@ -194,7 +194,7 @@ https://www.bilibili.com/video/BV1oXD7BqEqJ
 
 https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
 
-如無法播放，請[點擊下載影片](./docs/screenshot/demo.mp4)
+如無法播放，請[點擊下載影片](./screenshot/demo.mp4)
 
 </div>
 
@@ -613,7 +613,7 @@ pm2 monit             # 監控面板
 
 拉群小助手:
 
-<img src="./docs/QR.png" alt="Toonflow QR" height="400"/>
+<img src="./QR.png" alt="Toonflow QR" height="400"/>
 
 也可以點擊圖示加入 Discord：
 
@@ -701,21 +701,21 @@ Toonflow 基於 Apache-2.0 協議開源發布，並附有補充商業協議。
   </thead>
   <tbody>
     <tr>
-      <td align="center"><img src="./docs/sponsored/sophnet.png" alt="算能雲 Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="算能雲 Logo" width="48"></td>
       <td align="center"><b>算能雲</b></td>
       <td align="center">💻 算力贊助</td>
       <td>致力於打造更快、更穩、更省的一站式模型推理API服務平台</td>
       <td align="center"><a href="https://www.sophnet.com/">官網</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./docs/sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
       <td align="center">💻 算力贊助</td>
       <td>全球首個全模態推理平台。對話、圖像、影片、音訊——全部統一 API。300+ 模型，OpenAI 相容。</td>
       <td align="center"><a href="https://www.atlascloud.ai/">官網</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./docs/sponsored/hunyuan.webp" alt="騰訊混元3D Logo" width="48"></td>
+      <td align="center"><img src="./sponsored/hunyuan.webp" alt="騰訊混元3D Logo" width="48"></td>
       <td align="center"><b>騰訊混元3D</b></td>
       <td align="center">🌐 世界模型技術支援</td>
       <td>騰訊混元3D AI創作引擎基於騰訊混元3D生成大模型2.5版本，業界首個一站式3D內容AI創作平台。具備文生、圖生3D、3D動畫生成、紋理生成等功能，支援草圖生3D、3D人物生成，有低多邊形模型生成優勢。</td>
