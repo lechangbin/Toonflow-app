@@ -10,7 +10,7 @@
   </a>
   &nbsp;|&nbsp;
   <a href="https://gitcode.com/HBAI-Ltd/Toonflow-app">
-    <img src="./atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
+    <img src="./docs/atomgitLogo.svg" alt="Atomgit" style="height:20px"/>
   </a>
 </p>
 
@@ -26,25 +26,16 @@
 
 <div align="center">
 
-<img src="./logo.png" alt="Toonflow Logo" height="120"/>
+<img src="./docs/logo.png" alt="Toonflow Logo" height="120"/>
 
-# Toonflow
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=40&duration=3000&pause=1000&color=000000&center=true&vCenter=true&width=600&lines=Toonflow;Nhà+máy+phim+ngắn+AI;Nhấc+ngón+tay%2C+tiểu+thuyết+thành+phim+trong+giây+lát!)](https://git.io/typing-svg)
 
-  <p align="center">
-    <b>
-      Nhà máy Phim ngắn AI
-      <br />
-      Chỉ với vài cú click, tiểu thuyết lập tức biến thành phim!
-      <br />
-      Kịch bản AI × Hình ảnh AI × Tạo siêu tốc 🔥
-    </b>
-  </p>
   <p align="center">
     <a href="https://github.com/HBAI-Ltd/Toonflow-app/stargazers">
-      <img src="https://img.shields.io/github/stars/HBAI-Ltd/Toonflow-app?style=for-the-badge&logo=github" alt="Stars Badge" />
+      <img src="https://img.shields.io/github/stars/HBAI-Ltd/Toonflow-app?style=for-the-badge&logo=github" alt="Huy hiệu Sao" />
     </a>
     <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">
-      <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge" alt="Apache-2.0 License Badge" />
+      <img src="https://img.shields.io/badge/Giấy phép-Apache%202.0-blue.svg?style=for-the-badge" alt="Huy hiệu Giấy phép Apache-2.0" />
     </a>
     <a href="https://github.com/HBAI-Ltd/Toonflow-app/releases">
       <img alt="release" src="https://img.shields.io/github/v/release/HBAI-Ltd/Toonflow-app?style=for-the-badge" />
@@ -52,24 +43,24 @@
   </p>
   <p align="center">
     <a href="https://github.com/HBAI-Ltd/Toonflow-app/network/members">
-      <img src="https://img.shields.io/github/forks/HBAI-Ltd/Toonflow-app?style=for-the-badge&logo=github&color=orange" alt="Forks Badge" />
+      <img src="https://img.shields.io/github/forks/HBAI-Ltd/Toonflow-app?style=for-the-badge&logo=github&color=orange" alt="Huy hiệu Fork" />
     </a>
     <a href="https://atomgit.com/HBAI-Ltd/Toonflow-app">
-      <img src="https://img.shields.io/badge/AtomGit-G--Star%20No.540-FF6B35?style=for-the-badge&logo=git&logoColor=white" alt="AtomGit G-Star No.540" />
+      <img src="https://img.shields.io/badge/AtomGit-G--Star%20No.540-FF6B35?style=for-the-badge&logo=git&logoColor=white" alt="AtomGit G-Star Số 540" />
     </a>
     <a href="https://discord.gg/HEjKmpNpAZ">
-      <img src="https://img.shields.io/badge/Discord-Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
+      <img src="https://img.shields.io/badge/Discord-Cộng+đồng-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
     </a>
   </p>
   <p align="center">
     <a href="https://github.com/HBAI-Ltd/Toonflow-app/issues">
-      <img src="https://img.shields.io/github/issues/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=F48D73" alt="Issues" />
+      <img src="https://img.shields.io/github/issues/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=F48D73" alt="Vấn đề" />
     </a>
     <a href="https://github.com/HBAI-Ltd/Toonflow-app/graphs/contributors">
-      <img src="https://img.shields.io/github/contributors/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=2088FF" alt="Contributors" />
+      <img src="https://img.shields.io/github/contributors/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=2088FF" alt="Người đóng góp" />
     </a>
     <a href="https://github.com/HBAI-Ltd/Toonflow-app/commits">
-      <img src="https://img.shields.io/github/last-commit/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=blueviolet" alt="Last Commit" />
+      <img src="https://img.shields.io/github/last-commit/HBAI-Ltd/Toonflow-app?style=for-the-badge&color=blueviolet" alt="Cam kết cuối" />
     </a>
   </p>
   <p align="center">
@@ -79,128 +70,154 @@
     <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Electron/electron2.svg" alt="Electron" />
   </p>
   <p align="center">
-    <img src="https://mobaicons.com/icons/typescript,nodejs,electron,docker,socket?perline=5" alt="Tech Stack Icons" />
+    <img src="https://mobaicons.com/icons/typescript,nodejs,electron,docker,socket?perline=5" alt="Biểu tượng Công nghệ" />
   </p>
   <p align="center">
-    <img src="https://widgetbite.com/stats/HBAI-Ltd" alt="Visitors" />
+    <img src="https://widgetbite.com/stats/HBAI-Ltd" alt="Khách truy cập" />
   </p>
   
-  > 🚀 **Dự án Phim ngắn All-in-One**: Từ văn bản đến nhân vật, từ storyboard đến video hoàn chỉnh. Tự động hóa toàn bộ quy trình bằng AI – không rào cản, tăng hiệu suất sáng tạo lên gấp 10 lần!
+  > 🚀 **Quy trình sản xuất phim ngắn tất cả trong một**: Từ văn bản đến nhân vật, từ phân cảnh đến video, toàn bộ quy trình AI không rào cản, nâng cao hiệu suất sáng tạo lên hơn 10 lần!
 </div>
 
 <div align="center">
-  <img src="./g-star.png" alt="Chứng chỉ AtomGit G-Star" width="100%"/>
+  <a href="./docs/g-star.png" target="_blank">
+    <img src="./docs/g-star.png" alt="Chứng nhận AtomGit G-Star" width="100%"/>
+  </a>
 </div>
 
 ---
 
-# 🌐 Hỗ trợ Đa ngôn ngữ
+# 🌐 Hỗ trợ đa ngôn ngữ
 
-Toonflow hỗ trợ giao diện với các ngôn ngữ sau:
+Toonflow hỗ trợ giao diện các ngôn ngữ sau:
 
-| Ngôn ngữ | Language |
-|------|----------|
-| 简体中文 | Chinese (Simplified) |
-| 繁體中文 | Chinese (Traditional) |
-| English | English |
-| ไทย | Thai |
-| Tiếng Việt | Vietnamese |
-| 日本語 | Japanese |
-| Русский | Russian |
+| Ngôn ngữ       | Ngôn ngữ              |
+| ---------- | --------------------- |
+| 简体中文   | Tiếng Trung (Giản thể) |
+| 繁體中文   | Tiếng Trung (Phồn thể) |
+| English    | Tiếng Anh               |
+| ไทย        | Tiếng Thái              |
+| Tiếng Việt | Tiếng Việt            |
+| 日本語     | Tiếng Nhật              |
+| Русский    | Tiếng Nga              |
 
-> 💡 Đang cập nhật thêm nhiều ngôn ngữ, hoan nghênh bạn đóng góp bản dịch!
-
----
-
-# 🌟 Tính năng Chính
-
-Toonflow là công cụ AI chuyên tạo phim ngắn và truyện tranh, có khả năng tự động biến tiểu thuyết thành phim chỉ trong một quy trình liền mạch. Từ văn bản gốc, AI sẽ tạo nhân vật, viết kịch bản, thiết kế phân cảnh và tổng hợp video hoàn chỉnh – giúp bạn sản xuất phim ngắn nhanh chóng, thông minh và tiết kiệm chi phí tối đa.
-
-- ✅ **Tạo Nhân vật Tự động** Hệ thống phân tích tiểu thuyết gốc, thông minh nhận diện và xây dựng hồ sơ nhân vật chi tiết (ngoại hình, tính cách, danh tính, mối quan hệ…). Tạo nền tảng vững chắc cho kịch bản và hình ảnh sau này.
-- ✅ **Tạo Kịch bản Thông minh** Dựa trên các chương/sự kiện bạn chọn, AI tự động xây dựng kịch bản có cấu trúc rõ ràng, bao gồm hội thoại tự nhiên, mô tả cảnh quay và hướng phát triển cốt truyện – chuyển đổi văn học sang kịch bản phim một cách hiệu quả.
-- ✅ **Tạo Phân cảnh (Storyboard)** Từ kịch bản, hệ thống tự động sinh ra các prompt phân cảnh và thiết kế khung hình chi tiết. Bao gồm tiền cảnh/trung cảnh/hậu cảnh, hành động nhân vật, đạo cụ và bố cục điện ảnh – tạo ra lộ trình hoàn chỉnh sẵn sàng cho việc sản xuất video.
-- ✅ **Tổng hợp & Chỉnh sửa Video** Tích hợp công nghệ AI hình ảnh và video để tạo ra các đoạn clip chất lượng cao. Hỗ trợ chỉnh sửa trực tuyến linh hoạt, cho phép bạn tinh chỉnh theo ý muốn, giúp toàn bộ quy trình sáng tạo phim diễn ra mượt mà và cực kỳ nhanh chóng.
+> 💡 Đang thích ứng thêm nhiều ngôn ngữ, hoan nghênh đóng góp bản dịch!
 
 ---
 
-# 📦 Ứng dụng Thực tế
+# 🌟 Chức năng chính
+
+Toonflow là một bàn làm việc AI dành cho sản xuất phim ngắn, xoay quanh quy trình "Lên kế hoạch → Viết kịch bản → Phân cảnh → Xuất phim" để tạo thành một vòng lặp hoàn chỉnh, đồng thời hỗ trợ quy trình sản xuất có thể bản địa hóa, có thể lập trình và liên tục cải tiến.
+
+- ✅ **Bàn làm việc sản xuất trên Canvas vô hạn**  
+  Tổ chức kịch bản, nhân vật, phân cảnh, tài liệu và nút video dưới dạng canvas vô hạn, hỗ trợ sắp xếp tự do, quay lui và sản xuất song song, không bị giới hạn bởi các bước tuyến tính.
+- ✅ **Hệ thống cộng tác Agent ba lớp**  
+  Lớp ra quyết định, lớp thực thi và lớp giám sát làm việc cùng nhau, bao gồm phân rã nhiệm vụ, tạo nội dung, đánh giá chất lượng và phản hồi sửa đổi, nâng cao tính ổn định và nhất quán của thành phẩm.
+- ✅ **Bộ nhớ Agent bền vững**  
+  Hệ thống bộ nhớ xuyên phiên dựa trên truy xuất vector ONNX cục bộ, hỗ trợ tin nhắn ngắn hạn, tóm tắt dài hạn và truy xuất ngữ nghĩa, đảm bảo tính liên tục của sáng tạo qua nhiều vòng.
+- ✅ **Hệ thống nhà cung cấp có thể lập trình**  
+  Hỗ trợ viết trực tiếp logic TypeScript của nhà cung cấp trong trung tâm cài đặt và có hiệu lực ngay lập tức, không cần sửa mã nguồn hoặc khởi động lại, thuận tiện cho việc tư nhân hóa và kết nối đa mô hình.
+- ✅ **Chuyển thể dựa trên đồ thị sự kiện chương**  
+  Tự động trích xuất các sự kiện chương của tác phẩm gốc và lưu trữ có cấu trúc, chuyển thể kịch bản gọi ngữ cảnh chính xác theo đồ thị sự kiện, giảm mất thông tin văn bản dài.
+- ✅ **Cấu hình Skill dưới dạng tệp**  
+  Lời nhắc cốt lõi của ScriptAgent và ProductionAgent được ngoại hóa thành các tệp Markdown Skill, hỗ trợ chỉnh sửa trực tuyến và tối ưu hóa nhanh chóng.
+
+---
+
+# 📦 Kịch bản ứng dụng
 
 - Sáng tạo nội dung video ngắn
-- Thử nghiệm chuyển thể tiểu thuyết thành phim ngắn
-- Công cụ AI chuyển thể văn học thành video
-- Phát triển kịch bản và tạo bản mẫu nhanh (Rapid Prototyping)
-- Tạo tài liệu video chất lượng cao
+- Thử nghiệm điện ảnh hóa tiểu thuyết
+- Công cụ chuyển thể văn học AI
+- Phát triển kịch bản và tạo mẫu nhanh
+- Tạo tài liệu video
 
 ---
 
-# 🔰 Hướng dẫn Sử dụng
+# 🔰 Hướng dẫn sử dụng
 
-## 📺 Hướng dẫn bằng Video
+## Bắt đầu nhanh
 
-[https://www.bilibili.com/video/BV1oXD7BqEqJ](https://www.bilibili.com/video/BV1oXD7BqEqJ)
-[![Toonflow - 12 phút làm quen với Video AI](./videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+1. Khởi động ứng dụng và đăng nhập (tài khoản mặc định: `admin` / `admin123`).
+2. Hoàn tất cấu hình nhà cung cấp mô hình trong trung tâm cài đặt (mô hình văn bản/hình ảnh/video).
+3. Tạo dự án mới và nhập tác phẩm gốc, thực hiện trích xuất sự kiện chương.
+4. Vào ScriptAgent để tạo khung cốt truyện, chiến lược chuyển thể và kịch bản có cấu trúc.
+5. Chuyển sang ProductionAgent, tổ chức các nút phân cảnh, tài liệu và video trong canvas vô hạn.
+6. Tinh chỉnh từng nút cho ảnh phân cảnh rồi đưa trở lại bàn làm việc, hoàn tất ghép nối và xuất video.
 
-**Toonflow - 12 phút làm quen nhanh với Video AI**
-👉 [Nhấn để xem](https://www.bilibili.com/video/BV1oXD7BqEqJ/?share_source=copy_web&vd_source=5b718c25439a901a34c7bc0c1d35b38e)
+## 📺 Hướng dẫn bằng video
 
-📱 **Quét mã QR để xem video trên điện thoại**
-<img src="./videoQR.png" alt="Quét mã QR để xem video" width="150"/>
+https://www.bilibili.com/video/BV1oXD7BqEqJ
+[![Toonflow 12 phút bắt đầu nhanh với AI Video](./docs/videoCover.jpg)](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+
+**Toonflow 12 phút bắt đầu nhanh với AI Video**
+👉 [Nhấp để xem](https://www.bilibili.com/video/BV1oXD7BqEqJ)
+
+📱 Quét mã QR bằng WeChat để xem
+
+<img src="./docs/videoQR.png" alt="Quét mã QR WeChat để xem" width="150"/>
 
 ---
 
-# 📸 Ảnh chụp màn hình & Video Demo
+# 📸 Ảnh chụp màn hình và video trình diễn
 
-Các ảnh chụp màn hình và video dưới đây được lấy từ Demo phim ngắn AI được tạo bằng Toonflow trong khoảng 2 giờ, bao gồm tạo kịch bản, sản xuất storyboard và dựng phim.
+Các ảnh chụp màn hình và video dưới đây đến từ một bản demo phim ngắn AI được tạo bằng Toonflow, toàn bộ quá trình hoàn thành trong khoảng 2 giờ, bao gồm tạo kịch bản, làm phân cảnh và chỉnh sửa.
 
+<div align="center">
 <table>
-<tr>
-<td width="50%"><a href="../screenshot/1.png" target="_blank"><img src="../screenshot/1.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/2.png" target="_blank"><img src="../screenshot/2.png" width="100%"/></a></td>
-</tr>
-<tr>
-<td width="50%"><a href="../screenshot/3.png" target="_blank"><img src="../screenshot/3.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/4.png" target="_blank"><img src="../screenshot/4.png" width="100%"/></a></td>
-</tr>
-<tr>
-<td width="50%"><a href="../screenshot/5.png" target="_blank"><img src="../screenshot/5.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/6.png" target="_blank"><img src="../screenshot/6.png" width="100%"/></a></td>
-</tr>
-<tr>
-<td width="50%"><a href="../screenshot/7.png" target="_blank"><img src="../screenshot/7.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/8.png" target="_blank"><img src="../screenshot/8.png" width="100%"/></a></td>
-</tr>
-<tr>
-<td width="50%"><a href="../screenshot/9.png" target="_blank"><img src="../screenshot/9.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/10.png" target="_blank"><img src="../screenshot/10.png" width="100%"/></a></td>
-</tr>
+  <tr>
+    <td width="50%"><a href="./docs/screenshot/1.png" target="_blank"><img src="./docs/screenshot/1.png" width="100%"/></a></td>
+    <td width="50%"><a href="./docs/screenshot/2.png" target="_blank"><img src="./docs/screenshot/2.png" width="100%"/></a></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="./docs/screenshot/3.png" target="_blank"><img src="./docs/screenshot/3.png" width="100%"/></a></td>
+    <td width="50%"><a href="./docs/screenshot/4.png" target="_blank"><img src="./docs/screenshot/4.png" width="100%"/></a></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="./docs/screenshot/5.png" target="_blank"><img src="./docs/screenshot/5.png" width="100%"/></a></td>
+    <td width="50%"><a href="./docs/screenshot/6.png" target="_blank"><img src="./docs/screenshot/6.png" width="100%"/></a></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="./docs/screenshot/7.png" target="_blank"><img src="./docs/screenshot/7.png" width="100%"/></a></td>
+    <td width="50%"><a href="./docs/screenshot/8.png" target="_blank"><img src="./docs/screenshot/8.png" width="100%"/></a></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="./docs/screenshot/9.png" target="_blank"><img src="./docs/screenshot/9.png" width="100%"/></a></td>
+    <td width="50%"><a href="./docs/screenshot/10.png" target="_blank"><img src="./docs/screenshot/10.png" width="100%"/></a></td>
+  </tr>
 </table>
+</div>
 
-## Thông tin Demo
+## 🎬 Video Demo
 
-| Mục | Chi tiết |
-|-----|---------|
-| Thời gian sản xuất | ~2 giờ |
-| Mô hình video | Seedance 2.0 |
-| Mô hình hình ảnh | GPT Image 2 |
-| Mô hình ngôn ngữ | Claude Opus 4.6 |
-| Thời lượng | ~2 phút (tư liệu gốc 3 phút, cắt ~1 phút)|
-
-## Chi tiết Chi phí
-
-| Loại mô hình | Chi phí |
-|-----|------|
-| Mô hình ngôn ngữ | ~¥10 |
-| Mô hình video (tạo đầy đủ) | ~¥120 |
-| Mô hình hình ảnh | <¥1 |
-| **Tổng** | **~¥130** |
-
-> 📌 Độ phân giải gốc của Demo là 1080×1882, phiên bản phát hành đã nén xuống 480p. Nếu phát hiện vi phạm bản quyền, chúng tôi sẽ xóa nội dung ngay lập tức.
-
-## Video Demo
+<div align="center">
 
 https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
 
-> Nếu video không phát được, [click để tải xuống](https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9).
+Nếu không phát được, vui lòng [nhấp để tải video](./docs/screenshot/demo.mp4)
+
+</div>
+
+## Thông tin Demo
+
+| Dự án | Chi tiết |
+| :--- | :--- |
+| Thời gian sản xuất | Khoảng 2 giờ |
+| Mô hình video | Seedance 2.0 |
+| Mô hình hình ảnh | GPT Image 2 |
+| Mô hình ngôn ngữ | Claude Opus 4.6 |
+| Tổng thời lượng thành phẩm | Khoảng 2 phút (tài liệu gốc 3 phút, cắt bỏ cảnh lỗi khoảng 1 phút) |
+
+## Chi phí chi tiết
+
+| Loại mô hình | Chi phí |
+| :--- | :--- |
+| Mô hình ngôn ngữ | Khoảng ¥10 |
+| Mô hình video (tạo toàn bộ) | Khoảng ¥120 |
+| Mô hình hình ảnh | Dưới ¥1 |
+| **Tổng cộng** | **Khoảng ¥130** |
+
+> **Tuyên bố**: Độ phân giải gốc của Demo là 1080×1882, phiên bản phát hành đã được nén xuống 480p. Nếu có vấn đề về bản quyền, vui lòng liên hệ chúng tôi để xóa bỏ.
 
 ---
 
@@ -208,94 +225,94 @@ https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
 
 ## Điều kiện tiên quyết
 
-Trước khi cài đặt và sử dụng phần mềm, vui lòng chuẩn bị:
+Trước khi cài đặt và sử dụng phần mềm này, vui lòng chuẩn bị những nội dung sau:
 
-- ✅ Địa chỉ API của Mô hình ngôn ngữ lớn (LLM)
-- ✅ Địa chỉ API của dịch vụ video Sora hoặc Doubao
-- ✅ Địa chỉ API của dịch vụ tạo ảnh Nano Banana Pro
+- ✅ Địa chỉ giao diện dịch vụ AI mô hình ngôn ngữ lớn
+- ✅ Địa chỉ giao diện dịch vụ video Sora hoặc Doubao
+- ✅ Giao diện dịch vụ mô hình tạo hình ảnh Nano Banana Pro
 
-## Cài đặt trên máy cá nhân (Local)
+## Cài đặt máy
 
-### 1. Tải xuống & Cài đặt
+### 1. Tải xuống và cài đặt
 
-| Hệ điều hành | GitHub                                                     | Atomgit                                                       | Tải qua Quark Drive                             | Mô tả          |
-| :------: | :----------------------------------------------------------- | :------------------------------------------------------------ | :---------------------------------------------- | :------------- |
-| Windows  | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Bản cài đặt chính thức |
-|  Linux   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Bản cài đặt chính thức |
-|  macOS   | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | [Release](https://gitcode.com/HBAI-Ltd/Toonflow-app/releases) | [Quark Drive](https://pan.quark.cn/s/94ef07509df0) | Bản cài đặt chính thức |
+| Hệ điều hành | GitHub | Ghi chú |
+| :------: |:------------------------------------------------------------|:------------- |
+| Windows | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | Gói cài đặt chính thức |
+| Linux | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | Gói cài đặt chính thức |
+| macOS | [Release](https://github.com/HBAI-Ltd/Toonflow-app/releases) | Gói cài đặt chính thức |
 
 > [!CAUTION]
-> Với hệ điều hành MacOS, vui lòng vào "Cài đặt hệ thống" -> "Quyền riêng tư & Bảo mật" để cấp quyền mở ứng dụng, nếu không phần mềm có thể không mở được do vấn đề chứng chỉ.
+> Hệ thống MacOS vui lòng vào Cài đặt-Quyền riêng tư & Bảo mật để cấu hình bảo mật, nếu không có thể không mở được do vấn đề chứng chỉ
 >
-> Tham khảo hướng dẫn Zhihu: [https://www.zhihu.com/question/433389276](https://www.zhihu.com/question/433389276)
+> Tham khảo tài liệu Zhihu: [https://www.zhihu.com/question/433389276](https://www.zhihu.com/question/433389276)
 
-> Do giới hạn môi trường Gitee OS và giới hạn kích thước tệp tải lên của Release, chúng tôi tạm thời không cung cấp link tải qua Gitee Release.
+> Do hạn chế về môi trường của Gitee OS và giới hạn kích thước tải lên tệp Release, tạm thời không cung cấp địa chỉ tải xuống Gitee Release.
 
-### 2. Khởi chạy Dịch vụ
+### 2. Khởi động dịch vụ
 
-Sau khi cài đặt xong, hãy mở chương trình để bắt đầu sử dụng.
+Sau khi cài đặt hoàn tất, khởi động chương trình để bắt đầu sử dụng dịch vụ này.
 
-> ⚠️ **Đăng nhập lần đầu** 
+> ⚠️ **Đăng nhập lần đầu**  
 > Tài khoản: `admin`  
 > Mật khẩu: `admin123`
 
-## Triển khai bằng Docker
+## Triển khai Docker
 
 ### Điều kiện tiên quyết
 
-- Đã cài đặt [Docker](https://docs.docker.com/get-docker/) (Phiên bản 20.10+)
+- Đã cài đặt [Docker](https://docs.docker.com/get-docker/) (phiên bản 20.10+)
 
 ### Cách 1: Triển khai trực tuyến
 
-Đang hoàn thiện, tạm thời sử dụng cách Build tại máy (Local build).
+Đang hoàn thiện, tạm thời sử dụng bản dựng cục bộ.
 
-### Cách 2: Build tại máy (Local build)
+### Cách 2: Dựng cục bộ
 
-Sử dụng mã nguồn có sẵn để build trực tiếp. Phù hợp với lập trình viên hoặc người dùng đã clone repository. (Yêu cầu cài đặt git trên máy):
+Sử dụng mã nguồn có sẵn tại địa phương để xây dựng trực tiếp, phù hợp với nhà phát triển hoặc người dùng đã clone kho lưu trữ, điều này yêu cầu bạn cài đặt git cục bộ:
 
 ```shell
-# Clone dự án (Bỏ qua nếu đã clone)
+# Đầu tiên clone dự án (nếu đã có thì bỏ qua)
 git clone https://github.com/HBAI-Ltd/Toonflow-app.git
 cd Toonflow-app
 
-# Sử dụng docker-compose để build và chạy
+# Sử dụng docker-compose để xây dựng và khởi động cục bộ
 yarn docker:local
 
-# Hoặc build thủ công
+# Hoặc xây dựng thủ công
 docker build -t toonflow .
-docker run -d -p <Port trên máy>:10588 -v <Đường dẫn dữ liệu trên máy>:/app/data toonflow
+docker run -d -p <cổng_local>:10588 -v <đường_dẫn_dữ_liệu_local>:/app/data toonflow
 
-# Sau đó, truy cập giao diện qua đường dẫn /web/index.html bằng Port đã thiết lập
-# Ví dụ: http://localhost:10588/web/index.html
+# Lúc này, tại đường dẫn /web/index.html của cổng tương ứng có thể truy cập trang
+# Ví dụ http://localhost:10588/web/index.html
 ```
 
-### Cấu hình Cổng dịch vụ (Port)
+### Giải thích cổng dịch vụ
 
-| Cổng (Port) | Chức năng | Port Mapping |
+| Cổng | Mục đích | Ánh xạ triển khai |
 | ------- | -------- | ------------- |
 | `10588` | Giao diện phần mềm | `10588:10588` |
 
-**Giải thích Biến môi trường:**
+**Giải thích biến môi trường:**
 
-| Biến (Variable) | Giải thích |
+| Biến | Giải thích |
 | ---------- | ---------------------------------- |
-| `NODE_ENV` | Môi trường chạy, `prod` là môi trường Product (sản xuất) |
-| `PORT`     | Port lắng nghe của dịch vụ (Mặc định: 10588) |
-| `OSSURL`   | Địa chỉ truy cập lưu trữ file, dùng cho các tài nguyên tĩnh (Static) |
+| `NODE_ENV` | Môi trường chạy, `prod` là môi trường sản xuất |
+| `PORT` | Cổng lắng nghe dịch vụ (mặc định 10588) |
+| `OSSURL` | Địa chỉ truy cập lưu trữ tệp, dùng để truy cập tài nguyên tĩnh |
 
 ---
 
-## Triển khai trên Máy chủ Đám mây (Cloud)
+## Triển khai đám mây
 
-### 1. Yêu cầu Môi trường Máy chủ
+### I. Yêu cầu môi trường máy chủ
 
-- **Hệ điều hành**: Ubuntu 20.04+ / CentOS 7+
-- **Node.js**: 24.x (Khuyên dùng, Tối thiểu 23.11.1+)
-- **RAM**: 2GB+
+- **Hệ thống**: Ubuntu 20.04+ / CentOS 7+
+- **Node.js**: 24.x (khuyến nghị, tối thiểu 23.11.1+)
+- **Bộ nhớ**: 2GB+
 
-### 2. Triển khai Máy chủ
+### II. Triển khai máy chủ
 
-#### 1. Cài đặt Môi trường
+#### 1. Cài đặt môi trường
 
 ```bash
 # Cài đặt Node.js
@@ -306,7 +323,7 @@ nvm install 24
 npm install -g yarn pm2
 ```
 
-#### 2. Triển khai Dự án
+#### 2. Triển khai dự án
 
 **Clone từ GitHub:**
 
@@ -318,7 +335,7 @@ yarn install
 yarn build
 ```
 
-**Clone từ Gitee (Khuyên dùng tại TQ):**
+**Clone từ Gitee (khuyến nghị cho nội địa Trung Quốc):**
 
 ```bash
 cd /opt
@@ -346,17 +363,17 @@ Tạo tệp `pm2.json`:
 }
 ```
 
-**Giải thích Biến môi trường:**
+**Giải thích biến môi trường:**
 
-| Biến (Variable) | Giải thích |
+| Biến | Giải thích |
 | ---------- | ---------------------------------- |
-| `NODE_ENV` | Môi trường chạy, `prod` là môi trường Product |
-| `PORT`     | Cổng lắng nghe của dịch vụ (Port) |
-| `OSSURL`   | Địa chỉ truy cập lưu trữ file, dùng cho tài nguyên tĩnh |
+| `NODE_ENV` | Môi trường chạy, `prod` là môi trường sản xuất |
+| `PORT` | Cổng lắng nghe dịch vụ |
+| `OSSURL` | Địa chỉ truy cập lưu trữ tệp, dùng để truy cập tài nguyên tĩnh |
 
 ---
 
-#### 4. Khởi chạy Dịch vụ
+#### 4. Khởi động dịch vụ
 
 ```bash
 pm2 start pm2.json
@@ -364,60 +381,60 @@ pm2 startup
 pm2 save
 ```
 
-#### 5. Các lệnh PM2 thường dùng
+#### 5. Các lệnh thường dùng
 
 ```bash
-pm2 list              # Xem danh sách tiến trình
-pm2 logs toonflow-app # Xem log (nhật ký)
+pm2 list              # Xem tiến trình
+pm2 logs toonflow-app # Xem nhật ký
 pm2 restart all       # Khởi động lại dịch vụ
-pm2 monit             # Mở bảng điều khiển giám sát
+pm2 monit             # Bảng điều khiển giám sát
 ```
 
-> ⚠️ **Đăng nhập lần đầu** 
+> ⚠️ **Đăng nhập lần đầu**  
 > Tài khoản: `admin`  
 > Mật khẩu: `admin123`
 
-#### 6. Triển khai trang web Frontend
+#### 6. Triển khai trang web frontend
 
-Nếu bạn cần triển khai riêng hoặc tùy chỉnh giao diện Frontend, vui lòng tham khảo Repository Frontend:
+Nếu cần triển khai riêng lẻ hoặc tùy chỉnh giao diện frontend, vui lòng tham khảo kho lưu trữ frontend:
 
 - **GitHub**: [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
 - **Gitee**: [Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
 
-> 💡 **Lưu ý**: Repository này đã được tích hợp sẵn tài nguyên Frontend đã build. Người dùng thông thường không cần tự triển khai Frontend riêng. Repository Frontend chỉ dành cho các nhà phát triển muốn tùy chỉnh chuyên sâu.
+> 💡 **Ghi chú**: Kho lưu trữ này đã được tích hợp sẵn tài nguyên frontend đã biên dịch, người dùng thông thường không cần triển khai riêng frontend. Kho lưu trữ frontend chỉ dành cho các nhà phát triển cần phát triển thứ cấp.
 
 ---
 
-# 🔧 Hướng dẫn Quy trình Phát triển (Development Workflow)
+# 🔧 Hướng dẫn quy trình phát triển
 
 > [!CAUTION]
-> 🚧 **Quy định nộp PR (Pull Request)** 🚧
+> 🚧 **Quy tắc gửi PR** 🚧
 >
-> ⛔ Nhánh `master` KHÔNG chấp nhận bất kỳ PR nào ｜ ✅ Vui lòng gửi PR vào nhánh `develop`
+> ⛔ Nhánh `master` không chấp nhận bất kỳ PR nào ｜ ✅ Vui lòng gửi PR đến nhánh `develop`
 >
-> Chào mừng các nhà phát triển tham gia đóng góp cho Toonflow. Nếu có hứng thú, vui lòng liên hệ với quản trị viên ACT trong nhóm giao lưu.
+> Chào mừng các nhà phát triển cùng tham gia xây dựng Toonflow. Nếu có hứng thú tham gia, vui lòng liên hệ quản lý ACT trong nhóm trao đổi.
 
-## 🛠️ Công nghệ sử dụng (Tech Stack)
+## 🛠️ Tech Stack
 
-| Phân loại | Công nghệ |
+| Danh mục | Công nghệ |
 | ---------- | ----------------------------------------------------------------------------------------- |
-| Môi trường | Node.js 23.11.1+                                                                          |
-| Ngôn ngữ   | TypeScript 5.x                                                                            |
-| Backend    | Express 5                                                                                 |
-| Cơ sở dữ liệu | SQLite (better-sqlite3 / knex)                                                            |
-| Tích hợp AI| Vercel AI SDK (OpenAI / Anthropic / Google / DeepSeek / Zhipu / MiniMax / Qwen / xAI)     |
-| Suy luận Local| @huggingface/transformers (ONNX)                                                          |
-| Real-time  | Socket.IO                                                                                 |
-| Ứng dụng Desktop | Electron 40                                                                               |
-| Xử lý ảnh  | Sharp                                                                                     |
-| Container  | Docker                                                                                    |
+| Môi trường chạy | Node.js 23.11.1+ |
+| Ngôn ngữ | TypeScript 5.x |
+| Backend Framework | Express 5 |
+| Cơ sở dữ liệu | SQLite (better-sqlite3 / knex) |
+| Tích hợp AI | Vercel AI SDK (OpenAI / Anthropic / Google / DeepSeek / Zhipu / MiniMax / Tongyi Qianwen / xAI) |
+| Suy luận cục bộ | @huggingface/transformers (ONNX) |
+| Giao tiếp thời gian thực | Socket.IO |
+| Ứng dụng desktop | Electron 40 |
+| Xử lý hình ảnh | Sharp |
+| Container hóa | Docker |
 
-## Chuẩn bị Môi trường Phát triển
+## Chuẩn bị môi trường phát triển
 
 - **Node.js**: Yêu cầu phiên bản 23.11.1 trở lên
-- **Yarn**: Khuyến nghị sử dụng làm Package Manager
+- **Yarn**: Khuyến nghị sử dụng làm trình quản lý gói cho dự án
 
-## Khởi chạy Dự án nhanh
+## Khởi động nhanh dự án
 
 1. **Clone dự án**
 
@@ -428,86 +445,86 @@ Nếu bạn cần triển khai riêng hoặc tùy chỉnh giao diện Frontend, 
    cd Toonflow-app
    ```
 
-   **Clone từ Gitee:**
+   **Clone từ Gitee (khuyến nghị cho nội địa Trung Quốc):**
 
    ```bash
    git clone https://gitee.com/HBAI-Ltd/Toonflow-app.git
    cd Toonflow-app
    ```
 
-2. **Cài đặt Dependencies**
+2. **Cài đặt phụ thuộc**
 
-   Chạy lệnh sau tại thư mục gốc của dự án:
+   Vui lòng thực hiện lệnh sau trong thư mục gốc của dự án để cài đặt các phụ thuộc:
 
    ```bash
    yarn install
    ```
 
-3. **Khởi chạy môi trường Dev**
+3. **Khởi động môi trường phát triển**
 
-   Dự án bao gồm **Backend API** và **Trang Frontend**. Tùy nhu cầu mà chọn cách khởi chạy:
+   Dự án này bao gồm **Dịch vụ API backend** và **Trang frontend** hai phần, vui lòng chọn cách khởi động theo nhu cầu:
 
-   - **Cách 1: Chỉ chạy Backend API**
+   - **Cách 1: Chỉ khởi động dịch vụ backend**
 
      ```bash
      yarn dev
      ```
 
-     > ⚠️ Lệnh này chỉ khởi chạy Backend API (Port 10588), không bao gồm giao diện Frontend. Khi truy cập http://localhost:10588 chỉ có thể gọi API. Nếu muốn sử dụng giao diện, vui lòng chạy Frontend riêng hoặc dùng chế độ GUI bên dưới.
+     > ⚠️ Lệnh này chỉ khởi động dịch vụ API backend (cổng 10588), **không bao gồm trang frontend**. Truy cập trực tiếp `http://localhost:10588` chỉ có thể gọi các API, không thấy được giao diện web đầy đủ. Nếu muốn sử dụng đồng thời trang frontend, vui lòng kết hợp với dự án frontend khởi động riêng, hoặc sử dụng chế độ GUI bên dưới.
 
-   - **Cách 2: Khởi chạy Client Desktop Electron (Khuyên dùng)**
+   - **Cách 2: Khởi động ứng dụng desktop Electron**
 
      ```bash
      yarn dev:gui
      ```
 
-     > Lệnh này sẽ chạy đồng thời Backend và cửa sổ Desktop Electron với giao diện Frontend đã tích hợp sẵn. Mở lên là có thể sử dụng ngay mà không cần cấu hình thêm. Phù hợp nhất cho lập trình viên muốn trải nghiệm toàn bộ tính năng.
+     > Lệnh này sẽ đồng thời khởi động dịch vụ backend và cửa sổ desktop Electron, có sẵn trang frontend tích hợp, dùng ngay, không cần cấu hình thêm. Phù hợp với nhà phát triển muốn trải nghiệm đầy đủ tất cả chức năng.
 
-   - **Cách 3: Chạy ở chế độ Product (Sản xuất)**
+   - **Cách 3: Khởi động chế độ sản xuất**
 
      ```bash
      yarn start
      ```
 
-     > Chạy trực tiếp dịch vụ sau khi đã build (Cần chạy lệnh yarn build trước).
+     > Chạy trực tiếp dịch vụ đã biên dịch ở chế độ sản xuất (cần thực hiện `yarn build` trước).
 
-4. **Đóng gói dự án (Build / Pack)**
+4. **Đóng gói dự án**
 
-   - Biên dịch tệp TypeScript:
+   - Biên dịch và tạo tệp TypeScript:
 
      ```bash
      yarn build
      ```
 
-   - Đóng gói thành tệp thực thi cho Windows:
+   - Đóng gói thành chương trình thực thi cho Windows:
 
      ```bash
      yarn dist:win
      ```
 
-   - Đóng gói thành tệp thực thi cho MacOS:
+   - Đóng gói thành chương trình thực thi cho Mac:
 
      ```bash
      yarn dist:mac
      ```
 
-   - Đóng gói thành tệp thực thi cho Linux:
+   - Đóng gói thành chương trình thực thi cho Linux:
 
      ```bash
      yarn dist:linux
      ```
 
-5. **Kiểm tra chất lượng mã (Lint)**
+5. **Kiểm tra chất lượng mã**
 
-   - Kiểm tra cú pháp và quy chuẩn toàn cục:
+   - Thực hiện kiểm tra cú pháp và quy tắc toàn cục:
 
      ```bash
      yarn lint
      ```
 
-6. **Bảng điều khiển Debug AI (Tùy chọn)**
+6. **Bảng điều khiển gỡ lỗi AI (Tùy chọn)**
 
-   Mở công cụ Debug trực quan của AI SDK để tiện theo dõi các lời gọi AI:
+   Khởi động công cụ gỡ lỗi trực quan của AI SDK, tiện lợi cho việc gỡ lỗi các cuộc gọi AI:
 
    ```bash
    yarn debug:ai
@@ -515,135 +532,139 @@ Nếu bạn cần triển khai riêng hoặc tùy chỉnh giao diện Frontend, 
 
 ## Phát triển Frontend
 
-Nếu bạn cần chỉnh sửa giao diện Frontend, vui lòng chuyển sang kho lưu trữ Frontend riêng:
+Nếu muốn sửa đổi giao diện frontend, vui lòng đến kho lưu trữ frontend để phát triển:
 
 - **GitHub**: [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web)
 - **Gitee**: [Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
 
-Sau khi build Frontend xong, hãy copy toàn bộ thư mục dist vào thư mục data/web của dự án này để tích hợp.
+Sau khi xây dựng frontend, sao chép nội dung thư mục `dist` vào thư mục `data/web` của dự án này để tích hợp.
 
-## Cấu trúc Dự án
+## Cấu trúc dự án
 
 ```
-📂 build/                    # Sản phẩm sau khi build
-📂 data/                     # Dữ liệu Runtime
-│  ├─ 📂 models/             # Mô hình suy luận Local (ONNX)
-│  ├─ 📂 oss/                # Lưu trữ Object (ảnh, nhân vật, cảnh)
-│  ├─ 📂 serve/              # Cổng vào môi trường Production
-│  ├─ 📂 skills/             # Prompt kỹ năng của Agent
-│  └─ 📂 web/                # Frontend đã build (tích hợp sẵn)
-📂 docs/                     # Tài liệu và hình ảnh
+📂 build/                    # Sản phẩm biên dịch
+📂 data/                     # Dữ liệu thời gian chạy
+│  ├─ 📂 models/            # Mô hình suy luận cục bộ (ONNX)
+│  ├─ 📂 oss/               # Lưu trữ đối tượng (tài liệu/nhân vật/bối cảnh)
+│  ├─ 📂 serve/             # Điểm vào môi trường sản xuất
+│  ├─ 📂 skills/            # Lời nhắc kỹ năng Agent
+│  └─ 📂 web/               # Sản phẩm biên dịch frontend (tích hợp sẵn)
+📂 docs/                     # Tài liệu
 📂 env/                      # Cấu hình môi trường
-📂 scripts/                  # Script hỗ trợ và Build
+📂 scripts/                  # Tập lệnh xây dựng và hỗ trợ
 📂 src/
-├─ 📂 agents/                # Module AI Agent
-│  ├─ 📂 productionAgent/    # Agent Sản xuất (Production)
-│  └─ 📂 scriptAgent/        # Agent Kịch bản (Script)
-├─ 📂 lib/                   # Thư viện chung (Khởi tạo Database, định dạng Response)
+├─ 📂 agents/               # Mô-đun AI Agent
+│  ├─ 📂 productionAgent/   # Agent sản xuất
+│  └─ 📂 scriptAgent/       # Agent kịch bản
+├─ 📂 lib/                  # Thư viện công cộng (khởi tạo cơ sở dữ liệu, định dạng phản hồi)
 ├─ 📂 middleware/            # Middleware
-├─ 📂 routes/                # Các Module Routing
-│  ├─ 📂 agents/             # Quản lý bộ nhớ Agent
-│  ├─ 📂 artStyle/           # Quản lý phong cách nghệ thuật
-│  ├─ 📂 assets/             # Quản lý tài nguyên (Assets)
-│  ├─ 📂 assetsGenerate/     # Trình tạo tài nguyên
-│  ├─ 📂 cornerScape/        # Quản lý phân cảnh (Storyboard)
-│  ├─ 📂 general/            # API chung
-│  ├─ 📂 login/              # Xác thực đăng nhập
-│  ├─ 📂 migrate/            # Di chuyển dữ liệu (Migration)
-│  ├─ 📂 modelSelect/        # Chọn mô hình
-│  ├─ 📂 novel/              # Quản lý tiểu thuyết
-│  ├─ 📂 other/              # Các tính năng khác
-│  ├─ 📂 production/         # Quản lý sản xuất / dựng phim
-│  ├─ 📂 project/            # Quản lý dự án
-│  ├─ 📂 script/             # Tạo kịch bản
-│  ├─ 📂 scriptAgent/        # Interface của Agent kịch bản
-│  ├─ 📂 setting/            # Cài đặt hệ thống
-│  ├─ 📂 task/               # Quản lý tác vụ (Task)
-│  └─ 📂 test/               # API thử nghiệm (Test)
-├─ 📂 socket/                # Giao tiếp Real-time qua WebSocket
-├─ 📂 types/                 # Khai báo Type của TypeScript
-├─ 📂 utils/                 # Các hàm tiện ích
-├─ 📄 app.ts                 # Entry của ứng dụng
-├─ 📄 core.ts                # Khởi tạo Core
-├─ 📄 env.ts                 # Xử lý biến môi trường
-├─ 📄 err.ts                 # Xử lý lỗi (Error handling)
-├─ 📄 logger.ts              # Module ghi log (Logger)
-├─ 📄 router.ts              # Đăng ký Router
-└─ 📄 utils.ts               # Công cụ chung
-📄 Dockerfile                # Tệp cấu hình Build Docker
+├─ 📂 routes/               # Mô-đun định tuyến
+│  ├─ 📂 agents/            # Quản lý bộ nhớ Agent
+│  ├─ 📂 artStyle/          # Quản lý phong cách
+│  ├─ 📂 assets/            # Quản lý tài liệu
+│  ├─ 📂 assetsGenerate/    # Tạo tài liệu
+│  ├─ 📂 cornerScape/       # Quản lý phân cảnh
+│  ├─ 📂 general/           # API chung
+│  ├─ 📂 login/             # Xác thực đăng nhập
+│  ├─ 📂 migrate/           # Di chuyển dữ liệu
+│  ├─ 📂 modelSelect/       # Lựa chọn mô hình
+│  ├─ 📂 novel/             # Quản lý tiểu thuyết
+│  ├─ 📂 other/             # Chức năng khác
+│  ├─ 📂 production/        # Quản lý sản xuất
+│  ├─ 📂 project/           # Quản lý dự án
+│  ├─ 📂 script/            # Tạo kịch bản
+│  ├─ 📂 scriptAgent/       # API Agent kịch bản
+│  ├─ 📂 setting/           # Cài đặt hệ thống
+│  ├─ 📂 task/              # Quản lý tác vụ
+│  └─ 📂 test/              # API kiểm thử
+├─ 📂 socket/               # Giao tiếp thời gian thực WebSocket
+├─ 📂 types/                # Khai báo kiểu TypeScript
+├─ 📂 utils/                # Hàm tiện ích
+├─ 📄 app.ts                # Điểm vào ứng dụng
+├─ 📄 core.ts               # Khởi tạo lõi
+├─ 📄 env.ts                # Xử lý biến môi trường
+├─ 📄 err.ts                # Xử lý lỗi
+├─ 📄 logger.ts             # Mô-đun nhật ký
+├─ 📄 router.ts             # Đăng ký định tuyến
+└─ 📄 utils.ts              # Tiện ích chung
+📄 Dockerfile                # Tệp xây dựng Docker
 📄 electron-builder.yml      # Cấu hình đóng gói Electron
 📄 skillList.json            # Danh sách kỹ năng
 📄 LICENSE                   # Giấy phép (Apache-2.0)
-📄 NOTICES.txt               # Khai báo thư viện bên thứ ba
+📄 NOTICES.txt               # Tuyên bố phụ thuộc bên thứ ba
 📄 package.json              # Cấu hình dự án
 📄 tsconfig.json             # Cấu hình TypeScript
 ```
 
 ---
 
-# 🔗 Các Kho lưu trữ Liên quan
+# 🔗 Kho lưu trữ liên quan
 
-| Repository (Kho) | Mô tả | GitHub | Gitee |
+| Kho lưu trữ | Giải thích | GitHub | Gitee |
 | ---------------- | ---------------------------------- | -------------------------------------------------- | ------------------------------------------------ |
-| **Toonflow-app** | Client hoàn chỉnh (Repo này, khuyến nghị cho người dùng) | [GitHub](https://github.com/HBAI-Ltd/Toonflow-app) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-app) |
-| **Toonflow-web** | Mã nguồn Frontend (Dành cho lập trình viên Frontend) | [GitHub](https://github.com/HBAI-Ltd/Toonflow-web) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-web) |
+| **Toonflow-app** | Ứng dụng đầy đủ (kho lưu trữ này, khuyến nghị cho người dùng thông thường) | [GitHub](https://github.com/HBAI-Ltd/Toonflow-app) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-app) |
+| **Toonflow-web** | Mã nguồn frontend (phù hợp với nhà phát triển frontend) | [GitHub](https://github.com/HBAI-Ltd/Toonflow-web) | [Gitee](https://gitee.com/HBAI-Ltd/Toonflow-web) |
 
-> 💡 **Mẹo nhỏ**: Nếu bạn chỉ muốn sử dụng Toonflow, hãy tải Client hoàn chỉnh từ kho này là đủ. Kho Toonflow-web chỉ dành cho các nhà phát triển cần chỉnh sửa hoặc phát triển lại giao diện (secondary development).
+> 💡 **Gợi ý**: Nếu bạn chỉ muốn sử dụng Toonflow, hãy tải trực tiếp ứng dụng từ kho lưu trữ này. Kho lưu trữ frontend chỉ dành cho các nhà phát triển cần phát triển thứ cấp hoặc tùy chỉnh giao diện frontend.
 
 ---
 
-# 👨‍👩‍👧‍👦 Nhóm Discord Cộng đồng
+# 👨‍👩‍👧‍👦 Nhóm WeChat
 
-Nhấn vào biểu tượng bên dưới để tham gia Discord:
+Trợ lý thêm nhóm:
 
-[![Join our Discord](https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/67d00cf7266d2c75571aebde_Example.svg)](https://discord.gg/HEjKmpNpAZ)
+<img src="./docs/QR.png" alt="Toonflow QR" height="400"/>
 
-Hoặc click trực tiếp vào link: [https://discord.gg/HEjKmpNpAZ](https://discord.gg/HEjKmpNpAZ)
+Cũng có thể nhấp vào biểu tượng để tham gia Discord:
+
+[![Tham gia Discord của chúng tôi](https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/67d00cf7266d2c75571aebde_Example.svg)](https://discord.gg/HEjKmpNpAZ)
+
+Hoặc nhấp vào liên kết mời: [https://discord.gg/HEjKmpNpAZ](https://discord.gg/HEjKmpNpAZ)
 
 ---
 
 # 💌 Liên hệ với chúng tôi
 
-📧 Email: [ltlctools@outlook.com](mailto:ltlctools@outlook.com?subject=Toonflow%20%C6%B0%C9%9B)
+📧 Email: [ltlctools@outlook.com](mailto:ltlctools@outlook.com?subject=Toonflow咨询)
 
 ---
 
-# 📜 Giấy phép (License)
+# 📜 Giấy phép
 
-Toonflow được phát hành mã nguồn mở dưới giấy phép Apache-2.0, kèm theo Thỏa thuận thương mại bổ sung.
+Toonflow được phát hành dưới dạng mã nguồn mở dựa trên giấy phép Apache-2.0, kèm theo thỏa thuận thương mại bổ sung.
 
-Chi tiết giấy phép Apache-2.0: https://www.apache.org/licenses/LICENSE-2.0
+Chi tiết giấy phép: https://www.apache.org/licenses/LICENSE-2.0
 
 ## Thỏa thuận bổ sung
 
-- Nếu phần mềm này được phân phối dưới dạng sản phẩm cho **2 hoặc nhiều bên thứ ba độc lập** sử dụng, bắt buộc phải có **giấy phép thương mại bằng văn bản** từ HBAI-Ltd.
-- Nếu **≤ 5 pháp nhân** hợp tác vận hành để sử dụng nội bộ và không cung cấp dịch vụ ra bên ngoài, thì được coi là sử dụng nội bộ và **không cần cấp phép**.
-- Không được phép xóa hoặc sửa đổi logo hoặc thông tin bản quyền trong Toonflow.
+- Nếu phân phối phần mềm này dưới dạng sản phẩm cho **2 bên thứ ba độc lập trở lên** sử dụng, phải có **giấy phép thương mại bằng văn bản** từ HBAI-Ltd.
+- **≤ 5 pháp nhân** đồng vận hành sử dụng nội bộ, không cung cấp dịch vụ ra bên ngoài, được coi là sử dụng nội bộ, **không cần cấp phép**.
+- Không được xóa hoặc sửa đổi nhãn hiệu hoặc thông tin bản quyền trong Toonflow.
 
-## Các trường hợp Miễn phí Vĩnh viễn
+## Kịch bản miễn phí vĩnh viễn
 
-- ✅ Dùng Toonflow để sản xuất nội dung và nhận chia sẻ doanh thu từ các nền tảng video
-- ✅ Chỉnh sửa mã nguồn (Secondary development) để dùng cho nhóm nội bộ
-- ✅ ≤ 5 pháp nhân hợp tác vận hành để sử dụng nội bộ
-- ✅ Phục vụ học tập cá nhân, nghiên cứu và các mục đích phi thương mại
+- ✅ Sử dụng Toonflow để tạo nội dung và nhận chia sẻ doanh thu từ nền tảng
+- ✅ Phát triển thứ cấp cho nhóm của riêng bạn sử dụng nội bộ
+- ✅ ≤ 5 pháp nhân đồng vận hành sử dụng nội bộ
+- ✅ Học tập, nghiên cứu cá nhân, mục đích phi thương mại
 
-## Bảng giá Cấp phép Thương mại
+## Định giá cấp phép thương mại
 
-| Giai đoạn | Doanh thu Hàng năm | Phí Hàng năm |
+| Giai đoạn | Doanh thu hàng năm | Phí hàng năm |
 |------|---------|------|
-| 🌱 Ươm mầm | < ¥100k (RMB) | **Miễn phí** |
-| 🚀 Khởi nghiệp | ¥100k – 500k (RMB) | ¥5,000 / Năm |
-| 📈 Tăng trưởng | ¥500k – 1.5M (RMB) | ¥20,000 / Năm |
-| 🏢 Quy mô | ¥1.5M – 5M (RMB) | ¥80,000 / Năm |
-| 🌐 Doanh nghiệp | > ¥5M (RMB) | Thương lượng |
+| 🌱 Giai đoạn hỗ trợ | < ¥100.000 | **Đăng ký là được cấp phép miễn phí** |
+| 🚀 Giai đoạn khởi nghiệp | ¥100.000–500.000 | ¥5.000/năm |
+| 📈 Giai đoạn tăng trưởng | ¥500.000–1.500.000 | ¥20.000/năm |
+| 🏢 Giai đoạn quy mô | ¥1.500.000–5.000.000 | ¥80.000/năm |
+| 🌐 Cấp doanh nghiệp | > ¥5.000.000 | Thương lượng |
 
-> **Điều khoản Không hồi tố**: Những người dùng đã sử dụng Toonflow dưới giấy phép AGPL-3.0 trước khi phát hành phiên bản v1.0.8 sẽ tiếp tục tuân theo AGPL-3.0 và không bị ràng buộc bởi sự thay đổi thỏa thuận này.
+> **Điều khoản không truy thu**: Người dùng đã sử dụng theo AGPL-3.0 trước khi phát hành v1.0.8 tiếp tục thực hiện theo AGPL-3.0, không bị ràng buộc bởi các thay đổi của thỏa thuận này.
 
-Xem toàn bộ thỏa thuận tại tệp [LICENSE](./LICENSE).
+Thỏa thuận đầy đủ xem trong tệp [LICENSE](./LICENSE).
 
 ---
 
-# ⭐️ Lịch sử Thả sao (Star History)
+# ⭐️ Lịch sử Star
 
 [![Star History Rank](https://api.star-history.com/badge?repo=HBAI-Ltd/Toonflow-app)](https://www.star-history.com/#HBAI-Ltd/Toonflow-app)
 
@@ -652,21 +673,21 @@ Xem toàn bộ thỏa thuận tại tệp [LICENSE](./LICENSE).
 ---
 
 
-# 🙏 Lời Cảm ơn
+# 🙏 Lời cảm ơn
 
-Xin cảm ơn các dự án mã nguồn mở sau đây đã hỗ trợ đắc lực cho Toonflow:
+Cảm ơn các dự án mã nguồn mở sau đã cung cấp hỗ trợ mạnh mẽ cho Toonflow:
 
-- [Express](https://expressjs.com/) - Web framework cho Node.js cực nhanh và tối giản
+- [Express](https://expressjs.com/) - Framework Web Node.js nhanh, mở, tối giản
 - [AI SDK](https://ai-sdk.dev/) - Bộ công cụ AI dành cho TypeScript
 - [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3) - Thư viện liên kết SQLite3 hiệu suất cao
 - [Sharp](https://sharp.pixelplumbing.com/) - Thư viện xử lý hình ảnh Node.js hiệu suất cao
 - [Axios](https://axios-http.com/) - HTTP client dựa trên Promise
-- [Zod](https://zod.dev/) - Thư viện xác thực Schema ưu tiên TypeScript
+- [Zod](https://zod.dev/) - Thư viện xác thực lược đồ ưu tiên TypeScript
 - [Socket.IO](https://socket.io/) - Công cụ giao tiếp sự kiện hai chiều thời gian thực
-- [Electron](https://www.electronjs.org/) - Framework phát triển ứng dụng Desktop đa nền tảng
-- [Hugging Face Transformers](https://huggingface.co/docs/transformers.js) - Thư viện suy luận Machine Learning tại Local
+- [Electron](https://www.electronjs.org/) - Framework phát triển ứng dụng desktop đa nền tảng
+- [Hugging Face Transformers](https://huggingface.co/docs/transformers.js) - Thư viện suy luận ML cục bộ
 
-Xin cảm ơn các tổ chức/đơn vị/cá nhân sau đây đã hỗ trợ cho Toonflow:
+Cảm ơn các tổ chức/đơn vị/cá nhân sau đã cung cấp hỗ trợ cho Toonflow:
 
 <table>
   <thead>
@@ -674,37 +695,37 @@ Xin cảm ơn các tổ chức/đơn vị/cá nhân sau đây đã hỗ trợ ch
       <th align="center">Logo</th>
       <th align="center">Tên</th>
       <th align="center">Hình thức hỗ trợ</th>
-      <th>Mô tả</th>
-      <th align="center">Website</th>
+      <th>Giới thiệu</th>
+      <th align="center">Trang web</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td align="center"><img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
+      <td align="center"><img src="./docs/sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
       <td align="center"><b>Sophnet</b></td>
-      <td align="center">💻 Tài trợ điện toán</td>
-      <td>Nền tảng API suy luận mô hình một cửa, nhanh hơn, ổn định hơn và tiết kiệm hơn</td>
-      <td align="center"><a href="https://www.sophnet.com/">Website</a></td>
+      <td align="center">💻 Tài trợ sức mạnh tính toán</td>
+      <td>Cam kết tạo nền tảng dịch vụ API suy luận mô hình tất cả trong một nhanh hơn, ổn định hơn, tiết kiệm hơn</td>
+      <td align="center"><a href="https://www.sophnet.com/">Trang web</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><img src="./docs/sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
       <td align="center"><b>Atlas Cloud</b></td>
-      <td align="center">💻 Tài trợ điện toán</td>
-      <td>Nền tảng suy luận đa phương thức đầu tiên trên thế giới. Chat, hình ảnh, video, âm thanh — tất cả qua một API thống nhất. 300+ mô hình, tương thích OpenAI.</td>
-      <td align="center"><a href="https://www.atlascloud.ai/">Website</a></td>
+      <td align="center">💻 Tài trợ sức mạnh tính toán</td>
+      <td>Nền tảng suy luận đa phương thức toàn diện đầu tiên trên thế giới. Hội thoại, hình ảnh, video, âm thanh - tất cả API thống nhất. Hơn 300 mô hình, tương thích OpenAI.</td>
+      <td align="center"><a href="https://www.atlascloud.ai/">Trang web</a></td>
     </tr>
     <tr>
-      <td align="center"><img src="./sponsored/hunyuan.webp" alt="Tencent Hunyuan3D Logo" width="48"></td>
-      <td align="center"><b>Tencent Hunyuan3D</b></td>
-      <td align="center">🌐 Hỗ trợ kỹ thuật World Model</td>
-      <td>Tencent Hunyuan3D AI Creation Engine dựa trên mô hình Tencent Hunyuan3D 2.5 — nền tảng tạo nội dung 3D AI tích hợp đầu tiên trong ngành. Hỗ trợ text-to-3D, image-to-3D, tạo hoạt hình 3D, tạo kết cấu, sketch-to-3D và tạo nhân vật 3D, với lợi thế trong tạo mô hình low-poly.</td>
-      <td align="center"><a href="https://3d.hunyuan.tencent.com/">Website</a></td>
+      <td align="center"><img src="./docs/sponsored/hunyuan.webp" alt="Tencent Hunyuan 3D Logo" width="48"></td>
+      <td align="center"><b>Tencent Hunyuan 3D</b></td>
+      <td align="center">🌐 Hỗ trợ kỹ thuật mô hình thế giới</td>
+      <td>Tencent Hunyuan 3D AI Creation Engine dựa trên phiên bản 2.5 của mô hình tạo 3D lớn Hunyuan, nền tảng tạo nội dung 3D AI tất cả trong một đầu tiên trong ngành. Có các chức năng như tạo 3D từ văn bản, hình ảnh, tạo hoạt ảnh 3D, tạo kết cấu, hỗ trợ tạo 3D từ phác thảo, tạo nhân vật 3D, có lợi thế trong việc tạo mô hình đa giác thấp.</td>
+      <td align="center"><a href="https://3d.hunyuan.tencent.com/">Trang web</a></td>
     </tr>
   </tbody>
 </table>
 
-Vui lòng xem danh sách đầy đủ các thư viện phụ thuộc của bên thứ ba trong tệp `NOTICES.txt`.
+Danh sách đầy đủ các phụ thuộc bên thứ ba vui lòng tham khảo `NOTICES.txt`
 
-##### Copyright © Beijing AIA Network Technology Co., Ltd.
+##### copyright © Beijing Ai'ah Technology Co., Ltd.
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=100&section=footer" width="100%"/>
