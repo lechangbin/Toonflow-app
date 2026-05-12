@@ -90,7 +90,7 @@
 </div>
 
 <div align="center">
-  <img src="./g-star.png" alt="AtomGit G-Star 認定証" height="300"/>
+  <img src="./g-star.png" alt="AtomGit G-Star 認定証" width="100%"/>
 </div>
 
 ---
@@ -159,24 +159,24 @@ Toonflow は、AI技術を活用して小説を自動的に脚本へ変換し、
 
 <table>
 <tr>
-<td width="50%"><a href="../screenshot/1.png"><img src="../screenshot/1.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/2.png"><img src="../screenshot/2.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/1.png" target="_blank"><img src="../screenshot/1.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/2.png" target="_blank"><img src="../screenshot/2.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/3.png"><img src="../screenshot/3.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/4.png"><img src="../screenshot/4.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/3.png" target="_blank"><img src="../screenshot/3.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/4.png" target="_blank"><img src="../screenshot/4.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/5.png"><img src="../screenshot/5.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/6.png"><img src="../screenshot/6.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/5.png" target="_blank"><img src="../screenshot/5.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/6.png" target="_blank"><img src="../screenshot/6.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/7.png"><img src="../screenshot/7.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/8.png"><img src="../screenshot/8.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/7.png" target="_blank"><img src="../screenshot/7.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/8.png" target="_blank"><img src="../screenshot/8.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/9.png"><img src="../screenshot/9.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/10.png"><img src="../screenshot/10.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/9.png" target="_blank"><img src="../screenshot/9.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/10.png" target="_blank"><img src="../screenshot/10.png" width="100%"/></a></td>
 </tr>
 </table>
 
@@ -192,11 +192,12 @@ Toonflow は、AI技術を活用して小説を自動的に脚本へ変換し、
 
 ## コスト内訳
 
-| 項目 | 費用 |
+| モデル種別 | 費用 |
 |------|------|
-| 画像（270枚 × ¥0.04）| ¥10.8 |
-| 動画（45クリップ × ¥3.5）| ¥157.5 |
-| 合計 | **約¥168** |
+| 言語モデル | 約¥10 |
+| 動画モデル（全量生成）| 約¥120 |
+| 画像モデル | ¥1未満 |
+| **合計** | **約¥130** |
 
 > 📌 デモ動画の原解像度は1080×1882、公開版は480pに圧縮済みです。著作権上の問題が確認された場合は、速やかに削除対応いたします。
 

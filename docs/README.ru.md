@@ -89,7 +89,7 @@
 </div>
 
 <div align="center">
-  <img src="./g-star.png" alt="Сертификат AtomGit G-Star" height="300"/>
+  <img src="./g-star.png" alt="Сертификат AtomGit G-Star" width="100%"/>
 </div>
 
 ---
@@ -163,24 +163,24 @@ Toonflow — это мощный ИИ-инструмент для создани
 
 <table>
 <tr>
-<td width="50%"><a href="../screenshot/1.png"><img src="../screenshot/1.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/2.png"><img src="../screenshot/2.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/1.png" target="_blank"><img src="../screenshot/1.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/2.png" target="_blank"><img src="../screenshot/2.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/3.png"><img src="../screenshot/3.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/4.png"><img src="../screenshot/4.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/3.png" target="_blank"><img src="../screenshot/3.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/4.png" target="_blank"><img src="../screenshot/4.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/5.png"><img src="../screenshot/5.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/6.png"><img src="../screenshot/6.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/5.png" target="_blank"><img src="../screenshot/5.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/6.png" target="_blank"><img src="../screenshot/6.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/7.png"><img src="../screenshot/7.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/8.png"><img src="../screenshot/8.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/7.png" target="_blank"><img src="../screenshot/7.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/8.png" target="_blank"><img src="../screenshot/8.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/9.png"><img src="../screenshot/9.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/10.png"><img src="../screenshot/10.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/9.png" target="_blank"><img src="../screenshot/9.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/10.png" target="_blank"><img src="../screenshot/10.png" width="100%"/></a></td>
 </tr>
 </table>
 
@@ -196,11 +196,12 @@ Toonflow — это мощный ИИ-инструмент для создани
 
 ## Разбивка затрат
 
-| Пункт | Стоимость |
+| Тип модели | Стоимость |
 |-------|-----------|
-| Изображения (270 шт. × ¥0.04) | ¥10.8 |
-| Видео (45 клипов × ¥3.5) | ¥157.5 |
-| Итого | **~¥168** |
+| Языковая модель | ~¥10 |
+| Видео-модель (полная генерация) | ~¥120 |
+| Модель изображений | <¥1 |
+| **Итого** | **~¥130** |
 
 > 📌 Исходное разрешение демо-видео — 1080×1882, опубликованная версия сжата до 480p. При обнаружении нарушений авторских прав контент будет незамедлительно удалён.
 

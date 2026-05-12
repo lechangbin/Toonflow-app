@@ -90,7 +90,7 @@
 </div>
 
 <div align="center">
-  <img src="./g-star.png" alt="AtomGit G-Star Certificate" height="300"/>
+  <img src="./g-star.png" alt="AtomGit G-Star Certificate" width="100%"/>
 </div>
 
 ---
@@ -165,24 +165,24 @@ The screenshots and video below are from an AI short drama Demo created with Too
 
 <table>
 <tr>
-<td width="50%"><a href="../screenshot/1.png"><img src="../screenshot/1.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/2.png"><img src="../screenshot/2.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/1.png" target="_blank"><img src="../screenshot/1.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/2.png" target="_blank"><img src="../screenshot/2.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/3.png"><img src="../screenshot/3.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/4.png"><img src="../screenshot/4.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/3.png" target="_blank"><img src="../screenshot/3.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/4.png" target="_blank"><img src="../screenshot/4.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/5.png"><img src="../screenshot/5.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/6.png"><img src="../screenshot/6.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/5.png" target="_blank"><img src="../screenshot/5.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/6.png" target="_blank"><img src="../screenshot/6.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/7.png"><img src="../screenshot/7.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/8.png"><img src="../screenshot/8.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/7.png" target="_blank"><img src="../screenshot/7.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/8.png" target="_blank"><img src="../screenshot/8.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/9.png"><img src="../screenshot/9.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/10.png"><img src="../screenshot/10.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/9.png" target="_blank"><img src="../screenshot/9.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/10.png" target="_blank"><img src="../screenshot/10.png" width="100%"/></a></td>
 </tr>
 </table>
 
@@ -198,11 +198,12 @@ The screenshots and video below are from an AI short drama Demo created with Too
 
 ## Cost Breakdown
 
-| Item | Cost |
+| Model Type | Cost |
 |------|------|
-| Images (270 pics × ¥0.04) | ¥10.8 |
-| Videos (45 clips × ¥3.5) | ¥157.5 |
-| Total | **~¥168** |
+| Language Model | ~¥10 |
+| Video Model (full generation) | ~¥120 |
+| Image Model | <¥1 |
+| **Total** | **~¥130** |
 
 > 📌 Demo original resolution is 1080×1882, published version compressed to 480p. Any infringing content will be removed upon identification.
 

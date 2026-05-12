@@ -89,7 +89,7 @@
 </div>
 
 <div align="center">
-  <img src="./g-star.png" alt="Chứng chỉ AtomGit G-Star" height="300"/>
+  <img src="./g-star.png" alt="Chứng chỉ AtomGit G-Star" width="100%"/>
 </div>
 
 ---
@@ -154,24 +154,24 @@ Các ảnh chụp màn hình và video dưới đây được lấy từ Demo ph
 
 <table>
 <tr>
-<td width="50%"><a href="../screenshot/1.png"><img src="../screenshot/1.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/2.png"><img src="../screenshot/2.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/1.png" target="_blank"><img src="../screenshot/1.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/2.png" target="_blank"><img src="../screenshot/2.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/3.png"><img src="../screenshot/3.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/4.png"><img src="../screenshot/4.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/3.png" target="_blank"><img src="../screenshot/3.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/4.png" target="_blank"><img src="../screenshot/4.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/5.png"><img src="../screenshot/5.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/6.png"><img src="../screenshot/6.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/5.png" target="_blank"><img src="../screenshot/5.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/6.png" target="_blank"><img src="../screenshot/6.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/7.png"><img src="../screenshot/7.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/8.png"><img src="../screenshot/8.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/7.png" target="_blank"><img src="../screenshot/7.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/8.png" target="_blank"><img src="../screenshot/8.png" width="100%"/></a></td>
 </tr>
 <tr>
-<td width="50%"><a href="../screenshot/9.png"><img src="../screenshot/9.png" width="100%"/></a></td>
-<td width="50%"><a href="../screenshot/10.png"><img src="../screenshot/10.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/9.png" target="_blank"><img src="../screenshot/9.png" width="100%"/></a></td>
+<td width="50%"><a href="../screenshot/10.png" target="_blank"><img src="../screenshot/10.png" width="100%"/></a></td>
 </tr>
 </table>
 
@@ -187,11 +187,12 @@ Các ảnh chụp màn hình và video dưới đây được lấy từ Demo ph
 
 ## Chi tiết Chi phí
 
-| Mục | Chi phí |
-|-----|---------|
-| Hình ảnh (270 ảnh × ¥0.04) | ¥10.8 |
-| Video (45 clip × ¥3.5) | ¥157.5 |
-| Tổng | **~¥168** |
+| Loại mô hình | Chi phí |
+|-----|------|
+| Mô hình ngôn ngữ | ~¥10 |
+| Mô hình video (tạo đầy đủ) | ~¥120 |
+| Mô hình hình ảnh | <¥1 |
+| **Tổng** | **~¥130** |
 
 > 📌 Độ phân giải gốc của Demo là 1080×1882, phiên bản phát hành đã nén xuống 480p. Nếu phát hiện vi phạm bản quyền, chúng tôi sẽ xóa nội dung ngay lập tức.
 
