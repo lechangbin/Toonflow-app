@@ -193,7 +193,7 @@ Các ảnh chụp màn hình và video dưới đây được lấy từ Demo ph
 | Video (45 clip × ¥3.5) | ¥157.5 |
 | Tổng | **~¥168** |
 
-> 📌 Độ phân giải gốc của Demo là 1080×1882, phiên bản phát hành đã nén xuống 480p. Nếu có vấn đề bản quyền, vui lòng liên hệ [ltlctools@outlook.com](mailto:ltlctools@outlook.com).
+> 📌 Độ phân giải gốc của Demo là 1080×1882, phiên bản phát hành đã nén xuống 480p. Nếu phát hiện vi phạm bản quyền, chúng tôi sẽ xóa nội dung ngay lập tức.
 
 ## Video Demo
 

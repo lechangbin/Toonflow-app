@@ -204,7 +204,7 @@ The screenshots and video below are from an AI short drama Demo created with Too
 | Videos (45 clips × ¥3.5) | ¥157.5 |
 | Total | **~¥168** |
 
-> 📌 Demo original resolution is 1080×1882, published version compressed to 480p. For copyright concerns, please contact us at [ltlctools@outlook.com](mailto:ltlctools@outlook.com).
+> 📌 Demo original resolution is 1080×1882, published version compressed to 480p. Any infringing content will be removed upon identification.
 
 ## Demo Video
 
