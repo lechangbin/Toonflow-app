@@ -200,7 +200,7 @@ class OSS {
     //     .resize(512, 512, { fit: "inside", withoutEnlargement: true })
     //     .toFile(dstAbsPath);
     //   console.info(`[${dstAbsPath}]小图写入成功`);
-    return await this.getFileUrl(userRelPath) + "?size=20";
+    return (await this.getFileUrl(userRelPath)) + "?size=20";
     // } catch (e) {
     //   // 生成失败返回原图
     //   console.warn("[OSS] 生成缩略图失败:", e);
