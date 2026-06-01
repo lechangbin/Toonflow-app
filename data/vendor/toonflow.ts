@@ -1,6 +1,6 @@
 /**
  * Toonflow官方中转平台 供应商适配
- * @version 2.0
+ * @version 3.0
  */
 
 // ============================================================
@@ -204,13 +204,7 @@ const vendor: VendorConfig = {
       type: "image",
       modelName: "doubao-seedream-4-5",
       mode: ["text", "singleImage", "multiReference"],
-    },
-    {
-      name: "全能图片G-2.0",
-      type: "image",
-      modelName: "全能图片G-2.0",
-      mode: ["text", "singleImage", "multiReference"],
-    },
+    }
   ],
 };
 
