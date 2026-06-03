@@ -1,4 +1,4 @@
-// @db-hash 537625bba263517d947d4009f1a0155d
+// @db-hash d9635951c2c4da90f4cc55b17095da50
 //该文件由脚本自动生成，请勿手动修改
 
 export interface _o_assets_old_20260428 {
@@ -281,6 +281,7 @@ export interface o_videoTrack {
   'id'?: number;
   'projectId'?: number | null;
   'prompt'?: string | null;
+  'promptState'?: string | null;
   'reason'?: string | null;
   'scriptId'?: number | null;
   'selectVideoId'?: number | null;
