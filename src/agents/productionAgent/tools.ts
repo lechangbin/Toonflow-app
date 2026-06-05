@@ -63,9 +63,27 @@ interface ToolConfig {
   msg: ReturnType<ResTool["newMessage"]>;
 }
 
+/**
+ * 串行队列：确保 socket 操作排队执行，避免并发过高导致假死
+ * @param delayMs 每个操作之间的最小间隔(ms)
+ */
+function createSocketQueue(delayMs = 800) {
+  let lastPromise: Promise<any> = Promise.resolve();
+  return <T>(fn: () => Promise<T>): Promise<T> => {
+    lastPromise = lastPromise.then(
+      () =>
+        new Promise<T>((resolve, reject) => {
+          setTimeout(() => fn().then(resolve, reject), delayMs);
+        }),
+    );
+    return lastPromise;
+  };
+}
+
 export default (toolCpnfig: ToolConfig) => {
   const { resTool, toolsNames, msg } = toolCpnfig;
   const { socket } = resTool;
+  const socketQueue = createSocketQueue(800);
   const workMap: Record<any, any> = {};
   const tools: Record<string, Tool> = {
     get_flowData: tool({
@@ -199,7 +217,15 @@ export default (toolCpnfig: ToolConfig) => {
       ),
       execute: async ({ ids }) => {
         const thinking = msg.thinking("正在生成分镜...");
-        new Promise((resolve) => socket.emit("generateStoryboard", { ids }, (res: any) => resolve(res)))
+        socketQueue(
+          () =>
+            new Promise((resolve, reject) =>
+              socket.emit("generateStoryboard", { ids }, (res: any) => {
+                if (res?.error) return reject(new Error(res.error));
+                resolve(res);
+              }),
+            ),
+        )
           .then((res) => {
             thinking.appendText("生成的分镜数据:\n" + JSON.stringify(res, null, 2));
             thinking.updateTitle("分镜生成完成");
@@ -245,7 +271,15 @@ export default (toolCpnfig: ToolConfig) => {
           associateAssetsIds: raw.associateAssetsIds ?? [],
           shouldGenerateImage: raw.shouldGenerateImage,
         };
-        new Promise((resolve) => socket.emit("addStoryboard", { ...data }, (res: any) => resolve(res)))
+        socketQueue(
+          () =>
+            new Promise((resolve, reject) =>
+              socket.emit("addStoryboard", { ...data }, (res: any) => {
+                if (res?.error) return reject(new Error(res.error));
+                resolve(res);
+              }),
+            ),
+        )
           .then((res) => {
             thinking.appendText("新增的分镜数据:\n" + JSON.stringify(data, null, 2));
             thinking.updateTitle("新增分镜成功");

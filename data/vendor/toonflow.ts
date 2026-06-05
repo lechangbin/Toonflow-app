@@ -146,7 +146,7 @@ const vendor: VendorConfig = {
   },
   models: [
     {
-      name: "Wan2.6 (支持真人)",
+      name: "Wan2.6",
       type: "video",
       modelName: "wan2.6",
       mode: ["singleImage"],
@@ -162,7 +162,7 @@ const vendor: VendorConfig = {
       audio: true,
     },
     {
-      name: "Seedance-2.0",
+      name: "Seedance-2.0 (支持真人)",
       modelName: "Seedance 2.0",
       type: "video",
       mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
@@ -170,7 +170,7 @@ const vendor: VendorConfig = {
       durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
     },
     {
-      name: "Seedance 2.0 fast",
+      name: "Seedance 2.0 fast (支持真人)",
       modelName: "Seedance 2.0 fast",
       type: "video",
       mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
@@ -634,7 +634,9 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   // 公共请求体（非万象通用路径）
   const publicBody: Record<string, any> = {
     model: model.modelName,
-    ...(imageRefs.length ? { images: imageRefs } : {}),
+    ...(imageRefs.length && !(lowerName.includes("doubao") || (lowerName.includes("seedance") && !lowerName.includes("vidu")))
+      ? { images: imageRefs }
+      : {}),
     prompt: config.prompt,
     duration: config.duration,
     resolution: config.resolution,

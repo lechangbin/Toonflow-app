@@ -9,10 +9,11 @@ export default router.post(
   "/",
   validateFields({
     scriptId: z.number(),
+    projectId: z.number(),
   }),
   async (req, res) => {
-    const { scriptId } = req.body;
-    const storyboardData = await u.db("o_storyboard").where({ scriptId }).orderBy("index", "asc");
+    const { scriptId, projectId } = req.body;
+    const storyboardData = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
     const data = await Promise.all(
       storyboardData.map(async (i) => {
         return {
@@ -51,6 +52,8 @@ export default router.post(
     }, {});
 
     // 组装最终数据，符合 Shot 接口格式
+    console.log("%c Line:57 🍻 data", "background:#e41a6a", data);
+
     const result = await Promise.all(
       data.map(async (item) => {
         const characters = storyboardCharactersMap[item.id as number] ?? [];
@@ -71,6 +74,7 @@ export default router.post(
           prompt: item.prompt ?? undefined,
           scriptId: item.scriptId ?? undefined,
           characters: charactersWithUrl,
+          index: item.index,
         };
       }),
     );

@@ -110,7 +110,6 @@ class OSS {
     // 读取文件并转换为 base64
     const data = await fs.readFile(absPath);
     const base64 = data.toString("base64");
-
     // 返回完整的 Data URL
     return `data:${mimeType};base64,${base64}`;
   }
