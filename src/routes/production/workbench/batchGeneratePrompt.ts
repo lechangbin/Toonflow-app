@@ -58,7 +58,7 @@ export default router.post(
         if (modelLower.includes("wan") && modelLower.includes("2.6")) {
           // wan2.6 系列 => 单图首尾帧模式
           fileName = "wan2.6Single-imageFirstFrameMode.md";
-        } else if (/seedance.*2[.\-]0/i.test(modelData)) {
+        } else if (/seedance.*2[.\-]0/i.test(modelLower)) {
           // seedance 2.0 / 2-0 系列
           fileName = "seedance2Multi-parameterMode.md";
         } else if (mode === "startEndRequired" || mode === "endFrameOptional" || mode === "startFrameOptional") {
@@ -86,6 +86,7 @@ export default router.post(
           videoPromptGeneration = videoPrompt?.data ?? undefined;
         }
       }
+
       const artStyle = projectData?.artStyle || "无";
       const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
       await u

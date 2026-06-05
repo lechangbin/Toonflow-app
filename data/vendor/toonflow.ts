@@ -170,6 +170,14 @@ const vendor: VendorConfig = {
       durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
     },
     {
+      name: "Seedance 2.0 fast",
+      modelName: "Seedance 2.0 fast",
+      type: "video",
+      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
+      audio: "optional",
+      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
+    },
+    {
       name: "ViduQ3 pro",
       type: "video",
       modelName: "ViduQ3-pro",
@@ -204,7 +212,7 @@ const vendor: VendorConfig = {
       type: "image",
       modelName: "doubao-seedream-4-5",
       mode: ["text", "singleImage", "multiReference"],
-    }
+    },
   ],
 };
 

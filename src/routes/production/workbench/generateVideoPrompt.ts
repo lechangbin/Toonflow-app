@@ -23,7 +23,9 @@ export default router.post(
   }),
   async (req, res) => {
     const { trackId, projectId, info, model, mode } = req.body;
-
+    await u.db("o_videoTrack").where({ id: trackId }).update({
+      state: "生成中",
+    });
     //查询参数
     const images = await Promise.all(
       info.map(async (item: { id: number; sources: string }) => {
@@ -183,10 +185,18 @@ export default router.post(
         ],
       });
       await u.db("o_videoTrack").where({ id: trackId }).update({
+        state: "已完成",
         prompt: text,
       });
       res.status(200).send(success(text));
     } catch (e) {
+      await u
+        .db("o_videoTrack")
+        .where({ id: trackId })
+        .update({
+          state: "生成失败",
+          reason: u.error(e).message,
+        });
       res.status(400).send(error(u.error(e).message));
     }
   },
