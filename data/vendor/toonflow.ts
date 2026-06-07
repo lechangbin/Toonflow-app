@@ -133,7 +133,7 @@ declare const exports: {
 
 const vendor: VendorConfig = {
   id: "toonflow",
-  version: "3.1",
+  version: "3.2",
   author: "Toonflow",
   name: "Toonflow官方中转平台",
   description:
@@ -371,12 +371,6 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   }
   if (lowerName.includes("gpt") || lowerName.includes("全能图片")) {
     const normalizedSize = config.size === "1K" ? "1k" : config.size === "2K" ? "2k" : config.size === "4K" ? "4k" : config.size;
-
-    const sizeMap: Record<string, Record<string, string>> = {
-      "16:9": { "1K": "1792x1008", "2K": "2048x1152", "4K": "3840x2160" },
-      "9:16": { "1K": "1008x1792", "2K": "1152x2048", "4K": "2160x3840" },
-    };
-    const resolvedSize = sizeMap[config.aspectRatio]?.[normalizedSize];
     const body: Record<string, any> = {
       model: model.modelName,
       prompt: config.prompt,
@@ -634,9 +628,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   // 公共请求体（非万象通用路径）
   const publicBody: Record<string, any> = {
     model: model.modelName,
-    ...(imageRefs.length && !(lowerName.includes("doubao") || (lowerName.includes("seedance") && !lowerName.includes("vidu")))
-      ? { images: imageRefs }
-      : {}),
+    ...(imageRefs.length && lowerName.includes("vidu") ? { images: imageRefs } : {}),
     prompt: config.prompt,
     duration: config.duration,
     resolution: config.resolution,

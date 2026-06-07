@@ -52,7 +52,6 @@ export default router.post(
     }, {});
 
     // 组装最终数据，符合 Shot 接口格式
-    console.log("%c Line:57 🍻 data", "background:#e41a6a", data);
 
     const result = await Promise.all(
       data.map(async (item) => {
