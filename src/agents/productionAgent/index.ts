@@ -429,6 +429,8 @@ async function consumeFullStream(
         fullResponse += chunk.text;
       } else if (chunk.type === "error") {
         throw chunk.error;
+      } else if (chunk.type == "finish") {
+        break;
       }
     }
     text.complete();
