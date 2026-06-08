@@ -134,7 +134,7 @@ export default router.post(
       const uniqueRows = [...new Map(scriptAssetRows.map((r) => [`${r.scriptId}_${r.assetId}`, r])).values()];
 
       // 先删除本批 scriptId 的旧关联，再插入新的
-      await u.db("o_scriptAssets").where("projectId", projectId).whereIn("scriptId", batchScriptIds).delete();
+      await u.db("o_scriptAssets").whereIn("scriptId", batchScriptIds).delete();
       if (uniqueRows.length) {
         await u.db("o_scriptAssets").insert(uniqueRows);
       }

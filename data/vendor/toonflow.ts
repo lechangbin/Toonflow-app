@@ -435,7 +435,11 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   const imageRefs = (config.referenceList ?? []).filter((r) => r.type === "image").map((r) => r.base64);
   const videoRefs = (config.referenceList ?? []).filter((r) => r.type === "video").map((r) => r.base64);
   const audioRefs = (config.referenceList ?? []).filter((r) => r.type === "audio").map((r) => r.base64);
-
+  if (imageRefs && imageRefs.length) {
+    for (const item of imageRefs) {
+      await zipImage(item, 3 * 1024 * 104);
+    }
+  }
   // 构建模型专属 metadata
   let metadata: Record<string, any> = {};
 
