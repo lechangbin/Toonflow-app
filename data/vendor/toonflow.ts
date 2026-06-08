@@ -146,22 +146,6 @@ const vendor: VendorConfig = {
   },
   models: [
     {
-      name: "Wan2.6",
-      type: "video",
-      modelName: "wan2.6",
-      mode: ["singleImage"],
-      durationResolutionMap: [{ duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720p", "1080p"] }],
-      audio: true,
-    },
-    {
-      name: "Seedance 1.5 Pro",
-      type: "video",
-      modelName: "doubao-seedance-1-5-pro",
-      mode: ["text", "endFrameOptional"],
-      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
-      audio: true,
-    },
-    {
       name: "Seedance-2.0 (支持真人)",
       modelName: "Seedance 2.0",
       type: "video",
@@ -176,6 +160,22 @@ const vendor: VendorConfig = {
       mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
       audio: "optional",
       durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
+    },
+    {
+      name: "Wan2.6",
+      type: "video",
+      modelName: "wan2.6",
+      mode: ["singleImage"],
+      durationResolutionMap: [{ duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720p", "1080p"] }],
+      audio: true,
+    },
+    {
+      name: "Seedance 1.5 Pro",
+      type: "video",
+      modelName: "doubao-seedance-1-5-pro",
+      mode: ["text", "endFrameOptional"],
+      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
+      audio: true,
     },
     {
       name: "ViduQ3 pro",
@@ -213,6 +213,13 @@ const vendor: VendorConfig = {
       modelName: "doubao-seedream-4-5",
       mode: ["text", "singleImage", "multiReference"],
     },
+    {
+      name: "全能图片G-2.0",
+      type: "image",
+      modelName: "全能图片G-2.0",
+      mode: ["text", "singleImage", "multiReference"],
+    },
+    // { name: "DeepSeek v4 pro", modelName: "deepseek-v4-pro", type: "text", think: false },
   ],
 };
 
