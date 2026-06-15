@@ -296,8 +296,8 @@ yarn docker:local
 docker build -t toonflow .
 docker run -d -p <ローカルポート>:10588 -v <ローカルデータパス>:/app/data toonflow
 
-# 該当ポートの /web/index.html にアクセス
-# 例：http://localhost:10588/web/index.html
+# 該当ポートの /index.html にアクセス
+# 例：http://localhost:10588/index.html
 ```
 
 ### サービスポート説明

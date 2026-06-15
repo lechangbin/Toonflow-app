@@ -296,8 +296,8 @@ yarn docker:local
 docker build -t toonflow .
 docker run -d -p <cổng_local>:10588 -v <đường_dẫn_dữ_liệu_local>:/app/data toonflow
 
-# Lúc này, tại đường dẫn /web/index.html của cổng tương ứng có thể truy cập trang
-# Ví dụ http://localhost:10588/web/index.html
+# Lúc này, tại đường dẫn /index.html của cổng tương ứng có thể truy cập trang
+# Ví dụ http://localhost:10588/index.html
 ```
 
 ### Giải thích cổng dịch vụ

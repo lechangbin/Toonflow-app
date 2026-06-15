@@ -296,8 +296,8 @@ yarn docker:local
 docker build -t toonflow .
 docker run -d -p <local_port>:10588 -v <local_data_path>:/app/data toonflow
 
-# Access the page at the corresponding port path /web/index.html
-# Example: http://localhost:10588/web/index.html
+# Access the page at the corresponding port path /index.html
+# Example: http://localhost:10588/index.html
 ```
 
 ### Service Port Description

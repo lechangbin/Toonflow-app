@@ -296,8 +296,8 @@ yarn docker:local
 docker build -t toonflow .
 docker run -d -p <本地端口>:10588 -v <本地数据路径>:/app/data toonflow
 
-# 此时在相应端口的 /web/index.html 路径即可访问页面
-# 例如 http://localhost:10588/web/index.html
+# 此时在相应端口的 /index.html 路径即可访问页面
+# 例如 http://localhost:10588/index.html
 ```
 
 ### 服务端口说明
