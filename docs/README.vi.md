@@ -94,7 +94,7 @@
       </td>
       <td width="50%" align="center">
         <a href="./gvp.jpg" target="_blank">
-          <img src="./gvp.jpg" alt="AtomGit G-Star Certificate" width="100%"/>
+          <img src="./gvp.jpg" alt="Gitee GVP Certificate" width="100%"/>
         </a>
       </td>
     </tr>

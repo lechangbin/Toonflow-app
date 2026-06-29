@@ -89,12 +89,12 @@
     <tr>
       <td width="50%" align="center">
         <a href="./g-star.png" target="_blank">
-          <img src="./g-star.png" alt="AtomGit G-Star Certificate" width="100%"/>
+          <img src="./g-star.png" alt="Gitee GVP Certificate" width="100%"/>
         </a>
       </td>
       <td width="50%" align="center">
         <a href="./gvp.jpg" target="_blank">
-          <img src="./gvp.jpg" alt="AtomGit G-Star Certificate" width="100%"/>
+          <img src="./gvp.jpg" alt="Gitee GVP Certificate" width="100%"/>
         </a>
       </td>
     </tr>
