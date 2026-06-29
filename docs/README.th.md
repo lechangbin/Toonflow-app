@@ -93,7 +93,9 @@
         </a>
       </td>
       <td width="50%" align="center">
-        GVP - Gitee Most Valuable Open Source Project
+        <a href="./gvp.jpg" target="_blank">
+          <img src="./gvp.jpg" alt="AtomGit G-Star Certificate" width="100%"/>
+        </a>
       </td>
     </tr>
   </table>

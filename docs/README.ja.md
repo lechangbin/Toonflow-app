@@ -93,7 +93,9 @@
         </a>
       </td>
       <td width="50%" align="center">
-        GVP - Gitee 最も価値のあるオープンソースプロジェクト
+        <a href="./gvp.jpg" target="_blank">
+          <img src="./gvp.jpg" alt="AtomGit G-Star Certificate" width="100%"/>
+        </a>
       </td>
     </tr>
   </table>
