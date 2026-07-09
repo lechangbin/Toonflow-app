@@ -77,9 +77,6 @@
     <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Docker/docker2.svg" alt="Docker" />&nbsp;
     <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Electron/electron2.svg" alt="Electron" />
   </p>
-  <p align="center">
-    <img src="https://mobaicons.com/icons/typescript,nodejs,electron,docker,socket?perline=5" alt="Tech Stack Icons" />
-  </p>
   
   > 🚀 **All-in-One Short Drama Workflow**: From text to characters, from storyboards to videos — zero-threshold full-process AI automation, boosting creative efficiency by 10x+!
 </div>
@@ -89,7 +86,7 @@
     <tr>
       <td width="50%" align="center">
         <a href="./g-star.png" target="_blank">
-          <img src="./g-star.png" alt="Gitee GVP Certificate" width="100%"/>
+          <img src="./g-star.png" alt="AtomGit G-Star Certificate" width="100%"/>
         </a>
       </td>
       <td width="50%" align="center">
@@ -320,15 +317,17 @@ docker run -d -p <local_port>:10588 -v <local_data_path>:/app/data toonflow
 
 ## Cloud Deployment
 
-### I. Server Environment Requirements
+### Cloud Server Deployment
+
+#### I. Server Environment Requirements
 
 - **OS**: Ubuntu 20.04+ / CentOS 7+
 - **Node.js**: 24.x (recommended, minimum 23.11.1+)
 - **Memory**: 2GB+
 
-### II. Server Deployment
+#### II. Server Deployment
 
-#### 1. Install Environment
+##### 1. Install Environment
 
 ```bash
 # Install Node.js
@@ -339,7 +338,7 @@ nvm install 24
 npm install -g yarn pm2
 ```
 
-#### 2. Deploy the Project
+##### 2. Deploy the Project
 
 **Clone from GitHub:**
 
@@ -361,7 +360,7 @@ yarn install
 yarn build
 ```
 
-#### 3. Configure PM2
+##### 3. Configure PM2
 
 Create `pm2.json` file:
 
@@ -389,7 +388,7 @@ Create `pm2.json` file:
 
 ---
 
-#### 4. Start the Service
+##### 4. Start the Service
 
 ```bash
 pm2 start pm2.json
@@ -397,7 +396,7 @@ pm2 startup
 pm2 save
 ```
 
-#### 5. Common Commands
+##### 5. Common Commands
 
 ```bash
 pm2 list              # View processes
@@ -410,7 +409,7 @@ pm2 monit             # Monitoring dashboard
 > Username: `admin`  
 > Password: `admin123`
 
-#### 6. Deploy the Frontend
+##### 6. Deploy the Frontend
 
 If you need to deploy or customize the frontend separately, please refer to the frontend repository:
 
@@ -418,6 +417,47 @@ If you need to deploy or customize the frontend separately, please refer to the 
 - **Gitee**: [Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
 
 > 💡 **Note**: This repository already includes pre-built frontend resources; regular users do not need to deploy the frontend separately. The frontend repository is for developers who need secondary development.
+
+### Cloud Platform Deployment
+
+> 🎉 **Newly Certified Official Compute Partner Platform — AI Galaxy**
+>
+> **[AI Galaxy](https://www.ai-galaxy.com/)** is a **Toonflow officially authorized commercial image provider**, offering a fully compliant, pre-built Toonflow AI short-drama production image for commercial use — **ready to use out of the box, no manual deployment required**.
+>
+> - 🌐 Website: [https://www.ai-galaxy.com](https://www.ai-galaxy.com)
+> - 📖 Official image deployment tutorial: [Click to view](https://mp.weixin.qq.com/s/lq9X1ovQ1_TKeXMOLgicKg?scene=1)
+
+<details>
+<summary>📄 Click to expand the text tutorial</summary>
+
+#### I. GPU Rental Stage
+
+1. On AI Galaxy - Compute Marketplace - RTX 4090 / 4090 Plus, click "Rent Now" to open the rental details page.
+   > 💡 It's recommended to enable "hourly auto-renewal" to prevent the instance from expiring while a video render is still in progress.
+2. Select the image: `windows10LTSCwin10_Toonflow` - Create Instance.
+3. Wait 30–60 seconds for the instance to start, then check the connection method — download the RDP login file, copy the password, and double-click the downloaded remote desktop file.
+4. Paste the copied password and log in to enter the cloud desktop.
+   > 💡 Move the mouse to the top of the cloud desktop and pause briefly to reveal the desktop-switching toolbar. Click "──" to switch back to your local desktop, or "□" to shrink it into a window on your local desktop.
+
+#### II. Configure Toonflow & Start ComfyUI Stage
+
+1. First configure the model used by the Agent: open Toonflow on the desktop - Model Services - OpenAI-compatible interface - enter the API key and request URL.
+   Default account: `admin`  Password: `admin123` (recommended to change the password after logging in)
+   > 💡 This uses AI Galaxy's AI model Token service directly — an official interface that's stable, secure, and up to 40% off (converting a novel into a script cost about ¥0.64).
+   - AI Galaxy model Token request URL: `https://token.ai-galaxy.com/v1`
+   - AI Galaxy Token top-up steps: Token Marketplace - Account Overview - Top Up - transfer your AI Galaxy balance or compute vouchers into your Token account.
+   - After topping up, go to "Key Management" - New API, name it `Toonflow` or anything you like, confirm, and copy the API key.
+2. Back in step 1, paste the generated API key and request URL into Toonflow's Model Services, then click elsewhere; the system will show "Provider configuration updated".
+   Click "Add Manually", go back to the AI Galaxy Token Marketplace page, and copy the full model name.
+   > 💡 One key can call every model on AI Galaxy — just pick the one you want to use; `deepseek-v4-pro` is recommended.
+   Paste the full model name into Toonflow and confirm to complete the model configuration.
+3. After configuration, check two things:
+   - Whether all three model toggles in Model Services are enabled
+   - Whether the model configured in the Agent settings matches your configuration (click to correct it if not)
+4. Start ComfyUI: Cloud Desktop - ComfyUI Launcher - One-Click Start.
+5. Startup takes about 1–2 minutes; keep the page open once it's running.
+
+</details>
 
 ---
 
@@ -736,6 +776,13 @@ We also thank the following organizations/units/individuals for their support:
       <td align="center">🌐 World Model Technical Support</td>
       <td>Tencent Hunyuan 3D AI creation engine based on version 2.5 of the Hunyuan 3D generation large model, the industry's first one-stop 3D content AI creation platform. Features text-to-3D, image-to-3D, 3D animation generation, texture generation, supports sketch-to-3D, 3D character generation, with advantages in low-poly model generation.</td>
       <td align="center"><a href="https://3d.hunyuan.tencent.com/">Website</a></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/ai-galaxy.png" alt="AI Galaxy Logo" width="48"></td>
+      <td align="center"><b>AI Galaxy</b></td>
+      <td align="center">💻 Compute Support <br/> 🖼️ Image Support</td>
+      <td>A well-known professional compute service brand in China, providing affordable and stable compute power. Serves labs at over a thousand top universities (Tsinghua, Peking, Fudan, Zhejiang University, etc.), the Chinese Academy of Sciences, and 5,000+ AI companies.</td>
+      <td align="center"><a href="https://www.ai-galaxy.com">Website</a></td>
     </tr>
   </tbody>
 </table>

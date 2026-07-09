@@ -77,9 +77,6 @@
     <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Docker/docker2.svg" alt="Docker" />&nbsp;
     <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Electron/electron2.svg" alt="Electron" />
   </p>
-  <p align="center">
-    <img src="https://mobaicons.com/icons/typescript,nodejs,electron,docker,socket?perline=5" alt="Biểu tượng Công nghệ" />
-  </p>
   
   > 🚀 **Quy trình sản xuất phim ngắn tất cả trong một**: Từ văn bản đến nhân vật, từ phân cảnh đến video, toàn bộ quy trình AI không rào cản, nâng cao hiệu suất sáng tạo lên hơn 10 lần!
 </div>
@@ -320,15 +317,17 @@ docker run -d -p <cổng_local>:10588 -v <đường_dẫn_dữ_liệu_local>:/ap
 
 ## Triển khai đám mây
 
-### I. Yêu cầu môi trường máy chủ
+### Triển khai máy chủ đám mây
+
+#### I. Yêu cầu môi trường máy chủ
 
 - **Hệ thống**: Ubuntu 20.04+ / CentOS 7+
 - **Node.js**: 24.x (khuyến nghị, tối thiểu 23.11.1+)
 - **Bộ nhớ**: 2GB+
 
-### II. Triển khai máy chủ
+#### II. Triển khai máy chủ
 
-#### 1. Cài đặt môi trường
+##### 1. Cài đặt môi trường
 
 ```bash
 # Cài đặt Node.js
@@ -339,7 +338,7 @@ nvm install 24
 npm install -g yarn pm2
 ```
 
-#### 2. Triển khai dự án
+##### 2. Triển khai dự án
 
 **Clone từ GitHub:**
 
@@ -361,7 +360,7 @@ yarn install
 yarn build
 ```
 
-#### 3. Cấu hình PM2
+##### 3. Cấu hình PM2
 
 Tạo tệp `pm2.json`:
 
@@ -389,7 +388,7 @@ Tạo tệp `pm2.json`:
 
 ---
 
-#### 4. Khởi động dịch vụ
+##### 4. Khởi động dịch vụ
 
 ```bash
 pm2 start pm2.json
@@ -397,7 +396,7 @@ pm2 startup
 pm2 save
 ```
 
-#### 5. Các lệnh thường dùng
+##### 5. Các lệnh thường dùng
 
 ```bash
 pm2 list              # Xem tiến trình
@@ -410,7 +409,7 @@ pm2 monit             # Bảng điều khiển giám sát
 > Tài khoản: `admin`  
 > Mật khẩu: `admin123`
 
-#### 6. Triển khai trang web frontend
+##### 6. Triển khai trang web frontend
 
 Nếu cần triển khai riêng lẻ hoặc tùy chỉnh giao diện frontend, vui lòng tham khảo kho lưu trữ frontend:
 
@@ -418,6 +417,47 @@ Nếu cần triển khai riêng lẻ hoặc tùy chỉnh giao diện frontend, v
 - **Gitee**: [Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
 
 > 💡 **Ghi chú**: Kho lưu trữ này đã được tích hợp sẵn tài nguyên frontend đã biên dịch, người dùng thông thường không cần triển khai riêng frontend. Kho lưu trữ frontend chỉ dành cho các nhà phát triển cần phát triển thứ cấp.
+
+### Triển khai nền tảng đám mây
+
+> 🎉 **Nền tảng đối tác tính toán được chứng nhận chính thức mới —— Zhixing Cloud (AI Galaxy)**
+>
+> **[Zhixing Cloud (AI Galaxy)](https://www.ai-galaxy.com/)** là **nhà cung cấp image thương mại được Toonflow chính thức ủy quyền**, đã hợp pháp cài đặt, phân phối và hỗ trợ sử dụng thương mại toàn bộ image sản xuất phim ngắn AI của Toonflow, **sẵn sàng sử dụng ngay, không cần triển khai thủ công**.
+>
+> - 🌐 Trang chủ: [https://www.ai-galaxy.com](https://www.ai-galaxy.com)
+> - 📖 Hướng dẫn triển khai image chính thức: [Nhấp để xem](https://mp.weixin.qq.com/s/lq9X1ovQ1_TKeXMOLgicKg?scene=1)
+
+<details>
+<summary>📄 Nhấp để mở rộng hướng dẫn dạng văn bản</summary>
+
+#### I. Giai đoạn thuê GPU
+
+1. Trên Zhixing Cloud - Chợ tính toán - 4090 / 4090 Plus, nhấp "Thuê ngay" để vào trang chi tiết thuê.
+   > 💡 Nên bật chế độ "tự động gia hạn theo giờ" để tránh phiên bản hết hạn khi video đang render.
+2. Chọn image: `windows10LTSCwin10_Toonflow` - Tạo phiên bản (instance).
+3. Đợi phiên bản khởi động 30~60 giây, kiểm tra phương thức kết nối - tải file đăng nhập RDP - sao chép mật khẩu - nhấp đúp vào file kết nối đám mây đã tải xuống.
+4. Dán mật khẩu đã sao chép và đăng nhập, kết nối vào màn hình đám mây.
+   > 💡 Di chuột đến đầu màn hình đám mây và dừng lại một chút, thanh công cụ chuyển đổi màn hình sẽ hiện ra, có thể nhấp "──" để chuyển về màn hình máy tính của bạn, hoặc "□" để thu nhỏ thành cửa sổ trên màn hình máy tính của bạn.
+
+#### II. Giai đoạn cấu hình Toonflow, khởi động ComfyUI
+
+1. Trước tiên cấu hình mô hình mà Agent gọi: mở Toonflow trên màn hình - Dịch vụ mô hình - Giao diện chuẩn OpenAI - điền khóa API và địa chỉ yêu cầu.
+   Tài khoản mặc định: `admin`  Mật khẩu: `admin123` (nên đổi mật khẩu sau khi đăng nhập)
+   > 💡 ửe đây trực tiếp sử dụng dịch vụ Token mô hình ngôn ngữ lớn AI của Zhixing Cloud, giao diện chính thức, ổn định và an toàn, giảm giá tới 40% (chuyển tiểu thuyết thành kịch bản chỉ tốn khoảng ¥0.64).
+   - Địa chỉ yêu cầu Token gọi mô hình của Zhixing Cloud: `https://token.ai-galaxy.com/v1`
+   - Các bước nạp Token của Zhixing Cloud: Chợ Token - Tổng quan tài khoản - Nạp tiền - nạp số dư tài khoản Zhixing Cloud hoặc phiếu tính toán vào tài khoản Token.
+   - Sau khi nạp tiền, vào "Quản lý Key" - Tạo API mới, đặt tên là `Toonflow` hoặc tên khác tùy ý, nhấp xác nhận và sao chép khóa API.
+2. Quay lại bước 1, dán khóa API và địa chỉ yêu cầu đã tạo vào Dịch vụ mô hình của Toonflow, điền xong nhấp vào chỗ trống, hệ thống sẽ hiển thị "Cấu hình nhà cung cấp đã được cập nhật".
+   Nhấp "Thêm thủ công", quay lại trang Chợ Token của Zhixing Cloud, sao chép đầy đủ tên mô hình.
+   > 💡 Một Key có thể gọi tất cả các mô hình trên Zhixing Cloud, chọn mô hình bạn muốn dùng là được, khuyến nghị `deepseek-v4-pro`.
+   Dán tên mô hình đầy đủ vào Toonflow và xác nhận để hoàn tất cấu hình mô hình.
+3. Sau khi cấu hình xong, kiểm tra hai điểm:
+   - Ba công tắc gọi mô hình trong Dịch vụ mô hình đã được bật hay chưa
+   - Mô hình được gọi trong cấu hình Agent có khớp với cấu hình của bạn hay không (nếu không khớp, nhấp để sửa)
+4. Khởi động ComfyUI: Màn hình đám mây - Bộ khởi chạy ComfyUI - Khởi động một chạm.
+5. Khởi động mất khoảng 1~2 phút, sau khi khởi động xong giữ trang ở trạng thái mở.
+
+</details>
 
 ---
 
@@ -736,6 +776,13 @@ Cảm ơn các tổ chức/đơn vị/cá nhân sau đã cung cấp hỗ trợ c
       <td align="center">🌐 Hỗ trợ kỹ thuật mô hình thế giới</td>
       <td>Tencent Hunyuan 3D AI Creation Engine dựa trên phiên bản 2.5 của mô hình tạo 3D lớn Hunyuan, nền tảng tạo nội dung 3D AI tất cả trong một đầu tiên trong ngành. Có các chức năng như tạo 3D từ văn bản, hình ảnh, tạo hoạt ảnh 3D, tạo kết cấu, hỗ trợ tạo 3D từ phác thảo, tạo nhân vật 3D, có lợi thế trong việc tạo mô hình đa giác thấp.</td>
       <td align="center"><a href="https://3d.hunyuan.tencent.com/">Trang web</a></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/ai-galaxy.png" alt="Zhixing Cloud Logo" width="48"></td>
+      <td align="center"><b>Zhixing Cloud (智星云)</b></td>
+      <td align="center">💻 Hỗ trợ tính toán <br/> 🖼️ Hỗ trợ image</td>
+      <td>Thương hiệu dịch vụ tính toán chuyên nghiệp nổi tiếng tại Trung Quốc, cung cấp năng lực tính toán giá rẻ và ổn định. Phục vụ phòng thí nghiệm của hơn một nghìn trường đại học hàng đầu (Thanh Hoa, Bắc Kinh, Phục Đán, Chiết Giang...), Viện Hàn lâm Khoa học Trung Quốc và hơn 5.000 doanh nghiệp AI.</td>
+      <td align="center"><a href="https://www.ai-galaxy.com">Trang chủ</a></td>
     </tr>
   </tbody>
 </table>

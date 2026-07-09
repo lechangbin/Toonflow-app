@@ -77,9 +77,6 @@
     <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Docker/docker2.svg" alt="Docker" />&nbsp;
     <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Electron/electron2.svg" alt="Electron" />
   </p>
-  <p align="center">
-    <img src="https://mobaicons.com/icons/typescript,nodejs,electron,docker,socket?perline=5" alt="Tech Stack Icons" />
-  </p>
   
   > 🚀 **一站式短劇工程**：從文本到角色，從分鏡到影片，0門檻全流程AI化，創作效率提升10倍+！
 </div>
@@ -320,15 +317,17 @@ docker run -d -p <本地埠>:10588 -v <本地資料路徑>:/app/data toonflow
 
 ## 雲端部署
 
-### 一、伺服器環境要求
+### 雲伺服器部署
+
+#### 一、伺服器環境要求
 
 - **系統**：Ubuntu 20.04+ / CentOS 7+
 - **Node.js**：24.x（推薦，最低 23.11.1+）
 - **記憶體**：2GB+
 
-### 二、伺服器部署
+#### 二、伺服器部署
 
-#### 1. 安裝環境
+##### 1. 安裝環境
 
 ```bash
 # 安裝 Node.js
@@ -339,7 +338,7 @@ nvm install 24
 npm install -g yarn pm2
 ```
 
-#### 2. 部署專案
+##### 2. 部署專案
 
 **從 GitHub 克隆：**
 
@@ -361,7 +360,7 @@ yarn install
 yarn build
 ```
 
-#### 3. 配置 PM2
+##### 3. 配置 PM2
 
 建立 `pm2.json` 檔案：
 
@@ -389,7 +388,7 @@ yarn build
 
 ---
 
-#### 4. 啟動服務
+##### 4. 啟動服務
 
 ```bash
 pm2 start pm2.json
@@ -397,7 +396,7 @@ pm2 startup
 pm2 save
 ```
 
-#### 5. 常用指令
+##### 5. 常用指令
 
 ```bash
 pm2 list              # 查看進程
@@ -410,7 +409,7 @@ pm2 monit             # 監控面板
 > 帳號：`admin`  
 > 密碼：`admin123`
 
-#### 6. 部署前端網站
+##### 6. 部署前端網站
 
 如需單獨部署或定製前端介面，請參考前端倉庫：
 
@@ -418,6 +417,47 @@ pm2 monit             # 監控面板
 - **Gitee**：[Toonflow-web](https://gitee.com/HBAI-Ltd/Toonflow-web)
 
 > 💡 **說明**：本倉庫已內建編譯好的前端資源，一般使用者無需單獨部署前端。前端倉庫僅供需要二次開發的開發者使用。
+
+### 雲平台部署
+
+> 🎉 **官方認證算力合作平台 —— 智星雲**
+>
+> **[智星雲](https://www.ai-galaxy.com/)** 是 **Toonflow 官方授權的商用鏡像服務商**，已合法搭載、分發並支援商用全套 Toonflow AI 短劇製作鏡像，**開箱即用，無需手動部署**。
+>
+> - 🌐 官網：[https://www.ai-galaxy.com](https://www.ai-galaxy.com)
+> - 📖 鏡像部署圖文教程：[點擊查看教程](https://mp.weixin.qq.com/s/lq9X1ovQ1_TKeXMOLgicKg?scene=1)
+
+<details>
+<summary>📄 點擊展開文字版教程</summary>
+
+#### 一、租用 GPU 階段教程
+
+1. 智星雲 - 算力市場 - 4090 / 4090 Plus，點擊「立即租用」進入租用詳情頁。
+   > 💡 建議開啟「按小時自動續租」模式，防止正在跑影片時實例到期停工。
+2. 鏡像選擇：`windows10LTSCwin10_Toonflow` - 建立實例。
+3. 等待實例啟動 30s ~ 60s，查看連接方式 - RDP 登入檔案下載 - 點擊複製密碼 - 雙擊已下載好的雲端連接檔案。
+4. 將複製好的密碼貼上並登入，連接進入雲端桌面。
+   > 💡 滑鼠移到雲端桌面頂端稍作停留，會顯示切換桌面操作欄，可點擊「──」切換回自己的電腦桌面，或點擊「□」縮小佈置到自己的電腦桌面作為操作視窗。
+
+#### 二、配置 Toonflow、啟動 ComfyUI 階段教程
+
+1. 先配置調用 Agent 的模型：打開桌面上的 Toonflow - 模型服務 - OpenAI 標準介面 - 填入 API 金鑰以及請求位址。
+   預設帳號：`admin`　密碼：`admin123`（建議登入後修改密碼）
+   > 💡 這裡直接使用智星雲的 AI 大模型 Token 服務，官方介面，穩定安全，低至 6 折（小說轉劇本調用一次，約花費 6.4 毛錢）。
+   - 智星雲調用模型 Token 請求位址：`https://token.ai-galaxy.com/v1`
+   - 智星雲 Token 充值步驟：Token 市場 - 帳戶概覽 - 充值 - 將智星雲帳戶餘額或算力券充值到 Token 帳戶中。
+   - 充值完成後進入「Key 管理」- 新建 API 管理，名稱填 `Toonflow` 或其他均可，點擊確定並複製 API 金鑰。
+2. 回到步驟 1，將生成的 API 金鑰和請求位址貼上到 Toonflow 模型服務中，填好後點擊空白處，系統會提示「供應商配置已更新」。
+   點擊「手動添加」，回到智星雲 - Token 市場頁面，複製完整的模型名稱。
+   > 💡 一個 Key 可以調用智星雲上的所有模型，選擇你想用的即可，推薦 `deepseek-v4-pro`。
+   將模型名稱完整複製貼上到 Toonflow 中並確認，完成模型配置。
+3. 配置完成後檢查兩處：
+   - 模型服務中的三個模型調用開關是否已開啟
+   - Agent 配置中調用的模型是否與你配置的一致（不一致時點擊選擇改正即可）
+4. 啟動 ComfyUI：雲端桌面 - 繪世啟動器 - 一鍵啟動。
+5. 啟動大約需要 1~2 分鐘，啟動完成後保持頁面開啟狀態即可。
+
+</details>
 
 ---
 
@@ -736,6 +776,13 @@ Toonflow 基於 Apache-2.0 協議開源發布，並附有補充商業協議。
       <td align="center">🌐 世界模型技術支援</td>
       <td>騰訊混元3D AI創作引擎基於騰訊混元3D生成大模型2.5版本，業界首個一站式3D內容AI創作平台。具備文生、圖生3D、3D動畫生成、紋理生成等功能，支援草圖生3D、3D人物生成，有低多邊形模型生成優勢。</td>
       <td align="center"><a href="https://3d.hunyuan.tencent.com/">官網</a></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/ai-galaxy.png" alt="智星雲 Logo" width="48"></td>
+      <td align="center"><b>智星雲</b></td>
+      <td align="center">💻 算力支持 <br/> 🖼️ 鏡像支持</td>
+      <td>國內知名專業算力服務品牌，提供便宜穩定的算力，服務國內清北、復旦、浙大等上千所985/211高校實驗室、中科院及5000餘家AI企業。</td>
+      <td align="center"><a href="https://www.ai-galaxy.com">官網</a></td>
     </tr>
   </tbody>
 </table>
