@@ -4,6 +4,10 @@
 
 Track work in `lechangbin/Toonflow-app` GitHub Issues. See `docs/agents/issue-tracker.md`.
 
+### Repository workflow
+
+Treat `lechangbin/Toonflow-app` as the final public repository for personal secondary development. Use Issues, branches, and commits as the durable workflow, and keep `upstream` only as a read-only synchronization source.
+
 ### Triage labels
 
 Use the five canonical Matt triage labels. See `docs/agents/triage-labels.md`.

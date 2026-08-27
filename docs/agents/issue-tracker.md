@@ -11,18 +11,14 @@ Issues and specs live in the personal development repository, `lechangbin/Toonfl
 - Label: `gh issue edit <number> --repo lechangbin/Toonflow-app --add-label "..."`
 - Close: `gh issue close <number> --repo lechangbin/Toonflow-app --comment "..."`
 
-## Pull requests as a triage surface
+## Repository workflow
 
-**PRs as a request surface: no.**
-
-GitHub shares one number space across issues and PRs. Resolve an ambiguous `#<number>` with `gh pr view` first, then fall back to `gh issue view`.
+`lechangbin/Toonflow-app` is the final public repository for personal secondary development. Use GitHub Issues for scope and decisions, development branches for isolation, and commits for completed work. Keep `HBAI-Ltd/Toonflow-app` as a read-only synchronization source.
 
 ## Skill operations
 
 - “Publish to the issue tracker” means create an issue in `lechangbin/Toonflow-app`.
 - “Fetch the relevant ticket” means read the issue and its comments from that repository.
-- Personal development pull requests target `develop`.
-- Contributions sent to `HBAI-Ltd/Toonflow-app` also target its `develop` branch; its `master` branch does not accept PRs.
 
 ## Wayfinding
 
