@@ -50437,7 +50437,7 @@ var require_fill_range = __commonJS({
     var util4 = require("util");
     var toRegexRange = require_to_regex_range();
     var isObject5 = (val) => val !== null && typeof val === "object" && !Array.isArray(val);
-    var transform8 = (toNumber) => {
+    var transform7 = (toNumber) => {
       return (value) => toNumber === true ? Number(value) : String(value);
     };
     var isValidValue = (value) => {
@@ -50548,7 +50548,7 @@ var require_fill_range = __commonJS({
       let padded = zeros(startString) || zeros(endString) || zeros(stepString);
       let maxLen = padded ? Math.max(startString.length, endString.length, stepString.length) : 0;
       let toNumber = padded === false && stringify2(start, end, options) === false;
-      let format = options.transform || transform8(toNumber);
+      let format = options.transform || transform7(toNumber);
       if (options.toRegex && step === 1) {
         return toRange(toMaxLen(start, maxLen), toMaxLen(end, maxLen), true, options);
       }
@@ -57436,9 +57436,9 @@ var require_isPrototype = __commonJS({
 var require_overArg = __commonJS({
   "node_modules/lodash/_overArg.js"(exports2, module2) {
     "use strict";
-    function overArg2(func, transform8) {
+    function overArg2(func, transform7) {
       return function(arg) {
-        return func(transform8(arg));
+        return func(transform7(arg));
       };
     }
     module2.exports = overArg2;
@@ -58311,7 +58311,7 @@ var require_overRest = __commonJS({
     "use strict";
     var apply = require_apply();
     var nativeMax = Math.max;
-    function overRest(func, start, transform8) {
+    function overRest(func, start, transform7) {
       start = nativeMax(start === void 0 ? func.length - 1 : start, 0);
       return function() {
         var args = arguments, index = -1, length = nativeMax(args.length - start, 0), array4 = Array(length);
@@ -58323,7 +58323,7 @@ var require_overRest = __commonJS({
         while (++index < start) {
           otherArgs[index] = args[index];
         }
-        otherArgs[start] = transform8(array4);
+        otherArgs[start] = transform7(array4);
         return apply(func, this, otherArgs);
       };
     }
@@ -66489,7 +66489,7 @@ var require_transform = __commonJS({
     var isFunction4 = require_isFunction();
     var isObject5 = require_isObject();
     var isTypedArray3 = require_isTypedArray();
-    function transform8(object4, iteratee, accumulator) {
+    function transform7(object4, iteratee, accumulator) {
       var isArr = isArray3(object4), isArrLike = isArr || isBuffer3(object4) || isTypedArray3(object4);
       iteratee = baseIteratee2(iteratee, 4);
       if (accumulator == null) {
@@ -66507,7 +66507,7 @@ var require_transform = __commonJS({
       });
       return accumulator;
     }
-    module2.exports = transform8;
+    module2.exports = transform7;
   }
 });
 
@@ -66554,11 +66554,11 @@ var require_formatterUtils = __commonJS({
 var require_wrappingFormatter = __commonJS({
   "node_modules/knex/lib/formatter/wrappingFormatter.js"(exports2, module2) {
     "use strict";
-    var transform8 = require_transform();
+    var transform7 = require_transform();
     var QueryBuilder = require_querybuilder();
     var { compileCallback, wrapAsIdentifier } = require_formatterUtils();
     var orderBys = ["asc", "desc"];
-    var operators = transform8(
+    var operators = transform7(
       [
         "=",
         "<",
@@ -105653,7 +105653,7 @@ var require_dist5 = __commonJS({
       return "3.35.1";
     }
     exports2.getVersion = getVersion2;
-    function transform8(code, options) {
+    function transform7(code, options) {
       _Options.validateOptions.call(void 0, options);
       try {
         const sucraseContext = getSucraseContext(code, options);
@@ -105689,7 +105689,7 @@ var require_dist5 = __commonJS({
         throw e;
       }
     }
-    exports2.transform = transform8;
+    exports2.transform = transform7;
     function getFormattedTokens(code, options) {
       const tokens = getSucraseContext(code, options).tokenProcessor.tokens;
       return _formatTokens2.default.call(void 0, code, tokens);
@@ -105742,6 +105742,7 @@ var vendor_default;
 var init_vendor = __esm({
   "src/lib/vendor.json"() {
     vendor_default = {
+      "agnes.ts": '/**\n * ToonFlow Agnes AI \u4F9B\u5E94\u5546\u9002\u914D\u5668\n * @version 2.5\n * @see https://www.agnes-ai.com/zh-Hans/docs/overview\n */\n\n// ============================================================\n// \u7C7B\u578B\u5B9A\u4E49\n// ============================================================\n\ntype VideoMode =\n  | "singleImage"\n  | "startEndRequired"\n  | "endFrameOptional"\n  | "startFrameOptional"\n  | "text"\n  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[];\n\ninterface TextModel {\n  name: string;\n  modelName: string;\n  type: "text";\n  think: boolean;\n}\n\ninterface ImageModel {\n  name: string;\n  modelName: string;\n  type: "image";\n  mode: ("text" | "singleImage" | "multiReference")[];\n  associationSkills?: string;\n  maxReferenceImages?: number;\n}\n\ninterface VideoModel {\n  name: string;\n  modelName: string;\n  type: "video";\n  mode: VideoMode[];\n  associationSkills?: string;\n  audio: "optional" | false | true;\n  durationResolutionMap: { duration: number[]; resolution: string[] }[];\n}\n\ninterface TTSModel {\n  name: string;\n  modelName: string;\n  type: "tts";\n  voices: { title: string; voice: string }[];\n}\n\ninterface VendorConfig {\n  id: string;\n  version: string;\n  name: string;\n  author: string;\n  description?: string;\n  icon?: string;\n  inputs: { key: string; label: string; type: "text" | "password" | "url"; required: boolean; placeholder?: string }[];\n  inputValues: Record<string, string>;\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\n}\n\ntype ReferenceList =\n  | { type: "image"; sourceType: "base64"; base64: string }\n  | { type: "audio"; sourceType: "base64"; base64: string }\n  | { type: "video"; sourceType: "base64"; base64: string };\n\ninterface ImageConfig {\n  prompt: string;\n  referenceList?: Extract<ReferenceList, { type: "image" }>[];\n  size: "1K" | "2K" | "4K";\n  aspectRatio: `${number}:${number}`;\n}\n\ninterface VideoConfig {\n  duration: number;\n  resolution: string;\n  aspectRatio: "16:9" | "9:16";\n  prompt: string;\n  referenceList?: ReferenceList[];\n  audio?: boolean;\n  mode: VideoMode[] | VideoMode;\n  resumeTask?: {\n    videoId?: string;\n    taskId?: string;\n    retry?: number;\n  };\n  onTaskCheckpoint?: (checkpoint: VideoTaskCheckpoint) => Promise<void> | void;\n}\n\ninterface VideoTaskCheckpoint {\n  vendorId: "agnes";\n  modelName: string;\n  videoId?: string;\n  taskId?: string;\n  stage: "poll" | "download" | "completed" | "failed";\n  retry: number;\n}\n\ninterface TTSConfig {\n  text: string;\n  voice: string;\n  speechRate: number;\n  pitchRate: number;\n  volume: number;\n  referenceList?: Extract<ReferenceList, { type: "audio" }>[];\n}\n\ninterface PollResult {\n  completed: boolean;\n  data?: string;\n  error?: string;\n}\n\n// ============================================================\n// \u5168\u5C40\u58F0\u660E\n// ============================================================\n\ndeclare const axios: any;\ndeclare const fetch: any;\ndeclare const logger: (msg: string) => void;\ndeclare const jsonwebtoken: any;\ndeclare const zipImage: (base64: string, size: number) => Promise<string>;\ndeclare const zipImageResolution: (base64: string, w: number, h: number) => Promise<string>;\ndeclare const mergeImages: (base64Arr: string[], maxSize?: string) => Promise<string>;\ndeclare const urlToBase64: (url: string, config?: any) => Promise<string>;\ndeclare const sleep: (milliseconds: number) => Promise<void>;\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>;\ndeclare const createOpenAI: any;\ndeclare const createDeepSeek: any;\ndeclare const createZhipu: any;\ndeclare const createQwen: any;\ndeclare const createAnthropic: any;\ndeclare const createOpenAICompatible: any;\ndeclare const createXai: any;\ndeclare const createMinimax: any;\ndeclare const createGoogleGenerativeAI: any;\ndeclare const exports: {\n  vendor: VendorConfig;\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;\n  videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;\n  checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;\n  updateVendor?: () => Promise<string>;\n};\n\n// ============================================================\n// \u4F9B\u5E94\u5546\u914D\u7F6E\n// ============================================================\n\nconst vendor: VendorConfig = {\n  id: "agnes",\n  version: "2.5",\n  author: "Agnes AI",\n  name: "Agnes AI",\n  description:\n    "Agnes AI \u5B98\u65B9\u5168\u6A21\u6001 API \u9002\u914D\u3002\u652F\u6301 Agnes 2.0/2.5 Flash\u3001Agnes 2.5 Pro/Pro Alpha \u6587\u672C\u4E0E\u89C6\u89C9\u8BED\u8A00\u6A21\u578B\uFF0CImage 2.0/2.1 Flash \u56FE\u50CF\u751F\u6210\u4E0E\u7F16\u8F91\uFF0C\u4EE5\u53CA Video V2.0 \u89C6\u9891\u751F\u6210\u3002",\n  inputs: [\n    { key: "apiKey", label: "API Key", type: "password", required: true, placeholder: "Agnes AI API Key" },\n    {\n      key: "baseUrl",\n      label: "API \u5730\u5740",\n      type: "url",\n      required: true,\n      placeholder: "https://apihub.agnes-ai.com",\n    },\n  ],\n  inputValues: {\n    apiKey: "",\n    baseUrl: "https://apihub.agnes-ai.com",\n  },\n  models: [\n    {\n      name: "Agnes 2.5 Flash",\n      modelName: "agnes-2.5-flash",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.0 Flash",\n      modelName: "agnes-2.0-flash",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.5 Pro\uFF08\u4ED8\u8D39\uFF09",\n      modelName: "agnes-2.5-pro",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.5 Pro Alpha\uFF08\u4ED8\u8D39\uFF09",\n      modelName: "agnes-2.5-pro-alpha",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes Image 2.1 Flash",\n      modelName: "agnes-image-2.1-flash",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n      maxReferenceImages: 6,\n      associationSkills: "\u9AD8\u4FE1\u606F\u5BC6\u5EA6\u56FE\u50CF\u3001\u590D\u6742\u6784\u56FE\u3001\u6587\u751F\u56FE\u3001\u56FE\u50CF\u7F16\u8F91\u548C\u591A\u56FE\u5408\u6210\uFF1B\u652F\u6301 1K/2K/4K \u4E0E\u591A\u79CD\u5BBD\u9AD8\u6BD4\u3002",\n    },\n    {\n      name: "Agnes Image 2.0 Flash",\n      modelName: "agnes-image-2.0-flash",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n      maxReferenceImages: 6,\n      associationSkills: "\u5FEB\u901F\u6587\u751F\u56FE\u3001\u56FE\u50CF\u7F16\u8F91\u548C\u591A\u56FE\u5408\u6210\u3002",\n    },\n    {\n      name: "Agnes Video V2.0",\n      modelName: "agnes-video-v2.0",\n      type: "video",\n      mode: ["text", "singleImage", "startEndRequired"],\n      associationSkills: "\u5F02\u6B65\u6587\u751F\u89C6\u9891\u3001\u5355\u56FE\u751F\u89C6\u9891\u4E0E\u53CC\u5173\u952E\u5E27\u52A8\u753B\u3002",\n      audio: false,\n      durationResolutionMap: [\n        {\n          duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],\n          resolution: ["480p", "720p", "1080p"],\n        },\n      ],\n    },\n  ],\n};\n\n// ============================================================\n// \u8F85\u52A9\u5DE5\u5177\n// ============================================================\n\nconst getBaseUrl = (): string => {\n  const configured = (vendor.inputValues.baseUrl || "https://apihub.agnes-ai.com")\n    .trim()\n    .replace(/^http:\\/\\/apihub\\.agnes-ai\\.com(?::443)?/i, "https://apihub.agnes-ai.com")\n    .replace(/\\/+$/, "");\n  return configured.replace(/\\/v1$/i, "");\n};\n\nconst getOpenAIBaseUrl = (): string => `${getBaseUrl()}/v1`;\n\nconst getHeaders = () => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11 Agnes AI API Key");\n  return {\n    Authorization: `Bearer ${vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "")}`,\n    "Content-Type": "application/json",\n  };\n};\n\nconst getErrorMessage = (error: any, fallback: string): string => {\n  const data = error?.response?.data;\n  const message =\n    data?.error?.message ||\n    data?.error ||\n    data?.detail ||\n    data?.message ||\n    data?.msg ||\n    (typeof data === "string" ? data : undefined) ||\n    (data && typeof data === "object" ? JSON.stringify(data) : undefined) ||\n    error?.message;\n  const status = error?.response?.status;\n  const statusText = status ? `\uFF08HTTP ${status}\uFF09` : "";\n  return message\n    ? `${fallback}${statusText}\uFF1A${typeof message === "string" ? message : JSON.stringify(message)}`\n    : `${fallback}${statusText}`;\n};\n\ntype VideoStage = "submit" | "poll" | "download";\n\nconst formatUnknownError = (value: any, fallback = "unknown error"): string => {\n  if (typeof value === "string") return value;\n  if (value && typeof value === "object") {\n    const safeDetails = ["stage", "code", "status", "name"]\n      .flatMap((key) => {\n        const field = value[key];\n        return typeof field === "string" || typeof field === "number" ? [`${key}=${field}`] : [];\n      })\n      .join(" ");\n    return safeDetails || fallback;\n  }\n  return value == null ? fallback : String(value);\n};\n\nconst getProviderErrorDetails = (error: any) => {\n  const data = error?.response?.data;\n  const rawMessage =\n    data?.error?.message ||\n    data?.detail ||\n    data?.message ||\n    data?.msg ||\n    (typeof data === "string" ? data : undefined) ||\n    error?.message ||\n    formatUnknownError(error);\n  return {\n    httpStatus: Number(error?.response?.status || 0) || undefined,\n    providerCode: data?.error?.code || data?.code || error?.code,\n    message: formatUnknownError(rawMessage),\n  };\n};\n\nconst formatVideoError = (\n  stage: VideoStage,\n  error: any,\n  ids: { videoId?: string; taskId?: string },\n  retry: number,\n): string => {\n  const details = getProviderErrorDetails(error);\n  return [\n    "[Agnes Video]",\n    `stage=${stage}`,\n    `httpStatus=${details.httpStatus ?? "none"}`,\n    `providerCode=${details.providerCode ?? "none"}`,\n    `video_id=${ids.videoId ?? "none"}`,\n    `task_id=${ids.taskId ?? "none"}`,\n    `retry=${retry}`,\n    `message=${details.message}`,\n  ].join(" ");\n};\n\nconst isRetryableVideoTransportError = (error: any): boolean => {\n  const details = getProviderErrorDetails(error);\n  const httpStatus = details.httpStatus || 0;\n  if (httpStatus === 408 || httpStatus === 429 || (httpStatus >= 500 && httpStatus <= 599)) return true;\n  return /ECONNRESET|ECONNREFUSED|ETIMEDOUT|ECONNABORTED|EAI_AGAIN|ENOTFOUND|EHOSTUNREACH|socket hang up|timeout/i.test(\n    `${details.providerCode || ""} ${details.message}`,\n  );\n};\n\nconst getVideoRetryBackoffMs = (retry: number): number => {\n  const exponential = Math.min(60000, 1000 * 2 ** Math.max(0, retry - 1));\n  const jitter = Math.floor(Math.random() * Math.max(250, exponential * 0.25));\n  return exponential + jitter;\n};\n\nconst isExplicitQueueFullError = (error: any): boolean => {\n  const details = getProviderErrorDetails(error);\n  return (\n    /video_queue_full|queue[_ -]?full/i.test(String(details.providerCode || "")) ||\n    /video queue is full|queue capacity|\u961F\u5217.*\u6EE1/i.test(details.message)\n  );\n};\n\nconst getSubmitQueueBackoffMs = (retry: number): number => {\n  const exponential = Math.min(60000, 10000 * 2 ** Math.max(0, retry - 1));\n  const jitter = Math.floor(Math.random() * Math.max(1000, exponential * 0.2));\n  return exponential + jitter;\n};\n\nlet imageRequestQueue: Promise<void> = Promise.resolve();\n\nconst runImageRequestSerially = async <T>(task: () => Promise<T>): Promise<T> => {\n  const previous = imageRequestQueue;\n  let release = () => {};\n  imageRequestQueue = new Promise<void>((resolve) => {\n    release = resolve;\n  });\n\n  await previous;\n  try {\n    return await task();\n  } finally {\n    release();\n  }\n};\n\nconst waitWithPollTask = async (waitMs: number): Promise<void> => {\n  const startedAt = Date.now();\n  const result = await pollTask(\n    async (): Promise<PollResult> => ({ completed: Date.now() - startedAt >= waitMs }),\n    Math.min(500, Math.max(100, waitMs)),\n    waitMs + 5000,\n  );\n\n  if (result.error) throw new Error(`\u7B49\u5F85\u91CD\u8BD5\u5931\u8D25\uFF1A${result.error}`);\n};\n\nconst postImageWithRetry = async (url: string, body: any, headers: any): Promise<any> => {\n  let lastError: any;\n\n  for (let attempt = 1; attempt <= 3; attempt += 1) {\n    try {\n      return await axios.post(url, body, { headers, timeout: 360000, proxy: false });\n    } catch (error: any) {\n      lastError = error;\n      const status = Number(error?.response?.status || 0);\n      const responseValue =\n        error?.response?.data?.error?.message ||\n          error?.response?.data?.message ||\n          error?.response?.data?.detail ||\n          error?.response?.data ||\n          error?.message ||\n          "";\n      const responseText =\n        typeof responseValue === "string" ? responseValue : JSON.stringify(responseValue);\n      const isNetworkError = /ECONNRESET|ETIMEDOUT|ECONNABORTED|EAI_AGAIN|ENOTFOUND|socket hang up|timeout/i.test(\n        responseText,\n      );\n      const isRetryableStatus = [408, 409, 429, 500, 502, 503, 504, 520, 522, 524].includes(status);\n      const isBusy400 = status === 400 && /busy|queue|concurr|rate|limit|frequent|\u9891\u7E41|\u5E76\u53D1|\u7A0D\u540E/i.test(responseText);\n\n      if (attempt >= 3 || (!isNetworkError && !isRetryableStatus && !isBusy400)) throw error;\n\n      const waitMs = attempt * 3000;\n      logger(`[Agnes \u56FE\u7247] \u8BF7\u6C42\u6682\u65F6\u5931\u8D25\uFF0C\u5C06\u5728 ${waitMs / 1000} \u79D2\u540E\u91CD\u8BD5\uFF08${attempt}/3\uFF09`);\n      await waitWithPollTask(waitMs);\n    }\n  }\n\n  throw lastError;\n};\n\nconst normalizeImageRatio = (ratio: string): string => {\n  const supported = ["1:1", "3:4", "4:3", "16:9", "9:16", "2:3", "3:2", "21:9"];\n  return supported.includes(ratio) ? ratio : "1:1";\n};\n\nconst getImage20Size = (size: ImageConfig["size"], ratio: string): string => {\n  const dimensions: Record<string, Record<ImageConfig["size"], string>> = {\n    "1:1": { "1K": "1024x1024", "2K": "2048x2048", "4K": "4096x4096" },\n    "3:4": { "1K": "864x1152", "2K": "1728x2304", "4K": "3456x4608" },\n    "4:3": { "1K": "1152x864", "2K": "2304x1728", "4K": "4608x3456" },\n    "16:9": { "1K": "1312x736", "2K": "2624x1472", "4K": "5248x2944" },\n    "9:16": { "1K": "736x1312", "2K": "1472x2624", "4K": "2944x5248" },\n    "2:3": { "1K": "832x1248", "2K": "1664x2496", "4K": "3328x4992" },\n    "3:2": { "1K": "1248x832", "2K": "2496x1664", "4K": "4992x3328" },\n    "21:9": { "1K": "1568x672", "2K": "3136x1344", "4K": "6272x2688" },\n  };\n  return dimensions[ratio]?.[size] || dimensions["1:1"][size] || "1024x1024";\n};\n\nconst ensureImageDataUri = (value: string): string => {\n  if (value.startsWith("data:")) return value;\n  return `data:image/png;base64,${value}`;\n};\n\nconst normalizeVideoModes = (mode: VideoConfig["mode"]): VideoMode[] => {\n  if (Array.isArray(mode)) return mode as VideoMode[];\n  return mode ? [mode] : ["text"];\n};\n\nconst getVideoDimensions = (resolution: string, ratio: VideoConfig["aspectRatio"]): { width: number; height: number } => {\n  const normalized = String(resolution || "720p").toLowerCase();\n  const landscape = normalized.includes("1080")\n    ? { width: 1920, height: 1088 }\n    : normalized.includes("480")\n      ? { width: 832, height: 448 }\n      : { width: 1280, height: 704 };\n  return ratio === "9:16" ? { width: landscape.height, height: landscape.width } : landscape;\n};\n\nconst getVideoFrames = (duration: number): number => {\n  const seconds = Math.max(1, Math.min(18, Math.round(Number(duration) || 5)));\n  const frameRate = 24;\n  const n = Math.max(1, Math.min(55, Math.round((seconds * frameRate - 1) / 8)));\n  return Math.min(441, n * 8 + 1);\n};\n\nconst unwrapVideoData = (payload: any): any => {\n  if (payload?.data && !Array.isArray(payload.data)) return payload.data;\n  return payload;\n};\n\nconst extractVideoUrl = (payload: any): string | undefined => {\n  const data = unwrapVideoData(payload);\n  return data?.metadata?.url || data?.url || data?.video_url || data?.output?.url;\n};\n\nconst extractTaskError = (payload: any): string | undefined => {\n  const data = unwrapVideoData(payload);\n  const error = data?.error?.message || data?.error || data?.message || data?.msg;\n  return error ? (typeof error === "string" ? error : JSON.stringify(error)) : undefined;\n};\n\n// ============================================================\n// \u9002\u914D\u5668\u51FD\u6570\n// ============================================================\n\nconst textRequest = (model: TextModel, think: boolean, _thinkLevel: 0 | 1 | 2 | 3) => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11 Agnes AI API Key");\n\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\n\n  return createOpenAICompatible({\n    name: "agnes",\n    baseURL: getOpenAIBaseUrl(),\n    apiKey,\n    fetch: async (url: string, options?: any) => {\n      if (!options?.body || typeof options.body !== "string") {\n        return await fetch(url, options);\n      }\n\n      let rawBody: any;\n      try {\n        rawBody = JSON.parse(options.body);\n      } catch {\n        return await fetch(url, options);\n      }\n\n      const body = think\n        ? {\n            ...rawBody,\n            chat_template_kwargs: {\n              ...(rawBody.chat_template_kwargs || {}),\n              enable_thinking: true,\n            },\n          }\n        : rawBody;\n\n      return await fetch(url, {\n        ...options,\n        body: JSON.stringify(body),\n      });\n    },\n  }).chatModel(model.modelName);\n};\n\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\n  const headers = getHeaders();\n  const baseUrl = getBaseUrl();\n  const ratio = normalizeImageRatio(config.aspectRatio || "1:1");\n  const rawImageRefs = (config.referenceList || [])\n    .map((item) => item.base64)\n    .filter(Boolean)\n    .map(ensureImageDataUri);\n  const configuredLimit = Number(model.maxReferenceImages);\n  const maxReferenceImages = Number.isInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : rawImageRefs.length;\n  const imageRefs = rawImageRefs.slice(0, maxReferenceImages);\n  const isImage21 = model.modelName === "agnes-image-2.1-flash";\n  const body: any = {\n    model: model.modelName,\n    prompt: config.prompt || "",\n    size: isImage21 ? config.size || "1K" : getImage20Size(config.size || "1K", ratio),\n    return_base64: true,\n    extra_body: {\n      response_format: "b64_json",\n    },\n  };\n\n  if (isImage21) body.ratio = ratio;\n  if (imageRefs.length > 0) body.extra_body.image = imageRefs;\n\n  const referenceCount = imageRefs.length === rawImageRefs.length ? `${imageRefs.length}` : `${imageRefs.length}/${rawImageRefs.length}`;\n  logger(`[Agnes \u56FE\u7247] \u63D0\u4EA4 ${model.modelName}\uFF0C\u53C2\u8003\u56FE ${referenceCount} \u5F20\uFF0C\u5C3A\u5BF8 ${body.size}\uFF0C\u6BD4\u4F8B ${ratio}`);\n\n  return await runImageRequestSerially(async (): Promise<string> => {\n    logger(`[Agnes \u56FE\u7247] \u5DF2\u8FDB\u5165\u751F\u6210\u961F\u5217\uFF1A${model.modelName}`);\n    try {\n      const response = await postImageWithRetry(`${baseUrl}/v1/images/generations`, body, headers);\n      const payload = response?.data;\n      const item = Array.isArray(payload?.data) ? payload.data[0] : payload?.data?.[0] || payload;\n      const b64 = item?.b64_json || payload?.b64_json;\n      const url = item?.url || payload?.url;\n\n      if (b64) return ensureImageDataUri(b64);\n      if (url) return await urlToBase64(url);\n      throw new Error(`\u54CD\u5E94\u4E2D\u6CA1\u6709\u56FE\u7247\u6570\u636E\uFF1A${JSON.stringify(payload).slice(0, 500)}`);\n    } catch (error: any) {\n      throw new Error(getErrorMessage(error, "Agnes \u56FE\u7247\u751F\u6210\u5931\u8D25"));\n    }\n  });\n};\n\nconst videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {\n  const headers = getHeaders();\n  const baseUrl = getBaseUrl();\n  const imageRefs = (config.referenceList || [])\n    .filter((item) => item.type === "image")\n    .map((item) => item.base64)\n    .filter(Boolean)\n    .map(ensureImageDataUri);\n  const modes = normalizeVideoModes(config.mode);\n  const wantsKeyframes = modes.some((mode) => mode === "startEndRequired") || imageRefs.length >= 2;\n  const wantsSingleImage = modes.some((mode) => mode === "singleImage");\n\n  if (wantsKeyframes && imageRefs.length < 2) {\n    throw new Error("Agnes \u5173\u952E\u5E27\u89C6\u9891\u9700\u8981\u9996\u5E27\u548C\u5C3E\u5E27\u4E24\u5F20\u56FE\u7247");\n  }\n  if (!wantsKeyframes && wantsSingleImage && imageRefs.length < 1) {\n    throw new Error("Agnes \u56FE\u751F\u89C6\u9891\u9700\u8981\u4E00\u5F20\u53C2\u8003\u56FE\u7247");\n  }\n\n  const dimensions = getVideoDimensions(config.resolution, config.aspectRatio || "16:9");\n  const body: any = {\n    model: model.modelName,\n    prompt: config.prompt || "",\n    width: dimensions.width,\n    height: dimensions.height,\n    num_frames: getVideoFrames(config.duration),\n    frame_rate: 24,\n  };\n\n  if (wantsKeyframes) {\n    body.extra_body = {\n      image: imageRefs.slice(0, 2),\n      mode: "keyframes",\n    };\n  } else if (imageRefs.length > 0) {\n    body.image = imageRefs[0];\n  }\n\n  let videoId = config.resumeTask?.videoId;\n  let taskId = config.resumeTask?.taskId;\n  let submitData: any;\n\n  const checkpoint = async (stage: VideoTaskCheckpoint["stage"], retry: number): Promise<void> => {\n    if (!config.onTaskCheckpoint) return;\n    await config.onTaskCheckpoint({\n      vendorId: "agnes",\n      modelName: model.modelName,\n      videoId,\n      taskId,\n      stage,\n      retry,\n    });\n  };\n\n  const downloadResult = async (resultUrl: string, retry: number): Promise<string> => {\n    const maxDownloadRetries = 2;\n    let downloadRetryCount = 0;\n\n    while (true) {\n      const currentRetry = retry + downloadRetryCount;\n      await checkpoint("download", currentRetry);\n      try {\n        return await urlToBase64(resultUrl, { proxy: false, timeout: 120000 });\n      } catch (error: any) {\n        const message = formatVideoError("download", error, { videoId, taskId }, currentRetry);\n        if (!isRetryableVideoTransportError(error) || downloadRetryCount >= maxDownloadRetries) {\n          logger(message);\n          throw new Error(message);\n        }\n        downloadRetryCount += 1;\n        const waitMs = getVideoRetryBackoffMs(downloadRetryCount);\n        logger(`${message} backoffMs=${waitMs}`);\n        await sleep(waitMs);\n      }\n    }\n  };\n\n  if (!videoId && !taskId) {\n    logger(\n      `[Agnes \u89C6\u9891] \u63D0\u4EA4 ${wantsKeyframes ? "\u5173\u952E\u5E27" : imageRefs.length > 0 ? "\u56FE\u751F\u89C6\u9891" : "\u6587\u751F\u89C6\u9891"}\u4EFB\u52A1\uFF0C${dimensions.width}x${dimensions.height}\uFF0C${body.num_frames} \u5E27`,\n    );\n\n    const maxQueueRetries = 4;\n    let submitRetry = 0;\n    while (true) {\n      try {\n        const submitResponse = await axios.post(`${baseUrl}/v1/videos`, body, {\n          headers,\n          timeout: 120000,\n          proxy: false,\n        });\n        submitData = unwrapVideoData(submitResponse?.data);\n        break;\n      } catch (error: any) {\n        if (!isExplicitQueueFullError(error) || submitRetry >= maxQueueRetries) {\n          const message = formatVideoError("submit", error, {}, submitRetry);\n          logger(message);\n          throw new Error(message);\n        }\n        submitRetry += 1;\n        const waitMs = getSubmitQueueBackoffMs(submitRetry);\n        const message = formatVideoError("submit", error, {}, submitRetry);\n        logger(`${message} backoffMs=${waitMs}`);\n        await sleep(waitMs);\n      }\n    }\n\n    videoId = submitData?.video_id;\n    taskId = submitData?.task_id || submitData?.id;\n    const directUrl = extractVideoUrl(submitData);\n    if (directUrl && String(submitData?.status || "").toLowerCase() === "completed") {\n      return await downloadResult(directUrl, 0);\n    }\n    if (!videoId && !taskId) {\n      const message = formatVideoError(\n        "submit",\n        { message: `\u672A\u8FD4\u56DE video_id \u6216 task_id\u3002\u539F\u59CB\u54CD\u5E94\uFF1A${JSON.stringify(submitData).slice(0, 500)}` },\n        {},\n        0,\n      );\n      logger(message);\n      throw new Error(message);\n    }\n    logger(`[Agnes \u89C6\u9891] \u4EFB\u52A1\u5DF2\u521B\u5EFA\uFF1A${videoId || taskId}`);\n  } else {\n    logger(`[Agnes \u89C6\u9891] \u6062\u590D\u5DF2\u6709\u4EFB\u52A1\uFF1A${videoId || taskId}`);\n  }\n\n  let pollRetryCount = Math.max(0, Number(config.resumeTask?.retry || 0));\n  await checkpoint("poll", pollRetryCount);\n\n  let consecutivePollRetries = 0;\n  const maxPollRetries = 8;\n\n  const queryTask = async (): Promise<any> => {\n    if (videoId) {\n      const query = `video_id=${encodeURIComponent(videoId)}&model_name=${encodeURIComponent(model.modelName)}`;\n      try {\n        const response = await axios.get(`${baseUrl}/agnesapi?${query}`, {\n          headers,\n          timeout: 60000,\n          proxy: false,\n        });\n        return response?.data;\n      } catch (error: any) {\n        if (!taskId || error?.response?.status !== 404) throw error;\n      }\n    }\n    const response = await axios.get(`${baseUrl}/v1/videos/${encodeURIComponent(taskId)}`, {\n      headers,\n      timeout: 60000,\n      proxy: false,\n    });\n    return response?.data;\n  };\n\n  const pollResult = await pollTask(\n    async (): Promise<PollResult> => {\n      let payload: any;\n\n      while (true) {\n        try {\n          payload = await queryTask();\n          consecutivePollRetries = 0;\n          break;\n        } catch (error: any) {\n          if (!isRetryableVideoTransportError(error) || pollRetryCount >= maxPollRetries) {\n            const message = formatVideoError("poll", error, { videoId, taskId }, pollRetryCount);\n            logger(message);\n            throw new Error(message);\n          }\n          pollRetryCount += 1;\n          consecutivePollRetries += 1;\n          const waitMs = getVideoRetryBackoffMs(consecutivePollRetries);\n          const message = formatVideoError("poll", error, { videoId, taskId }, pollRetryCount);\n          logger(`${message} backoffMs=${waitMs}`);\n          await checkpoint("poll", pollRetryCount);\n          await sleep(waitMs);\n        }\n      }\n\n      const data = unwrapVideoData(payload);\n      const status = String(data?.status || data?.state || "").toLowerCase();\n      const url = extractVideoUrl(data);\n\n      if (["completed", "succeeded", "success", "done"].includes(status)) {\n        return url\n          ? { completed: true, data: url }\n          : {\n              completed: true,\n              error: formatVideoError(\n                "poll",\n                { message: "Agnes \u89C6\u9891\u4EFB\u52A1\u5DF2\u5B8C\u6210\uFF0C\u4F46\u54CD\u5E94\u4E2D\u6CA1\u6709 metadata.url" },\n                { videoId, taskId },\n                pollRetryCount,\n              ),\n            };\n      }\n      if (["failed", "error", "cancelled", "canceled", "expired"].includes(status)) {\n        await checkpoint("failed", pollRetryCount);\n        return {\n          completed: true,\n          error: formatVideoError(\n            "poll",\n            { message: extractTaskError(data) || "Agnes \u89C6\u9891\u751F\u6210\u5931\u8D25", response: { data } },\n            { videoId, taskId },\n            pollRetryCount,\n          ),\n        };\n      }\n      if (url && !status) return { completed: true, data: url };\n      return { completed: false };\n    },\n    5000,\n    1800000,\n  );\n\n  if (pollResult.error) {\n    throw new Error(\n      pollResult.error.startsWith("[Agnes Video]")\n        ? pollResult.error\n        : formatVideoError("poll", { message: pollResult.error }, { videoId, taskId }, pollRetryCount),\n    );\n  }\n  if (!pollResult.data) {\n    throw new Error(\n      formatVideoError("poll", { message: "\u8F6E\u8BE2\u7ED3\u675F\u4F46\u6CA1\u6709\u8FD4\u56DE\u89C6\u9891\u5730\u5740" }, { videoId, taskId }, pollRetryCount),\n    );\n  }\n  return await downloadResult(pollResult.data, pollRetryCount);\n};\n\nconst ttsRequest = async (_config: TTSConfig, _model: TTSModel): Promise<string> => {\n  return "";\n};\n\nconst checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {\n  return {\n    hasUpdate: false,\n    latestVersion: vendor.version,\n    notice:\n      "Agnes AI ToonFlow \u4F9B\u5E94\u5546\u9002\u914D\u5668 2.5\uFF1A\u4FDD\u7559\u89C6\u9891\u63D0\u793A\u8BCD\u8DEF\u7531\uFF0C\u65B0\u589E Agnes Video \u4E32\u884C\u961F\u5217\u3001503 \u9000\u907F\u91CD\u8BD5\u3001\u4EFB\u52A1\u6062\u590D\u3001\u5206\u9636\u6BB5\u9519\u8BEF\u548C\u65E0\u4EE3\u7406\u7ED3\u679C\u4E0B\u8F7D\u3002",\n  };\n};\n\nconst updateVendor = async (): Promise<string> => {\n  return "";\n};\n\n// ============================================================\n// \u5BFC\u51FA\n// ============================================================\n\nexports.vendor = vendor;\nexports.textRequest = textRequest;\nexports.imageRequest = imageRequest;\nexports.videoRequest = videoRequest;\nexports.ttsRequest = ttsRequest;\nexports.checkForUpdates = checkForUpdates;\nexports.updateVendor = updateVendor;\n\nexport {};\n',
       "atlascloud.ts": '/**\r\n * Toonflow AI\u4F9B\u5E94\u5546\u6A21\u677F - AtlasCloud MASS\r\n * @version 0.8\r\n *\r\n * \u8BF4\u660E\uFF1A\r\n * 1) \u6587\u672C\u63A5\u53E3\u4F7F\u7528 OpenAI \u517C\u5BB9\u57FA\u5730\u5740\uFF1Ahttps://api.atlascloud.ai/v1\r\n * 2) \u56FE\u7247/\u89C6\u9891\u4F7F\u7528 Atlas Cloud \u5A92\u4F53\u63A5\u53E3\uFF1Ahttps://api.atlascloud.ai/api/v1\r\n * 3) \u56FE\u7247/\u89C6\u9891\u4E3A\u5F02\u6B65\u4EFB\u52A1\uFF1A\u63D0\u4EA4\u540E\u8F6E\u8BE2 /api/v1/model/prediction/{id}\r\n */\r\n\r\n// ============================================================\r\n// \u7C7B\u578B\u5B9A\u4E49\r\n// ============================================================\r\n\r\ntype VideoMode =\r\n  | "singleImage"\r\n  | "startEndRequired"\r\n  | "endFrameOptional"\r\n  | "startFrameOptional"\r\n  | "text"\r\n  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[];\r\n\r\ninterface TextModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "text";\r\n  think: boolean;\r\n}\r\n\r\ninterface ImageModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "image";\r\n  mode: ("text" | "singleImage" | "multiReference")[];\r\n  associationSkills?: string;\r\n}\r\n\r\ninterface VideoModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "video";\r\n  mode: VideoMode[];\r\n  associationSkills?: string;\r\n  audio: "optional" | false | true;\r\n  durationResolutionMap: { duration: number[]; resolution: string[] }[];\r\n}\r\n\r\ninterface TTSModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "tts";\r\n  voices: { title: string; voice: string }[];\r\n}\r\n\r\ninterface VendorConfig {\r\n  id: string;\r\n  version: string;\r\n  name: string;\r\n  author: string;\r\n  description?: string;\r\n  icon?: string;\r\n  inputs: { key: string; label: string; type: "text" | "password" | "url"; required: boolean; placeholder?: string; disabled?: boolean }[];\r\n  inputValues: Record<string, string>;\r\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\r\n}\r\n\r\ntype ReferenceList =\r\n  | { type: "image"; sourceType: "base64"; base64: string }\r\n  | { type: "audio"; sourceType: "base64"; base64: string }\r\n  | { type: "video"; sourceType: "base64"; base64: string };\r\n\r\ninterface ImageConfig {\r\n  prompt: string;\r\n  referenceList?: Extract<ReferenceList, { type: "image" }>[];\r\n  size: "1K" | "2K" | "4K";\r\n  aspectRatio: `${number}:${number}`;\r\n}\r\n\r\ninterface VideoConfig {\r\n  duration: number;\r\n  resolution: string;\r\n  aspectRatio: "16:9" | "9:16";\r\n  prompt: string;\r\n  referenceList?: ReferenceList[];\r\n  audio?: boolean;\r\n  mode: VideoMode[];\r\n}\r\n\r\ninterface TTSConfig {\r\n  text: string;\r\n  voice: string;\r\n  speechRate: number;\r\n  pitchRate: number;\r\n  volume: number;\r\n  referenceList?: Extract<ReferenceList, { type: "audio" }>[];\r\n}\r\n\r\ninterface PollResult {\r\n  completed: boolean;\r\n  data?: string;\r\n  error?: string;\r\n}\r\n\r\ntype AtlasVideoModelKind =\r\n  | "seedanceTextToVideo"\r\n  | "seedanceReferenceToVideo"\r\n  | "seedanceImageToVideo"\r\n  | "wanReferenceToVideo"\r\n  | "generic";\r\n\r\n// ============================================================\r\n// \u5168\u5C40\u58F0\u660E\r\n// ============================================================\r\n\r\ndeclare const axios: any;\r\ndeclare const logger: (msg: string) => void;\r\ndeclare const urlToBase64: (url: string) => Promise<string>;\r\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>;\r\ndeclare const createOpenAICompatible: any;\r\ndeclare const exports: {\r\n  vendor: VendorConfig;\r\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;\r\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;\r\n  videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;\r\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;\r\n  checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;\r\n  updateVendor?: () => Promise<string>;\r\n};\r\n\r\n// ============================================================\r\n// \u4F9B\u5E94\u5546\u914D\u7F6E\r\n// ============================================================\r\n\r\nconst vendor: VendorConfig = {\r\n  id: "atlascloud",\r\n  version: "1.0",\r\n  author: "AtlasCloud",\r\n  name: "AtlasCloud MASS",\r\n  description: "AtlasCloud \u5168\u6A21\u6001\u5E73\u53F0\u63A5\u5165 Toonflow\u3002\u9ED8\u8BA4\u6309\u5B98\u65B9\u6587\u6863\u586B\u5199\u6587\u672C\u3001\u56FE\u7247\u3001\u89C6\u9891\u4E0E\u4EFB\u52A1\u8F6E\u8BE2\u8DEF\u5F84\u3002",\r\n  inputs: [\r\n    { key: "apiKey", label: "API\u5BC6\u94A5", type: "password", required: true, placeholder: "AtlasCloud API Key" },\r\n    { key: "chatBaseUrl", label: "\u6587\u672C\u57FA\u5730\u5740", type: "url", required: true, placeholder: "https://api.atlascloud.ai/v1", disabled: true },\r\n    { key: "mediaBaseUrl", label: "\u5A92\u4F53\u57FA\u5730\u5740", type: "url", required: true, placeholder: "https://api.atlascloud.ai/api/v1", disabled: true },\r\n  ],\r\n  inputValues: {\r\n    apiKey: "",\r\n    chatBaseUrl: "https://api.atlascloud.ai/v1",\r\n    mediaBaseUrl: "https://api.atlascloud.ai/api/v1",\r\n  },\r\n  models: [\r\n    { name: "DeepSeek V4 Pro", modelName: "deepseek-ai/deepseek-v4-pro", type: "text", think: false },\r\n    { name: "DeepSeek V4 Flash", modelName: "deepseek-ai/deepseek-v4-flash", type: "text", think: false },\r\n    { name: "Kimi K2.6", modelName: "moonshotai/kimi-k2.6", type: "text", think: false },\r\n    { name: "GLM 5.1", modelName: "zai-org/glm-5.1", type: "text", think: false },\r\n    { name: "MiniMax M2.7", modelName: "minimaxai/minimax-m2.7", type: "text", think: false },\r\n    { name: "GPT Image 2", modelName: "openai/gpt-image-2/text-to-image", type: "image", mode: ["text", "singleImage"] },\r\n    { name: "Nano Banana Pro", modelName: "google/nano-banana-pro/text-to-image", type: "image", mode: ["text", "singleImage", "multiReference"] },\r\n    { name: "Nano Banana 2", modelName: "google/nano-banana-2/text-to-image", type: "image", mode: ["text", "singleImage", "multiReference"] },\r\n    { name: "Seedream v5", modelName: "bytedance/seedream-v5.0-lite/sequential", type: "image", mode: ["text"] },\r\n    { name: "Qwen Image 2 Pro", modelName: "qwen/qwen-image-2.0-pro/text-to-image", type: "image", mode: ["text"] },\r\n    {\r\n      name: "Seedance 2.0 Audio-Visual",\r\n      modelName: "bytedance/seedance-2.0/text-to-video",\r\n      type: "video",\r\n      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],\r\n      audio: "optional",\r\n      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],\r\n    },\r\n    {\r\n      name: "Seedance 2.0 Reference-to-Video",\r\n      modelName: "bytedance/seedance-2.0/reference-to-video",\r\n      type: "video",\r\n      mode: ["singleImage"],\r\n      audio: "optional",\r\n      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p", "1080p"] }],\r\n    },\r\n    {\r\n      name: "Seedance 2.0 Multi-Image-to-Video",\r\n      modelName: "bytedance/seedance-2.0/image-to-video",\r\n      type: "video",\r\n      mode: ["startFrameOptional", ["imageReference:4"]],\r\n      audio: "optional",\r\n      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p", "1080p"] }],\r\n    },\r\n    {\r\n      name: "Seedance 2.0 Fast Audio-Visual",\r\n      modelName: "bytedance/seedance-2.0-fast/text-to-video",\r\n      type: "video",\r\n      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],\r\n      audio: "optional",\r\n      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],\r\n    },\r\n    {\r\n      name: "Seedance 2.0 Fast Reference-to-Video",\r\n      modelName: "bytedance/seedance-2.0-fast/reference-to-video",\r\n      type: "video",\r\n      mode: ["singleImage"],\r\n      audio: "optional",\r\n      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],\r\n    },\r\n    {\r\n      name: "Wan-2.7 Reference-to-video",\r\n      modelName: "alibaba/wan-2.7/reference-to-video",\r\n      type: "video",\r\n      mode: ["singleImage"],\r\n      audio: "optional",\r\n      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10], resolution: ["720p", "1080p"] }],\r\n    },\r\n  ],\r\n};\r\n\r\n// ============================================================\r\n// \u8F85\u52A9\u5DE5\u5177\r\n// ============================================================\r\n\r\nconst getChatBaseUrl = () => vendor.inputValues.chatBaseUrl.replace(/\\/+$/, "");\r\n\r\nconst getMediaBaseUrl = () => vendor.inputValues.mediaBaseUrl.replace(/\\/+$/, "");\r\n\r\nconst joinUrl = (base: string, path: string) => `${base}${path.startsWith("/") ? "" : "/"}${path}`;\r\n\r\nconst getHeaders = () => {\r\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11 API Key");\r\n  return {\r\n    "Content-Type": "application/json",\r\n    Authorization: `Bearer ${vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "")}`,\r\n  };\r\n};\r\n\r\nconst readByPath = (obj: any, path: string): any => {\r\n  if (!obj || !path) return undefined;\r\n  const normalizedPath = path.replace(/\\[(\\d+)\\]/g, ".$1");\r\n  return normalizedPath.split(".").reduce((acc, key) => (acc == null ? undefined : acc[key]), obj);\r\n};\r\n\r\nconst pickFirstPath = (obj: any, paths: string[]): any => {\r\n  for (const path of paths) {\r\n    const value = readByPath(obj, path);\r\n    if (value !== undefined && value !== null && value !== "") return value;\r\n  }\r\n  return undefined;\r\n};\r\n\r\nconst extractTaskId = (data: any): string | undefined => {\r\n  return pickFirstPath(data, ["id", "taskId", "task_id", "data.id", "data.taskId", "data.task_id"]);\r\n};\r\n\r\nconst extractUrl = (data: any): string | undefined => {\r\n  return (\r\n    (Array.isArray(readByPath(data, "data.outputs")) ? readByPath(data, "data.outputs")[0] : undefined) ||\r\n    (Array.isArray(readByPath(data, "outputs")) ? readByPath(data, "outputs")[0] : undefined) ||\r\n    readByPath(data, "url") ||\r\n    readByPath(data, "video_url") ||\r\n    readByPath(data, "image_url") ||\r\n    readByPath(data, "data.url") ||\r\n    readByPath(data, "data.video_url") ||\r\n    readByPath(data, "data.image_url") ||\r\n    readByPath(data, "data.output.url") ||\r\n    readByPath(data, "data.output.video_url") ||\r\n    readByPath(data, "output.url")\r\n  );\r\n};\r\n\r\nconst extractB64 = (data: any): string | undefined => {\r\n  return pickFirstPath(data, ["b64_json", "data.b64_json", "data.0.b64_json", "data[0].b64_json"]);\r\n};\r\n\r\nconst extractStatus = (data: any): string => {\r\n  const statusRaw = pickFirstPath(data, ["status", "data.status", "data.state", "state"]);\r\n  return String(statusRaw || "").toLowerCase();\r\n};\r\n\r\nconst extractError = (data: any): string | undefined => {\r\n  return pickFirstPath(data, ["error.message", "message", "msg", "data.error.message", "data.message"]);\r\n};\r\n\r\nconst isDnsOrNetworkError = (err: any): boolean => {\r\n  const msg = String(err?.message || err || "");\r\n  return /ENOTFOUND|EAI_AGAIN|ECONNRESET|ETIMEDOUT|timeout/i.test(msg);\r\n};\r\n\r\nconst withNetworkRetry = async <T>(fn: () => Promise<T>, maxRetry = 3, waitMs = 1500): Promise<T> => {\r\n  let lastErr: any;\r\n  for (let i = 0; i < maxRetry; i += 1) {\r\n    try {\r\n      return await fn();\r\n    } catch (err) {\r\n      lastErr = err;\r\n      if (!isDnsOrNetworkError(err) || i === maxRetry - 1) throw err;\r\n      await new Promise((resolve) => setTimeout(resolve, waitMs * (i + 1)));\r\n    }\r\n  }\r\n  throw lastErr;\r\n};\r\n\r\nconst resolveAtlasImageModelName = (modelName: string, hasImageRefs: boolean): string => {\r\n  if (!hasImageRefs) return modelName;\r\n\r\n  switch (modelName) {\r\n    case "google/nano-banana-pro/text-to-image":\r\n      return "google/nano-banana-pro/edit";\r\n    case "google/nano-banana-2/text-to-image":\r\n      return "google/nano-banana-2/edit";\r\n    default:\r\n      return modelName;\r\n  }\r\n};\r\n\r\nconst resolveAtlasVideoModelKind = (modelName: string): AtlasVideoModelKind => {\r\n  if (modelName === "alibaba/wan-2.7/reference-to-video") return "wanReferenceToVideo";\r\n  if (/^bytedance\\/seedance-2\\.0(?:-fast)?\\/reference-to-video$/.test(modelName)) return "seedanceReferenceToVideo";\r\n  if (/^bytedance\\/seedance-2\\.0(?:-fast)?\\/image-to-video$/.test(modelName)) return "seedanceImageToVideo";\r\n  if (/^bytedance\\/seedance-2\\.0(?:-fast)?\\/text-to-video$/.test(modelName)) return "seedanceTextToVideo";\r\n  return "generic";\r\n};\r\n\r\nconst clampNumber = (value: unknown, min: number, max: number, fallback: number): number => {\r\n  const num = Number(value);\r\n  if (!Number.isFinite(num)) return fallback;\r\n  return Math.max(min, Math.min(max, num));\r\n};\r\n\r\nconst normalizeResolution = (value: unknown, allowed: string[], fallback: string): string => {\r\n  const lower = String(value || "").toLowerCase();\r\n  const matched = allowed.find((item) => item.toLowerCase() === lower);\r\n  if (matched) return matched;\r\n  if (/1080/.test(lower)) return allowed.find((item) => /1080/i.test(item)) || fallback;\r\n  if (/720/.test(lower)) return allowed.find((item) => /720/i.test(item)) || fallback;\r\n  if (/480/.test(lower)) return allowed.find((item) => /480/i.test(item)) || fallback;\r\n  return fallback;\r\n};\r\n\r\nconst getReferenceLimit = (\r\n  modes: VideoMode[],\r\n  prefix: "imageReference" | "videoReference" | "audioReference",\r\n): number | undefined => {\r\n  for (const mode of modes) {\r\n    if (!Array.isArray(mode)) continue;\r\n    for (const entry of mode) {\r\n      if (!entry.startsWith(`${prefix}:`)) continue;\r\n      const limit = Number(entry.split(":")[1]);\r\n      if (Number.isFinite(limit) && limit > 0) return limit;\r\n    }\r\n  }\r\n  return undefined;\r\n};\r\n\r\nconst limitReferences = (refs: string[], maxCount?: number): string[] => {\r\n  if (!maxCount || maxCount < 1) return refs;\r\n  return refs.slice(0, maxCount);\r\n};\r\n\r\nconst summarizeRefCount = (usedCount: number, rawCount: number): string => {\r\n  return usedCount === rawCount ? String(usedCount) : `${usedCount}/${rawCount}`;\r\n};\r\n\r\nconst buildAtlasVideoPayload = (config: VideoConfig, model: VideoModel) => {\r\n  const rawImageRefs = (config.referenceList || []).filter((r) => r.type === "image").map((r) => r.base64).filter(Boolean);\r\n  const rawVideoRefs = (config.referenceList || []).filter((r) => r.type === "video").map((r) => r.base64).filter(Boolean);\r\n  const rawAudioRefs = (config.referenceList || []).filter((r) => r.type === "audio").map((r) => r.base64).filter(Boolean);\r\n\r\n  const imageRefs = limitReferences(rawImageRefs, getReferenceLimit(model.mode, "imageReference"));\r\n  const videoRefs = limitReferences(rawVideoRefs, getReferenceLimit(model.mode, "videoReference"));\r\n  const audioRefs = limitReferences(rawAudioRefs, getReferenceLimit(model.mode, "audioReference"));\r\n  const kind = resolveAtlasVideoModelKind(model.modelName);\r\n  const ratio = config.aspectRatio || "16:9";\r\n  const shouldGenerateAudio = model.audio === true || (model.audio === "optional" && config.audio !== false);\r\n  const body: any = {\r\n    model: model.modelName,\r\n    prompt: config.prompt || "",\r\n  };\r\n\r\n  if (kind === "wanReferenceToVideo") {\r\n    if (imageRefs.length < 1) {\r\n      throw new Error(`${model.name} \u9700\u8981\u81F3\u5C11 1 \u5F20\u53C2\u8003\u56FE`);\r\n    }\r\n    body.images = [imageRefs[0]];\r\n    body.ratio = ratio;\r\n    body.duration = clampNumber(config.duration, 2, 10, 5);\r\n    body.resolution = normalizeResolution(config.resolution, ["720P", "1080P"], "720P");\r\n    body.prompt_extend = false;\r\n    body.seed = -1;\r\n  } else if (kind === "seedanceReferenceToVideo") {\r\n    if (imageRefs.length < 1) {\r\n      throw new Error(`${model.name} \u9700\u8981\u81F3\u5C11 1 \u5F20\u53C2\u8003\u56FE`);\r\n    }\r\n    if (shouldGenerateAudio) body.generate_audio = true;\r\n    body.images = [imageRefs[0]];\r\n    body.ratio = ratio;\r\n    body.duration = clampNumber(config.duration, 4, 15, 5);\r\n    body.resolution = normalizeResolution(config.resolution, ["480p", "720p", "1080p"], "720p");\r\n    body.watermark = false;\r\n  } else if (kind === "seedanceImageToVideo") {\r\n    if (imageRefs.length < 1) {\r\n      throw new Error(`${model.name} \u9700\u8981\u81F3\u5C11 1 \u5F20\u53C2\u8003\u56FE`);\r\n    }\r\n    if (shouldGenerateAudio) body.generate_audio = true;\r\n    body.images = imageRefs;\r\n    body.ratio = ratio;\r\n    body.duration = clampNumber(config.duration, 4, 15, 5);\r\n    body.resolution = normalizeResolution(config.resolution, ["480p", "720p", "1080p"], "720p");\r\n    body.watermark = false;\r\n  } else {\r\n    if (shouldGenerateAudio) body.generate_audio = true;\r\n    if (imageRefs.length > 0) body.reference_images = imageRefs;\r\n    if (videoRefs.length > 0) body.reference_videos = videoRefs;\r\n    if (audioRefs.length > 0) body.reference_audios = audioRefs;\r\n    body.ratio = ratio;\r\n    body.duration = clampNumber(config.duration, 4, 15, 5);\r\n    body.resolution = normalizeResolution(config.resolution, ["480p", "720p"], "720p");\r\n    body.watermark = false;\r\n  }\r\n\r\n  return {\r\n    body,\r\n    summary: `kind=${kind} imageRefs=${summarizeRefCount(imageRefs.length, rawImageRefs.length)} videoRefs=${summarizeRefCount(videoRefs.length, rawVideoRefs.length)} audioRefs=${summarizeRefCount(audioRefs.length, rawAudioRefs.length)} resolution=${body.resolution} duration=${body.duration}${shouldGenerateAudio ? " audio=on" : " audio=off"}`,\r\n  };\r\n};\r\n\r\n// ============================================================\r\n// \u9002\u914D\u5668\u51FD\u6570\r\n// ============================================================\r\n\r\nconst textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {\r\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11 API Key");\r\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\r\n  const effortMap: Record<number, string> = { 0: "minimal", 1: "low", 2: "medium", 3: "high" };\r\n\r\n  return createOpenAICompatible({\r\n    name: "atlascloud",\r\n    baseURL: getChatBaseUrl(),\r\n    apiKey,\r\n    fetch: async (url: string, options?: RequestInit) => {\r\n      const rawBody = JSON.parse((options?.body as string) ?? "{}");\r\n      const body = think\r\n        ? {\r\n          ...rawBody,\r\n          thinking: { type: "enabled" },\r\n          reasoning_effort: effortMap[thinkLevel],\r\n        }\r\n        : rawBody;\r\n      return await fetch(url, { ...options, body: JSON.stringify(body) });\r\n    },\r\n  }).chatModel(model.modelName);\r\n};\r\n\r\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\r\n  const headers = getHeaders();\r\n  const url = joinUrl(getMediaBaseUrl(), "/model/generateImage");\r\n  const sizeToResolution: Record<ImageConfig["size"], string> = {\r\n    "1K": "1k",\r\n    "2K": "2k",\r\n    "4K": "4k",\r\n  };\r\n  const imageRefs = (config.referenceList || []).map((ref) => ref.base64).filter(Boolean);\r\n  const resolvedModelName = resolveAtlasImageModelName(model.modelName, imageRefs.length > 0);\r\n  const isNanoModel = /^google\\/nano-banana-(pro|2)\\//.test(resolvedModelName);\r\n  const supportsImageConditioning = /^(openai\\/gpt-image-2\\/text-to-image|google\\/nano-banana-(pro|2)\\/edit)$/.test(resolvedModelName);\r\n\r\n  const body: any = {\r\n    model: resolvedModelName,\r\n    prompt: config.prompt || "",\r\n  };\r\n  if (supportsImageConditioning && imageRefs.length > 0) {\r\n    body.images = imageRefs;\r\n  }\r\n  if (isNanoModel) {\r\n    body.aspect_ratio = config.aspectRatio || "16:9";\r\n    body.resolution = sizeToResolution[config.size || "1K"] || "1k";\r\n  }\r\n\r\n  logger(`[AtlasCloud \u56FE\u7247] \u63D0\u4EA4\u4EFB\u52A1: ${model.modelName} -> ${resolvedModelName}, refs=${imageRefs.length}`);\r\n  const submitResp = await axios.post(url, body, { headers });\r\n  const submitData = submitResp.data;\r\n\r\n  // \u540C\u6B65\u8FD4\u56DE\uFF08\u76F4\u63A5\u62FF\u56FE\uFF09\r\n  const syncB64 = extractB64(submitData);\r\n  if (syncB64) return syncB64;\r\n  const syncUrl = extractUrl(submitData);\r\n  if (syncUrl) return await urlToBase64(syncUrl);\r\n\r\n  // \u5F02\u6B65\u8FD4\u56DE\uFF08\u62FF taskId \u518D\u8F6E\u8BE2\uFF09\r\n  const taskId = extractTaskId(submitData);\r\n  if (!taskId) {\r\n    throw new Error(`\u56FE\u7247\u4EFB\u52A1\u63D0\u4EA4\u5931\u8D25\uFF1A\u672A\u83B7\u53D6\u5230\u4EFB\u52A1ID\u3002\u539F\u59CB\u54CD\u5E94\uFF1A${JSON.stringify(submitData).slice(0, 500)}`);\r\n  }\r\n\r\n  const pollResult = await pollTask(\r\n    async (): Promise<PollResult> => {\r\n      const resultUrl = joinUrl(getMediaBaseUrl(), `/model/prediction/${taskId}`);\r\n      const resultResp = await axios.get(resultUrl, { headers });\r\n      const data = resultResp.data;\r\n      const status = extractStatus(data);\r\n\r\n      if (["succeeded", "success", "done", "completed"].includes(status)) {\r\n        const b64 = extractB64(data);\r\n        if (b64) return { completed: true, data: b64 };\r\n        const mediaUrl = extractUrl(data);\r\n        if (mediaUrl) return { completed: true, data: mediaUrl };\r\n        return { completed: true, error: "\u4EFB\u52A1\u6210\u529F\u4F46\u672A\u8FD4\u56DE\u7ED3\u679C\u5730\u5740" };\r\n      }\r\n      if (["failed", "error", "cancelled", "canceled", "expired"].includes(status)) {\r\n        return { completed: true, error: extractError(data) || "\u56FE\u7247\u751F\u6210\u5931\u8D25" };\r\n      }\r\n      return { completed: false };\r\n    },\r\n    3000,\r\n    600000,\r\n  );\r\n\r\n  if (pollResult.error) throw new Error(pollResult.error);\r\n  if (!pollResult.data) throw new Error("\u56FE\u7247\u751F\u6210\u5931\u8D25\uFF1A\u8F6E\u8BE2\u672A\u8FD4\u56DE\u6570\u636E");\r\n  if (pollResult.data.startsWith("data:")) return pollResult.data;\r\n  if (pollResult.data.startsWith("http")) return await urlToBase64(pollResult.data);\r\n  return pollResult.data;\r\n};\r\n\r\nconst videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {\r\n  const headers = getHeaders();\r\n  const url = joinUrl(getMediaBaseUrl(), "/model/generateVideo");\r\n  const { body, summary } = buildAtlasVideoPayload(config, model);\r\n\r\n  logger(`[AtlasCloud \u89C6\u9891] \u63D0\u4EA4\u4EFB\u52A1: ${model.modelName}, ${summary}`);\r\n  const submitResp: any = await withNetworkRetry<any>(() => axios.post(url, body, { headers }), 3, 1500);\r\n  const submitData = submitResp.data;\r\n\r\n  const taskId = extractTaskId(submitData);\r\n  if (!taskId) {\r\n    const syncUrl = extractUrl(submitData);\r\n    if (syncUrl) return await urlToBase64(syncUrl);\r\n    throw new Error(`\u89C6\u9891\u4EFB\u52A1\u63D0\u4EA4\u5931\u8D25\uFF1A\u672A\u83B7\u53D6\u5230\u4EFB\u52A1ID\u3002\u539F\u59CB\u54CD\u5E94\uFF1A${JSON.stringify(submitData).slice(0, 500)}`);\r\n  }\r\n\r\n  const pollResult = await pollTask(\r\n    async (): Promise<PollResult> => {\r\n      const resultUrl = joinUrl(getMediaBaseUrl(), `/model/prediction/${taskId}`);\r\n      const resultResp: any = await withNetworkRetry<any>(() => axios.get(resultUrl, { headers }), 3, 1200);\r\n      const data = resultResp.data;\r\n      const status = extractStatus(data);\r\n\r\n      if (["succeeded", "success", "done", "completed"].includes(status)) {\r\n        const mediaUrl = extractUrl(data);\r\n        if (mediaUrl) return { completed: true, data: mediaUrl };\r\n        return { completed: true, error: "\u4EFB\u52A1\u6210\u529F\u4F46\u672A\u8FD4\u56DE\u89C6\u9891\u5730\u5740" };\r\n      }\r\n      if (["failed", "error", "cancelled", "canceled", "expired"].includes(status)) {\r\n        return { completed: true, error: extractError(data) || "\u89C6\u9891\u751F\u6210\u5931\u8D25" };\r\n      }\r\n      return { completed: false };\r\n    },\r\n    5000,\r\n    1800000,\r\n  );\r\n\r\n  if (pollResult.error) throw new Error(pollResult.error);\r\n  if (!pollResult.data) throw new Error("\u89C6\u9891\u751F\u6210\u5931\u8D25\uFF1A\u8F6E\u8BE2\u672A\u8FD4\u56DE\u6570\u636E");\r\n  return await urlToBase64(pollResult.data);\r\n};\r\n\r\nconst ttsRequest = async (_config: TTSConfig, _model: TTSModel): Promise<string> => {\r\n  // AtlasCloud \u5F53\u524D\u7248\u672C\u5148\u4E0D\u63A5 TTS\u3002\r\n  return "";\r\n};\r\n\r\nconst checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {\r\n  return {\r\n    hasUpdate: false,\r\n    latestVersion: vendor.version,\r\n    notice: "AtlasCloud MASS \u521D\u7A3F\u3002",\r\n  };\r\n};\r\n\r\nconst updateVendor = async (): Promise<string> => {\r\n  return "";\r\n};\r\n\r\n// ============================================================\r\n// \u5BFC\u51FA\r\n// ============================================================\r\n\r\nexports.vendor = vendor;\r\nexports.textRequest = textRequest;\r\nexports.imageRequest = imageRequest;\r\nexports.videoRequest = videoRequest;\r\nexports.ttsRequest = ttsRequest;\r\nexports.checkForUpdates = checkForUpdates;\r\nexports.updateVendor = updateVendor;\r\n\r\nexport { };\r\n',
       "deepseek.ts": '/**\r\n * Toonflow AI\u4F9B\u5E94\u5546\u6A21\u677F - DeepSeek\r\n * @version 2.1\r\n */\r\n\r\n// ============================================================\r\n// \u7C7B\u578B\u5B9A\u4E49\r\n// ============================================================\r\n\r\ntype VideoMode =\r\n  | "singleImage"\r\n  | "startEndRequired"\r\n  | "endFrameOptional"\r\n  | "startFrameOptional"\r\n  | "text"\r\n  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[];\r\n\r\ninterface TextModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "text";\r\n  think: boolean;\r\n}\r\n\r\ninterface ImageModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "image";\r\n  mode: ("text" | "singleImage" | "multiReference")[];\r\n  associationSkills?: string;\r\n}\r\n\r\ninterface VideoModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "video";\r\n  mode: VideoMode[];\r\n  associationSkills?: string;\r\n  audio: "optional" | false | true;\r\n  durationResolutionMap: { duration: number[]; resolution: string[] }[];\r\n}\r\n\r\ninterface TTSModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "tts";\r\n  voices: { title: string; voice: string }[];\r\n}\r\n\r\ninterface VendorConfig {\r\n  id: string;\r\n  version: string;\r\n  name: string;\r\n  author: string;\r\n  description?: string;\r\n  icon?: string;\r\n  inputs: { key: string; label: string; type: "text" | "password" | "url"; required: boolean; placeholder?: string }[];\r\n  inputValues: Record<string, string>;\r\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\r\n}\r\n\r\ninterface ImageConfig {\r\n  prompt: string;\r\n  imageBase64: string[];\r\n  size: "1K" | "2K" | "4K";\r\n  aspectRatio: `${number}:${number}`;\r\n}\r\n\r\ninterface VideoConfig {\r\n  duration: number;\r\n  resolution: string;\r\n  aspectRatio: "16:9" | "9:16";\r\n  prompt: string;\r\n  imageBase64?: string[];\r\n  audio?: boolean;\r\n  mode: VideoMode[];\r\n}\r\n\r\ninterface TTSConfig {\r\n  text: string;\r\n  voice: string;\r\n  speechRate: number;\r\n  pitchRate: number;\r\n  volume: number;\r\n}\r\n\r\ninterface PollResult {\r\n  completed: boolean;\r\n  data?: string;\r\n  error?: string;\r\n}\r\n\r\n// ============================================================\r\n// \u5168\u5C40\u58F0\u660E\r\n// ============================================================\r\n\r\ndeclare const axios: any;\r\ndeclare const logger: (msg: string) => void;\r\ndeclare const jsonwebtoken: any;\r\ndeclare const zipImage: (base64: string, size: number) => Promise<string>;\r\ndeclare const zipImageResolution: (base64: string, w: number, h: number) => Promise<string>;\r\ndeclare const mergeImages: (base64Arr: string[], maxSize?: string) => Promise<string>;\r\ndeclare const urlToBase64: (url: string) => Promise<string>;\r\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>;\r\ndeclare const createOpenAI: any;\r\ndeclare const createDeepSeek: any;\r\ndeclare const createZhipu: any;\r\ndeclare const createQwen: any;\r\ndeclare const createAnthropic: any;\r\ndeclare const createOpenAICompatible: any;\r\ndeclare const createXai: any;\r\ndeclare const createMinimax: any;\r\ndeclare const createGoogleGenerativeAI: any;\r\ndeclare const exports: {\r\n  vendor: VendorConfig;\r\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;\r\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;\r\n  videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;\r\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;\r\n  checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;\r\n  updateVendor?: () => Promise<string>;\r\n};\r\n\r\n// ============================================================\r\n// \u4F9B\u5E94\u5546\u914D\u7F6E\r\n// ============================================================\r\n\r\nconst vendor: VendorConfig = {\r\n  id: "deepseek",\r\n  version: "2.1",\r\n  author: "Toonflow",\r\n  name: "DeepSeek",\r\n  description:\r\n    "DeepSeek \u5B98\u65B9\u63A5\u53E3\u9002\u914D\uFF0C\u652F\u6301 V4 \u7CFB\u5217\u6A21\u578B\u4E0E\u601D\u8003\u6A21\u5F0F\uFF08\u601D\u7EF4\u94FE\u8F93\u51FA\uFF09\u3002\\n\\n[\u524D\u5F80\u5E73\u53F0](https://platform.deepseek.com/)",\r\n  icon: "",\r\n  inputs: [\r\n    { key: "apiKey", label: "API\u5BC6\u94A5", type: "password", required: true },\r\n    { key: "baseUrl", label: "\u8BF7\u6C42\u5730\u5740", type: "url", required: true, placeholder: "\u793A\u4F8B\uFF1Ahttps://api.deepseek.com" },\r\n  ],\r\n  inputValues: {\r\n    apiKey: "",\r\n    baseUrl: "https://api.deepseek.com/v1",\r\n  },\r\n  models: [\r\n    { name: "DeepSeek V4 Pro", modelName: "deepseek-v4-pro", type: "text", think: true },\r\n    { name: "DeepSeek V4 Flash", modelName: "deepseek-v4-flash", type: "text", think: true },\r\n  ],\r\n};\r\n\r\n// ============================================================\r\n// \u9002\u914D\u5668\u51FD\u6570\r\n// ============================================================\r\n\r\nconst textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {\r\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\r\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\r\n\r\n  // DeepSeek \u601D\u8003\u5F3A\u5EA6\u4EC5\u652F\u6301 high / max\uFF08low\u3001medium \u4F1A\u88AB\u6620\u5C04\u4E3A high\uFF0Cxhigh \u4F1A\u88AB\u6620\u5C04\u4E3A max\uFF09\r\n  // thinkLevel: 0/1/2 \u2192 high, 3 \u2192 max\r\n  const effortMap: Record<0 | 1 | 2 | 3, "high" | "max"> = {\r\n    0: "high",\r\n    1: "high",\r\n    2: "high",\r\n    3: "max",\r\n  };\r\n\r\n  const enableThinking = model.think && think;\r\n  const extraBody: Record<string, any> = {\r\n    thinking: { type: enableThinking ? "enabled" : "disabled" },\r\n  };\r\n  if (enableThinking) {\r\n    extraBody.reasoning_effort = effortMap[thinkLevel];\r\n  }\r\n\r\n  return createOpenAICompatible({\r\n    baseURL: vendor.inputValues.baseUrl,\r\n    apiKey,\r\n    fetch: async (url: string, options?: RequestInit) => {\r\n      const rawBody = JSON.parse((options?.body as string) ?? "{}");\r\n      const modifiedBody = {\r\n        ...rawBody,\r\n        ...extraBody\r\n      };\r\n      return await fetch(url, {\r\n        ...options,\r\n        body: JSON.stringify(modifiedBody),\r\n      });\r\n    },\r\n  }).chatModel(model.modelName);\r\n};\r\n\r\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\r\n  return "";\r\n};\r\n\r\nconst videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {\r\n  return "";\r\n};\r\n\r\nconst ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> => {\r\n  return "";\r\n};\r\n\r\nconst checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {\r\n  return { hasUpdate: false, latestVersion: "2.0", notice: "" };\r\n};\r\n\r\nconst updateVendor = async (): Promise<string> => {\r\n  return "";\r\n};\r\n\r\n// ============================================================\r\n// \u5BFC\u51FA\r\n// ============================================================\r\n\r\nexports.vendor = vendor;\r\nexports.textRequest = textRequest;\r\nexports.imageRequest = imageRequest;\r\nexports.videoRequest = videoRequest;\r\nexports.ttsRequest = ttsRequest;\r\nexports.checkForUpdates = checkForUpdates;\r\nexports.updateVendor = updateVendor;\r\n\r\nexport { };',
       "grsai.ts": '/**\r\n * Toonflow AI\u4F9B\u5E94\u5546\u6A21\u677F\r\n * @version 2.0\r\n */\r\n\r\n// ============================================================\r\n// \u7C7B\u578B\u5B9A\u4E49\r\n// ============================================================\r\n\r\ntype VideoMode =\r\n  | "singleImage" //\u5355\u56FE\u53C2\u8003\r\n  | "startEndRequired" //\u9996\u5C3E\u5E27\uFF08\u4E24\u5F20\u90FD\u5F97\u6709\uFF09\r\n  | "endFrameOptional" //\u9996\u5C3E\u5E27\uFF08\u5C3E\u5E27\u53EF\u9009\uFF09\r\n  | "startFrameOptional" //\u9996\u5C3E\u5E27\uFF08\u9996\u5E27\u53EF\u9009\uFF09\r\n  | "text" //\u6587\u672C\r\n  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[]; //\u591A\u53C2\u8003\uFF08\u6570\u5B57\u4EE3\u8868\u9650\u5236\u6570\u91CF\uFF09\r\n\r\ninterface TextModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "text";\r\n  think: boolean;\r\n}\r\n\r\ninterface ImageModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "image";\r\n  mode: ("text" | "singleImage" | "multiReference")[];\r\n  associationSkills?: string;\r\n}\r\n\r\ninterface VideoModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "video";\r\n  mode: VideoMode[];\r\n  associationSkills?: string;\r\n  audio: "optional" | false | true;\r\n  durationResolutionMap: { duration: number[]; resolution: string[] }[];\r\n}\r\n\r\ninterface TTSModel {\r\n  name: string;\r\n  modelName: string;\r\n  type: "tts";\r\n  voices: { title: string; voice: string }[];\r\n}\r\n\r\ninterface VendorConfig {\r\n  id: string; //\u552F\u4E00ID\uFF0C\u4F5C\u4E3A\u6587\u4EF6\u540D\u5B58\u50A8\u7528\u6237\u78C1\u76D8\u4E0A\uFF0C\u7981\u6B62\u7B26\u53F7\r\n  version: string; //\u7248\u672C\u53F7\uFF0C\u683C\u5F0F\u4E3Ax.y\uFF0C\u9700\u9075\u5B88\u8BED\u4E49\u5316\u7248\u672C\u63A7\u5236\r\n  name: string; //\u4F9B\u5E94\u5546\u540D\u79F0\r\n  author: string; //\u4F5C\u8005\r\n  description?: string; //\u63CF\u8FF0\uFF0C\u652F\u6301Markdown\u683C\u5F0F\r\n  icon?: string; //\u56FE\u6807\uFF0C\u4EC5\u652F\u6301Base64\u683C\u5F0F\uFF0C\u5EFA\u8BAE\u5C3A\u5BF8\u4E3A128x128\u50CF\u7D20\r\n  inputs: {\r\n    key: string;\r\n    label: string;\r\n    type: "text" | "password" | "url";\r\n    required: boolean;\r\n    placeholder?: string;\r\n  }[];\r\n  inputValues: Record<string, string>;\r\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\r\n}\r\n\r\ntype ReferenceList =\r\n  | { type: "image"; sourceType: "base64"; base64: string }\r\n  | { type: "audio"; sourceType: "base64"; base64: string }\r\n  | { type: "video"; sourceType: "base64"; base64: string };\r\n\r\ninterface ImageConfig {\r\n  prompt: string;\r\n  referenceList?: Extract<ReferenceList, { type: "image" }>[];\r\n  size: "1K" | "2K" | "4K";\r\n  aspectRatio: `${number}:${number}`;\r\n}\r\n\r\ninterface VideoConfig {\r\n  duration: number;\r\n  resolution: string;\r\n  aspectRatio: "16:9" | "9:16";\r\n  prompt: string;\r\n  referenceList?: ReferenceList[];\r\n  audio?: boolean;\r\n  mode: VideoMode[];\r\n}\r\n\r\ninterface TTSConfig {\r\n  text: string;\r\n  voice: string;\r\n  speechRate: number;\r\n  pitchRate: number;\r\n  volume: number;\r\n  referenceList?: Extract<ReferenceList, { type: "audio" }>[];\r\n}\r\n\r\ninterface PollResult {\r\n  completed: boolean;\r\n  data?: string;\r\n  error?: string;\r\n}\r\n\r\n// ============================================================\r\n// \u5168\u5C40\u58F0\u660E\r\n// ============================================================\r\n\r\ndeclare const logger: (msg: string) => void; // \u65E5\u5FD7\u51FD\u6570\r\ndeclare const jsonwebtoken: any; // JWT\u5904\u7406\u5E93\r\ndeclare const zipImage: (base64: string, size: number) => Promise<string>; // \u56FE\u7247\u538B\u7F29\u51FD\u6570\uFF0C\u8FD4\u56DE\u6709\u5934base64\u5B57\u7B26\u4E32\r\ndeclare const zipImageResolution: (base64: string, w: number, h: number) => Promise<string>; // \u56FE\u7247\u5206\u8FA8\u7387\u8C03\u6574\u51FD\u6570\uFF0C\u8FD4\u56DE\u6709\u5934base64\u5B57\u7B26\u4E32\r\ndeclare const mergeImages: (base64Arr: string[], maxSize?: string) => Promise<string>; // \u56FE\u7247\u5408\u6210\u51FD\u6570\uFF0C\u8FD4\u56DE\u6709\u5934base64\u5B57\u7B26\u4E32\r\ndeclare const urlToBase64: (url: string) => Promise<string>; // URL\u8F6CBase64\u51FD\u6570\uFF0C\u8FD4\u56DE\u6709\u5934base64\u5B57\u7B26\u4E32\r\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>; // \u8F6E\u8BE2\u51FD\u6570\uFF0Cfn\u4E3A\u5F02\u6B65\u51FD\u6570\uFF0Cinterval\u4E3A\u8F6E\u8BE2\u95F4\u9694\uFF0Ctimeout\u4E3A\u8D85\u65F6\u65F6\u95F4\uFF0C\u8FD4\u56DEfn\u7684\u7ED3\u679C\r\ndeclare const createOpenAI: any;\r\ndeclare const createDeepSeek: any;\r\ndeclare const createZhipu: any;\r\ndeclare const createQwen: any;\r\ndeclare const createAnthropic: any;\r\ndeclare const createOpenAICompatible: any;\r\ndeclare const createXai: any;\r\ndeclare const createMinimax: any;\r\ndeclare const createGoogleGenerativeAI: any;\r\ndeclare const exports: {\r\n  vendor: VendorConfig;\r\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any; //\u6587\u672C\u6A21\u578B\r\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>; //\u56FE\u7247\u6A21\u578B\uFF0C\u8FD4\u56DE\u6709\u5934base64\u5B57\u7B26\u4E32\r\n  videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>; //\u89C6\u9891\u6A21\u578B\uFF0C\u8FD4\u56DE\u6709\u5934base64\u5B57\u7B26\u4E32\r\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>; //\uFF08\u6682\u672A\u5F00\u653E\uFF09\u8BED\u97F3\u6A21\u578B\uFF0C\u8FD4\u56DE\u6709\u5934base64\u5B57\u7B26\u4E32\r\n  checkForUpdates?: () => Promise<{\r\n    hasUpdate: boolean;\r\n    latestVersion: string;\r\n    notice: string;\r\n  }>; //\u68C0\u67E5\u66F4\u65B0\u51FD\u6570\uFF0C\u8FD4\u56DE\u662F\u5426\u6709\u66F4\u65B0\u548C\u6700\u65B0\u7248\u672C\u53F7\u548C\u66F4\u516C\u544A\uFF08\u652F\u6301Markdown\u683C\u5F0F\uFF09\r\n  updateVendor?: () => Promise<string>; //\u66F4\u65B0\u51FD\u6570\uFF0C\u8FD4\u56DE\u6700\u65B0\u7684\u4EE3\u7801\u6587\u672C\r\n};\r\n\r\n// ============================================================\r\n// \u4F9B\u5E94\u5546\u914D\u7F6E\r\n// ============================================================\r\n\r\nconst vendor: VendorConfig = {\r\n  id: "grsai",\r\n  version: "2.2",\r\n  author: "Toonflow",\r\n  name: "Grsai",\r\n  description: "Grsai AI\u5E73\u53F0\u9002\u914D\uFF0C\u652F\u6301\u6587\u751F\u56FE\u3001\u56FE\u751F\u56FE\u3001\u6587\u751F\u89C6\u9891\u3001Gemini\u517C\u5BB9\u6587\u672C\u6A21\u578B \\n [\u524D\u5F80\u4E2D\u8F6C\u5E73\u53F0](https://tf.grsai.ai/zh)",\r\n  inputs: [\r\n    { key: "apiKey", label: "API\u5BC6\u94A5", type: "password", required: true },\r\n    {\r\n      key: "baseUrl",\r\n      label: "\u8BF7\u6C42\u5730\u5740",\r\n      type: "url",\r\n      required: true,\r\n      placeholder: "\u793A\u4F8B\uFF1Ahttps://grsai.dakka.com.cn",\r\n    },\r\n  ],\r\n  inputValues: { apiKey: "", baseUrl: "https://grsai.dakka.com.cn" },\r\n  models: [\r\n    {\r\n      name: "GPT Image 2",\r\n      modelName: "gpt-image-2",\r\n      type: "image",\r\n      mode: ["text", "singleImage", "multiReference"],\r\n    },\r\n    {\r\n      name: "Nano Banana Fast",\r\n      modelName: "nano-banana-fast",\r\n      type: "image",\r\n      mode: ["text", "singleImage", "multiReference"],\r\n    },\r\n    {\r\n      name: "Nano Banana 2",\r\n      modelName: "nano-banana-2",\r\n      type: "image",\r\n      mode: ["text", "singleImage", "multiReference"],\r\n    },\r\n    {\r\n      name: "Nano Banana Pro",\r\n      modelName: "nano-banana-pro",\r\n      type: "image",\r\n      mode: ["text", "singleImage", "multiReference"],\r\n    },\r\n  ],\r\n};\r\n\r\n// ============================================================\r\n// \u8F85\u52A9\u5DE5\u5177\r\n// ============================================================\r\n\r\nconst getHeaders = () => {\r\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\r\n  return {\r\n    "Content-Type": "application/json",\r\n    Authorization: `Bearer ${apiKey}`,\r\n  };\r\n};\r\n\r\n// ============================================================\r\n// \u9002\u914D\u5668\u51FD\u6570\r\n// ============================================================\r\n\r\nconst textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {\r\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\r\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\r\n  return createGoogleGenerativeAI({\r\n    baseURL: `${vendor.inputValues.baseUrl}/v1beta`,\r\n    apiKey,\r\n  }).chat(model.modelName);\r\n};\r\n\r\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\r\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\r\n  const baseUrl = vendor.inputValues.baseUrl;\r\n  const headers = getHeaders();\r\n\r\n  // \u6784\u9020\u8BF7\u6C42\u53C2\u6570\r\n  const requestBody: any = {\r\n    model: model.modelName,\r\n    prompt: config.prompt,\r\n    aspectRatio: config.aspectRatio,\r\n    webHook: "-1",\r\n    shutProgress: true,\r\n  };\r\n\r\n  // \u8865\u5145\u6A21\u578B\u4E13\u5C5E\u53C2\u6570\r\n  if (model.modelName.startsWith("nano-banana")) {\r\n    requestBody.imageSize = config.size;\r\n  } else {\r\n    requestBody.size = config.aspectRatio;\r\n    requestBody.variants = 1;\r\n  }\r\n\r\n  // \u5904\u7406\u53C2\u8003\u56FE\r\n  if (config.referenceList && config.referenceList.length > 0) {\r\n    requestBody.urls = config.referenceList.map((img) => img.base64);\r\n  }\r\n\r\n  // \u9009\u62E9\u63A5\u53E3\u8DEF\u5F84\r\n  const apiPath = model.modelName.startsWith("nano-banana") ? "/v1/draw/nano-banana" : "/v1/draw/completions";\r\n\r\n  logger(`\u5F00\u59CB\u63D0\u4EA4\u56FE\u7247\u751F\u6210\u4EFB\u52A1\uFF0C\u6A21\u578B\uFF1A${model.modelName}`);\r\n  logger(`${baseUrl}${apiPath}`)\r\n  const submitResp = await fetch(`${baseUrl}${apiPath}`, {\r\n    method: "POST",\r\n    headers,\r\n    body: JSON.stringify(requestBody),\r\n  });\r\n  if (!submitResp.ok) {\r\n    const errorReason = await submitResp.text();\r\n    throw new Error(`\u4EFB\u52A1\u63D0\u4EA4\u5931\u8D25\uFF1A${errorReason}`);\r\n  }\r\n  const submitData = await submitResp.json();\r\n  if (submitData.code !== 0) throw new Error(`\u4EFB\u52A1\u63D0\u4EA4\u5931\u8D25\uFF1A${submitData.msg}`);\r\n\r\n  const taskId = submitData.data.id;\r\n  logger(`\u56FE\u7247\u4EFB\u52A1\u63D0\u4EA4\u6210\u529F\uFF0C\u4EFB\u52A1ID\uFF1A${taskId}`);\r\n\r\n  // \u8F6E\u8BE2\u7ED3\u679C\r\n  const pollResult = await pollTask(\r\n    async () => {\r\n      const resp = await fetch(`${baseUrl}/v1/draw/result`, {\r\n        method: "POST",\r\n        headers,\r\n        body: JSON.stringify({ id: taskId }),\r\n      });\r\n      if (!resp.ok) {\r\n        const errorReason = await resp.text();\r\n        throw new Error(`\u67E5\u8BE2\u4EFB\u52A1\u5931\u8D25\uFF1A${errorReason}`);\r\n      }\r\n      const respData = await resp.json();\r\n      if (respData.code !== 0) return { completed: true, error: respData.msg };\r\n\r\n      const taskData = respData.data;\r\n      if (taskData.status === "failed")\r\n        return {\r\n          completed: true,\r\n          error: taskData.failure_reason || taskData.error,\r\n        };\r\n      if (taskData.status === "succeeded") {\r\n        const imgUrl = taskData.results?.[0]?.url || taskData.url;\r\n        return { completed: true, data: imgUrl };\r\n      }\r\n      logger(`\u56FE\u7247\u4EFB\u52A1\u751F\u6210\u4E2D\uFF0C\u8FDB\u5EA6\uFF1A${taskData.progress}%`);\r\n      return { completed: false };\r\n    },\r\n    3000,\r\n    600000,\r\n  );\r\n\r\n  if (pollResult.error) throw new Error(pollResult.error);\r\n  logger(`\u56FE\u7247\u751F\u6210\u5B8C\u6210\uFF0C\u5F00\u59CB\u8F6C\u6362Base64`);\r\n  return await urlToBase64(pollResult.data!);\r\n};\r\n\r\nconst videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {\r\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\r\n  const baseUrl = vendor.inputValues.baseUrl;\r\n  const headers = getHeaders();\r\n\r\n  // \u6784\u9020\u8BF7\u6C42\u53C2\u6570\r\n  const requestBody: any = {\r\n    model: model.modelName,\r\n    prompt: config.prompt,\r\n    aspectRatio: config.aspectRatio,\r\n    webHook: "-1",\r\n    shutProgress: true,\r\n  };\r\n\r\n  // \u5904\u7406\u53C2\u8003\u8D44\u6E90\r\n  if (config.referenceList && config.referenceList.length > 0) {\r\n    const imageRefs = config.referenceList.filter((item) => item.type === "image") as Extract<ReferenceList, { type: "image" }>[];\r\n    if (config.mode.includes("endFrameOptional") && imageRefs.length >= 1) {\r\n      requestBody.firstFrameUrl = imageRefs[0].base64;\r\n      if (imageRefs.length >= 2) requestBody.lastFrameUrl = imageRefs[1].base64;\r\n    } else if (config.mode.some((m) => Array.isArray(m) && m.includes("imageReference:3"))) {\r\n      requestBody.urls = imageRefs.map((img) => img.base64);\r\n    }\r\n  }\r\n\r\n  logger(`\u5F00\u59CB\u63D0\u4EA4\u89C6\u9891\u751F\u6210\u4EFB\u52A1\uFF0C\u6A21\u578B\uFF1A${model.modelName}`);\r\n  const submitResp = await fetch(`${baseUrl}/v1/video/veo`, {\r\n    method: "POST",\r\n    headers,\r\n    body: JSON.stringify(requestBody),\r\n  });\r\n  if (!submitResp.ok) {\r\n    const errorReason = await submitResp.text();\r\n    throw new Error(`\u4EFB\u52A1\u63D0\u4EA4\u5931\u8D25\uFF1A ${errorReason}`);\r\n  }\r\n  const submitData = await submitResp.json();\r\n  if (submitData.code !== 0) throw new Error(`\u4EFB\u52A1\u63D0\u4EA4\u5931\u8D25\uFF1A${submitData.msg}`);\r\n\r\n  const taskId = submitData.data.id;\r\n  logger(`\u89C6\u9891\u4EFB\u52A1\u63D0\u4EA4\u6210\u529F\uFF0C\u4EFB\u52A1ID\uFF1A${taskId}`);\r\n\r\n  // \u8F6E\u8BE2\u7ED3\u679C\r\n  const pollResult = await pollTask(\r\n    async () => {\r\n      const resp = await fetch(`${baseUrl}/v1/draw/result`, {\r\n        method: "POST",\r\n        headers,\r\n        body: JSON.stringify({ id: taskId }),\r\n      });\r\n      if (!resp.ok) {\r\n        const errorReason = await resp.text();\r\n        throw new Error(`\u67E5\u8BE2\u89C6\u9891\u4EFB\u52A1\u5931\u8D25 ${errorReason}`);\r\n      }\r\n      const respData = await resp.json();\r\n      logger(respData);\r\n      if (respData.code !== 0) return { completed: true, error: respData.msg };\r\n\r\n      const taskData = respData.data;\r\n      if (taskData.status === "failed")\r\n        return {\r\n          completed: true,\r\n          error: taskData.failure_reason || taskData.error,\r\n        };\r\n      if (taskData.status === "succeeded") {\r\n        return { completed: true, data: taskData.url };\r\n      }\r\n      logger(`\u89C6\u9891\u4EFB\u52A1\u751F\u6210\u4E2D\uFF0C\u8FDB\u5EA6\uFF1A${taskData.progress}%`);\r\n      return { completed: false };\r\n    },\r\n    5000,\r\n    1800000,\r\n  );\r\n\r\n  if (pollResult.error) throw new Error(pollResult.error);\r\n  logger(`\u89C6\u9891\u751F\u6210\u5B8C\u6210\uFF0C\u5F00\u59CB\u8F6C\u6362Base64`);\r\n  return await urlToBase64(pollResult.data!);\r\n};\r\n\r\nconst ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> => {\r\n  return "";\r\n};\r\n\r\nconst checkForUpdates = async (): Promise<{\r\n  hasUpdate: boolean;\r\n  latestVersion: string;\r\n  notice: string;\r\n}> => {\r\n  return {\r\n    hasUpdate: false,\r\n    latestVersion: "1.0",\r\n    notice: "## \u65B0\u7248\u672C\u66F4\u65B0\u516C\u544A",\r\n  };\r\n};\r\n\r\nconst updateVendor = async (): Promise<string> => {\r\n  return "";\r\n};\r\n\r\n// ============================================================\r\n// \u5BFC\u51FA\r\n// ============================================================\r\n\r\nexports.vendor = vendor;\r\nexports.textRequest = textRequest;\r\nexports.imageRequest = imageRequest;\r\nexports.videoRequest = videoRequest;\r\nexports.ttsRequest = ttsRequest;\r\nexports.checkForUpdates = checkForUpdates;\r\nexports.updateVendor = updateVendor;\r\n\r\n// \u8FD9\u884C\u4EE3\u7801\u7528\u4E8E\u786E\u4FDD\u5F53\u524D\u6587\u4EF6\u88AB\u8BC6\u522B\u4E3A\u6A21\u5757\uFF0C\u907F\u514D\u5168\u5C40\u53D8\u91CF\u51B2\u7A81\r\nexport {};\r\n',
@@ -106711,19 +106712,19 @@ function camelCase(input, options) {
   const [prefix, words, suffix] = splitPrefixSuffix(input, options);
   const lower = lowerFactory(options?.locale);
   const upper = upperFactory(options?.locale);
-  const transform8 = options?.mergeAmbiguousCharacters ? capitalCaseTransformFactory(lower, upper) : pascalCaseTransformFactory(lower, upper);
+  const transform7 = options?.mergeAmbiguousCharacters ? capitalCaseTransformFactory(lower, upper) : pascalCaseTransformFactory(lower, upper);
   return prefix + words.map((word, index) => {
     if (index === 0)
       return lower(word);
-    return transform8(word, index);
+    return transform7(word, index);
   }).join(options?.delimiter ?? "") + suffix;
 }
 function pascalCase(input, options) {
   const [prefix, words, suffix] = splitPrefixSuffix(input, options);
   const lower = lowerFactory(options?.locale);
   const upper = upperFactory(options?.locale);
-  const transform8 = options?.mergeAmbiguousCharacters ? capitalCaseTransformFactory(lower, upper) : pascalCaseTransformFactory(lower, upper);
-  return prefix + words.map(transform8).join(options?.delimiter ?? "") + suffix;
+  const transform7 = options?.mergeAmbiguousCharacters ? capitalCaseTransformFactory(lower, upper) : pascalCaseTransformFactory(lower, upper);
+  return prefix + words.map(transform7).join(options?.delimiter ?? "") + suffix;
 }
 function lowerFactory(locale) {
   return locale === false ? (input) => input.toLowerCase() : (input) => input.toLocaleLowerCase(locale);
@@ -107678,9 +107679,9 @@ var init_arrayLikeKeys = __esm({
 });
 
 // node_modules/lodash-es/_overArg.js
-function overArg(func, transform8) {
+function overArg(func, transform7) {
   return function(arg) {
-    return func(transform8(arg));
+    return func(transform7(arg));
   };
 }
 var overArg_default;
@@ -116315,7 +116316,15 @@ var init_oss = __esm({
           ".tiff": "image/tiff",
           ".tif": "image/tiff",
           ".mp4": "video/mp4",
-          ".mp3": "audio/mpeg"
+          ".webm": "video/webm",
+          ".mp3": "audio/mpeg",
+          ".wav": "audio/wav",
+          ".m4a": "audio/mp4",
+          ".aif": "audio/aiff",
+          ".aiff": "audio/aiff",
+          ".flac": "audio/flac",
+          ".ogg": "audio/ogg",
+          ".aac": "audio/aac"
         };
         const mimeType = mimeTypes[ext];
         if (!mimeType) {
@@ -127327,7 +127336,7 @@ function transformData(fns, response) {
   const context2 = response || config3;
   const headers = AxiosHeaders_default.from(context2.headers);
   let data = context2.data;
-  utils_default2.forEach(fns, function transform8(fn) {
+  utils_default2.forEach(fns, function transform7(fn) {
     data = fn.call(config3, data, headers.normalize(), response ? response.status : void 0);
   });
   headers.normalize();
@@ -146543,12 +146552,12 @@ var init_types = __esm({
       and(incoming) {
         return ZodIntersection2.create(this, incoming, this._def);
       }
-      transform(transform8) {
+      transform(transform7) {
         return new ZodEffects({
           ...processCreateParams(this._def),
           schema: this,
           typeName: ZodFirstPartyTypeKind2.ZodEffects,
-          effect: { type: "transform", transform: transform8 }
+          effect: { type: "transform", transform: transform7 }
         });
       }
       default(def) {
@@ -189586,7 +189595,7 @@ var require_schemas2 = __commonJS({
     exports2.nativeEnum = nativeEnum3;
     exports2.literal = literal3;
     exports2.file = file3;
-    exports2.transform = transform8;
+    exports2.transform = transform7;
     exports2.optional = optional3;
     exports2.exactOptional = exactOptional3;
     exports2.nullable = nullable3;
@@ -189674,7 +189683,7 @@ var require_schemas2 = __commonJS({
       inst.array = () => array4(inst);
       inst.or = (arg) => union3([inst, arg]);
       inst.and = (arg) => intersection3(inst, arg);
-      inst.transform = (tx) => pipe3(inst, transform8(tx));
+      inst.transform = (tx) => pipe3(inst, transform7(tx));
       inst.default = (def2) => _default4(inst, def2);
       inst.prefault = (def2) => prefault3(inst, def2);
       inst.catch = (params) => _catch4(inst, params);
@@ -190427,7 +190436,7 @@ var require_schemas2 = __commonJS({
         return payload;
       };
     });
-    function transform8(fn) {
+    function transform7(fn) {
       return new exports2.ZodTransform({
         type: "transform",
         transform: fn
@@ -190697,7 +190706,7 @@ var require_schemas2 = __commonJS({
       return jsonSchema4;
     }
     function preprocess3(fn, schema) {
-      return pipe3(transform8(fn), schema);
+      return pipe3(transform7(fn), schema);
     }
   }
 });
@@ -192398,12 +192407,12 @@ var require_types4 = __commonJS({
       and(incoming) {
         return ZodIntersection4.create(this, incoming, this._def);
       }
-      transform(transform8) {
+      transform(transform7) {
         return new ZodEffects2({
           ...processCreateParams2(this._def),
           schema: this,
           typeName: ZodFirstPartyTypeKind4.ZodEffects,
-          effect: { type: "transform", transform: transform8 }
+          effect: { type: "transform", transform: transform7 }
         });
       }
       default(def) {
@@ -199066,7 +199075,7 @@ var require_dist9 = __commonJS({
         };
         const body = JSON.stringify(requestBody);
         const metadataExtractor = (_a31 = this.config.metadataExtractor) == null ? void 0 : _a31.createStreamExtractor();
-        const sleep = (ms) => new Promise((resolve3) => setTimeout(resolve3, ms));
+        const sleep2 = (ms) => new Promise((resolve3) => setTimeout(resolve3, ms));
         const shouldRetryQwenStreamRequest = (error73) => {
           var _a211;
           if (!import_provider210.APICallError.isInstance(error73))
@@ -199103,7 +199112,7 @@ var require_dist9 = __commonJS({
             if (attempt === maxRetries || !shouldRetryQwenStreamRequest(error73)) {
               throw error73;
             }
-            await sleep(100 * (attempt + 1));
+            await sleep2(100 * (attempt + 1));
           }
         }
         const toolCalls = [];
@@ -224517,9 +224526,9 @@ var require_lodash = __commonJS({
         return object4[key];
       });
     }
-    function overArg2(func, transform8) {
+    function overArg2(func, transform7) {
       return function(arg) {
-        return func(transform8(arg));
+        return func(transform7(arg));
       };
     }
     var objectProto13 = Object.prototype;
@@ -224754,9 +224763,9 @@ var require_lodash5 = __commonJS({
       }
       return result;
     }
-    function overArg2(func, transform8) {
+    function overArg2(func, transform7) {
       return function(arg) {
-        return func(transform8(arg));
+        return func(transform7(arg));
       };
     }
     var funcProto3 = Function.prototype;
@@ -225126,7 +225135,7 @@ var require_jsonwebtoken = __commonJS({
 });
 
 // src/utils/vm.ts
-function runCode(code, vendor) {
+function runCode(code, vendor, dependencyOverrides = {}) {
   code = code.replace(/export\s*\{\s*\};?/g, "");
   const exports2 = {};
   const sandbox = {
@@ -225142,6 +225151,7 @@ function runCode(code, vendor) {
     zipImage,
     zipImageResolution,
     urlToBase64,
+    sleep,
     mergeImages,
     pollTask,
     fetch,
@@ -225154,6 +225164,9 @@ function runCode(code, vendor) {
   };
   if (vendor !== void 0) {
     sandbox.vendor = vendor;
+  }
+  for (const key of ["axios", "fetch", "logger", "pollTask", "urlToBase64", "sleep", "createOpenAICompatible"]) {
+    if (dependencyOverrides[key] !== void 0) sandbox[key] = dependencyOverrides[key];
   }
   const vm = new import_vm2.VM({
     timeout: 0,
@@ -225183,11 +225196,14 @@ async function zipImageResolution(completeBase64, width, height) {
   const out = await (0, import_sharp.default)(buffer).resize(width, height).toBuffer();
   return `data:image/jpeg;base64,${out.toString("base64")}`;
 }
-async function urlToBase64(url4) {
-  const res = await axios_default.get(url4, { responseType: "arraybuffer" });
+async function urlToBase64(url4, config3 = {}) {
+  const res = await axios_default.get(url4, { ...config3, responseType: "arraybuffer" });
   const mime = res.headers["content-type"] || "image/jpeg";
   const b64 = Buffer.from(res.data).toString("base64");
   return `data:${mime};base64,${b64}`;
+}
+async function sleep(milliseconds) {
+  await new Promise((resolve3) => setTimeout(resolve3, milliseconds));
 }
 async function pollTask(fn, interval = 3e3, timeout = 3e6) {
   const start = Date.now();
@@ -225197,7 +225213,7 @@ async function pollTask(fn, interval = 3e3, timeout = 3e6) {
       if (result.completed) return result;
       if (result?.error) return result;
     } catch (e) {
-      return { completed: false, error: utils_default.error(e).message || "poll error" };
+      return { completed: false, error: error_default(e).message || "poll error" };
     }
     await new Promise((res) => setTimeout(res, interval));
   }
@@ -225293,8 +225309,8 @@ var init_vm = __esm({
     init_dist20();
     import_form_data2 = __toESM(require_form_data());
     import_jsonwebtoken = __toESM(require_jsonwebtoken());
-    init_utils3();
     import_node_crypto3 = __toESM(require("node:crypto"));
+    init_error();
   }
 });
 
@@ -232758,7 +232774,7 @@ function streamText({
   experimental_activeTools,
   activeTools = experimental_activeTools,
   experimental_repairToolCall: repairToolCall,
-  experimental_transform: transform8,
+  experimental_transform: transform7,
   experimental_download: download2,
   includeRawChunks = false,
   onChunk,
@@ -232803,7 +232819,7 @@ function streamText({
     messages,
     tools,
     toolChoice,
-    transforms: asArray(transform8),
+    transforms: asArray(transform7),
     activeTools,
     repairToolCall,
     stopConditions: asArray(stopWhen),
@@ -234885,9 +234901,9 @@ var init_dist22 = __esm({
             return stitchableStream.stream.cancel(reason);
           }
         });
-        for (const transform8 of transforms) {
+        for (const transform7 of transforms) {
           stream4 = stream4.pipeThrough(
-            transform8({
+            transform7({
               tools,
               stopStream() {
                 stitchableStream.terminate();
@@ -235750,13 +235766,13 @@ var init_dist22 = __esm({
       }
       get elementStream() {
         var _a212, _b27, _c;
-        const transform8 = (_a212 = this.outputSpecification) == null ? void 0 : _a212.createElementStreamTransform();
-        if (transform8 == null) {
+        const transform7 = (_a212 = this.outputSpecification) == null ? void 0 : _a212.createElementStreamTransform();
+        if (transform7 == null) {
           throw new UnsupportedFunctionalityError({
             functionality: `element streams in ${(_c = (_b27 = this.outputSpecification) == null ? void 0 : _b27.name) != null ? _c : "text"} mode`
           });
         }
-        return createAsyncIterableStream(this.teeStream().pipeThrough(transform8));
+        return createAsyncIterableStream(this.teeStream().pipeThrough(transform7));
       }
       get output() {
         return this.finalStep.then((step) => {
@@ -236828,6 +236844,51 @@ var init_dist23 = __esm({
   }
 });
 
+// src/lib/vendorRuntime.ts
+function loadVendorRuntime(source, options = {}) {
+  const compiledSource = (0, import_sucrase2.transform)(source, { transforms: ["typescript"] }).code;
+  const adapter2 = runCode(compiledSource, void 0, options.dependencyOverrides);
+  const vendor = adapter2.vendor;
+  Object.assign(vendor.inputValues, options.inputValues);
+  const combinedModels = [
+    ...JSON.parse(JSON.stringify(vendor.models)),
+    ...JSON.parse(JSON.stringify(options.customModels ?? []))
+  ];
+  const modelsByName = /* @__PURE__ */ new Map();
+  for (const model of combinedModels) {
+    modelsByName.set(model.modelName, model);
+  }
+  const models = [...modelsByName.values()];
+  vendor.models = models;
+  const getModel = (modelName) => {
+    const model = models.find((item) => item.modelName === modelName);
+    if (!model) throw new Error(`\u672A\u627E\u5230\u6A21\u578B ${modelName} id=${vendor.id}`);
+    return model;
+  };
+  return {
+    vendor,
+    models,
+    getModel,
+    getRequest(fnName, modelName) {
+      const model = getModel(modelName);
+      const request = adapter2[fnName];
+      if (!request) throw new Error(`\u672A\u627E\u5230\u4F9B\u5E94\u5546\u914D\u7F6E\u4E2D\u7684\u51FD\u6570 ${fnName} id=${vendor.id}`);
+      if (fnName === "textRequest") {
+        return (think, thinkLevel = 0) => request(model, think ?? !!model.think, thinkLevel);
+      }
+      return (input) => request(input, model);
+    }
+  };
+}
+var import_sucrase2;
+var init_vendorRuntime = __esm({
+  "src/lib/vendorRuntime.ts"() {
+    "use strict";
+    import_sucrase2 = __toESM(require_dist5());
+    init_vm();
+  }
+});
+
 // src/utils/ai.ts
 async function resolveModelName(value) {
   if (AiTypeValues.includes(value)) {
@@ -236885,24 +236946,12 @@ async function getVendorTemplateFn(fnName, modelName) {
   const [id, name28] = modelName.split(/:(.+)/);
   const vendorConfigData = await utils_default.db("o_vendorConfig").where("id", id).first();
   if (!vendorConfigData) throw new Error(`\u672A\u627E\u5230\u4F9B\u5E94\u5546\u914D\u7F6E id=${id}`);
-  const modelList = await utils_default.vendor.getModelList(id);
-  const selectedModel = modelList.find((i) => i.modelName == name28);
-  if (!selectedModel) throw new Error(`\u672A\u627E\u5230\u6A21\u578B ${name28} id=${id}`);
   const code = utils_default.vendor.getCode(id);
-  const jsCode = (0, import_sucrase2.transform)(code, { transforms: ["typescript"] }).code;
-  const running = utils_default.vm(jsCode);
-  if (running.vendor) {
-    Object.assign(running.vendor.inputValues, JSON.parse(vendorConfigData.inputValues ?? "{}"));
-    running.vendor.models = modelList;
-  }
-  const fn = running[fnName];
-  if (!fn) throw new Error(`\u672A\u627E\u5230\u4F9B\u5E94\u5546\u914D\u7F6E\u4E2D\u7684\u51FD\u6570 ${fnName} id=${id}`);
-  if (fnName == "textRequest")
-    return (think, thinkLevel = 0) => {
-      const effectiveThink = think ?? !!selectedModel.think;
-      return fn(selectedModel, effectiveThink, thinkLevel);
-    };
-  else return (input) => fn(input, selectedModel);
+  const runtime = loadVendorRuntime(code, {
+    inputValues: JSON.parse(vendorConfigData.inputValues ?? "{}"),
+    customModels: JSON.parse(vendorConfigData.models ?? "[]")
+  });
+  return runtime.getRequest(fnName, name28);
 }
 async function withTaskRecord(modelKey, taskClass, describe4, relatedObjects, projectId, fn) {
   const modelName = await resolveModelName(modelKey);
@@ -236938,14 +236987,14 @@ function referenceList2imageBase642(id, input) {
   }
   return input;
 }
-var import_sucrase2, AiTypeValues, AiText, AiImage, AiVideo, AiAudio, ai_default;
+var AiTypeValues, AiText, AiImage, AiVideo, AiAudio, ai_default;
 var init_ai = __esm({
   "src/utils/ai.ts"() {
     "use strict";
     init_dist22();
     init_dist23();
     init_axios2();
-    import_sucrase2 = __toESM(require_dist5());
+    init_vendorRuntime();
     init_utils3();
     AiTypeValues = [
       "scriptAgent",
@@ -237297,29 +237346,19 @@ async function getModelList(id) {
   const models = await utils_default.db("o_vendorConfig").where("id", id).select("models").first();
   if (!models || !models.models) return [];
   const code = getCode(id);
-  const jsCode = (0, import_sucrase3.transform)(code, { transforms: ["typescript"] }).code;
-  const vendorData2 = utils_default.vm(jsCode);
-  if (!vendorData2 || !vendorData2.vendor || !vendorData2.vendor.models) return [];
-  const combined = [...JSON.parse(JSON.stringify(vendorData2.vendor.models)), ...JSON.parse(models?.models ?? "[]")];
-  const map3 = /* @__PURE__ */ new Map();
-  for (const m of combined) {
-    map3.set(m.modelName, m);
-  }
-  return [...map3.values()];
+  if (!code) return [];
+  return loadVendorRuntime(code, { customModels: JSON.parse(models.models) }).models;
 }
 function getVendor(id) {
-  const code = getCode(id);
-  const jsCode = (0, import_sucrase3.transform)(code, { transforms: ["typescript"] }).code;
-  const vendorData2 = utils_default.vm(jsCode);
-  return vendorData2.vendor;
+  return loadVendorRuntime(getCode(id)).vendor;
 }
-var import_sucrase3, import_fs6, import_path8;
+var import_fs6, import_path8;
 var init_vendor2 = __esm({
   "src/utils/vendor.ts"() {
     "use strict";
-    import_sucrase3 = __toESM(require_dist5());
     import_fs6 = __toESM(require("fs"));
     import_path8 = __toESM(require("path"));
+    init_vendorRuntime();
     init_utils3();
   }
 });
@@ -241378,6 +241417,54 @@ var init_addTrack = __esm({
   }
 });
 
+// src/lib/videoPromptReferences.ts
+function isSeedance2Model(modelName) {
+  const normalized = (modelName ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return /(?:^|-)seedance(?:-[a-z]+)*-?2(?:-0)?(?=$|-[a-z])/.test(normalized);
+}
+function resolveVideoReferenceMediaType(mediaType, assetType, filePath) {
+  if (mediaType === "video" || mediaType === "audio") return mediaType;
+  if (assetType === "video") return "video";
+  if (assetType === "audio") return "audio";
+  const normalizedPath = (filePath ?? "").split(/[?#]/, 1)[0].toLowerCase();
+  if (/\.(mp4|webm)$/.test(normalizedPath)) return "video";
+  if (/\.(mp3|wav|m4a|aiff?|flac|ogg|aac)$/.test(normalizedPath)) return "audio";
+  return "image";
+}
+function formatLegacyVideoPromptAssetList(assets, linkedAudioAssetIds = {}) {
+  return assets.filter((asset) => asset.filePath).map(
+    (asset) => `[${asset.id},${asset.type ?? ""},${asset.name ?? ""}${linkedAudioAssetIds[asset.id] ? ` audio:${linkedAudioAssetIds[asset.id]}` : ""}]`
+  ).join("\uFF0C");
+}
+function buildSeedance2AssetReferenceContext(assets, linkedAudioAssetIds = {}) {
+  const referencedAssets = assets.filter((asset) => asset.filePath);
+  const counters = {
+    image: 0,
+    video: 0,
+    audio: 0
+  };
+  const references = referencedAssets.map((asset) => {
+    const mediaType = resolveVideoReferenceMediaType(asset.mediaType, asset.type, asset.filePath);
+    const prefix = mediaType === "image" ? "@\u56FE\u7247" : mediaType === "video" ? "@\u89C6\u9891" : "@\u97F3\u9891";
+    return {
+      id: asset.id,
+      type: asset.type ?? "",
+      name: asset.name ?? "",
+      mediaType,
+      referenceLabel: `${prefix}${++counters[mediaType]}`
+    };
+  });
+  return [
+    `**\u8D44\u4EA7\u4FE1\u606F**\uFF08\u89D2\u8272\u3001\u573A\u666F\u3001\u9053\u5177\u3001\u97F3\u9891\uFF09:${formatLegacyVideoPromptAssetList(referencedAssets, linkedAudioAssetIds) || "\u65E0"}`,
+    `**\u8D44\u4EA7\u5F15\u7528\u6620\u5C04**\uFF08\u6309\u5A92\u4F53\u7C7B\u578B\u72EC\u7ACB\u7F16\u53F7\uFF0CreferenceLabel \u5FC5\u987B\u539F\u6837\u4F7F\u7528\uFF09:${JSON.stringify(references)}`
+  ].join("\n");
+}
+var init_videoPromptReferences = __esm({
+  "src/lib/videoPromptReferences.ts"() {
+    "use strict";
+  }
+});
+
 // src/routes/production/workbench/batchGeneratePrompt.ts
 var import_express77, import_promises5, import_path12, router77, batchGeneratePrompt_default;
 var init_batchGeneratePrompt = __esm({
@@ -241391,6 +241478,7 @@ var init_batchGeneratePrompt = __esm({
     init_middleware();
     import_promises5 = __toESM(require("fs/promises"));
     import_path12 = __toESM(require("path"));
+    init_videoPromptReferences();
     router77 = import_express77.default.Router();
     batchGeneratePrompt_default = router77.post(
       "/",
@@ -241402,7 +241490,8 @@ var init_batchGeneratePrompt = __esm({
             info: external_exports.array(
               external_exports.object({
                 id: external_exports.number(),
-                sources: external_exports.string()
+                sources: external_exports.string(),
+                fileType: external_exports.enum(["image", "video", "audio"]).optional()
               })
             )
           })
@@ -241436,7 +241525,7 @@ var init_batchGeneratePrompt = __esm({
             let fileName = null;
             if (modelLower.includes("wan") && modelLower.includes("2.6")) {
               fileName = "wan2.6Single-imageFirstFrameMode.md";
-            } else if (/seedance.*2[.\-]0/i.test(modelLower)) {
+            } else if (isSeedance2Model(modelLower)) {
               fileName = "seedance2Multi-parameterMode.md";
             } else if (mode === "startEndRequired" || mode === "endFrameOptional" || mode === "startFrameOptional") {
               fileName = "universalFirstAndLastFrameMode.md";
@@ -241480,9 +241569,10 @@ var init_batchGeneratePrompt = __esm({
                     };
                   }
                   if (item.sources === "assets") {
-                    const assetsData = await utils_default.db("o_assets").leftJoin("o_image", "o_image.id", "o_assets.imageId").where("o_assets.id", item.id).select("o_assets.id", "o_assets.type", "o_assets.name", "o_image.filePath").first();
+                    const assetsData = await utils_default.db("o_assets").leftJoin("o_image", "o_image.id", "o_assets.imageId").where("o_assets.id", item.id).select("o_assets.id", "o_assets.type", "o_assets.name", "o_image.filePath", "o_image.type as storedFileType").first();
                     return {
                       ...assetsData,
+                      mediaType: item.fileType ?? assetsData?.storedFileType,
                       _type: "assets"
                     };
                   }
@@ -241497,7 +241587,8 @@ var init_batchGeneratePrompt = __esm({
                     id: item.id,
                     type: item.type,
                     name: item.name,
-                    filePath: item.filePath
+                    filePath: item.filePath,
+                    mediaType: item.mediaType
                   });
                 if (item._type === "storyboard")
                   storyboard.push({
@@ -241509,9 +241600,10 @@ var init_batchGeneratePrompt = __esm({
                     shouldGenerateImage: item.shouldGenerateImage
                   });
               }
+              const assetContext = isSeedance2Model(modelData) ? buildSeedance2AssetReferenceContext(assets) : `**\u8D44\u4EA7\u4FE1\u606F**\uFF08\u89D2\u8272\u3001\u573A\u666F\u3001\u9053\u5177\u3001\u97F3\u9891\uFF09:${formatLegacyVideoPromptAssetList(assets)}`;
               const content = `
           **\u6A21\u578B\u540D\u79F0**\uFF1A${modelData},
-          **\u8D44\u4EA7\u4FE1\u606F**\uFF08\u89D2\u8272\u3001\u573A\u666F\u3001\u9053\u5177\u3001\u97F3\u9891):${assets.filter((i) => i.filePath).map((i) => `[${i.id},${i.type},${i.name}]`).join("\uFF0C")},
+          ${assetContext},
           **\u5206\u955C\u4FE1\u606F**\uFF1A${storyboard.map(
                 (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
@@ -241564,6 +241656,7 @@ var init_batchGenerateVideo = __esm({
     init_dist_node();
     init_responseFormat();
     init_middleware();
+    init_videoPromptReferences();
     router78 = import_express78.default.Router();
     batchGenerateVideo_default = router78.post(
       "/",
@@ -241575,7 +241668,8 @@ var init_batchGenerateVideo = __esm({
             uploadData: external_exports.array(
               external_exports.object({
                 id: external_exports.number(),
-                sources: external_exports.string()
+                sources: external_exports.string(),
+                fileType: external_exports.enum(["image", "video", "audio"]).optional()
               })
             ),
             trackId: external_exports.number(),
@@ -241610,7 +241704,10 @@ var init_batchGenerateVideo = __esm({
                 }
                 if (item.sources === "assets") {
                   const filePath = await utils_default.db("o_assets").where("o_assets.id", item.id).leftJoin("o_image", "o_assets.imageId", "o_image.id").select("o_image.filePath", "o_image.type").first();
-                  return { path: filePath?.filePath, sources: filePath.type };
+                  return {
+                    path: filePath?.filePath,
+                    fileType: resolveVideoReferenceMediaType(item.fileType, filePath?.type, filePath?.filePath)
+                  };
                 }
               })
             );
@@ -241630,8 +241727,9 @@ var init_batchGenerateVideo = __esm({
         for (const { videoId, videoPath, prompt, duration: duration4, images } of tasks) {
           const base644 = await Promise.all(
             images.map(async (item) => {
-              if (!item) return null;
-              return { base64: await utils_default.oss.getImageBase64(item.path), type: item.sources == "audio" ? "audio" : "image" };
+              if (!item?.path) return null;
+              const type = resolveVideoReferenceMediaType(item.fileType, void 0, item.path);
+              return { base64: await utils_default.oss.getImageBase64(item.path), type };
             })
           );
           const relatedObjects = { projectId, videoId, scriptId, type: "\u89C6\u9891" };
@@ -241794,6 +241892,7 @@ var init_generateVideo = __esm({
     init_dist_node();
     init_responseFormat();
     init_middleware();
+    init_videoPromptReferences();
     router83 = import_express83.default.Router();
     generateVideo_default = router83.post(
       "/",
@@ -241803,7 +241902,8 @@ var init_generateVideo = __esm({
         uploadData: external_exports.array(
           external_exports.object({
             id: external_exports.number(),
-            sources: external_exports.string()
+            sources: external_exports.string(),
+            fileType: external_exports.enum(["image", "video", "audio"]).optional()
           })
         ),
         prompt: external_exports.string(),
@@ -241834,14 +241934,18 @@ var init_generateVideo = __esm({
             }
             if (item.sources === "assets") {
               const filePath = await utils_default.db("o_assets").where("o_assets.id", item.id).leftJoin("o_image", "o_assets.imageId", "o_image.id").select("o_image.filePath", "o_image.type").first();
-              return { path: filePath?.filePath, sources: filePath.type };
+              return {
+                path: filePath?.filePath,
+                fileType: resolveVideoReferenceMediaType(item.fileType, filePath?.type, filePath?.filePath)
+              };
             }
           })
         );
         const base644 = await Promise.all(
           images.map(async (item) => {
-            if (!item) return null;
-            return { base64: await utils_default.oss.getImageBase64(item.path), type: item.sources == "audio" ? "audio" : "image" };
+            if (!item?.path) return null;
+            const type = resolveVideoReferenceMediaType(item.fileType, void 0, item.path);
+            return { base64: await utils_default.oss.getImageBase64(item.path), type };
           })
         );
         const [videoId] = await utils_default.db("o_video").insert({
@@ -241899,6 +242003,7 @@ var init_generateVideoPrompt = __esm({
     init_middleware();
     import_promises6 = __toESM(require("fs/promises"));
     import_path13 = __toESM(require("path"));
+    init_videoPromptReferences();
     router84 = import_express84.default.Router();
     generateVideoPrompt_default = router84.post(
       "/",
@@ -241908,7 +242013,8 @@ var init_generateVideoPrompt = __esm({
         info: external_exports.array(
           external_exports.object({
             id: external_exports.number(),
-            sources: external_exports.string()
+            sources: external_exports.string(),
+            fileType: external_exports.enum(["image", "video", "audio"]).optional()
           })
         ),
         model: external_exports.string(),
@@ -241933,9 +242039,10 @@ var init_generateVideoPrompt = __esm({
               };
             }
             if (item.sources === "assets") {
-              const assetsData = await utils_default.db("o_assets").leftJoin("o_image", "o_image.id", "o_assets.imageId").where("o_assets.id", item.id).select("o_assets.id", "o_assets.type", "o_assets.name", "o_image.filePath").first();
+              const assetsData = await utils_default.db("o_assets").leftJoin("o_image", "o_image.id", "o_assets.imageId").where("o_assets.id", item.id).select("o_assets.id", "o_assets.type", "o_assets.name", "o_image.filePath", "o_image.type as storedFileType").first();
               return {
                 ...assetsData,
+                mediaType: item.fileType ?? assetsData?.storedFileType,
                 _type: "assets"
                 // 标记类型
               };
@@ -241951,7 +242058,8 @@ var init_generateVideoPrompt = __esm({
               id: item.id,
               type: item.type,
               name: item.name,
-              filePath: item.filePath
+              filePath: item.filePath,
+              mediaType: item.mediaType
             });
           if (item._type === "storyboard")
             storyboard.push({
@@ -241990,7 +242098,7 @@ var init_generateVideoPrompt = __esm({
           let fileName = null;
           if (modelLower.includes("wan") && modelLower.includes("2.6")) {
             fileName = "wan2.6Single-imageFirstFrameMode.md";
-          } else if (/seedance.*2[.\-]0/i.test(modelData)) {
+          } else if (isSeedance2Model(modelData)) {
             fileName = "seedance2Multi-parameterMode.md";
           } else if (mode === "startEndRequired" || mode === "endFrameOptional" || mode === "startFrameOptional") {
             fileName = "universalFirstAndLastFrameMode.md";
@@ -242014,10 +242122,11 @@ var init_generateVideoPrompt = __esm({
         }
         const artStyle = projectData?.artStyle || "\u65E0";
         const visualManual = utils_default.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
+        const assetContext = isSeedance2Model(modelData) ? buildSeedance2AssetReferenceContext(assets, assetsAudioRecord) : `**\u8D44\u4EA7\u4FE1\u606F**\uFF08\u89D2\u8272\u3001\u573A\u666F\u3001\u9053\u5177\u3001\u97F3\u9891\uFF09:${formatLegacyVideoPromptAssetList(assets, assetsAudioRecord)}`;
         const content = `
           **\u6A21\u578B\u540D\u79F0**\uFF1A${modelData},
 
-          **\u8D44\u4EA7\u4FE1\u606F**\uFF08\u89D2\u8272\u3001\u573A\u666F\u3001\u9053\u5177\u3001\u97F3\u9891):${assets.filter((i) => i.filePath).map((i) => `[${i.id},${i.type},${i.name} ${assetsAudioRecord[i.id] ? `audio:${assetsAudioRecord[i.id]}` : ""} ] `).join("\uFF0C")},
+          ${assetContext},
           **\u5206\u955C\u4FE1\u606F**\uFF1A${storyboard.map(
           (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
@@ -242154,6 +242263,7 @@ var init_getGenerateData = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
+    init_videoPromptReferences();
     router87 = import_express87.default.Router();
     getGenerateData_default = router87.post(
       "/",
@@ -242214,7 +242324,7 @@ var init_getGenerateData = __esm({
         })();
         if (isRef) {
           const storyIds = storyboardList.map((s) => s.id);
-          const assetDatas = await utils_default.db("o_assets2Storyboard").leftJoin("o_assets", "o_assets2Storyboard.assetId", "o_assets.id").leftJoin("o_image", "o_image.id", "o_assets.imageId").whereIn("o_assets2Storyboard.storyboardId", storyIds).select("o_assets.*", "o_image.filePath", "o_assets2Storyboard.storyboardId");
+          const assetDatas = await utils_default.db("o_assets2Storyboard").leftJoin("o_assets", "o_assets2Storyboard.assetId", "o_assets.id").leftJoin("o_image", "o_image.id", "o_assets.imageId").whereIn("o_assets2Storyboard.storyboardId", storyIds).select("o_assets.*", "o_image.filePath", "o_image.type as storedFileType", "o_assets2Storyboard.storyboardId");
           const queryAudioIds = [...assetDatas.map((i) => i.id), ...assetDatas.map((i) => i.assetsId)].filter(Boolean);
           const assets2AudioData = await utils_default.db("o_assetsRole2Audio").leftJoin("o_assets", "o_assets.assetsId", "o_assetsRole2Audio.assetsAudioId").leftJoin("o_image", "o_image.id", "o_assets.imageId").whereIn("o_assetsRole2Audio.assetsRoleId", queryAudioIds).select(
             "o_assets.id",
@@ -242248,7 +242358,7 @@ var init_getGenerateData = __esm({
                 name: i.name,
                 describe: i.describe,
                 type: i.type,
-                fileType: "image",
+                fileType: resolveVideoReferenceMediaType(i.storedFileType, i.type, i.filePath),
                 sources: "assets",
                 src: i.filePath ? await utils_default.oss.getSmallImageUrl(i.filePath) : ""
               };
@@ -255217,7 +255327,7 @@ var init_saveSkillContent = __esm({
 });
 
 // src/routes/setting/vendorConfig/addVendor.ts
-var import_express151, import_sucrase4, router151, vendorConfigSchema, addVendor_default;
+var import_express151, import_sucrase3, router151, vendorConfigSchema, addVendor_default;
 var init_addVendor = __esm({
   "src/routes/setting/vendorConfig/addVendor.ts"() {
     "use strict";
@@ -255226,7 +255336,7 @@ var init_addVendor = __esm({
     init_middleware();
     init_utils3();
     init_zod();
-    import_sucrase4 = __toESM(require_dist5());
+    import_sucrase3 = __toESM(require_dist5());
     router151 = import_express151.default.Router();
     vendorConfigSchema = external_exports.object({
       id: external_exports.string(),
@@ -255286,7 +255396,7 @@ var init_addVendor = __esm({
       }),
       async (req, res) => {
         const { tsCode } = req.body;
-        const jsCode = (0, import_sucrase4.transform)(tsCode, { transforms: ["typescript"] }).code;
+        const jsCode = (0, import_sucrase3.transform)(tsCode, { transforms: ["typescript"] }).code;
         const exports2 = utils_default.vm(jsCode);
         if (!exports2) return res.status(400).send(success3("\u811A\u672C\u6587\u4EF6\u5FC5\u987B\u5BFC\u51FA\u5BF9\u8C61"));
         if (!exports2.textRequest) return res.status(400).send(success3("\u811A\u672C\u6587\u4EF6\u5FC5\u987B\u5BFC\u51FA\u6587\u672C\u8BF7\u6C42\u5BF9\u8C61"));
@@ -255841,7 +255951,7 @@ var init_videoTest = __esm({
 });
 
 // src/routes/setting/vendorConfig/updateCode.ts
-var import_express162, import_sucrase5, router162, vendorConfigSchema2, updateCode_default;
+var import_express162, import_sucrase4, router162, vendorConfigSchema2, updateCode_default;
 var init_updateCode = __esm({
   "src/routes/setting/vendorConfig/updateCode.ts"() {
     "use strict";
@@ -255851,7 +255961,7 @@ var init_updateCode = __esm({
     init_middleware();
     init_utils3();
     init_zod();
-    import_sucrase5 = __toESM(require_dist5());
+    import_sucrase4 = __toESM(require_dist5());
     router162 = import_express162.default.Router();
     vendorConfigSchema2 = external_exports.object({
       id: external_exports.string(),
@@ -255913,7 +256023,7 @@ var init_updateCode = __esm({
       async (req, res) => {
         try {
           const { tsCode, id } = req.body;
-          const jsCode = (0, import_sucrase5.transform)(tsCode, { transforms: ["typescript"] }).code;
+          const jsCode = (0, import_sucrase4.transform)(tsCode, { transforms: ["typescript"] }).code;
           const exports2 = utils_default.vm(jsCode);
           if (!exports2) return res.status(400).send(success3("\u811A\u672C\u6587\u4EF6\u5FC5\u987B\u5BFC\u51FA\u5BF9\u8C61"));
           if (!exports2.textRequest) return res.status(400).send(success3("\u811A\u672C\u6587\u4EF6\u5FC5\u987B\u5BFC\u51FA\u6587\u672C\u8BF7\u6C42\u5BF9\u8C61"));

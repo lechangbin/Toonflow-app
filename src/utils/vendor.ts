@@ -1,6 +1,6 @@
-import { transform } from "sucrase";
 import fs from "fs";
 import path from "path";
+import { loadVendorRuntime } from "@/lib/vendorRuntime";
 import u from "@/utils";
 
 export function writeCode(id: string | number, tsCode: string) {
@@ -23,20 +23,10 @@ export async function getModelList(id: string): Promise<Array<any>> {
   const models = await u.db("o_vendorConfig").where("id", id).select("models").first();
   if (!models || !models.models) return [];
   const code = getCode(id);
-  const jsCode = transform(code, { transforms: ["typescript"] }).code;
-  const vendorData = u.vm(jsCode);
-  if(!vendorData || !vendorData.vendor || !vendorData.vendor.models) return [];
-  const combined = [...JSON.parse(JSON.stringify(vendorData.vendor.models)), ...JSON.parse(models?.models ?? "[]")];
-  const map = new Map<string, any>();
-  for (const m of combined) {
-    map.set(m.modelName, m);
-  }
-  return [...map.values()];
+  if (!code) return [];
+  return loadVendorRuntime(code, { customModels: JSON.parse(models.models) }).models;
 }
 
 export function getVendor(id: string) {
-  const code = getCode(id);
-  const jsCode = transform(code, { transforms: ["typescript"] }).code;
-  const vendorData = u.vm(jsCode);
-  return vendorData.vendor;
+  return loadVendorRuntime(getCode(id)).vendor;
 }
