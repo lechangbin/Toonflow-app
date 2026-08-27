@@ -1,7 +1,7 @@
 import { generateText, streamText, wrapLanguageModel, stepCountIs, extractReasoningMiddleware } from "ai";
 import { devToolsMiddleware } from "@ai-sdk/devtools";
 import axios from "axios";
-import { transform } from "sucrase";
+import { loadVendorRuntime, type VendorRequestName } from "@/lib/vendorRuntime";
 import u from "@/utils";
 
 type AiType =
@@ -22,7 +22,7 @@ type AiType =
   | "productionAgent:storyboardPanelAgent"
   | "productionAgent:storyboardTableAgent";
 
-type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
+type FnName = VendorRequestName;
 
 const AiTypeValues: AiType[] = [
   "scriptAgent",
@@ -119,24 +119,12 @@ async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${strin
   const [id, name] = modelName.split(/:(.+)/);
   const vendorConfigData = await u.db("o_vendorConfig").where("id", id).first();
   if (!vendorConfigData) throw new Error(`未找到供应商配置 id=${id}`);
-  const modelList = await u.vendor.getModelList(id);
-  const selectedModel = modelList.find((i: any) => i.modelName == name);
-  if (!selectedModel) throw new Error(`未找到模型 ${name} id=${id}`);
   const code = u.vendor.getCode(id);
-  const jsCode = transform(code, { transforms: ["typescript"] }).code;
-  const running = u.vm(jsCode);
-  if (running.vendor) {
-    Object.assign(running.vendor.inputValues, JSON.parse(vendorConfigData.inputValues ?? "{}"));
-    running.vendor.models = modelList;
-  }
-  const fn = running[fnName];
-  if (!fn) throw new Error(`未找到供应商配置中的函数 ${fnName} id=${id}`);
-  if (fnName == "textRequest")
-    return (think?: boolean, thinkLevel: 0 | 1 | 2 | 3 = 0) => {
-      const effectiveThink = think ?? !!selectedModel.think;
-      return fn(selectedModel, effectiveThink, thinkLevel);
-    };
-  else return <T>(input: T) => fn(input, selectedModel);
+  const runtime = loadVendorRuntime(code, {
+    inputValues: JSON.parse(vendorConfigData.inputValues ?? "{}"),
+    customModels: JSON.parse(vendorConfigData.models ?? "[]"),
+  });
+  return runtime.getRequest(fnName, name);
 }
 
 async function withTaskRecord<T>(
