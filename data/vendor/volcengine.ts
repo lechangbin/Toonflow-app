@@ -7,14 +7,6 @@
 // 类型定义
 // ============================================================
 
-type VideoMode =
-  | "singleImage"
-  | "startEndRequired"
-  | "endFrameOptional"
-  | "startFrameOptional"
-  | "text"
-  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[];
-
 interface TextModel {
   name: string;
   modelName: string;
@@ -34,10 +26,19 @@ interface VideoModel {
   name: string;
   modelName: string;
   type: "video";
-  mode: VideoMode[];
   associationSkills?: string;
-  audio: "optional" | false | true;
-  durationResolutionMap: { duration: number[]; resolution: string[] }[];
+  capabilities: {
+    id: "text-to-video" | "image-to-video";
+    promptProfileId: string;
+    inputs: { role: "source-image"; mediaType: "image"; required: true }[];
+    audio: { generation: "native"; policy: "optional" };
+    outputPresets: {
+      id: string;
+      resolution: string;
+      durations: { kind: "values"; values: number[] };
+      aspectRatios: ("16:9" | "9:16")[];
+    }[];
+  }[];
 }
 
 interface TTSModel {
@@ -71,15 +72,16 @@ interface ImageConfig {
   aspectRatio: `${number}:${number}`;
 }
 
-interface VideoConfig {
-  duration: number;
-  resolution: string;
-  aspectRatio: "16:9" | "9:16";
+interface VideoCommandBase {
+  modelId: string;
   prompt: string;
-  referenceList?: ReferenceList[];
-  audio?: boolean;
-  mode: VideoMode[];
+  output: { presetId: string; duration: number; resolution: string; aspectRatio: "16:9" | "9:16" };
+  audio: { generation: "native"; enabled: boolean };
 }
+
+type VideoGenerationCommand =
+  | (VideoCommandBase & { capabilityId: "text-to-video" })
+  | (VideoCommandBase & { capabilityId: "image-to-video"; sourceImage: { mediaType: "image"; base64: string } });
 
 interface TTSConfig {
   text: string;
@@ -121,7 +123,7 @@ declare const exports: {
   vendor: VendorConfig;
   textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;
   imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;
-  videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;
+  videoRequest: (c: VideoGenerationCommand, m: VideoModel) => Promise<string>;
   ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;
   checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;
   updateVendor?: () => Promise<string>;
@@ -216,57 +218,37 @@ const vendor: VendorConfig = {
       name: "Seedance-2.0(音画同生)",
       modelName: "doubao-seedance-2-0-260128",
       type: "video",
-      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
-      audio: "optional",
-      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
+      associationSkills: "Seedance 2.0 官方文生视频与单图生视频；多参考图能力暂不开放。",
+      capabilities: ["text-to-video", "image-to-video"].map((id) => ({
+        id,
+        promptProfileId: id === "text-to-video" ? "seedance/text-v1" : "seedance/image-v1",
+        inputs: id === "text-to-video" ? [] : [{ role: "source-image" as const, mediaType: "image" as const, required: true as const }],
+        audio: { generation: "native" as const, policy: "optional" as const },
+        outputPresets: ["480p", "720p"].map((resolution) => ({
+          id: resolution,
+          resolution,
+          durations: { kind: "values" as const, values: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] },
+          aspectRatios: ["16:9" as const, "9:16" as const],
+        })),
+      })) as VideoModel["capabilities"],
     },
     {
       name: "Seedance-2.0-Fast(音画同生)",
       modelName: "doubao-seedance-2-0-fast-260128",
       type: "video",
-      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
-      audio: "optional",
-      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
-    },
-    {
-      name: "Seedance-1.5-Pro(音画同生)",
-      modelName: "doubao-seedance-1-5-pro-251215",
-      type: "video",
-      mode: ["text", "startFrameOptional"],
-      audio: "optional",
-      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
-    },
-    {
-      name: "Seedance-1.0-Pro",
-      modelName: "doubao-seedance-1-0-pro-250528",
-      type: "video",
-      mode: ["text", "startFrameOptional"],
-      audio: false,
-      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
-    },
-    {
-      name: "Seedance-1.0-Pro-Fast",
-      modelName: "doubao-seedance-1-0-pro-fast-251015",
-      type: "video",
-      mode: ["text", "singleImage"],
-      audio: false,
-      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
-    },
-    {
-      name: "Seedance-1.0-Lite-T2V",
-      modelName: "doubao-seedance-1-0-lite-t2v-250428",
-      type: "video",
-      mode: ["text"],
-      audio: false,
-      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
-    },
-    {
-      name: "Seedance-1.0-Lite-I2V",
-      modelName: "doubao-seedance-1-0-lite-i2v-250428",
-      type: "video",
-      mode: ["startFrameOptional", ["imageReference:4"]],
-      audio: false,
-      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], resolution: ["480p", "720p", "1080p"] }],
+      associationSkills: "Seedance 2.0 Fast 官方文生视频与单图生视频；多参考图能力暂不开放。",
+      capabilities: ["text-to-video", "image-to-video"].map((id) => ({
+        id,
+        promptProfileId: id === "text-to-video" ? "seedance/text-v1" : "seedance/image-v1",
+        inputs: id === "text-to-video" ? [] : [{ role: "source-image" as const, mediaType: "image" as const, required: true as const }],
+        audio: { generation: "native" as const, policy: "optional" as const },
+        outputPresets: ["480p", "720p"].map((resolution) => ({
+          id: resolution,
+          resolution,
+          durations: { kind: "values" as const, values: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] },
+          aspectRatios: ["16:9" as const, "9:16" as const],
+        })),
+      })) as VideoModel["capabilities"],
     },
   ],
 };
@@ -452,143 +434,32 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   throw new Error("图片生成失败：未返回有效结果");
 };
 
-const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
+const videoRequest = async (config: VideoGenerationCommand, model: VideoModel): Promise<string> => {
   const baseUrl = getBaseUrl();
   const headers = getHeaders();
 
   const content: any[] = [];
 
-  if (config.prompt) {
-    content.push({ type: "text", text: config.prompt });
-  }
-
-  if (typeof config.mode === "string") {
-    switch (config.mode) {
-      case "singleImage": {
-        const firstImage = config.referenceList?.find((r) => r.type === "image");
-        if (firstImage) {
-          content.push({
-            type: "image_url",
-            image_url: { url: firstImage.base64 },
-            role: "first_frame",
-          });
-        }
-        break;
-      }
-      case "startFrameOptional": {
-        const images = config.referenceList?.filter((r) => r.type === "image") ?? [];
-        if (images.length > 0) {
-          content.push({
-            type: "image_url",
-            image_url: { url: images[0].base64 },
-            role: "first_frame",
-          });
-          if (images.length > 1) {
-            content.push({
-              type: "image_url",
-              image_url: { url: images[1].base64 },
-              role: "last_frame",
-            });
-          }
-        }
-        break;
-      }
-      case "startEndRequired": {
-        const images = config.referenceList?.filter((r) => r.type === "image") ?? [];
-        if (images.length >= 2) {
-          content.push({
-            type: "image_url",
-            image_url: { url: images[0].base64 },
-            role: "first_frame",
-          });
-          content.push({
-            type: "image_url",
-            image_url: { url: images[1].base64 },
-            role: "last_frame",
-          });
-        }
-        break;
-      }
-      case "endFrameOptional": {
-        const images = config.referenceList?.filter((r) => r.type === "image") ?? [];
-        if (images.length > 0) {
-          content.push({
-            type: "image_url",
-            image_url: { url: images[0].base64 },
-            role: "first_frame",
-          });
-          if (images.length > 1) {
-            content.push({
-              type: "image_url",
-              image_url: { url: images[1].base64 },
-              role: "last_frame",
-            });
-          }
-        }
-        break;
-      }
-      case "text":
-      default:
-        break;
-    }
-  } else if (Array.isArray(config.mode)) {
-    // 多模态参考模式：按类型分别提取并添加
-    const imageRefs = config.referenceList?.filter((r) => r.type === "image") ?? [];
-    const videoRefs = config.referenceList?.filter((r) => r.type === "video") ?? [];
-    const audioRefs = config.referenceList?.filter((r) => r.type === "audio") ?? [];
-
-    for (const refDef of config.mode) {
-      if (typeof refDef === "string") {
-        if (refDef.startsWith("imageReference:")) {
-          const maxCount = parseInt(refDef.split(":")[1], 10);
-          for (const ref of imageRefs.slice(0, maxCount)) {
-            content.push({
-              type: "image_url",
-              image_url: { url: ref.base64 },
-              role: "reference_image",
-            });
-          }
-        } else if (refDef.startsWith("videoReference:")) {
-          const maxCount = parseInt(refDef.split(":")[1], 10);
-          for (const ref of videoRefs.slice(0, maxCount)) {
-            content.push({
-              type: "video_url",
-              video_url: { url: ref.base64 },
-              role: "reference_video",
-            });
-          }
-        } else if (refDef.startsWith("audioReference:")) {
-          const maxCount = parseInt(refDef.split(":")[1], 10);
-          for (const ref of audioRefs.slice(0, maxCount)) {
-            content.push({
-              type: "audio_url",
-              audio_url: { url: ref.base64 },
-              role: "reference_audio",
-            });
-          }
-        }
-      }
-    }
+  content.push({ type: "text", text: config.prompt });
+  if (config.capabilityId === "image-to-video") {
+    content.push({
+      type: "image_url",
+      image_url: { url: config.sourceImage.base64 },
+      role: "first_frame",
+    });
   }
 
   const body: any = {
     model: model.modelName,
     content,
-    ratio: config.aspectRatio,
-    duration: config.duration,
-    resolution: config.resolution || "720p",
+    ratio: config.output.aspectRatio,
+    duration: config.output.duration,
+    resolution: config.output.resolution,
     watermark: false,
+    generate_audio: config.audio.enabled,
   };
 
-  if (model.audio === "optional") {
-    body.generate_audio = config.audio !== false;
-  } else if (model.audio === true) {
-    body.generate_audio = true;
-  } else {
-    body.generate_audio = false;
-  }
-
-  logger(`[视频生成] 提交任务, 模型: ${model.modelName}, 时长: ${config.duration}s, 分辨率: ${config.resolution}`);
+  logger(`[视频生成] 提交任务, 模型: ${model.modelName}, 时长: ${config.output.duration}s, 分辨率: ${config.output.resolution}`);
   const res = await fetch(`${baseUrl}/contents/generations/tasks`, {
     method: "POST",
     headers,

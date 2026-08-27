@@ -2,13 +2,15 @@
 
 The 2026-08-27 review examined recent-change hotspots through the deep-module vocabulary: module, interface, implementation, depth, seam, adapter, leverage, and locality.
 
-## Priority 1: Supplier execution runtime — Strong
+## Implemented foundation: Video production
 
-`data/vendor/*.ts`, `src/utils/ai.ts`, `src/utils/vendor.ts`, `src/utils/vm.ts`, Vendor settings routes, and `src/lib/fixDB.ts` share the knowledge required to load and execute a configured Model. Multiple Vendor adapters prove the seam is real. Deepen this module first so compilation, configuration, sandbox execution, result normalization, and task behavior gain one test surface.
+Issue #2 established provider-independent Video Capabilities, strict Prompt Profiles, a validated Vendor runtime boundary, and shared prompt/video production modules. Read `docs/agents/video-generation.md` for the active contract and migration boundaries.
 
-## Priority 2: Video Track generation — Strong
+`src/video/production.ts` is the orchestration module. HTTP single/batch routes supply validated intent; Vendor adapters receive one validated command and own only provider translation, upload, polling, checkpointing, and result retrieval. Project defaults seed a Track, the Track stores the actual selection, and a Generation Task freezes the execution snapshot.
 
-The single/batch prompt and single/batch video routes duplicate reference lookup, prompt selection, task creation, state transitions, generation, and persistence. Deepen around one Video Track; single and batch routes become adapters over the same interface.
+## Next priority: Supplier execution runtime — Strong
+
+Text, image, and TTS paths still use the broader programmable Vendor surface. Deepen that runtime only when a concrete change crosses those model types; preserve the strict Video seam already in place.
 
 ## Priority 3: Database lifecycle — Strong
 
@@ -31,4 +33,4 @@ Script Agent and Production Agent duplicate authentication, abort handling, thin
 
 ## Decision status
 
-These are exploration candidates, not accepted designs. Do not introduce interfaces or move production code until a candidate has passed the grilling and design flow. Record accepted hard-to-reverse decisions under `docs/adr/`.
+Video decisions are accepted in ADR-0001 and ADR-0002. Database lifecycle and Agent session runtime remain exploration candidates; record new hard-to-reverse decisions under `docs/adr/` before implementation.

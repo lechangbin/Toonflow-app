@@ -1,6 +1,9 @@
 import { transform } from "sucrase";
 
 import runCode, { type VmBoundaryOverrides } from "@/utils/vm";
+import getPath from "@/utils/getPath";
+import { parseVideoModel, validateVideoGenerationCommand, type VideoModel } from "@/video/capability";
+import { VideoPromptProfileRegistry } from "@/video/promptProfile";
 
 export type VendorRequestName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
@@ -34,6 +37,7 @@ export interface VendorRuntimeOptions {
   inputValues?: Record<string, unknown>;
   customModels?: VendorModel[];
   dependencyOverrides?: VmBoundaryOverrides;
+  promptProfiles?: Pick<VideoPromptProfileRegistry, "get">;
 }
 
 export interface VendorRuntime {
@@ -47,30 +51,64 @@ function cloneModels(models: VendorModel[]): VendorModel[] {
   return JSON.parse(JSON.stringify(models));
 }
 
+function validateVendor(value: unknown): VendorDefinition {
+  if (!value || typeof value !== "object") throw new Error("供应商配置缺少 vendor 导出");
+  const vendor = value as Partial<VendorDefinition>;
+  if (typeof vendor.id !== "string" || !vendor.id.trim()) throw new Error("供应商配置缺少有效 id");
+  if (!vendor.inputValues || typeof vendor.inputValues !== "object" || Array.isArray(vendor.inputValues)) {
+    throw new Error(`供应商 ${vendor.id} 缺少有效 inputValues`);
+  }
+  if (!Array.isArray(vendor.models)) throw new Error(`供应商 ${vendor.id} 缺少 models 数组`);
+  return vendor as VendorDefinition;
+}
+
+function validateModels(vendorId: string, models: VendorModel[], promptProfiles?: Pick<VideoPromptProfileRegistry, "get">) {
+  const modelNames = new Set<string>();
+  return models.map((model) => {
+    if (!model || typeof model.modelName !== "string" || !model.modelName.trim()) {
+      throw new Error(`供应商 ${vendorId} 包含缺少 modelName 的模型`);
+    }
+    if (modelNames.has(model.modelName)) throw new Error(`供应商 ${vendorId} 重复声明模型 ${model.modelName}`);
+    modelNames.add(model.modelName);
+    if (model.type !== "video") return model;
+
+    const videoModel = parseVideoModel(model);
+    for (const capability of videoModel.capabilities) promptProfiles?.get(capability.promptProfileId);
+    return videoModel as VideoModel & VendorModel;
+  });
+}
+
 export function loadVendorRuntime(source: string, options: VendorRuntimeOptions = {}): VendorRuntime {
   const compiledSource = transform(source, { transforms: ["typescript"] }).code;
   const adapter = runCode(compiledSource, undefined, options.dependencyOverrides);
-  const vendor = adapter.vendor as VendorDefinition;
+  const vendor = validateVendor(adapter.vendor);
 
-  Object.assign(vendor.inputValues, options.inputValues);
+  Object.assign(vendor.inputValues, options.inputValues ?? {});
 
-  const combinedModels = [...cloneModels(vendor.models), ...cloneModels(options.customModels ?? [])];
+  const builtInModels = validateModels(vendor.id, cloneModels(vendor.models));
+  const customModels = validateModels(vendor.id, cloneModels(options.customModels ?? []));
+  const combinedModels = [...builtInModels, ...customModels];
   const modelsByName = new Map<string, VendorModel>();
   for (const model of combinedModels) {
     modelsByName.set(model.modelName, model);
   }
   const models = [...modelsByName.values()];
-  vendor.models = models;
+  const hasVideoModels = models.some((model) => model.type === "video");
+  const promptProfiles = hasVideoModels
+    ? options.promptProfiles ?? VideoPromptProfileRegistry.load(getPath(["promptProfiles", "video"]))
+    : undefined;
+  const validatedModels = validateModels(vendor.id, models, promptProfiles);
+  vendor.models = validatedModels;
 
   const getModel = (modelName: string) => {
-    const model = models.find((item) => item.modelName === modelName);
+    const model = validatedModels.find((item) => item.modelName === modelName);
     if (!model) throw new Error(`未找到模型 ${modelName} id=${vendor.id}`);
     return model;
   };
 
   return {
     vendor,
-    models,
+    models: validatedModels,
     getModel,
     getRequest(fnName, modelName) {
       const model = getModel(modelName);
@@ -79,6 +117,12 @@ export function loadVendorRuntime(source: string, options: VendorRuntimeOptions 
 
       if (fnName === "textRequest") {
         return ((think?: boolean, thinkLevel = 0) => request(model, think ?? !!model.think, thinkLevel)) as VendorBoundRequest<
+          typeof fnName
+        >;
+      }
+
+      if (fnName === "videoRequest") {
+        return ((input: unknown) => request(validateVideoGenerationCommand(model, input), model)) as VendorBoundRequest<
           typeof fnName
         >;
       }

@@ -41,16 +41,25 @@ export default router.post(
 
       const selectedModel = modelList.find((i: any) => i.modelName == modelName);
       if (type == "video") {
+        const capability = selectedModel?.capabilities?.find((item: any) => item.id === "text-to-video");
+        const preset = capability?.outputPresets?.[0];
+        if (!capability || !preset) throw new Error("该 Video Model 没有可测试的 text-to-video Capability");
+        const duration = preset.durations.kind === "values" ? preset.durations.values[0] : preset.durations.min;
         requestFn["video"].modelData = {
-          model: modelName,
-          duration: selectedModel.durationResolutionMap[0].duration[0],
-          resolution: selectedModel.durationResolutionMap[0].resolution[0],
-          aspectRatio: "16:9",
+          capabilityId: capability.id,
+          modelId: modelName,
           prompt:
             "A shirtless middle-aged man with a horse head is standing in a supermarket, carefully comparing two identical bottles of shampoo for 3 seconds, then suddenly bursts into tears, drops to his knees dramatically, a flock of pigeons explodes out of nowhere from behind him, the supermarket lights flicker, an old grandma nearby continues shopping completely unbothered, the horse head man instantly stops crying, puts both shampoo bottles back, and moonwalks away disappearing into the vegetable section. Security camera footage style, slightly grainy, 5 seconds.",
-          referenceList: [],
-          audio: false,
-          mode: "text",
+          output: {
+            presetId: preset.id,
+            duration,
+            resolution: preset.resolution,
+            aspectRatio: preset.aspectRatios[0],
+          },
+          audio:
+            capability.audio.generation === "none"
+              ? { generation: "none" }
+              : { generation: "native", enabled: capability.audio.policy === "always" },
         };
       }
       const reqConfig = requestFn[type as "text" | "video" | "image"];

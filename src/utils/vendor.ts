@@ -4,6 +4,8 @@ import { loadVendorRuntime } from "@/lib/vendorRuntime";
 import u from "@/utils";
 
 export function writeCode(id: string | number, tsCode: string) {
+  const runtime = loadVendorRuntime(tsCode);
+  if (String(id) !== runtime.vendor.id) throw new Error(`供应商文件名 ${id} 与 Vendor id ${runtime.vendor.id} 不一致`);
   const rootDir = u.getPath("vendor")
   fs.mkdirSync(rootDir, { recursive: true })
   if (fs.existsSync(path.join(rootDir,  `${id}.ts`))) {

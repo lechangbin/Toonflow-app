@@ -7,14 +7,6 @@
 // 类型定义
 // ============================================================
 
-type VideoMode =
-  | "singleImage"
-  | "startEndRequired"
-  | "endFrameOptional"
-  | "startFrameOptional"
-  | "text"
-  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[];
-
 interface TextModel {
   name: string;
   modelName: string;
@@ -34,10 +26,19 @@ interface VideoModel {
   name: string;
   modelName: string;
   type: "video";
-  mode: VideoMode[];
   associationSkills?: string;
-  audio: "optional" | false | true;
-  durationResolutionMap: { duration: number[]; resolution: string[] }[];
+  capabilities: {
+    id: "text-to-video" | "image-to-video" | "first-last-frame";
+    promptProfileId: string;
+    inputs: { role: "source-image" | "first-frame" | "last-frame"; mediaType: "image"; required: true }[];
+    audio: { generation: "none"; policy: "none" };
+    outputPresets: {
+      id: string;
+      resolution: string;
+      durations: { kind: "values"; values: number[] };
+      aspectRatios: ("16:9" | "9:16")[];
+    }[];
+  }[];
 }
 
 interface TTSModel {
@@ -71,15 +72,21 @@ interface ImageConfig {
   aspectRatio: `${number}:${number}`;
 }
 
-interface VideoConfig {
-  duration: number;
-  resolution: string;
-  aspectRatio: "16:9" | "9:16";
+interface VideoCommandBase {
+  modelId: string;
   prompt: string;
-  referenceList?: ReferenceList[];
-  audio?: boolean;
-  mode: VideoMode[];
+  output: { presetId: string; duration: number; resolution: string; aspectRatio: "16:9" | "9:16" };
+  audio: { generation: "none" };
 }
+
+type VideoGenerationCommand =
+  | (VideoCommandBase & { capabilityId: "text-to-video" })
+  | (VideoCommandBase & { capabilityId: "image-to-video"; sourceImage: { mediaType: "image"; base64: string } })
+  | (VideoCommandBase & {
+      capabilityId: "first-last-frame";
+      firstFrame: { mediaType: "image"; base64: string };
+      lastFrame: { mediaType: "image"; base64: string };
+    });
 
 interface TTSConfig {
   text: string;
@@ -122,7 +129,7 @@ declare const exports: {
   textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;
   uploadReference: (base64: string, fileType: "image" | "audio" | "video") => Promise<ReferenceList>;
   imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;
-  videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;
+  videoRequest: (c: VideoGenerationCommand, m: VideoModel) => Promise<string>;
   ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;
   checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;
   updateVendor?: () => Promise<string>;
@@ -160,33 +167,97 @@ const vendor: VendorConfig = {
       name: "海螺2.3",
       modelName: "MiniMax-Hailuo-2.3",
       type: "video",
-      mode: ["text", "singleImage"],
-      audio: false,
-      durationResolutionMap: [
-        { duration: [6], resolution: ["768P", "1080P"] },
-        { duration: [10], resolution: ["768P"] },
+      capabilities: [
+        {
+          id: "text-to-video",
+          promptProfileId: "minimax/text-v1",
+          inputs: [],
+          audio: { generation: "none", policy: "none" },
+          outputPresets: [
+            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },
+          ],
+        },
+        {
+          id: "image-to-video",
+          promptProfileId: "minimax/image-v1",
+          inputs: [{ role: "source-image", mediaType: "image", required: true }],
+          audio: { generation: "none", policy: "none" },
+          outputPresets: [
+            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },
+          ],
+        },
       ],
     },
     {
       name: "海螺2.3极速版",
       modelName: "MiniMax-Hailuo-2.3-Fast",
       type: "video",
-      mode: ["text", "singleImage"],
-      audio: false,
-      durationResolutionMap: [
-        { duration: [6], resolution: ["768P", "1080P"] },
-        { duration: [10], resolution: ["768P"] },
+      capabilities: [
+        {
+          id: "text-to-video",
+          promptProfileId: "minimax/text-v1",
+          inputs: [],
+          audio: { generation: "none", policy: "none" },
+          outputPresets: [
+            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },
+          ],
+        },
+        {
+          id: "image-to-video",
+          promptProfileId: "minimax/image-v1",
+          inputs: [{ role: "source-image", mediaType: "image", required: true }],
+          audio: { generation: "none", policy: "none" },
+          outputPresets: [
+            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },
+          ],
+        },
       ],
     },
     {
       name: "海螺02",
       modelName: "MiniMax-Hailuo-02",
       type: "video",
-      mode: ["text", "singleImage", "startEndRequired"],
-      audio: false,
-      durationResolutionMap: [
-        { duration: [6], resolution: ["512P", "768P", "1080P"] },
-        { duration: [10], resolution: ["512P", "768P"] },
+      capabilities: [
+        {
+          id: "text-to-video",
+          promptProfileId: "minimax/text-v1",
+          inputs: [],
+          audio: { generation: "none", policy: "none" },
+          outputPresets: [
+            { id: "512p", resolution: "512p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },
+          ],
+        },
+        {
+          id: "image-to-video",
+          promptProfileId: "minimax/image-v1",
+          inputs: [{ role: "source-image", mediaType: "image", required: true }],
+          audio: { generation: "none", policy: "none" },
+          outputPresets: [
+            { id: "512p", resolution: "512p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },
+          ],
+        },
+        {
+          id: "first-last-frame",
+          promptProfileId: "minimax/first-last-v1",
+          inputs: [
+            { role: "first-frame", mediaType: "image", required: true },
+            { role: "last-frame", mediaType: "image", required: true },
+          ],
+          audio: { generation: "none", policy: "none" },
+          outputPresets: [
+            { id: "512p", resolution: "512p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },
+            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },
+          ],
+        },
       ],
     },
   ],
@@ -217,7 +288,7 @@ const getBaseUrl = (): string => {
 /**
  * 从 ReferenceList 条目中提取有头 base64 字符串
  */
-const extractBase64WithHead = (ref: ReferenceList): string => {
+const extractBase64WithHead = (ref: { base64: string }): string => {
   return ref.base64.startsWith("data:") ? ref.base64 : `data:image/png;base64,${ref.base64}`;
 };
 
@@ -280,7 +351,7 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   return imgBase64.startsWith("data:") ? imgBase64 : `data:image/png;base64,${imgBase64}`;
 };
 
-const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
+const videoRequest = async (config: VideoGenerationCommand, model: VideoModel): Promise<string> => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
   const baseUrl = getBaseUrl();
   const headers = getHeaders();
@@ -288,31 +359,17 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   const reqBody: any = {
     model: model.modelName,
     prompt: config.prompt,
-    duration: config.duration,
-    resolution: config.resolution,
+    duration: config.output.duration,
+    resolution: config.output.resolution.toUpperCase(),
     aigc_watermark: false,
     prompt_optimizer: true,
   };
 
-  // 提取图片类型的引用
-  const imageRefs = (config.referenceList || []).filter((r) => r.type === "image");
-
-  if (imageRefs.length > 0) {
-    // 压缩图片到20MB以内
-    const compressedImages: string[] = [];
-    for (const ref of imageRefs) {
-      const base64 = extractBase64WithHead(ref);
-      const compressed = await zipImage(base64, 20 * 1024);
-      compressedImages.push(compressed);
-    }
-
-    if (config.mode.includes("startEndRequired")) {
-      if (compressedImages.length < 2) throw new Error("首尾帧模式需要上传两张图片");
-      reqBody.first_frame_image = compressedImages[0];
-      reqBody.last_frame_image = compressedImages[1];
-    } else if (config.mode.includes("singleImage")) {
-      reqBody.first_frame_image = compressedImages[0];
-    }
+  if (config.capabilityId === "image-to-video") {
+    reqBody.first_frame_image = await zipImage(extractBase64WithHead(config.sourceImage), 20 * 1024);
+  } else if (config.capabilityId === "first-last-frame") {
+    reqBody.first_frame_image = await zipImage(extractBase64WithHead(config.firstFrame), 20 * 1024);
+    reqBody.last_frame_image = await zipImage(extractBase64WithHead(config.lastFrame), 20 * 1024);
   }
 
   logger("开始提交MiniMax视频生成任务");

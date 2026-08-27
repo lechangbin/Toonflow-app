@@ -45,7 +45,23 @@ const vendor = {
   models: [
     { name: "Text", modelName: "text-model", type: "text", think: true },
     { name: "Image", modelName: "image-model", type: "image" },
-    { name: "Video", modelName: "video-model", type: "video" },
+    {
+      name: "Video",
+      modelName: "video-model",
+      type: "video",
+      capabilities: [{
+        id: "text-to-video",
+        promptProfileId: "minimax/text-v1",
+        inputs: [],
+        audio: { generation: "none", policy: "none" },
+        outputPresets: [{
+          id: "720p",
+          resolution: "720p",
+          durations: { kind: "values", values: [5] },
+          aspectRatios: ["16:9"],
+        }],
+      }],
+    },
   ],
 };
 
@@ -110,10 +126,25 @@ test("retrieves text, image, and video requests bound to their selected models",
     input: { prompt: "draw" },
     model: runtime.getModel("image-model"),
   });
-  assert.deepEqual(runtime.getRequest("videoRequest", "video-model")({ prompt: "move" }), {
-    input: { prompt: "move" },
+  const videoCommand = {
+    capabilityId: "text-to-video",
+    modelId: "video-model",
+    prompt: "move",
+    output: { presetId: "720p", duration: 5, resolution: "720p", aspectRatio: "16:9" },
+    audio: { generation: "none" },
+  };
+  assert.deepEqual(runtime.getRequest("videoRequest", "video-model")(videoCommand), {
+    input: videoCommand,
     model: runtime.getModel("video-model"),
   });
+});
+
+test("rejects invalid Video Models before any model is registered", () => {
+  const invalidVideoVendor = requestVendorSource.replace(
+    "capabilities: [{",
+    'mode: ["text"], capabilities: [{',
+  );
+  assert.throws(() => loadVendorRuntime(invalidVideoVendor), /Unrecognized key: "mode"/);
 });
 
 test("reports compatible errors for missing models and request exports", () => {

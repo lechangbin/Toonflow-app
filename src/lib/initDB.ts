@@ -1,6 +1,5 @@
 import { Knex } from "knex";
 import { v4 as uuid } from "uuid";
-import { getEmbedding } from "@/utils/agent/embedding";
 
 interface TableSchema {
   name: string;
@@ -32,13 +31,15 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.string("projectType");
         table.string("imageModel");
         table.string("imageQuality");
-        table.string("videoModel");
+        table.string("videoVendorId");
+        table.string("videoModelId");
+        table.string("videoCapabilityId");
+        table.string("videoOutputPresetId");
         table.text("name");
         table.text("intro");
         table.text("type");
         table.text("artStyle");
         table.text("directorManual");
-        table.text("mode");
         table.text("videoRatio");
         table.integer("createTime");
         table.integer("userId");
@@ -530,6 +531,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("scriptId");
         table.integer("projectId");
         table.integer("videoTrackId");
+        table.integer("generationTaskId");
+        table.integer("artifactRevisionId");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -544,9 +547,86 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("scriptId");
         table.text("state");
         table.text("reason");
-        table.text("prompt");
+        table.string("vendorId");
+        table.string("modelId");
+        table.string("capabilityId");
+        table.text("inputRefs");
+        table.text("outputSelection");
+        table.integer("promptRevisionId");
         table.integer("selectVideoId");
         table.integer("duration");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+    },
+    // 一次用户或 Agent 发起的生产意图，可包含多个模型尝试
+    {
+      name: "o_productionAction",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("projectId").notNullable();
+        table.string("actionType").notNullable();
+        table.string("requestedBy").notNullable();
+        table.string("status").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("completedAt");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+    },
+    // 一次不可变的 Vendor/Model/Capability 执行快照
+    {
+      name: "o_generationTask",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("actionId").notNullable();
+        table.integer("projectId").notNullable();
+        table.integer("videoTrackId").notNullable();
+        table.string("vendorId").notNullable();
+        table.string("modelId").notNullable();
+        table.string("capabilityId").notNullable();
+        table.integer("promptRevisionId").notNullable();
+        table.text("commandSnapshot").notNullable();
+        table.text("providerTaskSnapshot");
+        table.string("status").notNullable();
+        table.integer("artifactRevisionId");
+        table.integer("startedAt").notNullable();
+        table.integer("completedAt");
+        table.text("error");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+    },
+    // PromptBrief、结构化 Draft 与最终文本的不可变版本
+    {
+      name: "o_promptRevision",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("projectId").notNullable();
+        table.integer("videoTrackId").notNullable();
+        table.string("profileId").notNullable();
+        table.string("strategy").notNullable();
+        table.text("brief");
+        table.text("draft");
+        table.text("renderedPrompt").notNullable();
+        table.string("status").notNullable();
+        table.integer("createdAt").notNullable();
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+    },
+    // 每个生成结果的版本与采纳状态
+    {
+      name: "o_artifactRevision",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("actionId").notNullable();
+        table.integer("generationTaskId").notNullable();
+        table.integer("videoId").notNullable();
+        table.integer("videoTrackId").notNullable();
+        table.integer("revision").notNullable();
+        table.string("status").notNullable();
+        table.integer("createdAt").notNullable();
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -565,19 +645,13 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       initData: async (knex) => {
         await knex("o_vendorConfig").insert([
           {
-            id: "toonflow",
+            id: "agnes",
             inputValues: "{}",
             models: "[]",
             enable: 0,
           },
           {
-            id: "deepseek",
-            inputValues: "{}",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "atlascloud",
+            id: "volcengineSd2",
             inputValues: "{}",
             models: "[]",
             enable: 0,
@@ -590,24 +664,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
           },
           {
             id: "minimax",
-            inputValues: "{}",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "openai",
-            inputValues: "{}",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "klingai",
-            inputValues: "{}",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "vidu",
             inputValues: "{}",
             models: "[]",
             enable: 0,
@@ -659,6 +715,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
       },
       initData: async (knex) => {
+        const { getEmbedding } = await import("@/utils/agent/embedding");
         const list = [
           {
             id: "4fb36012e56e395b425569987f5dab0e",

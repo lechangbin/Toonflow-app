@@ -3,6 +3,7 @@ import { devToolsMiddleware } from "@ai-sdk/devtools";
 import axios from "axios";
 import { loadVendorRuntime, type VendorRequestName } from "@/lib/vendorRuntime";
 import u from "@/utils";
+import type { ValidatedVideoGenerationCommand } from "@/video/capability";
 
 type AiType =
   | "scriptAgent"
@@ -259,37 +260,17 @@ class AiImage {
   }
 }
 
-type VideoMode =
-  | "singleImage" //单图参考
-  | "startEndRequired" //首尾帧（两张都得有）
-  | "endFrameOptional" //首尾帧（尾帧可选）
-  | "startFrameOptional" //首尾帧（首帧可选）
-  | "text" //文本
-  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[]; //多参考（数字代表限制数量）
-
-interface VideoConfig {
-  duration: number;
-  resolution: string;
-  aspectRatio: "16:9" | "9:16";
-  prompt: string;
-  referenceList?: ReferenceList[];
-  audio?: boolean;
-  mode: VideoMode[];
-}
-
 class AiVideo {
   private key: `${string}:${string}`;
   private result: string = "";
   constructor(key: `${string}:${string}`) {
     this.key = key;
   }
-  async run(input: VideoConfig, taskRecord?: TaskRecord) {
+  async run(input: ValidatedVideoGenerationCommand, taskRecord?: TaskRecord) {
     const modelName = await resolveModelName(this.key);
     try {
       const exec = async (mn: `${string}:${string}`) => {
         const fn = await getVendorTemplateFn("videoRequest", mn);
-        await referenceList2imageBase642(mn.split(/:(.+)/)[0], input);
-
         this.result = await fn(input);
 
         if (this.result.startsWith("http")) this.result = await urlToBase64(this.result);
@@ -315,7 +296,7 @@ class AiAudio {
   constructor(key: `${string}:${string}`) {
     this.key = key;
   }
-  async run(input: VideoConfig, taskRecord?: TaskRecord) {
+  async run(input: any, taskRecord?: TaskRecord) {
     const modelName = await resolveModelName(this.key);
     const exec = async (mn: `${string}:${string}`) => {
       try {

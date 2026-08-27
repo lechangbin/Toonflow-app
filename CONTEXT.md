@@ -32,6 +32,10 @@ _Avoid_: Duplicate Asset
 A planned shot that combines narrative intent, visual direction, timing, and related Assets.
 _Avoid_: Image, frame
 
+**Keyframe**:
+An image assigned an explicit temporal role in a Video Track, such as first frame, intermediate keyframe, or last frame.
+_Avoid_: Reference image, upload-order image
+
 **Video Track**:
 A production slot that groups Storyboards into one generation instruction and selects a resulting Video.
 _Avoid_: Timeline, video file
@@ -40,12 +44,16 @@ _Avoid_: Timeline, video file
 A generated moving-image candidate associated with a Video Track.
 _Avoid_: Video Track, Storyboard
 
+**Project Agent**:
+The single user-facing Agent role that coordinates production work and specialist Agent roles within a Project.
+_Avoid_: Chat window, Production Agent, Script Agent
+
 **Script Agent**:
-The Agent role that turns source context into adaptation plans and Scripts.
+The specialist Agent role that turns source context into adaptation plans and Scripts.
 _Avoid_: Writer bot
 
 **Production Agent**:
-The Agent role that turns Scripts into Assets, Storyboards, production plans, and generation instructions.
+The specialist Agent role that turns Scripts into Assets, Storyboards, production plans, and generation instructions.
 _Avoid_: Video Agent
 
 **Agent Memory**:
@@ -64,6 +72,26 @@ _Avoid_: Model, provider configuration
 A text, image, video, or audio generation capability exposed by a Vendor.
 _Avoid_: Vendor
 
+**Video Capability**:
+A provider-independent video operation exposed by a Model, including its accepted inputs, reference semantics, and output choices.
+_Avoid_: Mode, model mode
+
+**Prompt Profile**:
+Capability-specific guidance for turning production intent into a Model-ready generation prompt.
+_Avoid_: Prompt template, Vendor prompt
+
+**Prompt Revision**:
+An immutable Prompt Brief, structured Draft, rendering strategy, and rendered video prompt associated with one Video Track.
+_Avoid_: Editable prompt field, Model prompt
+
+**Production Action**:
+A user- or Agent-initiated unit of production work that reads or changes Project artifacts and may include, but is not limited to, Model generation.
+_Avoid_: Agent task, Generation Task, route operation
+
+**Artifact Revision**:
+An immutable version of a Project artifact produced by a Production Action and retained as a draft, accepted result, or rejected result.
+_Avoid_: Backup, history row, overwritten artifact
+
 **Generation Task**:
-A tracked attempt to use a Model for a Project output, including progress and failure state.
+A tracked attempt to use a Model for a Project output, including an immutable command snapshot, provider checkpoint, progress, and failure state.
 _Avoid_: Video Track, Agent task

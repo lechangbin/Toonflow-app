@@ -44,7 +44,7 @@ Inspect `src/lib/initDB.ts`, `src/lib/fixDB.ts`, `src/utils/db.ts`, and `src/typ
 
 ### Production video generation
 
-Inspect all four single/batch prompt/video routes under `src/routes/production/workbench/` plus `src/lib/videoPromptReferences.ts`. A reference or state change commonly affects all four paths.
+Read `docs/agents/video-generation.md` before changing Video Models, Prompt Profiles, Video Tracks, generation routes, or Artifact selection. The single/batch routes are transport adapters over `src/video/promptGeneration.ts` and `src/video/production.ts`; change the shared modules first.
 
 ### Agent behavior
 
