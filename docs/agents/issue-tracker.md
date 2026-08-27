@@ -1,15 +1,15 @@
 # Issue tracker: GitHub
 
-Issues and specs live in the official `HBAI-Ltd/Toonflow-app` GitHub Issues tracker. Use the `gh` CLI and pass `--repo HBAI-Ltd/Toonflow-app` explicitly because this clone also has a personal fork remote.
+Issues and specs live in the personal development repository, `lechangbin/Toonflow-app`. Use the `gh` CLI and pass `--repo lechangbin/Toonflow-app` explicitly so work never lands in the read-only upstream tracker by accident.
 
 ## Conventions
 
-- Create: `gh issue create --repo HBAI-Ltd/Toonflow-app --title "..." --body "..."`
-- Read: `gh issue view <number> --repo HBAI-Ltd/Toonflow-app --comments`
-- List: `gh issue list --repo HBAI-Ltd/Toonflow-app --state open --json number,title,body,labels,comments`
-- Comment: `gh issue comment <number> --repo HBAI-Ltd/Toonflow-app --body "..."`
-- Label: `gh issue edit <number> --repo HBAI-Ltd/Toonflow-app --add-label "..."`
-- Close: `gh issue close <number> --repo HBAI-Ltd/Toonflow-app --comment "..."`
+- Create: `gh issue create --repo lechangbin/Toonflow-app --title "..." --body "..."`
+- Read: `gh issue view <number> --repo lechangbin/Toonflow-app --comments`
+- List: `gh issue list --repo lechangbin/Toonflow-app --state open --json number,title,body,labels,comments`
+- Comment: `gh issue comment <number> --repo lechangbin/Toonflow-app --body "..."`
+- Label: `gh issue edit <number> --repo lechangbin/Toonflow-app --add-label "..."`
+- Close: `gh issue close <number> --repo lechangbin/Toonflow-app --comment "..."`
 
 ## Pull requests as a triage surface
 
@@ -19,9 +19,10 @@ GitHub shares one number space across issues and PRs. Resolve an ambiguous `#<nu
 
 ## Skill operations
 
-- “Publish to the issue tracker” means create an issue in `HBAI-Ltd/Toonflow-app`.
+- “Publish to the issue tracker” means create an issue in `lechangbin/Toonflow-app`.
 - “Fetch the relevant ticket” means read the issue and its comments from that repository.
-- Pull requests target `develop`; the upstream `master` branch does not accept PRs.
+- Personal development pull requests target `develop`.
+- Contributions sent to `HBAI-Ltd/Toonflow-app` also target its `develop` branch; its `master` branch does not accept PRs.
 
 ## Wayfinding
 
