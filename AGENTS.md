@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Track work in `HBAI-Ltd/Toonflow-app` GitHub Issues. See `docs/agents/issue-tracker.md`.
+Track work in `lechangbin/Toonflow-app` GitHub Issues. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

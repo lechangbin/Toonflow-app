@@ -65,7 +65,8 @@ The current automated suite covers the Agnes Vendor adapter. Route, database lif
 
 ## Contribution constraints
 
-- Base pull requests on `develop`; upstream rejects PRs to `master`.
+- Use `origin/develop` as the personal development mainline and base personal pull requests on `develop`.
+- Treat `upstream` as the read-only `HBAI-Ltd/Toonflow-app` synchronization source. Contributions sent upstream target its `develop` branch; upstream rejects PRs to `master`.
 - Keep generated outputs synchronized with their sources.
 - Keep secrets, local databases, generated media, and user data out of commits.
-- This clone has `origin` for `HBAI-Ltd/Toonflow-app` and `fork` for the contributor repository; specify the intended repository explicitly in `gh` commands.
+- This clone has `origin` for `lechangbin/Toonflow-app` and `upstream` for `HBAI-Ltd/Toonflow-app`; specify the intended repository explicitly in `gh` commands.
