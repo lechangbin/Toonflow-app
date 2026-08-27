@@ -38,18 +38,16 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, scriptId } = req.body;
-    const projectData = await u.db("o_project").where("id", projectId).select("id", "videoModel", "mode").first();
+    const projectData = await u
+      .db("o_project")
+      .where("id", projectId)
+      .select("id", "videoVendorId", "videoModelId", "videoCapabilityId", "videoOutputPresetId")
+      .first();
 
-    if (!projectData?.videoModel) {
+    if (!projectData?.videoVendorId || !projectData.videoModelId || !projectData.videoCapabilityId) {
       return res.status(400).json(success("项目未配置视频模型"));
     }
-    let videoMode = "";
-    try {
-      videoMode = JSON.parse(projectData?.mode ?? "");
-    } catch (e) {
-      videoMode = projectData?.mode ?? "";
-    }
-    const isRef = Array.isArray(videoMode) ? true : false;
+    const acceptsImageInputs = projectData.videoCapabilityId !== "text-to-video";
 
     const storyboardList = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
     await Promise.all(
@@ -83,15 +81,7 @@ export default router.post(
     });
     // 按 storyboardId 分组的资产数据，key 为 storyboardId
     const otherDataMap: Record<number, any[]> = {};
-    // 解析 videoMode 中 audioReference 的数量，例如 'audioReference:3' => 3
-    const audioReferenceCount = (() => {
-      if (!Array.isArray(videoMode)) return 0;
-      const item = (videoMode as string[]).find((v) => v.toLowerCase().startsWith("audioreference:"));
-      if (!item) return 0;
-      const num = parseInt(item.split(":")[1], 10);
-      return isNaN(num) ? 0 : num;
-    })();
-    if (isRef) {
+    if (acceptsImageInputs) {
       const storyIds = storyboardList.map((s) => s.id);
 
       const assetDatas = await u
@@ -154,6 +144,11 @@ export default router.post(
     }
 
     const trackData = await u.db("o_videoTrack").where({ projectId, scriptId });
+    const promptRevisions = await u.db("o_promptRevision").whereIn(
+      "id",
+      trackData.flatMap((track) => (track.promptRevisionId ? [track.promptRevisionId] : [])),
+    );
+    const promptById = new Map(promptRevisions.map((revision) => [revision.id, revision.renderedPrompt]));
     const videoList = await u.db("o_video").whereIn(
       "videoTrackId",
       trackData.map((t) => t.id),
@@ -165,7 +160,7 @@ export default router.post(
       trackList.push({
         id: trackId,
         duration: item?.duration ?? 0,
-        prompt: item?.prompt || "",
+        prompt: item?.promptRevisionId ? promptById.get(item.promptRevisionId) || "" : "",
         state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
         reason: item?.reason ?? "",
         selectVideoId: Number(item?.videoId)!,
@@ -180,16 +175,7 @@ export default router.post(
             return true;
           });
 
-          // 有 audioReference 时，按数量截取 audio 类型资产
-          const audioCountMap: Record<string, number> = {};
-          const filteredAssets = uniqueAssets.filter((a) => {
-            if (a.fileType !== "audio" || audioReferenceCount === 0) return true;
-            const key = String(a.id);
-            audioCountMap[key] = (audioCountMap[key] ?? 0) + 1;
-            // 统计当前 track 内 audio 总数，超过上限则过滤
-            const totalAudio = Object.values(audioCountMap).reduce((s, n) => s + n, 0);
-            return totalAudio <= audioReferenceCount;
-          });
+          const filteredAssets = uniqueAssets.filter((asset) => asset.fileType === "image");
 
           const hasImageAssetData = filteredAssets.filter((i) => i.src);
           const notHasImageAssetData = filteredAssets.filter((i) => !i.src);
@@ -202,7 +188,14 @@ export default router.post(
             .map(async (v) => ({
               id: v.id!,
               src: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
-              state: v.state === "已完成" ? "已完成" : v.state === "生成中" ? "生成中" : v.state === "生成失败" ? "生成失败" : "未生成",
+              state:
+                v.state === "生成成功"
+                  ? "已完成"
+                  : v.state === "生成中"
+                    ? "生成中"
+                    : v.state === "生成失败"
+                      ? "生成失败"
+                      : "未生成",
               errorReason: v?.errorReason ?? "",
             })),
         ),

@@ -18,6 +18,28 @@ function loadAdapter(overrides: Record<string, unknown>) {
   return adapter;
 }
 
+const alwaysNativeAudio = { generation: "native", enabled: true };
+
+function textVideoCommand(overrides: Record<string, unknown> = {}) {
+  return {
+    capabilityId: "text-to-video",
+    modelId: "agnes-video-v2.0",
+    prompt: "A slow dolly-in toward a lantern.",
+    output: { presetId: "720p", duration: 5, resolution: "720p", aspectRatio: "16:9" },
+    audio: alwaysNativeAudio,
+    ...overrides,
+  };
+}
+
+function imageVideoCommand(base64 = "FRAME", overrides: Record<string, unknown> = {}) {
+  return {
+    ...textVideoCommand(),
+    capabilityId: "image-to-video",
+    sourceImage: { mediaType: "image", base64 },
+    ...overrides,
+  };
+}
+
 test("Agnes adapter advertises V2.0 without advertising Video 2.5", () => {
   const adapter = loadAdapter({});
   const videoModels = adapter.vendor.models.filter((model: any) => model.type === "video");
@@ -26,7 +48,11 @@ test("Agnes adapter advertises V2.0 without advertising Video 2.5", () => {
     videoModels.map((model: any) => model.modelName),
     ["agnes-video-v2.0"],
   );
-  assert.deepEqual(videoModels[0].mode, ["text", "singleImage", "startEndRequired"]);
+  assert.deepEqual(
+    videoModels[0].capabilities.map((capability: any) => capability.id),
+    ["text-to-video", "image-to-video", "keyframe-to-video"],
+  );
+  assert.ok(videoModels[0].capabilities.every((capability: any) => capability.audio.policy === "always"));
 });
 
 test("thinking mode is translated at the OpenAI-compatible HTTP boundary", async () => {
@@ -130,14 +156,7 @@ test("V2.0 text-to-video submits documented dimensions and an 8n+1 frame count",
   const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-video-v2.0");
 
   const result = await adapter.videoRequest(
-    {
-      duration: 5,
-      resolution: "720p",
-      aspectRatio: "16:9",
-      prompt: "A slow dolly-in toward a lantern.",
-      referenceList: [],
-      mode: ["text"],
-    },
+    textVideoCommand(),
     model,
   );
 
@@ -148,7 +167,7 @@ test("V2.0 text-to-video submits documented dimensions and an 8n+1 frame count",
   assert.equal(result, "encoded:https://result.invalid/video.mp4");
 });
 
-test("V2.0 keyframe mode sends exactly the first and last image as keyframes", async () => {
+test("V2.0 keyframe mode preserves explicit first, intermediate, and last roles", async () => {
   let submitted: any;
   const adapter = loadAdapter({
     axios: {
@@ -165,29 +184,27 @@ test("V2.0 keyframe mode sends exactly the first and last image as keyframes", a
 
   await adapter.videoRequest(
     {
-      duration: 4,
-      resolution: "480p",
-      aspectRatio: "9:16",
+      capabilityId: "keyframe-to-video",
+      modelId: "agnes-video-v2.0",
       prompt: "The subject turns toward camera.",
-      referenceList: [
-        { type: "image", sourceType: "base64", base64: "data:image/png;base64,FIRST" },
-        { type: "image", sourceType: "base64", base64: "data:image/png;base64,LAST" },
-        { type: "image", sourceType: "base64", base64: "data:image/png;base64,IGNORED" },
-      ],
-      mode: ["startEndRequired"],
+      firstFrame: { mediaType: "image", base64: "data:image/png;base64,FIRST" },
+      intermediateKeyframe: { mediaType: "image", base64: "data:image/png;base64,MIDDLE" },
+      lastFrame: { mediaType: "image", base64: "data:image/png;base64,LAST" },
+      output: { presetId: "480p", duration: 4, resolution: "480p", aspectRatio: "9:16" },
+      audio: alwaysNativeAudio,
     },
     model,
   );
 
   assert.deepEqual(submitted.extra_body, {
-    image: ["data:image/png;base64,FIRST", "data:image/png;base64,LAST"],
+    image: ["data:image/png;base64,FIRST", "data:image/png;base64,MIDDLE", "data:image/png;base64,LAST"],
     mode: "keyframes",
   });
   assert.equal(submitted.width, 448);
   assert.equal(submitted.height, 832);
 });
 
-test("V2.0 accepts Toonflow's runtime string mode and normalizes raw image Base64", async () => {
+test("V2.0 image-to-video maps the explicit source-image role and normalizes raw Base64", async () => {
   let submitted: any;
   const adapter = loadAdapter({
     axios: {
@@ -203,14 +220,10 @@ test("V2.0 accepts Toonflow's runtime string mode and normalizes raw image Base6
   const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-video-v2.0");
 
   await adapter.videoRequest(
-    {
-      duration: 3,
-      resolution: "720p",
-      aspectRatio: "16:9",
+    imageVideoCommand("RAW_FRAME", {
       prompt: "Subtle breathing motion while the face remains stable.",
-      referenceList: [{ type: "image", sourceType: "base64", base64: "RAW_FRAME" }],
-      mode: "singleImage",
-    },
+      output: { presetId: "720p", duration: 3, resolution: "720p", aspectRatio: "16:9" },
+    }),
     model,
   );
 
@@ -253,14 +266,10 @@ test("V2.0 retries a temporary poll 503 without submitting a second task", async
   const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-video-v2.0");
 
   const result = await adapter.videoRequest(
-    {
-      duration: 5,
-      resolution: "480p",
-      aspectRatio: "16:9",
+    imageVideoCommand("FRAME", {
       prompt: "A portrait remains stable while the camera slowly moves closer.",
-      referenceList: [{ type: "image", sourceType: "base64", base64: "FRAME" }],
-      mode: "singleImage",
-    },
+      output: { presetId: "480p", duration: 5, resolution: "480p", aspectRatio: "16:9" },
+    }),
     model,
   );
 
@@ -296,14 +305,10 @@ test("V2.0 backs off and retries an explicitly rejected full queue submission", 
   const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-video-v2.0");
 
   const result = await adapter.videoRequest(
-    {
-      duration: 5,
-      resolution: "480p",
-      aspectRatio: "16:9",
+    imageVideoCommand("FRAME", {
       prompt: "Wait for provider capacity.",
-      referenceList: [{ type: "image", sourceType: "base64", base64: "FRAME" }],
-      mode: "singleImage",
-    },
+      output: { presetId: "480p", duration: 5, resolution: "480p", aspectRatio: "16:9" },
+    }),
     model,
   );
 
@@ -330,14 +335,10 @@ test("V2.0 disables proxy inheritance for the final result download", async () =
   const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-video-v2.0");
 
   await adapter.videoRequest(
-    {
-      duration: 5,
-      resolution: "480p",
-      aspectRatio: "16:9",
+    imageVideoCommand("FRAME", {
       prompt: "Subtle movement.",
-      referenceList: [{ type: "image", sourceType: "base64", base64: "FRAME" }],
-      mode: "singleImage",
-    },
+      output: { presetId: "480p", duration: 5, resolution: "480p", aspectRatio: "16:9" },
+    }),
     model,
   );
 
@@ -373,14 +374,10 @@ test("V2.0 retries a transient completed-result download with a bounded timeout"
   const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-video-v2.0");
 
   const result = await adapter.videoRequest(
-    {
-      duration: 5,
-      resolution: "480p",
-      aspectRatio: "16:9",
+    textVideoCommand({
       prompt: "Download a completed provider task without hanging forever.",
-      referenceList: [],
-      mode: "text",
-    },
+      output: { presetId: "480p", duration: 5, resolution: "480p", aspectRatio: "16:9" },
+    }),
     model,
   );
 
@@ -408,16 +405,12 @@ test("V2.0 checkpoints the provider task before polling and can resume without P
   const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-video-v2.0");
 
   const result = await adapter.videoRequest(
-    {
-      duration: 5,
-      resolution: "480p",
-      aspectRatio: "16:9",
+    textVideoCommand({
       prompt: "Resume an existing provider task.",
-      referenceList: [],
-      mode: "text",
+      output: { presetId: "480p", duration: 5, resolution: "480p", aspectRatio: "16:9" },
       resumeTask: { taskId: "task-existing" },
       onTaskCheckpoint: async (checkpoint: any) => checkpoints.push(checkpoint),
-    },
+    }),
     model,
   );
 
@@ -449,14 +442,10 @@ test("V2.0 errors identify stage, HTTP status, provider code, task id, and retry
 
   await assert.rejects(
     adapter.videoRequest(
-      {
-        duration: 5,
-        resolution: "480p",
-        aspectRatio: "16:9",
+      textVideoCommand({
         prompt: "Download the completed task.",
-        referenceList: [],
-        mode: "text",
-      },
+        output: { presetId: "480p", duration: 5, resolution: "480p", aspectRatio: "16:9" },
+      }),
       model,
     ),
     (error: any) => {

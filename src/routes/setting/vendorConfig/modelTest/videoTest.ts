@@ -1,74 +1,71 @@
 import express from "express";
-import { success, error } from "@/lib/responseFormat";
-import { validateFields } from "@/middleware/middleware";
-import u from "@/utils";
 import { z } from "zod";
-import { tool, jsonSchema } from "ai";
+
+import { error, success } from "@/lib/responseFormat";
+import u from "@/utils";
+import {
+  validateVideoGenerationCommand,
+  videoAudioSelectionSchema,
+  videoCapabilityIdSchema,
+  videoInputRoleSchema,
+  videoOutputSelectionSchema,
+} from "@/video/capability";
+
 const router = express.Router();
 
-// 检查语言模型
-export default router.post(
-  "/",
-  validateFields({
-    modelName: z.string(),
-    id: z.string(),
-    mode: z.string(),
-    prompt: z.string(),
-    videos: z.array(
-      z.object({
-        type: z.string(),
-        base64: z.string(),
-      }),
-    ),
-    audios: z.array(
-      z.object({
-        type: z.string(),
-        base64: z.string(),
-      }),
-    ),
+const requestSchema = z
+  .object({
+    vendorId: z.string().min(1),
+    modelId: z.string().min(1),
+    capabilityId: videoCapabilityIdSchema,
+    prompt: z.string().min(1),
+    output: videoOutputSelectionSchema,
+    audio: videoAudioSelectionSchema,
     images: z.array(
-      z.object({
-        type: z.string(),
-        base64: z.string(),
-      }),
+      z
+        .object({
+          role: videoInputRoleSchema,
+          base64: z.string().min(1),
+        })
+        .strict(),
     ),
-  }),
-  async (req, res) => {
-    const { modelName, id, mode, prompt, images, videos, audios } = req.body;
+  })
+  .strict();
 
-    try {
-      const vendorConfigData = await u.db("o_vendorConfig").where("id", id).first();
-
-      if (!vendorConfigData) return res.status(500).send(error("未找到该供应商配置"));
-      if (!vendorConfigData.models) return res.status(500).send(error("未找到模型列表"));
-      const modelList = await u.vendor.getModelList(vendorConfigData.id!);
-
-      const selectedModel = modelList.find((i: any) => i.modelName == modelName);
-
-      let modeData = [];
-      if (Array.isArray(mode)) {
-      } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
-        try {
-          modeData = JSON.parse(mode);
-        } catch (e) {}
-      }
-      const reqFn = await u.Ai.Video(`${id}:${modelName}`).run({
-        duration: selectedModel.durationResolutionMap[0].duration[0],
-        resolution: selectedModel.durationResolutionMap[0].resolution[0],
-        aspectRatio: "16:9",
-        prompt: prompt,
-        referenceList: [...images, ...videos, ...audios],
-        audio: typeof selectedModel.audio == "boolean" ? selectedModel.audio : true,
-        mode: modeData.length > 0 ? modeData : mode,
-      });
-      await reqFn.save("test.mp4");
-      const resultUrl = await u.oss.getFileUrl("test.mp4");
-      res.status(200).send(success(resultUrl));
-    } catch (err) {
-      console.error(err);
-      const msg = u.error(err).message;
-      console.error(msg);
-      res.status(500).send(error(msg));
-    }
-  },
-);
+export default router.post("/", async (req, res) => {
+  try {
+    const input = requestSchema.parse(req.body);
+    const modelList = await u.vendor.getModelList(input.vendorId);
+    const model = modelList.find((item: any) => item.modelName === input.modelId);
+    if (!model) return res.status(404).send(error("未找到测试模型"));
+    const images = new Map(input.images.map((image) => [image.role, { mediaType: "image" as const, base64: image.base64 }]));
+    const base = {
+      capabilityId: input.capabilityId,
+      modelId: input.modelId,
+      prompt: input.prompt,
+      output: input.output,
+      audio: input.audio,
+    };
+    const command = validateVideoGenerationCommand(
+      model,
+      input.capabilityId === "text-to-video"
+        ? base
+        : input.capabilityId === "image-to-video"
+          ? { ...base, sourceImage: images.get("source-image") }
+          : input.capabilityId === "first-last-frame"
+            ? { ...base, firstFrame: images.get("first-frame"), lastFrame: images.get("last-frame") }
+            : {
+                ...base,
+                firstFrame: images.get("first-frame"),
+                intermediateKeyframe: images.get("intermediate-keyframe"),
+                lastFrame: images.get("last-frame"),
+              },
+    );
+    const request = u.Ai.Video(`${input.vendorId}:${input.modelId}`);
+    await request.run(command);
+    await request.save("test.mp4");
+    res.status(200).send(success(await u.oss.getFileUrl("test.mp4")));
+  } catch (cause) {
+    res.status(400).send(error(u.error(cause).message));
+  }
+});

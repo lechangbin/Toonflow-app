@@ -8,14 +8,6 @@
 // 类型定义
 // ============================================================
 
-type VideoMode =
-  | "singleImage"
-  | "startEndRequired"
-  | "endFrameOptional"
-  | "startFrameOptional"
-  | "text"
-  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[];
-
 interface TextModel {
   name: string;
   modelName: string;
@@ -36,10 +28,20 @@ interface VideoModel {
   name: string;
   modelName: string;
   type: "video";
-  mode: VideoMode[];
   associationSkills?: string;
-  audio: "optional" | false | true;
-  durationResolutionMap: { duration: number[]; resolution: string[] }[];
+  capabilities: {
+    id: "text-to-video" | "image-to-video" | "keyframe-to-video";
+    promptProfileId: string;
+    inputs: { role: "source-image" | "first-frame" | "intermediate-keyframe" | "last-frame"; mediaType: "image"; required: boolean }[];
+    transitions?: { kind: "adjacent-keyframes" };
+    audio: { generation: "native"; policy: "always" };
+    outputPresets: {
+      id: string;
+      resolution: string;
+      durations: { kind: "integer-range"; min: number; max: number; step: number };
+      aspectRatios: ("16:9" | "9:16")[];
+    }[];
+  }[];
 }
 
 interface TTSModel {
@@ -73,14 +75,21 @@ interface ImageConfig {
   aspectRatio: `${number}:${number}`;
 }
 
-interface VideoConfig {
-  duration: number;
-  resolution: string;
-  aspectRatio: "16:9" | "9:16";
+interface ResolvedImage {
+  mediaType: "image";
+  base64: string;
+}
+
+interface VideoCommandBase {
+  modelId: string;
   prompt: string;
-  referenceList?: ReferenceList[];
-  audio?: boolean;
-  mode: VideoMode[] | VideoMode;
+  output: {
+    presetId: string;
+    duration: number;
+    resolution: string;
+    aspectRatio: "16:9" | "9:16";
+  };
+  audio: { generation: "native"; enabled: true };
   resumeTask?: {
     videoId?: string;
     taskId?: string;
@@ -88,6 +97,16 @@ interface VideoConfig {
   };
   onTaskCheckpoint?: (checkpoint: VideoTaskCheckpoint) => Promise<void> | void;
 }
+
+type VideoGenerationCommand =
+  | (VideoCommandBase & { capabilityId: "text-to-video" })
+  | (VideoCommandBase & { capabilityId: "image-to-video"; sourceImage: ResolvedImage })
+  | (VideoCommandBase & {
+      capabilityId: "keyframe-to-video";
+      firstFrame: ResolvedImage;
+      intermediateKeyframe?: ResolvedImage;
+      lastFrame: ResolvedImage;
+    });
 
 interface VideoTaskCheckpoint {
   vendorId: "agnes";
@@ -140,7 +159,7 @@ declare const exports: {
   vendor: VendorConfig;
   textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;
   imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;
-  videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;
+  videoRequest: (c: VideoGenerationCommand, m: VideoModel) => Promise<string>;
   ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;
   checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;
   updateVendor?: () => Promise<string>;
@@ -216,13 +235,48 @@ const vendor: VendorConfig = {
       name: "Agnes Video V2.0",
       modelName: "agnes-video-v2.0",
       type: "video",
-      mode: ["text", "singleImage", "startEndRequired"],
-      associationSkills: "异步文生视频、单图生视频与双关键帧动画。",
-      audio: false,
-      durationResolutionMap: [
+      associationSkills: "异步文生视频、单图生视频与显式首帧/中间关键帧/尾帧动画；原生音频始终开启。",
+      capabilities: [
         {
-          duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
-          resolution: ["480p", "720p", "1080p"],
+          id: "text-to-video",
+          promptProfileId: "agnes/text-v1",
+          inputs: [],
+          audio: { generation: "native", policy: "always" },
+          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({
+            id: resolution,
+            resolution,
+            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },
+            aspectRatios: ["16:9" as const, "9:16" as const],
+          })),
+        },
+        {
+          id: "image-to-video",
+          promptProfileId: "agnes/image-v1",
+          inputs: [{ role: "source-image", mediaType: "image", required: true }],
+          audio: { generation: "native", policy: "always" },
+          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({
+            id: resolution,
+            resolution,
+            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },
+            aspectRatios: ["16:9" as const, "9:16" as const],
+          })),
+        },
+        {
+          id: "keyframe-to-video",
+          promptProfileId: "agnes/keyframe-v1",
+          inputs: [
+            { role: "first-frame", mediaType: "image", required: true },
+            { role: "intermediate-keyframe", mediaType: "image", required: false },
+            { role: "last-frame", mediaType: "image", required: true },
+          ],
+          transitions: { kind: "adjacent-keyframes" },
+          audio: { generation: "native", policy: "always" },
+          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({
+            id: resolution,
+            resolution,
+            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },
+            aspectRatios: ["16:9" as const, "9:16" as const],
+          })),
         },
       ],
     },
@@ -437,12 +491,7 @@ const ensureImageDataUri = (value: string): string => {
   return `data:image/png;base64,${value}`;
 };
 
-const normalizeVideoModes = (mode: VideoConfig["mode"]): VideoMode[] => {
-  if (Array.isArray(mode)) return mode as VideoMode[];
-  return mode ? [mode] : ["text"];
-};
-
-const getVideoDimensions = (resolution: string, ratio: VideoConfig["aspectRatio"]): { width: number; height: number } => {
+const getVideoDimensions = (resolution: string, ratio: "16:9" | "9:16"): { width: number; height: number } => {
   const normalized = String(resolution || "720p").toLowerCase();
   const landscape = normalized.includes("1080")
     ? { width: 1920, height: 1088 }
@@ -564,42 +613,29 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   });
 };
 
-const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
+const videoRequest = async (config: VideoGenerationCommand, model: VideoModel): Promise<string> => {
   const headers = getHeaders();
   const baseUrl = getBaseUrl();
-  const imageRefs = (config.referenceList || [])
-    .filter((item) => item.type === "image")
-    .map((item) => item.base64)
-    .filter(Boolean)
-    .map(ensureImageDataUri);
-  const modes = normalizeVideoModes(config.mode);
-  const wantsKeyframes = modes.some((mode) => mode === "startEndRequired") || imageRefs.length >= 2;
-  const wantsSingleImage = modes.some((mode) => mode === "singleImage");
-
-  if (wantsKeyframes && imageRefs.length < 2) {
-    throw new Error("Agnes 关键帧视频需要首帧和尾帧两张图片");
-  }
-  if (!wantsKeyframes && wantsSingleImage && imageRefs.length < 1) {
-    throw new Error("Agnes 图生视频需要一张参考图片");
-  }
-
-  const dimensions = getVideoDimensions(config.resolution, config.aspectRatio || "16:9");
+  const dimensions = getVideoDimensions(config.output.resolution, config.output.aspectRatio);
   const body: any = {
     model: model.modelName,
-    prompt: config.prompt || "",
+    prompt: config.prompt,
     width: dimensions.width,
     height: dimensions.height,
-    num_frames: getVideoFrames(config.duration),
+    num_frames: getVideoFrames(config.output.duration),
     frame_rate: 24,
   };
 
-  if (wantsKeyframes) {
+  if (config.capabilityId === "keyframe-to-video") {
+    const keyframes = [config.firstFrame, config.intermediateKeyframe, config.lastFrame]
+      .filter((image): image is ResolvedImage => !!image)
+      .map((image) => ensureImageDataUri(image.base64));
     body.extra_body = {
-      image: imageRefs.slice(0, 2),
+      image: keyframes,
       mode: "keyframes",
     };
-  } else if (imageRefs.length > 0) {
-    body.image = imageRefs[0];
+  } else if (config.capabilityId === "image-to-video") {
+    body.image = ensureImageDataUri(config.sourceImage.base64);
   }
 
   let videoId = config.resumeTask?.videoId;
@@ -643,7 +679,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
 
   if (!videoId && !taskId) {
     logger(
-      `[Agnes 视频] 提交 ${wantsKeyframes ? "关键帧" : imageRefs.length > 0 ? "图生视频" : "文生视频"}任务，${dimensions.width}x${dimensions.height}，${body.num_frames} 帧`,
+      `[Agnes 视频] 提交 ${config.capabilityId === "keyframe-to-video" ? "关键帧" : config.capabilityId === "image-to-video" ? "图生视频" : "文生视频"}任务，${dimensions.width}x${dimensions.height}，${body.num_frames} 帧`,
     );
 
     const maxQueueRetries = 4;

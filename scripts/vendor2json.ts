@@ -1,5 +1,8 @@
 import fs from "fs";
 import path from "path";
+import { validateVideoRuntimeData } from "../src/video/bootstrap";
+
+validateVideoRuntimeData(path.resolve("data"));
 
 const vendorDir = path.join("data", "vendor");
 const files = fs.readdirSync(vendorDir).filter((f) => f.endsWith(".ts"));

@@ -3,6 +3,8 @@ import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
 import { z } from "zod";
+import { loadVendorRuntime } from "@/lib/vendorRuntime";
+import { vendorModelSchema } from "@/video/vendorModel";
 const router = express.Router();
 
 export default router.post(
@@ -10,38 +12,7 @@ export default router.post(
   validateFields({
     id: z.string(),
     modelName: z.string(),
-    model: z.discriminatedUnion("type", [
-      z.object({
-        name: z.string(),
-        modelName: z.string(),
-        type: z.literal("text"),
-        think: z.boolean(),
-      }),
-      z.object({
-        name: z.string(),
-        modelName: z.string(),
-        type: z.literal("image"),
-        mode: z.array(z.enum(["text", "singleImage", "multiReference"])),
-      }),
-      z.object({
-        name: z.string(),
-        modelName: z.string(),
-        type: z.literal("video"),
-        mode: z.array(
-          z.union([
-            z.enum(["singleImage", "startEndRequired", "endFrameOptional", "startFrameOptional", "text", "audioReference", "videoReference"]),
-            z.array(z.string().regex(/^(videoReference|imageReference|audioReference):\d+$/)),
-          ]),
-        ),
-        audio: z.union([z.literal("optional"), z.boolean()]),
-        durationResolutionMap: z.array(
-          z.object({
-            duration: z.array(z.number()),
-            resolution: z.array(z.string()),
-          }),
-        ),
-      }),
-    ]),
+    model: vendorModelSchema,
   }),
   async (req, res) => {
     const { id, modelName, model } = req.body;
@@ -49,11 +20,13 @@ export default router.post(
     const models = await u.db("o_vendorConfig").where("id", id).first("models");
     if (models?.models) {
       const existingModels = JSON.parse(models.models);
-      const modelIndex = existingModels.findIndex((m: any) => m.modelName !== modelName);
+      const modelIndex = existingModels.findIndex((m: any) => m.modelName === modelName);
       if (modelIndex === -1) {
         existingModels.push(model);
+      } else {
+        existingModels[modelIndex] = model;
       }
-      existingModels[modelIndex] = model;
+      loadVendorRuntime(u.vendor.getCode(id), { customModels: existingModels });
       await u
         .db("o_vendorConfig")
         .where("id", id)

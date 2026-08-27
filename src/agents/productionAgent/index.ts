@@ -51,20 +51,10 @@ export async function runDecisionAI(ctx: AgentContext) {
   const projectInfo = await u.db("o_project").where("id", ctx.resTool.data.projectId).first();
   if (!projectInfo) throw new Error(`项目不存在，ID: ${ctx.resTool.data.projectId}`);
   const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/);
-  const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/);
-  const models = await u.vendor.getModelList(id);
-  if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
-  let videoMode = "";
-  try {
-    videoMode = JSON.parse(projectInfo.mode ?? "");
-  } catch (e) {
-    videoMode = projectInfo.mode ?? "";
+  if (!projectInfo.videoVendorId || !projectInfo.videoModelId || !projectInfo.videoCapabilityId) {
+    throw new Error("项目尚未配置 Video Vendor/Model/Capability 默认值");
   }
-  const isRef = Array.isArray(videoMode) ? true : false;
-  // const findData = models.find((i: any) => i.modelName == videoModelName);
-  // const isRef = findData.mode.every((i: any) => Array.isArray(i));
-
-  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
+  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频供应商：${projectInfo.videoVendorId}\n视频模型：${projectInfo.videoModelId}\n视频能力：${projectInfo.videoCapabilityId}`;
 
   const mem = buildMemPrompt(await memory.get(text));
 
@@ -148,20 +138,10 @@ async function createSubAgent(parentCtx: AgentContext) {
   const artSkills = await createArtSkills(projectInfo?.artStyle!, projectInfo?.directorManual!);
 
   const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/);
-  const [id, videoModelName] = projectInfo.videoModel!.split(/:(.+)/);
-  const models = await u.vendor.getModelList(id);
-  if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
-  // const findData = models.find((i: any) => i.modelName == videoModelName);
-  //
-  let videoMode = "";
-  try {
-    videoMode = JSON.parse(projectInfo.mode ?? "");
-  } catch (e) {
-    videoMode = projectInfo.mode ?? "";
+  if (!projectInfo.videoVendorId || !projectInfo.videoModelId || !projectInfo.videoCapabilityId) {
+    throw new Error("项目尚未配置 Video Vendor/Model/Capability 默认值");
   }
-  const isRef = Array.isArray(videoMode) ? true : false;
-
-  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
+  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频供应商：${projectInfo.videoVendorId}\n视频模型：${projectInfo.videoModelId}\n视频能力：${projectInfo.videoCapabilityId}`;
 
   // const run_sub_agent_execution = tool({
   //   description: "执行层子Agent，负责衍生资产、",

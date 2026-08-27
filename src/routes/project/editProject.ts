@@ -17,13 +17,38 @@ export default router.post(
     directorManual: z.string(),
     videoRatio: z.string(),
     imageModel: z.string(),
-    videoModel: z.string(),
+    videoVendorId: z.string(),
+    videoModelId: z.string(),
+    videoCapabilityId: z.string(),
+    videoOutputPresetId: z.string(),
     projectType: z.string(),
     imageQuality: z.string(),
-    mode: z.string(),
   }),
   async (req, res) => {
-    const { id, name, intro, type, artStyle, videoRatio, directorManual, imageModel, videoModel, imageQuality, projectType, mode } = req.body;
+    const {
+      id,
+      name,
+      intro,
+      type,
+      artStyle,
+      videoRatio,
+      directorManual,
+      imageModel,
+      videoVendorId,
+      videoModelId,
+      videoCapabilityId,
+      videoOutputPresetId,
+      imageQuality,
+      projectType,
+    } = req.body;
+
+    const videoModels = await u.vendor.getModelList(videoVendorId);
+    const videoModel = videoModels.find((model: any) => model.modelName === videoModelId && model.type === "video");
+    const capability = videoModel?.capabilities?.find((item: any) => item.id === videoCapabilityId);
+    const outputPreset = capability?.outputPresets?.find((preset: any) => preset.id === videoOutputPresetId);
+    if (!outputPreset || !outputPreset.aspectRatios.includes(videoRatio)) {
+      throw new Error("项目 Video Vendor/Model/Capability/Output Preset 默认值无效");
+    }
 
     await u.db("o_project").where("id", id).update({
       name,
@@ -33,10 +58,12 @@ export default router.post(
       videoRatio,
       directorManual,
       imageModel,
-      videoModel,
+      videoVendorId,
+      videoModelId,
+      videoCapabilityId,
+      videoOutputPresetId,
       imageQuality,
       projectType,
-      mode,
     });
 
     res.status(200).send(success({ message: "编辑项目成功" }));

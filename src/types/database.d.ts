@@ -120,13 +120,63 @@ export interface o_project {
   'imageModel'?: string | null;
   'imageQuality'?: string | null;
   'intro'?: string | null;
-  'mode'?: string | null;
   'name'?: string | null;
   'projectType'?: string | null;
   'type'?: string | null;
   'userId'?: number | null;
-  'videoModel'?: string | null;
+  'videoCapabilityId'?: string | null;
+  'videoModelId'?: string | null;
+  'videoOutputPresetId'?: string | null;
   'videoRatio'?: string | null;
+  'videoVendorId'?: string | null;
+}
+export interface o_productionAction {
+  'actionType': string;
+  'completedAt'?: number | null;
+  'createdAt': number;
+  'id'?: number;
+  'projectId': number;
+  'requestedBy': string;
+  'status': string;
+}
+export interface o_generationTask {
+  'actionId': number;
+  'artifactRevisionId'?: number | null;
+  'capabilityId': string;
+  'commandSnapshot': string;
+  'completedAt'?: number | null;
+  'error'?: string | null;
+  'id'?: number;
+  'modelId': string;
+  'promptRevisionId': number;
+  'projectId': number;
+  'providerTaskSnapshot'?: string | null;
+  'startedAt': number;
+  'status': string;
+  'vendorId': string;
+  'videoTrackId': number;
+}
+export interface o_promptRevision {
+  'brief'?: string | null;
+  'createdAt': number;
+  'draft'?: string | null;
+  'id'?: number;
+  'profileId': string;
+  'projectId': number;
+  'renderedPrompt': string;
+  'status': string;
+  'strategy': string;
+  'videoTrackId': number;
+}
+export interface o_artifactRevision {
+  'actionId': number;
+  'createdAt': number;
+  'generationTaskId': number;
+  'id'?: number;
+  'revision': number;
+  'status': string;
+  'videoId': number;
+  'videoTrackId': number;
 }
 export interface o_prompt {
   'data'?: string | null;
@@ -208,8 +258,10 @@ export interface o_vendorConfig {
   'models'?: string | null;
 }
 export interface o_video {
+  'artifactRevisionId'?: number | null;
   'errorReason'?: string | null;
   'filePath'?: string | null;
+  'generationTaskId'?: number | null;
   'id'?: number;
   'projectId'?: number | null;
   'scriptId'?: number | null;
@@ -218,15 +270,20 @@ export interface o_video {
   'videoTrackId'?: number | null;
 }
 export interface o_videoTrack {
+  'capabilityId'?: string | null;
   'duration'?: number | null;
   'id'?: number;
   'projectId'?: number | null;
-  'prompt'?: string | null;
+  'inputRefs'?: string | null;
+  'modelId'?: string | null;
+  'outputSelection'?: string | null;
+  'promptRevisionId'?: number | null;
   'reason'?: string | null;
   'scriptId'?: number | null;
   'selectVideoId'?: number | null;
   'state'?: string | null;
   'videoId'?: number | null;
+  'vendorId'?: string | null;
 }
 
 export interface DB {
@@ -234,17 +291,21 @@ export interface DB {
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
   "o_artStyle": o_artStyle;
+  "o_artifactRevision": o_artifactRevision;
   "o_assets": o_assets;
   "o_assets2Storyboard": o_assets2Storyboard;
   "o_assetsRole2Audio": o_assetsRole2Audio;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
+  "o_generationTask": o_generationTask;
   "o_image": o_image;
   "o_imageFlow": o_imageFlow;
   "o_modelPrompt": o_modelPrompt;
   "o_novel": o_novel;
   "o_project": o_project;
+  "o_productionAction": o_productionAction;
   "o_prompt": o_prompt;
+  "o_promptRevision": o_promptRevision;
   "o_script": o_script;
   "o_scriptAssets": o_scriptAssets;
   "o_setting": o_setting;
