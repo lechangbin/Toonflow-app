@@ -33,6 +33,11 @@ exports.vendor = vendor;
 export {};
 `;
 
+const invalidRequestVendorSource = modelVendorSource.replace(
+  "export {};",
+  "exports.imageRequest = {};\nexport {};",
+);
+
 const requestVendorSource = `
 const vendor = {
   id: "request-vendor",
@@ -120,6 +125,12 @@ test("reports compatible errors for missing models and request exports", () => {
   );
   assert.throws(
     () => runtime.getRequest("imageRequest", "built-in"),
+    new Error("未找到供应商配置中的函数 imageRequest id=model-vendor"),
+  );
+
+  const invalidRuntime = loadVendorRuntime(invalidRequestVendorSource);
+  assert.throws(
+    () => invalidRuntime.getRequest("imageRequest", "built-in"),
     new Error("未找到供应商配置中的函数 imageRequest id=model-vendor"),
   );
 });

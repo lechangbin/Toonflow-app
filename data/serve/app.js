@@ -236845,15 +236845,15 @@ var init_dist23 = __esm({
 });
 
 // src/lib/vendorRuntime.ts
+function cloneModels(models) {
+  return JSON.parse(JSON.stringify(models));
+}
 function loadVendorRuntime(source, options = {}) {
   const compiledSource = (0, import_sucrase2.transform)(source, { transforms: ["typescript"] }).code;
   const adapter2 = runCode(compiledSource, void 0, options.dependencyOverrides);
   const vendor = adapter2.vendor;
   Object.assign(vendor.inputValues, options.inputValues);
-  const combinedModels = [
-    ...JSON.parse(JSON.stringify(vendor.models)),
-    ...JSON.parse(JSON.stringify(options.customModels ?? []))
-  ];
+  const combinedModels = [...cloneModels(vendor.models), ...cloneModels(options.customModels ?? [])];
   const modelsByName = /* @__PURE__ */ new Map();
   for (const model of combinedModels) {
     modelsByName.set(model.modelName, model);
@@ -236872,11 +236872,11 @@ function loadVendorRuntime(source, options = {}) {
     getRequest(fnName, modelName) {
       const model = getModel(modelName);
       const request = adapter2[fnName];
-      if (!request) throw new Error(`\u672A\u627E\u5230\u4F9B\u5E94\u5546\u914D\u7F6E\u4E2D\u7684\u51FD\u6570 ${fnName} id=${vendor.id}`);
+      if (typeof request !== "function") throw new Error(`\u672A\u627E\u5230\u4F9B\u5E94\u5546\u914D\u7F6E\u4E2D\u7684\u51FD\u6570 ${fnName} id=${vendor.id}`);
       if (fnName === "textRequest") {
-        return (think, thinkLevel = 0) => request(model, think ?? !!model.think, thinkLevel);
+        return ((think, thinkLevel = 0) => request(model, think ?? !!model.think, thinkLevel));
       }
-      return (input) => request(input, model);
+      return ((input) => request(input, model));
     }
   };
 }
