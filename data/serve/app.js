@@ -240031,9 +240031,7 @@ var init_getModelList = __esm({
       async (req, res) => {
         const { type } = req.body;
         const dataList = await utils_default.db("o_vendorConfig").select("id").where("enable", 1);
-        if (!dataList || dataList.length === 0) {
-          return res.status(404).send({ error: "\u6A21\u578B\u672A\u627E\u5230" });
-        }
+        if (!dataList.length) return res.status(200).send(success3([]));
         const modelList = await Promise.all(dataList.map((i) => utils_default.vendor.getModelList(i.id)));
         const result = await Promise.all(
           dataList.map(async (data, index) => {
