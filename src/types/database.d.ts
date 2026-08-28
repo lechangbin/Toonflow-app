@@ -277,6 +277,7 @@ export interface o_videoTrack {
   'inputRefs'?: string | null;
   'modelId'?: string | null;
   'outputSelection'?: string | null;
+  'audioSelection'?: string | null;
   'promptRevisionId'?: number | null;
   'reason'?: string | null;
   'scriptId'?: number | null;

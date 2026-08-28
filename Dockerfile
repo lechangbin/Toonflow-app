@@ -33,12 +33,12 @@ WORKDIR /app
 ENV NODE_ENV=prod \
     HOST=0.0.0.0 \
     PORT=10588 \
-    DATA_DIR=/app/data \
+    DATA_DIR=/app/runtime-data \
     SEED_DATA_DIR=/app/seed-data \
     OSSURL=http://localhost:10588
 
 COPY --from=production-dependencies /app/node_modules ./node_modules
-COPY --from=build /app/data/serve/app.js ./server/app.js
+COPY --from=build /app/data/serve/app.js ./data/serve/app.js
 COPY --from=build /app/build/initRuntimeData.js ./bin/initRuntimeData.js
 COPY --from=build /app/data/assets ./seed-data/assets
 COPY --from=build /app/data/models ./seed-data/models
@@ -50,16 +50,16 @@ COPY --from=build /app/data/version.txt ./seed-data/version.txt
 COPY docker/entrypoint.sh /usr/local/bin/toonflow-entrypoint
 
 RUN chmod 0755 /usr/local/bin/toonflow-entrypoint && \
-    mkdir -p /app/data && \
+    mkdir -p /app/runtime-data && \
     chown -R node:node /app
 
 USER node
 
-VOLUME ["/app/data"]
+VOLUME ["/app/runtime-data"]
 EXPOSE 10588
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"
 
 ENTRYPOINT ["toonflow-entrypoint"]
-CMD ["node", "/app/server/app.js"]
+CMD ["node", "data/serve/app.js"]

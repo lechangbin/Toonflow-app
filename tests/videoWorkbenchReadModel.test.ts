@@ -20,6 +20,7 @@ async function createDatabase(): Promise<Knex> {
     table.string("capabilityId");
     table.text("inputRefs");
     table.text("outputSelection");
+    table.text("audioSelection");
     table.integer("promptRevisionId");
   });
   await db.schema.createTable("o_promptRevision", (table) => {
@@ -87,6 +88,30 @@ const getVendorModels = async () => [
       },
     ],
   },
+  {
+    name: "Volcengine Video V1.0",
+    modelName: "volcengine-video-v1.0",
+    type: "video",
+    capabilities: [
+      {
+        id: "first-last-frame",
+        promptProfileId: "volcengine/frame-v1",
+        inputs: [
+          { role: "first-frame", mediaType: "image", required: true },
+          { role: "last-frame", mediaType: "image", required: true },
+        ],
+        audio: { generation: "native", policy: "optional" },
+        outputPresets: [
+          {
+            id: "720p",
+            resolution: "720p",
+            durations: { kind: "integer-range", min: 1, max: 18, step: 1 },
+            aspectRatios: ["16:9"],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 test("a configured Video Track resumes its actual selection, Prompt Revision, and Artifact Revision", async () => {
@@ -107,6 +132,7 @@ test("a configured Video Track resumes its actual selection, Prompt Revision, an
       { role: "last-frame", source: "storyboard", sourceId: 12 },
     ]),
     outputSelection: JSON.stringify({ presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "9:16" }),
+    audioSelection: JSON.stringify({ generation: "native", enabled: true }),
     promptRevisionId: 21,
   });
   await db("o_promptRevision").insert({
@@ -153,7 +179,7 @@ test("a configured Video Track resumes its actual selection, Prompt Revision, an
       vendorId: "agnes",
       modelId: "agnes-video-v2.0",
       capabilityId: "keyframe-to-video",
-      inputs: [
+      inputRefs: [
         { role: "first-frame", source: "storyboard", sourceId: 11 },
         {
           role: "intermediate-keyframe",
@@ -163,8 +189,8 @@ test("a configured Video Track resumes its actual selection, Prompt Revision, an
         },
         { role: "last-frame", source: "storyboard", sourceId: 12 },
       ],
-      output: { presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "9:16" },
-      audio: { generation: "native", enabled: true },
+      outputSelection: { presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "9:16" },
+      audioSelection: { generation: "native", enabled: true },
       promptRevisionId: 21,
     });
     assert.equal(track.prompt, "Move through all three keyframes");
@@ -204,10 +230,109 @@ test("an unconfigured Video Track does not inherit Project defaults in the read 
       vendorId: null,
       modelId: null,
       capabilityId: null,
-      inputs: null,
-      output: null,
-      audio: null,
+      inputRefs: null,
+      outputSelection: null,
+      audioSelection: null,
       promptRevisionId: null,
+    });
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("the persisted audioSelection wins over the last generation task snapshot", async () => {
+  const db = await createDatabase();
+  await db("o_videoTrack").insert({
+    id: 11,
+    projectId: 1,
+    scriptId: 2,
+    vendorId: "volcengine",
+    modelId: "volcengine-video-v1.0",
+    capabilityId: "first-last-frame",
+    inputRefs: JSON.stringify([]),
+    outputSelection: JSON.stringify({ presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "16:9" }),
+    audioSelection: JSON.stringify({ generation: "native", enabled: false }),
+  });
+  await db("o_generationTask").insert({
+    id: 61,
+    videoTrackId: 11,
+    commandSnapshot: JSON.stringify({ audio: { generation: "native", enabled: true } }),
+  });
+  try {
+    const [track] = await readVideoTrackProjections(
+      { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+      { projectId: 1, scriptId: 2 },
+    );
+    assert.deepEqual(track.actual.audioSelection, { generation: "native", enabled: false });
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a legacy configured Track without persisted audioSelection resumes the last generation snapshot audio", async () => {
+  const db = await createDatabase();
+  await db("o_videoTrack").insert({
+    id: 12,
+    projectId: 1,
+    scriptId: 2,
+    vendorId: "volcengine",
+    modelId: "volcengine-video-v1.0",
+    capabilityId: "first-last-frame",
+    inputRefs: JSON.stringify([]),
+    outputSelection: JSON.stringify({ presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "16:9" }),
+  });
+  await db("o_generationTask").insert({
+    id: 62,
+    videoTrackId: 12,
+    commandSnapshot: JSON.stringify({ audio: { generation: "native", enabled: true } }),
+  });
+  try {
+    const [track] = await readVideoTrackProjections(
+      { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+      { projectId: 1, scriptId: 2 },
+    );
+    assert.deepEqual(track.actual.audioSelection, { generation: "native", enabled: true });
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a configured Track without persisted audioSelection or tasks derives the capability audio default", async () => {
+  const db = await createDatabase();
+  await db("o_videoTrack").insert([
+    {
+      id: 13,
+      projectId: 1,
+      scriptId: 2,
+      vendorId: "agnes",
+      modelId: "agnes-video-v2.0",
+      capabilityId: "keyframe-to-video",
+      inputRefs: JSON.stringify([]),
+      outputSelection: JSON.stringify({ presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "9:16" }),
+    },
+    {
+      id: 14,
+      projectId: 1,
+      scriptId: 2,
+      vendorId: "volcengine",
+      modelId: "volcengine-video-v1.0",
+      capabilityId: "first-last-frame",
+      inputRefs: JSON.stringify([]),
+      outputSelection: JSON.stringify({ presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "16:9" }),
+    },
+  ]);
+  try {
+    const tracks = await readVideoTrackProjections(
+      { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+      { projectId: 1, scriptId: 2 },
+    );
+    assert.deepEqual(tracks.find((track) => track.id === 13)?.actual.audioSelection, {
+      generation: "native",
+      enabled: true,
+    });
+    assert.deepEqual(tracks.find((track) => track.id === 14)?.actual.audioSelection, {
+      generation: "native",
+      enabled: true,
     });
   } finally {
     await db.destroy();
@@ -233,6 +358,32 @@ test("corrupt persisted Video Track JSON fails explicitly at the read seam", asy
         { projectId: 1, scriptId: 2 },
       ),
       /Video Track 9 inputRefs 包含无效 JSON/,
+    );
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("corrupt persisted audioSelection fails explicitly at the read seam", async () => {
+  const db = await createDatabase();
+  await db("o_videoTrack").insert({
+    id: 15,
+    projectId: 1,
+    scriptId: 2,
+    vendorId: "agnes",
+    modelId: "agnes-video-v2.0",
+    capabilityId: "keyframe-to-video",
+    inputRefs: JSON.stringify([]),
+    outputSelection: JSON.stringify({ presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "9:16" }),
+    audioSelection: JSON.stringify({ generation: "native" }),
+  });
+  try {
+    await assert.rejects(
+      readVideoTrackProjections(
+        { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+        { projectId: 1, scriptId: 2 },
+      ),
+      /Video Track 15 audioSelection 无效/,
     );
   } finally {
     await db.destroy();

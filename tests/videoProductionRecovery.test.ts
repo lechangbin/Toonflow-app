@@ -54,6 +54,7 @@ test("startup recovery fails every interrupted Video production record consisten
     assert.deepEqual(await db("o_productionAction").where("id", 1).first(), { id: 1, status: "failed", completedAt: 1234 });
     assert.deepEqual(await db("o_generationTask").where("id", 3).first(), {
       id: 3,
+      actionId: 1,
       status: "failed",
       completedAt: 1234,
       error: "软件退出导致失败",

@@ -47,6 +47,7 @@ async function createDatabase(): Promise<Knex> {
     table.string("capabilityId");
     table.text("inputRefs");
     table.text("outputSelection");
+    table.text("audioSelection");
     table.integer("promptRevisionId");
     table.integer("duration");
     table.string("state");
@@ -186,6 +187,7 @@ test("fake prompt and video dependencies drive a successful durable orchestratio
     const track = await db("o_videoTrack").where("id", 11).first();
     assert.equal(track.state, "已完成");
     assert.equal(track.promptRevisionId, prompt.promptRevisionId);
+    assert.deepEqual(JSON.parse(track.audioSelection), { generation: "native", enabled: true });
   } finally {
     await db.destroy();
   }
@@ -254,6 +256,7 @@ test("a fake adapter failure rejects the Artifact and fails every owning record"
     const track = await db("o_videoTrack").where("id", 12).first();
     assert.equal(track.state, "生成失败");
     assert.equal(track.reason, "provider rejected request");
+    assert.deepEqual(JSON.parse(track.audioSelection), { generation: "native", enabled: true });
   } finally {
     await db.destroy();
   }

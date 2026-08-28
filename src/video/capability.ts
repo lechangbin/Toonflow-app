@@ -196,6 +196,13 @@ export const videoAudioSelectionSchema = z.discriminatedUnion("generation", [
   z.object({ generation: z.literal("native"), enabled: z.boolean() }).strict(),
 ]);
 
+export type VideoAudioSelection = z.infer<typeof videoAudioSelectionSchema>;
+
+export function deriveAudioSelection(audio: VideoAudioContract): VideoAudioSelection {
+  if (audio.generation === "none") return { generation: "none" };
+  return { generation: "native", enabled: true };
+}
+
 const commandBaseShape = {
   modelId: z.string().min(1),
   prompt: z.string().min(1),
