@@ -265,45 +265,54 @@ https://github.com/user-attachments/assets/2d9fddac-dfdf-4640-b030-b09d7f7287e9
 
 ### 前置条件
 
-- 已安装 [Docker](https://docs.docker.com/get-docker/)（版本 20.10+）
+- 已安装 [Docker](https://docs.docker.com/get-docker/) 及 Compose v2
+- Docker 可以访问 npm 镜像源
 
-### 方式一：在线部署
+### 本地验收部署
 
-待完善，暂时使用本地构建。
+`compose.yaml` 使用生产 bundle，并只把服务发布到宿主机的 `127.0.0.1`。镜像内的版本化资源会在首次启动时复制到空的数据卷；SQLite、OSS 用户媒体和本地凭据不会进入镜像。
 
-### 方式二：本地构建
-
-使用本地已有的源码直接构建，适合开发者或已克隆仓库的用户，这需要你在本地安装 git：
-
-```shell
-# 先克隆项目（如已有则跳过）
-git clone https://github.com/HBAI-Ltd/Toonflow-app.git
+```bash
+git clone https://github.com/lechangbin/Toonflow-app.git
 cd Toonflow-app
 
-# 使用 docker-compose 本地构建并启动
-yarn docker:local
+# 每个验收版本使用独立镜像、容器和数据卷，便于无损回退
+export TOONFLOW_RELEASE=$(git rev-parse --short HEAD)
+export TOONFLOW_PROJECT=toonflow-$TOONFLOW_RELEASE
+export TOONFLOW_IMAGE=toonflow:$TOONFLOW_RELEASE
+export TOONFLOW_CONTAINER=toonflow-$TOONFLOW_RELEASE
+export TOONFLOW_DATA_VOLUME=toonflow-data-$TOONFLOW_RELEASE
 
-# 或者手动构建
-docker build -t toonflow .
-docker run -d -p <本地端口>:10588 -v <本地数据路径>:/app/data toonflow
+docker compose build
+docker compose up -d
+docker compose ps
 
-# 此时在相应端口的 /web/index.html 路径即可访问页面
-# 例如 http://localhost:10588/web/index.html
+# 停止但保留当前版本的容器和数据卷
+docker compose stop
 ```
 
-### 服务端口说明
+启动后访问：
 
-| 端口    | 用途     | 部署映射      |
-| ------- | -------- | ------------- |
-| `10588` | 软件界面 | `10588:10588` |
+- 应用：`http://localhost:10588/`
+- 健康检查：`http://localhost:10588/health`
 
 **环境变量说明：**
 
-| 变量       | 说明                               |
-| ---------- | ---------------------------------- |
-| `NODE_ENV` | 运行环境，`prod` 表示生产环境      |
-| `PORT`     | 服务监听端口（默认 10588）         |
-| `OSSURL`   | 文件存储访问地址，用于静态资源访问 |
+| 变量                   | 说明                                                    |
+| ---------------------- | ------------------------------------------------------- |
+| `HOST`                 | 容器内监听地址；Compose 固定为 `0.0.0.0`                |
+| `PORT`                 | 容器内监听端口，默认 `10588`                            |
+| `OSSURL`               | 浏览器访问静态资源时使用的公开基础地址                  |
+| `DATA_DIR`             | 可写运行数据目录，容器内为 `/app/data`                  |
+| `SEED_DATA_DIR`        | 镜像内只读版本种子目录，容器内为 `/app/seed-data`       |
+| `TOONFLOW_PORT`        | Compose 发布到 Windows/宿主机的回环端口，默认 `10588`   |
+| `TOONFLOW_PROJECT`     | 版本化 Compose 项目名称                                  |
+| `TOONFLOW_IMAGE`       | 验收镜像标签                                             |
+| `TOONFLOW_CONTAINER`   | 验收容器名称                                             |
+| `TOONFLOW_DATA_VOLUME` | 验收数据卷名称；升级时应使用新的版本化名称              |
+
+> [!CAUTION]
+> 不要把空宿主目录直接绑定到 `/app/data`，否则会遮蔽初始化边界。不要在不同版本镜像之间复用同一个数据卷；当前流程通过版本化数据卷实现可回退验收，不负责迁移既有 Windows 用户数据。首次登录后请立即修改默认管理员密码。
 
 ---
 
@@ -314,7 +323,7 @@ docker run -d -p <本地端口>:10588 -v <本地数据路径>:/app/data toonflow
 #### 一、服务器环境要求
 
 - **系统**：Ubuntu 20.04+ / CentOS 7+
-- **Node.js**：24.x（推荐，最低 23.11.1+）
+- **Node.js**：24.x
 - **内存**：2GB+
 
 #### 二、服务器部署
@@ -326,8 +335,9 @@ docker run -d -p <本地端口>:10588 -v <本地数据路径>:/app/data toonflow
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.bashrc
 nvm install 24
-# 安装 Yarn 和 PM2
-npm install -g yarn pm2
+# 启用项目锁定的 Yarn，并安装 PM2
+corepack enable
+npm install -g pm2
 ```
 
 ##### 2. 部署项目
@@ -364,6 +374,7 @@ yarn build
   "exec_mode": "cluster",
   "env": {
     "NODE_ENV": "prod",
+    "HOST": "127.0.0.1",
     "PORT": 10588,
     "OSSURL": "http://127.0.0.1:10588/"
   }
@@ -375,6 +386,7 @@ yarn build
 | 变量       | 说明                               |
 | ---------- | ---------------------------------- |
 | `NODE_ENV` | 运行环境，`prod` 表示生产环境      |
+| `HOST`     | 服务监听地址                       |
 | `PORT`     | 服务监听端口                       |
 | `OSSURL`   | 文件存储访问地址，用于静态资源访问 |
 
@@ -466,7 +478,7 @@ pm2 monit             # 监控面板
 
 | 类别       | 技术                                                                                      |
 | ---------- | ----------------------------------------------------------------------------------------- |
-| 运行时     | Node.js 23.11.1+                                                                          |
+| 运行时     | Node.js 24.x                                                                               |
 | 语言       | TypeScript 5.x                                                                            |
 | 后端框架   | Express 5                                                                                 |
 | 数据库     | SQLite（better-sqlite3 / knex）                                                           |
@@ -479,8 +491,8 @@ pm2 monit             # 监控面板
 
 ## 开发环境准备
 
-- **Node.js**：版本要求 23.11.1 及以上
-- **Yarn**：推荐作为项目包管理器
+- **Node.js**：24.x
+- **Yarn**：通过 Corepack 使用项目锁定的 1.22.22 版本
 
 ## 快速启动项目
 

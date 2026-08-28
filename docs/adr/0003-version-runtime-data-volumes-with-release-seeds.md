@@ -1,0 +1,3 @@
+# Version runtime data volumes with release seeds
+
+Container images keep immutable application bundles and versioned seed resources separate from a writable runtime data volume. A fresh volume is initialized only from an allowlist of release seeds and receives a marker for that seed version; a non-empty unmarked volume or a volume marked for another seed version fails before startup. Each acceptance release uses its own named volume, so rollback selects the matching image and volume instead of mutating or silently upgrading user data. This favors deterministic, credential-safe local acceptance over in-place container data migration; an explicit migration workflow is required before a future release may reuse data across seed versions.

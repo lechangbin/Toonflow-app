@@ -1,0 +1,24 @@
+name: ${TOONFLOW_PROJECT:-toonflow-acceptance}
+
+services:
+  toonflow:
+    image: ${TOONFLOW_IMAGE:-toonflow:acceptance}
+    build:
+      context: .
+    container_name: ${TOONFLOW_CONTAINER:-toonflow-acceptance}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: prod
+      HOST: 0.0.0.0
+      PORT: 10588
+      DATA_DIR: /app/data
+      SEED_DATA_DIR: /app/seed-data
+      OSSURL: http://localhost:${TOONFLOW_PORT:-10588}
+    ports:
+      - "127.0.0.1:${TOONFLOW_PORT:-10588}:10588"
+    volumes:
+      - toonflow-data:/app/data
+
+volumes:
+  toonflow-data:
+    name: ${TOONFLOW_DATA_VOLUME:-toonflow-data-acceptance}

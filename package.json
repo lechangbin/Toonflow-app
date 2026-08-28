@@ -14,9 +14,9 @@
     "email": "ltlctools@outlook.com"
   },
   "main": "build/main.js",
-  "packageManager": "yarn@1.0.0",
+  "packageManager": "yarn@1.22.22",
   "engines": {
-    "node": ">=1.0.0"
+    "node": ">=24.0.0 <25"
   },
   "scripts": {
     "dev": "nodemon --inspect --exec tsx src/app.ts",
@@ -33,7 +33,10 @@
     "dist:linux": "yarn build && electron-builder --linux",
     "debug:ai": "npx @ai-sdk/devtools",
     "license": "node scripts/license.ts",
-    "vendor2json": "tsx scripts/vendor2json.ts"
+    "vendor2json": "tsx scripts/vendor2json.ts",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:stop": "docker compose stop"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.35",

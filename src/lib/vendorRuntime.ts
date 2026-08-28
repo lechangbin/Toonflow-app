@@ -47,6 +47,16 @@ export interface VendorRuntime {
   getRequest<Name extends VendorRequestName>(fnName: Name, modelName: string): VendorBoundRequest<Name>;
 }
 
+export function validateVendorRequiredInputs(vendor: VendorDefinition): void {
+  if (!Array.isArray(vendor.inputs)) return;
+  const missing = vendor.inputs.flatMap((input: any) => {
+    if (!input || input.required !== true || typeof input.key !== "string") return [];
+    const value = vendor.inputValues[input.key];
+    return typeof value === "string" && value.trim() ? [] : [String(input.label || input.key)];
+  });
+  if (missing.length) throw new Error(`Vendor ${vendor.id} 缺少必填配置：${missing.join("、")}`);
+}
+
 function cloneModels(models: VendorModel[]): VendorModel[] {
   return JSON.parse(JSON.stringify(models));
 }
