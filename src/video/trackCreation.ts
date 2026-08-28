@@ -1,6 +1,12 @@
 import type { Knex } from "knex";
 
-import { parseVideoModel, videoOutputSelectionSchema, type VideoCapability } from "./capability";
+import {
+  deriveAudioSelection,
+  parseVideoModel,
+  videoOutputSelectionSchema,
+  type VideoAudioSelection,
+  type VideoCapability,
+} from "./capability";
 
 export interface CreateVideoTrackDependencies {
   db: Knex;
@@ -29,6 +35,7 @@ export interface CreatedVideoTrack {
     resolution: string;
     aspectRatio: "16:9" | "9:16";
   };
+  audioSelection: VideoAudioSelection;
 }
 
 function getDefaultDuration(capability: VideoCapability, presetId: string): number {
@@ -45,6 +52,12 @@ export async function createVideoTrack(
   if (!project) throw new Error(`Project ${input.projectId} 不存在`);
   if (!project.videoVendorId || !project.videoModelId || !project.videoCapabilityId || !project.videoOutputPresetId) {
     throw new Error("项目尚未配置完整的 Video Capability 默认值");
+  }
+
+  const script = await dependencies.db("o_script").where("id", input.scriptId).first();
+  if (!script) throw new Error(`Script ${input.scriptId} 不存在`);
+  if (script.projectId !== input.projectId) {
+    throw new Error(`Script ${input.scriptId} 不属于 Project ${input.projectId}`);
   }
 
   const rawModel = (await dependencies.getVendorModels(project.videoVendorId)).find(
@@ -74,6 +87,7 @@ export async function createVideoTrack(
         (duration - preset.durations.min) % preset.durations.step === 0;
   if (!durationAllowed) throw new Error(`时长 ${duration}s 不属于 Output Preset ${preset.id}`);
 
+  const audioSelection = deriveAudioSelection(capability.audio);
   const track: CreatedVideoTrack = {
     id: input.id,
     projectId: input.projectId,
@@ -84,11 +98,13 @@ export async function createVideoTrack(
     capabilityId: project.videoCapabilityId,
     inputRefs: [],
     outputSelection,
+    audioSelection,
   };
   await dependencies.db("o_videoTrack").insert({
     ...track,
     inputRefs: JSON.stringify(track.inputRefs),
     outputSelection: JSON.stringify(track.outputSelection),
+    audioSelection: JSON.stringify(track.audioSelection),
   });
   return track;
 }

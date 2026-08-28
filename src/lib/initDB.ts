@@ -552,6 +552,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.string("capabilityId");
         table.text("inputRefs");
         table.text("outputSelection");
+        table.text("audioSelection");
         table.integer("promptRevisionId");
         table.integer("selectVideoId");
         table.integer("duration");

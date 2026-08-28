@@ -101,6 +101,18 @@ const runtimeDataBuildConfig: esbuild.BuildOptions = {
       esbuild.build(runtimeDataBuildConfig),
     ]);
 
+    // 生成的文本 bundle 会保留依赖源码中的行尾空白；机械清理保证 git diff --check 可用
+    const trackedBundles = [
+      path.resolve("data/serve/app.js"),
+      ...fs
+        .readdirSync(path.resolve("data/web"), { withFileTypes: true })
+        .filter((entry) => entry.isFile() && /\.(?:css|html|js)$/.test(entry.name))
+        .map((entry) => path.resolve("data/web", entry.name)),
+    ];
+    for (const trackedBundle of trackedBundles) {
+      fs.writeFileSync(trackedBundle, fs.readFileSync(trackedBundle, "utf8").replace(/[ \t]+$/gm, ""));
+    }
+
     console.log("✅ 后端服务构建完成: build/app.js");
     console.log("✅ Electron主进程构建完成: build/main.js");
     console.log("✅ 运行数据初始化器构建完成: build/initRuntimeData.js");

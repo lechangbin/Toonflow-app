@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 
-import { parseVideoModel, videoAudioSelectionSchema, videoOutputSelectionSchema } from "./capability";
+import { deriveAudioSelection, parseVideoModel, videoAudioSelectionSchema, videoOutputSelectionSchema } from "./capability";
 import { videoTrackInputReferenceSchema } from "./productionContract";
 import { videoPromptBriefSchema, videoPromptDraftSchema } from "./promptProfile";
 
@@ -46,11 +46,15 @@ function artifactProjection(row: any) {
   };
 }
 
-async function deriveAudioSelection(
+async function resolveAudioSelection(
   dependencies: VideoWorkbenchReadDependencies,
   track: any,
   latestTask: any,
 ) {
+  const persisted = parsePersisted(`Video Track ${track.id} audioSelection`, track.audioSelection, (value) =>
+    videoAudioSelectionSchema.parse(value),
+  );
+  if (persisted) return persisted;
   if (latestTask?.commandSnapshot) {
     const snapshot = parseJson(`Generation Task ${latestTask.id} commandSnapshot`, latestTask.commandSnapshot) as any;
     return videoAudioSelectionSchema.parse(snapshot?.audio);
@@ -63,9 +67,7 @@ async function deriveAudioSelection(
   const model = parseVideoModel(rawModel);
   const capability = model.capabilities.find((candidate) => candidate.id === track.capabilityId);
   if (!capability) throw new Error(`Video Track ${track.id} 引用不存在的 Capability ${track.capabilityId}`);
-  if (capability.audio.generation === "none") return { generation: "none" as const };
-  if (capability.audio.policy === "always") return { generation: "native" as const, enabled: true as const };
-  return null;
+  return deriveAudioSelection(capability.audio);
 }
 
 export async function readVideoTrackProjections(
@@ -183,9 +185,9 @@ export async function readVideoTrackProjections(
           vendorId: track.vendorId ?? null,
           modelId: track.modelId ?? null,
           capabilityId: track.capabilityId ?? null,
-          inputs: projectedInputs,
-          output,
-          audio: await deriveAudioSelection(dependencies, track, latestTask),
+          inputRefs: projectedInputs,
+          outputSelection: output,
+          audioSelection: await resolveAudioSelection(dependencies, track, latestTask),
           promptRevisionId: track.promptRevisionId ?? null,
         },
         videoList,

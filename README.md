@@ -1,4 +1,4 @@
-﻿<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Toonflow&fontSize=90&fontColor=ffffff&animation=fadeIn&fontAlignY=50" width="100%"/>
 
 <p>
   <a href="https://github.com/HBAI-Ltd/Toonflow-app">
@@ -303,7 +303,7 @@ docker compose stop
 | `HOST`                 | 容器内监听地址；Compose 固定为 `0.0.0.0`                |
 | `PORT`                 | 容器内监听端口，默认 `10588`                            |
 | `OSSURL`               | 浏览器访问静态资源时使用的公开基础地址                  |
-| `DATA_DIR`             | 可写运行数据目录，容器内为 `/app/data`                  |
+| `DATA_DIR`             | 可写运行数据目录，容器内为 `/app/runtime-data`          |
 | `SEED_DATA_DIR`        | 镜像内只读版本种子目录，容器内为 `/app/seed-data`       |
 | `TOONFLOW_PORT`        | Compose 发布到 Windows/宿主机的回环端口，默认 `10588`   |
 | `TOONFLOW_PROJECT`     | 版本化 Compose 项目名称                                  |
@@ -312,7 +312,7 @@ docker compose stop
 | `TOONFLOW_DATA_VOLUME` | 验收数据卷名称；升级时应使用新的版本化名称              |
 
 > [!CAUTION]
-> 不要把空宿主目录直接绑定到 `/app/data`，否则会遮蔽初始化边界。不要在不同版本镜像之间复用同一个数据卷；当前流程通过版本化数据卷实现可回退验收，不负责迁移既有 Windows 用户数据。首次登录后请立即修改默认管理员密码。
+> 不要把空宿主目录直接绑定到 `/app/runtime-data`，否则会遮蔽初始化边界。程序 bundle 位于镜像内的 `/app/data/serve/app.js`，运行数据卷挂载在 `/app/runtime-data`，两者互不遮蔽。不要在不同版本镜像之间复用同一个数据卷；当前流程通过版本化数据卷实现可回退验收，不负责迁移既有 Windows 用户数据。首次登录后请立即修改默认管理员密码。
 
 ---
 

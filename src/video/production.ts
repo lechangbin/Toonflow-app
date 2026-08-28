@@ -294,6 +294,7 @@ async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVi
         capabilityId: item.capabilityId,
         inputRefs: serialize(item.inputs),
         outputSelection: serialize(item.output),
+        audioSelection: serialize(item.audio),
         promptRevisionId: item.promptRevisionId,
         duration: item.output.duration,
         state: "生成中",

@@ -76,6 +76,7 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   await addColumn("o_videoTrack", "capabilityId", "string");
   await addColumn("o_videoTrack", "inputRefs", "text");
   await addColumn("o_videoTrack", "outputSelection", "text");
+  await addColumn("o_videoTrack", "audioSelection", "text");
   await addColumn("o_videoTrack", "promptRevisionId", "integer");
   await dropColumn("o_videoTrack", "prompt");
   await addColumn("o_video", "generationTaskId", "integer");
