@@ -3,7 +3,8 @@
 FROM node:24-bookworm AS base
 
 WORKDIR /app
-ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1 \
+    ONNXRUNTIME_NODE_INSTALL_CUDA=skip
 
 RUN npm config set registry https://registry.npmmirror.com/ && \
     yarn config set registry https://registry.npmmirror.com/
