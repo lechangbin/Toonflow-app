@@ -66,19 +66,25 @@ test("an unmarked non-empty runtime volume fails before seed resources are merge
   });
 });
 
-test("a restart keeps runtime changes when the seed marker matches", async () => {
+test("a restart refreshes immutable Web assets while keeping mutable runtime changes", async () => {
   await withTemporaryDataDirectories(async ({ runtimeDir, seedDir }) => {
     await mkdir(path.join(seedDir, "vendor"), { recursive: true });
+    await mkdir(path.join(seedDir, "web"), { recursive: true });
     await writeFile(path.join(seedDir, "version.txt"), "1.1.8\n");
     await writeFile(path.join(seedDir, "vendor", "agnes.ts"), "versioned seed");
+    await writeFile(path.join(seedDir, "web", "index.html"), "first Web build");
 
     await initializeRuntimeData({ runtimeDir, seedDir });
     await writeFile(path.join(runtimeDir, "vendor", "agnes.ts"), "user configuration");
+    await writeFile(path.join(seedDir, "web", "index.html"), "upgraded Web build");
+    await writeFile(path.join(runtimeDir, "web", "stale.js"), "stale asset");
 
     assert.deepEqual(await initializeRuntimeData({ runtimeDir, seedDir }), {
       status: "existing",
       version: "1.1.8",
     });
     assert.equal(await readFile(path.join(runtimeDir, "vendor", "agnes.ts"), "utf8"), "user configuration");
+    assert.equal(await readFile(path.join(runtimeDir, "web", "index.html"), "utf8"), "upgraded Web build");
+    await assert.rejects(readFile(path.join(runtimeDir, "web", "stale.js")), { code: "ENOENT" });
   });
 });
