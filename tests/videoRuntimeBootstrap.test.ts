@@ -1,12 +1,27 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
+import knexFactory from "knex";
 
-import { validateVideoRuntimeData } from "../src/video/bootstrap";
+import { RETAINED_VENDOR_IDS, validateConfiguredVideoRuntimeData } from "../src/video/bootstrap";
 
-test("validates the complete retained Vendor and Prompt Profile registry", () => {
-  const result = validateVideoRuntimeData(path.join(process.cwd(), "data"));
-  assert.deepEqual(result.vendorIds.sort(), ["agnes", "minimax", "volcengine", "volcengineSd2"]);
-  assert.equal(result.videoModelCount, 8);
-  assert.equal(result.promptProfileCount, 8);
+test("validates each configured Vendor once against the complete runtime registry", async () => {
+  const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
+  await db.schema.createTable("o_vendorConfig", (table) => {
+    table.string("id").primary();
+    table.text("inputValues");
+    table.text("models");
+  });
+  await db("o_vendorConfig").insert(
+    RETAINED_VENDOR_IDS.map((id) => ({ id, inputValues: "{}", models: "[]" })),
+  );
+
+  try {
+    const result = await validateConfiguredVideoRuntimeData(db, path.join(process.cwd(), "data"));
+    assert.deepEqual(result.vendorIds.sort(), ["agnes", "minimax", "volcengine", "volcengineSd2"]);
+    assert.equal(result.videoModelCount, 8);
+    assert.equal(result.promptProfileCount, 8);
+  } finally {
+    await db.destroy();
+  }
 });
