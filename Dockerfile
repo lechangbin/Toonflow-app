@@ -5,7 +5,10 @@ FROM node:24-bookworm-slim AS base
 WORKDIR /app
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 
-RUN npm config set registry https://registry.npmmirror.com/ && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 make g++ && \
+    rm -rf /var/lib/apt/lists/* && \
+    npm config set registry https://registry.npmmirror.com/ && \
     yarn config set registry https://registry.npmmirror.com/
 
 FROM base AS build
