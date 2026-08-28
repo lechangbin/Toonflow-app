@@ -33,4 +33,4 @@ Script Agent and Production Agent duplicate authentication, abort handling, thin
 
 ## Decision status
 
-Video decisions are accepted in ADR-0001 and ADR-0002. Database lifecycle and Agent session runtime remain exploration candidates; record new hard-to-reverse decisions under `docs/adr/` before implementation.
+Video decisions are accepted in ADR-0001 and ADR-0002. ADR-0003 records the container runtime-data lifecycle used for versioned local acceptance deployments. Database lifecycle beyond that bounded deployment seam and Agent session runtime remain exploration candidates; record new hard-to-reverse decisions under `docs/adr/` before implementation.

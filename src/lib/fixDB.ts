@@ -5,6 +5,7 @@ import getPath from "@/utils/getPath";
 import { loadVendorRuntime } from "@/lib/vendorRuntime";
 import { VideoPromptProfileRegistry } from "@/video/promptProfile";
 import rawVendorData from "./vendor.json";
+import { failInterruptedVideoProduction } from "@/video/recovery";
 
 const vendorData = rawVendorData as Record<string, string>;
 
@@ -31,6 +32,7 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
       });
     }
   };
+  await failInterruptedVideoProduction(knex);
   //矫正因软件异常退出导致的状态不一致问题
   await knex("o_novel").where("eventState", 0).update({
     eventState: -1,
@@ -52,11 +54,6 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
     state: "生成失败",
     reason: "软件退出导致失败",
   });
-  await knex("o_video").where("state", "生成中").update({
-    state: "生成失败",
-    errorReason: "软件退出导致失败",
-  });
-
   // 添加新字段
   await addColumn("o_prompt", "useData", "text");
   // 添加新字段

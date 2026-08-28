@@ -8,7 +8,7 @@ export default (fileName?: string[] | string) => {
     const userDataDir: string = app.getPath("userData");
     basePath = path.join(userDataDir, "data");
   } else {
-    basePath = path.join(process.cwd(), "data");
+    basePath = process.env.DATA_DIR?.trim() ? path.resolve(process.env.DATA_DIR) : path.join(process.cwd(), "data");
   }
   if (fileName) {
     let dbPath: string;

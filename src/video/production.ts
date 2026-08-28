@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import axios from "axios";
+import type { Knex } from "knex";
 import { v4 as uuid } from "uuid";
 
 import { loadVendorRuntime } from "@/lib/vendorRuntime";
@@ -37,7 +38,23 @@ interface PreparedGeneration {
   generationTaskId: number;
   artifactRevisionId: number;
   command: ValidatedVideoGenerationCommand;
-  runtime: ReturnType<typeof loadVendorRuntime>;
+  runtime: VideoProductionRuntime;
+}
+
+interface VideoProductionRuntime {
+  getModel(modelId: string): any;
+  getRequest(name: "videoRequest", modelId: string): (command: any) => Promise<string>;
+}
+
+export interface VideoProductionDependencies {
+  db: Knex;
+  profiles: VideoPromptProfileRegistry;
+  loadRuntime(vendorId: string): Promise<VideoProductionRuntime>;
+  readImage(filePath: string): Promise<string>;
+  writeVideo(filePath: string, base64: string): Promise<unknown>;
+  downloadVideo(url: string): Promise<string>;
+  createVideoPath(projectId: number): string;
+  now(): number;
 }
 
 export interface StartedVideoGenerationBatch {
@@ -50,14 +67,14 @@ function serialize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-async function resolveInputPath(reference: VideoTrackInputReference): Promise<string> {
+async function resolveInputPath(database: Knex, reference: VideoTrackInputReference): Promise<string> {
   if (reference.source === "uploaded-media") return reference.filePath!;
   if (reference.source === "storyboard") {
-    const row = await db("o_storyboard").where("id", reference.sourceId).select("filePath").first();
+    const row = await database("o_storyboard").where("id", reference.sourceId).select("filePath").first();
     if (!row?.filePath) throw new Error(`Storyboard ${reference.sourceId} 没有可用图片`);
     return row.filePath;
   }
-  const row = await db("o_assets")
+  const row = await database("o_assets")
     .where("o_assets.id", reference.sourceId)
     .leftJoin("o_image", "o_assets.imageId", "o_image.id")
     .select("o_image.filePath")
@@ -66,14 +83,17 @@ async function resolveInputPath(reference: VideoTrackInputReference): Promise<st
   return row.filePath;
 }
 
-async function resolveImages(references: VideoTrackInputReference[]): Promise<Map<string, ResolvedImage>> {
+async function resolveImages(
+  dependencies: VideoProductionDependencies,
+  references: VideoTrackInputReference[],
+): Promise<Map<string, ResolvedImage>> {
   const roles = new Set<string>();
   const resolved = new Map<string, ResolvedImage>();
   for (const reference of references) {
     if (roles.has(reference.role)) throw new Error(`输入角色 ${reference.role} 只能出现一次`);
     roles.add(reference.role);
-    const filePath = await resolveInputPath(reference);
-    resolved.set(reference.role, { mediaType: "image", base64: await oss.getImageBase64(filePath) });
+    const filePath = await resolveInputPath(dependencies.db, reference);
+    resolved.set(reference.role, { mediaType: "image", base64: await dependencies.readImage(filePath) });
   }
   return resolved;
 }
@@ -137,7 +157,7 @@ function commandSnapshot(
   return snapshot;
 }
 
-async function loadRuntime(vendorId: string) {
+async function loadDefaultRuntime(vendorId: string) {
   const vendorConfig = await db("o_vendorConfig").where("id", vendorId).first();
   if (!vendorConfig) throw new Error(`未找到供应商 ${vendorId}`);
   const sourcePath = path.join(getPath("vendor"), `${vendorId}.ts`);
@@ -149,11 +169,12 @@ async function loadRuntime(vendorId: string) {
 }
 
 async function materializePrompt(
+  database: Knex,
   item: VideoGenerationItem,
   projectId: number,
   profiles: VideoPromptProfileRegistry,
 ): Promise<{ profileId: string; renderedPrompt: string }> {
-  const revision = await db("o_promptRevision")
+  const revision = await database("o_promptRevision")
     .where({ id: item.promptRevisionId, projectId, videoTrackId: item.trackId })
     .first();
   if (!revision) throw new Error(`Prompt Revision ${item.promptRevisionId} 不属于当前 Project/Track`);
@@ -174,27 +195,26 @@ async function materializePrompt(
   return { profileId: profile.id, renderedPrompt: rendered };
 }
 
-async function normalizeAdapterResult(result: string): Promise<string> {
+async function normalizeAdapterResult(dependencies: VideoProductionDependencies, result: string): Promise<string> {
   if (!result.startsWith("http")) return result;
-  const response = await axios.get(result, { responseType: "arraybuffer" });
-  return Buffer.from(response.data).toString("base64");
+  return dependencies.downloadVideo(result);
 }
 
-async function executePrepared(prepared: PreparedGeneration): Promise<boolean> {
+async function executePrepared(dependencies: VideoProductionDependencies, prepared: PreparedGeneration): Promise<boolean> {
   const request = prepared.runtime.getRequest("videoRequest", prepared.command.modelId);
   const command = {
     ...prepared.command,
     onTaskCheckpoint: async (checkpoint: unknown) => {
-      await db("o_generationTask")
+      await dependencies.db("o_generationTask")
         .where("id", prepared.generationTaskId)
         .update({ providerTaskSnapshot: serialize(checkpoint) });
     },
   };
   try {
     const result = await request(command);
-    await oss.writeFile(prepared.videoPath, await normalizeAdapterResult(result));
-    const completedAt = Date.now();
-    await db.transaction(async (trx) => {
+    await dependencies.writeVideo(prepared.videoPath, await normalizeAdapterResult(dependencies, result));
+    const completedAt = dependencies.now();
+    await dependencies.db.transaction(async (trx) => {
       await trx("o_video")
         .where("id", prepared.videoId)
         .update({ state: "生成成功", artifactRevisionId: prepared.artifactRevisionId });
@@ -209,8 +229,8 @@ async function executePrepared(prepared: PreparedGeneration): Promise<boolean> {
     return true;
   } catch (error: any) {
     const message = error instanceof Error ? error.message : String(error);
-    const completedAt = Date.now();
-    await db.transaction(async (trx) => {
+    const completedAt = dependencies.now();
+    await dependencies.db.transaction(async (trx) => {
       await trx("o_video").where("id", prepared.videoId).update({ state: "生成失败", errorReason: message });
       await trx("o_videoTrack").where("id", prepared.trackId).update({ state: "生成失败", reason: message });
       await trx("o_artifactRevision").where("id", prepared.artifactRevisionId).update({ status: "rejected" });
@@ -222,44 +242,45 @@ async function executePrepared(prepared: PreparedGeneration): Promise<boolean> {
   }
 }
 
-export async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVideoGenerationBatch> {
+export function createVideoProduction(dependencies: VideoProductionDependencies) {
+async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVideoGenerationBatch> {
   const input = videoGenerationBatchRequestSchema.parse(inputValue);
-  const profiles = VideoPromptProfileRegistry.load(getPath(["promptProfiles", "video"]));
+  const profiles = dependencies.profiles;
   const preparedItems: Omit<PreparedGeneration, "trackId" | "videoId" | "generationTaskId" | "artifactRevisionId">[] = [];
 
   for (const item of input.items) {
-    const track = await db("o_videoTrack")
+    const track = await dependencies.db("o_videoTrack")
       .where({ id: item.trackId, projectId: input.projectId, scriptId: input.scriptId })
       .first();
     if (!track) throw new Error(`Video Track ${item.trackId} 不属于当前 Project/Script`);
-    const runtime = await loadRuntime(item.vendorId);
+    const runtime = await dependencies.loadRuntime(item.vendorId);
     const model = runtime.getModel(item.modelId);
     const capability = model.type === "video" && Array.isArray(model.capabilities)
       ? (model.capabilities as any[]).find((candidate) => candidate.id === item.capabilityId)
       : undefined;
     if (!capability) throw new Error(`${item.vendorId}:${item.modelId} 不支持 ${item.capabilityId}`);
     validateVideoTrackInputReferences(capability, item.inputs);
-    const promptRevision = await materializePrompt(item, input.projectId, profiles);
+    const promptRevision = await materializePrompt(dependencies.db, item, input.projectId, profiles);
     if (capability.promptProfileId !== promptRevision.profileId) {
       throw new Error(`${item.modelId}/${item.capabilityId} 要求 Prompt Profile ${capability.promptProfileId}`);
     }
-    const images = await resolveImages(item.inputs);
+    const images = await resolveImages(dependencies, item.inputs);
     const command = validateVideoGenerationCommand(model, buildCommand(item, promptRevision.renderedPrompt, images));
     preparedItems.push({
       command,
       runtime,
-      videoPath: `/${input.projectId}/video/${uuid()}.mp4`,
+      videoPath: dependencies.createVideoPath(input.projectId),
     });
   }
 
   const prepared: PreparedGeneration[] = [];
-  const actionId = await db.transaction(async (trx) => {
+  const actionId = await dependencies.db.transaction(async (trx) => {
     const [newActionId] = await trx("o_productionAction").insert({
       projectId: input.projectId,
       actionType: "generate-video",
       requestedBy: input.requestedBy,
       status: "running",
-      createdAt: Date.now(),
+      createdAt: dependencies.now(),
     });
 
     for (const [index, item] of input.items.entries()) {
@@ -288,11 +309,11 @@ export async function startVideoGenerationBatch(inputValue: unknown): Promise<St
         promptRevisionId: item.promptRevisionId,
         commandSnapshot: serialize(commandSnapshot(preparedItems[index].command, item.inputs)),
         status: "running",
-        startedAt: Date.now(),
+        startedAt: dependencies.now(),
       });
       const [videoId] = await trx("o_video").insert({
         filePath: preparedItems[index].videoPath,
-        time: Date.now(),
+        time: dependencies.now(),
         state: "生成中",
         scriptId: input.scriptId,
         projectId: input.projectId,
@@ -310,7 +331,7 @@ export async function startVideoGenerationBatch(inputValue: unknown): Promise<St
         videoTrackId: item.trackId,
         revision: (revisionRow?.revision ?? 0) + 1,
         status: "draft",
-        createdAt: Date.now(),
+        createdAt: dependencies.now(),
       });
       await trx("o_video").where("id", videoId).update({ artifactRevisionId });
       prepared.push({ ...preparedItems[index], trackId: item.trackId, videoId, generationTaskId, artifactRevisionId });
@@ -318,10 +339,10 @@ export async function startVideoGenerationBatch(inputValue: unknown): Promise<St
     return newActionId;
   });
 
-  const completion = Promise.all(prepared.map((item) => executePrepared(item))).then(async (results) => {
+  const completion = Promise.all(prepared.map((item) => executePrepared(dependencies, item))).then(async (results) => {
     const successes = results.filter(Boolean).length;
     const status = successes === results.length ? "succeeded" : successes === 0 ? "failed" : "partial";
-    await db("o_productionAction").where("id", actionId).update({ status, completedAt: Date.now() });
+    await dependencies.db("o_productionAction").where("id", actionId).update({ status, completedAt: dependencies.now() });
   });
 
   return {
@@ -334,4 +355,27 @@ export async function startVideoGenerationBatch(inputValue: unknown): Promise<St
     })),
     completion,
   };
+}
+
+return { startVideoGenerationBatch };
+}
+
+function createDefaultVideoProduction() {
+  return createVideoProduction({
+    db,
+    profiles: VideoPromptProfileRegistry.load(getPath(["promptProfiles", "video"])),
+    loadRuntime: loadDefaultRuntime,
+    readImage: (filePath) => oss.getImageBase64(filePath),
+    writeVideo: (filePath, base64) => oss.writeFile(filePath, base64),
+    downloadVideo: async (url) => {
+      const response = await axios.get(url, { responseType: "arraybuffer" });
+      return Buffer.from(response.data).toString("base64");
+    },
+    createVideoPath: (projectId) => `/${projectId}/video/${uuid()}.mp4`,
+    now: Date.now,
+  });
+}
+
+export function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVideoGenerationBatch> {
+  return createDefaultVideoProduction().startVideoGenerationBatch(inputValue);
 }

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { resolveVideoReferenceMediaType } from "@/lib/videoPromptReferences";
+import { readVideoTrackProjections } from "@/video/workbenchReadModel";
 const router = express.Router();
 
 interface VideoItem {
@@ -41,13 +42,23 @@ export default router.post(
     const projectData = await u
       .db("o_project")
       .where("id", projectId)
-      .select("id", "videoVendorId", "videoModelId", "videoCapabilityId", "videoOutputPresetId")
+      .select("id", "videoVendorId", "videoModelId", "videoCapabilityId", "videoOutputPresetId", "videoRatio")
       .first();
 
     if (!projectData?.videoVendorId || !projectData.videoModelId || !projectData.videoCapabilityId) {
       return res.status(400).json(success("项目未配置视频模型"));
     }
-    const acceptsImageInputs = projectData.videoCapabilityId !== "text-to-video";
+    const trackProjections = await readVideoTrackProjections(
+      {
+        db: u.db,
+        getVendorModels: (vendorId) => u.vendor.getModelList(vendorId),
+        getFileUrl: (filePath) => u.oss.getFileUrl(filePath),
+      },
+      { projectId, scriptId },
+    );
+    const acceptsImageInputs =
+      projectData.videoCapabilityId !== "text-to-video" ||
+      trackProjections.some((track) => track.actual.capabilityId && track.actual.capabilityId !== "text-to-video");
 
     const storyboardList = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
     await Promise.all(
@@ -143,27 +154,11 @@ export default router.post(
       );
     }
 
-    const trackData = await u.db("o_videoTrack").where({ projectId, scriptId });
-    const promptRevisions = await u.db("o_promptRevision").whereIn(
-      "id",
-      trackData.flatMap((track) => (track.promptRevisionId ? [track.promptRevisionId] : [])),
-    );
-    const promptById = new Map(promptRevisions.map((revision) => [revision.id, revision.renderedPrompt]));
-    const videoList = await u.db("o_video").whereIn(
-      "videoTrackId",
-      trackData.map((t) => t.id),
-    );
     const trackList: TrackItem[] = [];
-    const trackIdMap = [...new Set<number>(trackData.map((t) => t.id!))];
-    for (const trackId of trackIdMap) {
-      const item = trackData.find((t) => t.id === trackId);
+    for (const projection of trackProjections) {
+      const trackId = projection.id;
       trackList.push({
-        id: trackId,
-        duration: item?.duration ?? 0,
-        prompt: item?.promptRevisionId ? promptById.get(item.promptRevisionId) || "" : "",
-        state: (item?.state as "未生成" | "生成中" | "已完成" | "生成失败") ?? "未生成",
-        reason: item?.reason ?? "",
-        selectVideoId: Number(item?.videoId)!,
+        ...projection,
         medias: (() => {
           const storyboardMedias = storyboardTrackRecord[trackId] ?? [];
           const assetMedias = storyboardMedias.flatMap((s) => otherDataMap[s.id] ?? []);
@@ -182,27 +177,17 @@ export default router.post(
 
           return [...hasImageAssetData, ...storyboardMedias, ...notHasImageAssetData];
         })(),
-        videoList: await Promise.all(
-          videoList
-            .filter((v) => v.videoTrackId === trackId)
-            .map(async (v) => ({
-              id: v.id!,
-              src: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
-              state:
-                v.state === "生成成功"
-                  ? "已完成"
-                  : v.state === "生成中"
-                    ? "生成中"
-                    : v.state === "生成失败"
-                      ? "生成失败"
-                      : "未生成",
-              errorReason: v?.errorReason ?? "",
-            })),
-        ),
       });
     }
     res.status(200).send(
       success({
+        projectDefaults: {
+          vendorId: projectData.videoVendorId,
+          modelId: projectData.videoModelId,
+          capabilityId: projectData.videoCapabilityId,
+          outputPresetId: projectData.videoOutputPresetId,
+          aspectRatio: projectData.videoRatio,
+        },
         storyboardList: await Promise.all(
           storyboardList.map(async (s) => ({
             ...s,

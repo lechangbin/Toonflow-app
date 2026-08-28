@@ -17,6 +17,8 @@ import { isEletron } from "@/utils/getPath";
 import { ensureThumbnail, ThumbnailSize } from "@/utils/image";
 import { validateConfiguredVideoRuntimeData } from "@/video/bootstrap";
 import db, { dbReady } from "@/utils/db";
+import { resolveServerConfig } from "@/server/config";
+import { createHealthRouter } from "@/server/health";
 
 const app = express();
 const server = http.createServer(app);
@@ -153,6 +155,8 @@ export default async function startServe(randomPort: Boolean = false) {
     console.warn("静态网站目录不存在:", webDir);
   }
 
+  app.use(createHealthRouter());
+
   app.use(async (req, res, next) => {
     const setting = await u.db("o_setting").where("key", "tokenKey").select("value").first();
     if (!setting) return res.status(444).send({ message: "服务器秘钥未配置，请联系管理员" });
@@ -189,12 +193,13 @@ export default async function startServe(randomPort: Boolean = false) {
     res.status(err.status || 500).send(err);
   });
 
-  const port = randomPort ? 0 : 10588;
+  const serverConfig = resolveServerConfig();
+  const port = randomPort ? 0 : serverConfig.port;
   return await new Promise((resolve) => {
-    server.listen(port, async () => {
+    server.listen(port, serverConfig.host, async () => {
       const address = server.address();
       const realPort = typeof address === "string" ? address : address?.port;
-      console.log(`[服务启动成功]: http://localhost:${realPort}`);
+      console.log(`[服务启动成功]: http://${serverConfig.host}:${realPort}`);
       resolve(realPort);
     });
   });

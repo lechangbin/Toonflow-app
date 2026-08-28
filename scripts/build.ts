@@ -69,6 +69,22 @@ const mainBuildConfig: esbuild.BuildOptions = {
   },
 };
 
+const runtimeDataBuildConfig: esbuild.BuildOptions = {
+  entryPoints: ["scripts/initRuntimeData.ts"],
+  bundle: true,
+  minify: false,
+  format: "cjs",
+  outfile: "build/initRuntimeData.js",
+  allowOverwrite: true,
+  platform: "node",
+  target: "esnext",
+  tsconfig: "./tsconfig.json",
+  alias: {
+    "@": "./src",
+  },
+  sourcemap: false,
+};
+
 (async () => {
   try {
     console.log("🔨 开始构建...\n");
@@ -79,10 +95,15 @@ const mainBuildConfig: esbuild.BuildOptions = {
     );
 
     // 并行构建
-    await Promise.all([esbuild.build(appBuildConfig), esbuild.build(mainBuildConfig)]);
+    await Promise.all([
+      esbuild.build(appBuildConfig),
+      esbuild.build(mainBuildConfig),
+      esbuild.build(runtimeDataBuildConfig),
+    ]);
 
     console.log("✅ 后端服务构建完成: build/app.js");
     console.log("✅ Electron主进程构建完成: build/main.js");
+    console.log("✅ 运行数据初始化器构建完成: build/initRuntimeData.js");
     console.log("\n🎉 所有构建任务完成!\n");
   } catch (err) {
     console.error("❌ 构建失败:", err);

@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { createVideoTrack } from "@/video/trackCreation";
 const router = express.Router();
 export default router.post(
   "/",
@@ -77,13 +78,11 @@ export default router.post(
         await u.db("o_videoTrack").where("id", trackId).update({ duration: trackDuration });
       } else {
         // 不存在，新建videoTrack
-        const newTrackId = Date.now()
-        await u.db("o_videoTrack").insert({
-          id: newTrackId,
-          scriptId,
-          projectId,
-          duration: trackDuration,
-        });
+        const newTrackId = Date.now();
+        await createVideoTrack(
+          { db: u.db, getVendorModels: (vendorId) => u.vendor.getModelList(vendorId) },
+          { id: newTrackId, projectId, scriptId, duration: trackDuration },
+        );
         trackId = newTrackId;
       }
 
