@@ -44,23 +44,42 @@ export async function validateConfiguredVideoRuntimeData(
   knex: Knex,
   dataRoot = getPath(),
 ): Promise<VideoRuntimeValidationResult> {
-  const result = validateVideoRuntimeData(dataRoot);
   const promptProfiles = VideoPromptProfileRegistry.load(path.join(dataRoot, "promptProfiles", "video"));
   const vendorDir = path.join(dataRoot, "vendor");
-  const rows = await knex("o_vendorConfig").select("id", "inputValues", "models");
+  const sourceFiles = fs
+    .readdirSync(vendorDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
+    .map((entry) => entry.name)
+    .sort();
+  const expectedFiles = RETAINED_VENDOR_IDS.map((id) => `${id}.ts`).sort();
+  const missingFiles = expectedFiles.filter((fileName) => !sourceFiles.includes(fileName));
+  if (missingFiles.length) throw new Error(`Vendor Registry 缺少内置配置: ${missingFiles.join(", ")}`);
 
-  for (const row of rows) {
-    const sourcePath = path.join(vendorDir, `${row.id}.ts`);
-    if (!fs.existsSync(sourcePath)) throw new Error(`已配置 Vendor ${row.id} 缺少源文件 ${row.id}.ts`);
-    const runtime = loadVendorRuntime(fs.readFileSync(sourcePath, "utf8"), {
-      inputValues: JSON.parse(row.inputValues ?? "{}"),
-      customModels: JSON.parse(row.models ?? "[]"),
-      promptProfiles,
-    });
-    if (runtime.vendor.id !== row.id) {
-      throw new Error(`${row.id}.ts 导出的 Vendor id 是 ${runtime.vendor.id}`);
-    }
+  const rows = await knex("o_vendorConfig").select("id", "inputValues", "models");
+  const configuredById = new Map(rows.map((row) => [row.id, row]));
+  const missingConfiguredFiles = rows
+    .filter((row) => !sourceFiles.includes(`${row.id}.ts`))
+    .map((row) => `${row.id}.ts`);
+  if (missingConfiguredFiles.length) {
+    throw new Error(`已配置 Vendor 缺少源文件: ${missingConfiguredFiles.join(", ")}`);
   }
 
-  return result;
+  let videoModelCount = 0;
+  const vendorIds = sourceFiles.map((fileName) => {
+    const vendorId = fileName.replace(/\.ts$/, "");
+    const row = configuredById.get(vendorId);
+    const sourcePath = path.join(vendorDir, fileName);
+    const runtime = loadVendorRuntime(fs.readFileSync(sourcePath, "utf8"), {
+      inputValues: JSON.parse(row?.inputValues ?? "{}"),
+      customModels: JSON.parse(row?.models ?? "[]"),
+      promptProfiles,
+    });
+    if (runtime.vendor.id !== vendorId) {
+      throw new Error(`${fileName} 导出的 Vendor id 是 ${runtime.vendor.id}`);
+    }
+    videoModelCount += runtime.models.filter((model) => model.type === "video").length;
+    return runtime.vendor.id;
+  });
+
+  return { vendorIds, videoModelCount, promptProfileCount: promptProfiles.list().length };
 }

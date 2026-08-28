@@ -2,8 +2,6 @@ import path from "path";
 import fs from "fs";
 import { Knex } from "knex";
 import getPath from "@/utils/getPath";
-import { loadVendorRuntime } from "@/lib/vendorRuntime";
-import { VideoPromptProfileRegistry } from "@/video/promptProfile";
 import rawVendorData from "./vendor.json";
 import { failInterruptedVideoProduction } from "@/video/recovery";
 
@@ -153,7 +151,6 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   const removedBuiltInVendorIds = ["atlascloud", "deepseek", "grsai", "klingai", "null", "openai", "toonflow", "vidu"];
   await knex("o_vendorConfig").whereIn("id", removedBuiltInVendorIds).delete();
   const rootDir = path.join(dataRoot, "vendor");
-  const promptProfiles = VideoPromptProfileRegistry.load(path.join(dataRoot, "promptProfiles", "video"));
   if (fs.existsSync(rootDir)) {
     for (const fileName of fs.readdirSync(rootDir).filter((file) => file.endsWith(".ts"))) {
       if (removedBuiltInVendorIds.includes(fileName.replace(/\.ts$/, ""))) fs.rmSync(path.join(rootDir, fileName), { force: true });
@@ -177,7 +174,7 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   for (const id of defList) {
     if (!existingIds.includes(id)) {
       const tsCode = vendorData[`${id}.ts`];
-      if (tsCode) await tempOnsert(knex, tsCode, rootDir, promptProfiles);
+      if (tsCode) await tempOnsert(knex, id, tsCode, rootDir);
     }
   }
 
@@ -190,36 +187,30 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
 
   for (const id of retainedVendorIds) {
     const source = vendorData[`${id}.ts`];
-    if (source) writeVendorCode(id, source, rootDir, promptProfiles);
+    if (source) writeBuiltInVendorCode(id, source, rootDir);
   }
 };
 
-function writeVendorCode(
-  id: string,
-  tsCode: string,
-  rootDir: string,
-  promptProfiles: VideoPromptProfileRegistry,
-): void {
-  const runtime = loadVendorRuntime(tsCode, { promptProfiles });
-  if (runtime.vendor.id !== id) throw new Error(`供应商文件名 ${id} 与 Vendor id ${runtime.vendor.id} 不一致`);
+function writeBuiltInVendorCode(id: string, tsCode: string, rootDir: string): void {
+  // Built-in sources are validated while producing the bundle. Runtime bootstrap
+  // validates the persisted source once after migrations, with configured inputs.
   fs.mkdirSync(rootDir, { recursive: true });
   fs.writeFileSync(path.join(rootDir, `${id}.ts`), tsCode);
 }
 
 async function tempOnsert(
   knex: Knex,
+  id: string,
   tsCode: string,
   rootDir: string,
-  promptProfiles: VideoPromptProfileRegistry,
 ) {
-  const vendor = loadVendorRuntime(tsCode, { promptProfiles }).vendor;
-  const data = await knex("o_vendorConfig").where("id", vendor.id).first();
+  const data = await knex("o_vendorConfig").where("id", id).first();
   if (data) return;
   await knex("o_vendorConfig").insert({
-    id: vendor.id,
-    inputValues: JSON.stringify(vendor.inputValues ?? {}),
+    id,
+    inputValues: JSON.stringify({}),
     models: JSON.stringify([]),
     enable: 0,
   });
-  writeVendorCode(vendor.id, tsCode, rootDir, promptProfiles);
+  writeBuiltInVendorCode(id, tsCode, rootDir);
 }
