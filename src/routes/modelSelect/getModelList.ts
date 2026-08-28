@@ -13,9 +13,7 @@ export default router.post(
   async (req, res) => {
     const { type } = req.body;
     const dataList = await u.db("o_vendorConfig").select("id").where("enable", 1);
-    if (!dataList || dataList.length === 0) {
-      return res.status(404).send({ error: "模型未找到" });
-    }
+    if (!dataList.length) return res.status(200).send(success([]));
     const modelList = await Promise.all(dataList.map((i) => u.vendor.getModelList(i.id!)));
     const result = await Promise.all(
       dataList.map(async (data, index) => {
