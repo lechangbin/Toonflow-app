@@ -18,7 +18,7 @@ test("validates each configured Vendor once against the complete runtime registr
 
   try {
     const result = await validateConfiguredVideoRuntimeData(db, path.join(process.cwd(), "data"));
-    assert.deepEqual(result.vendorIds.sort(), ["agnes", "minimax", "volcengine", "volcengineSd2"]);
+    assert.deepEqual(result.vendorIds.sort(), ["agnes", "deepseek", "minimax", "volcengine", "volcengineSd2"]);
     assert.equal(result.videoModelCount, 8);
     assert.equal(result.promptProfileCount, 8);
   } finally {

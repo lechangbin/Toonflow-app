@@ -147,8 +147,8 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   await knex("o_prompt").where("type", "videoPromptGeneration").delete();
 
   //迁移供应商函数
-  const retainedVendorIds = ["agnes", "minimax", "volcengine", "volcengineSd2"];
-  const removedBuiltInVendorIds = ["atlascloud", "deepseek", "grsai", "klingai", "null", "openai", "toonflow", "vidu"];
+  const retainedVendorIds = ["agnes", "deepseek", "minimax", "volcengine", "volcengineSd2"];
+  const removedBuiltInVendorIds = ["atlascloud", "grsai", "klingai", "null", "openai", "toonflow", "vidu"];
   await knex("o_vendorConfig").whereIn("id", removedBuiltInVendorIds).delete();
   const rootDir = path.join(dataRoot, "vendor");
   if (fs.existsSync(rootDir)) {
@@ -169,11 +169,11 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
       fs.writeFileSync(path.join(rootDir, filename), code);
     }
   }
-  const defList = Object.keys(vendorData).map((filename) => filename.replace(/\.ts$/, ""));
   const existingIds = data.map((i: any) => i.id);
-  for (const id of defList) {
+  for (const id of retainedVendorIds) {
     if (!existingIds.includes(id)) {
-      const tsCode = vendorData[`${id}.ts`];
+      const sourcePath = path.join(rootDir, `${id}.ts`);
+      const tsCode = vendorData[`${id}.ts`] || (fs.existsSync(sourcePath) ? fs.readFileSync(sourcePath, "utf8") : undefined);
       if (tsCode) await tempOnsert(knex, id, tsCode, rootDir);
     }
   }

@@ -21,6 +21,10 @@ Only these built-in Vendor sources are retained. Additional user-created Vendor 
 | `volcengineSd2` | Seedance 2.0 / Fast | text, one source image | native, optional |
 | `minimax` | Hailuo 2.3 / Fast, Hailuo-02 | text, one source image; Hailuo-02 also strict first/last | none |
 
+DeepSeek is also retained as a text-only Vendor. Its official `deepseek-v4-flash` and
+`deepseek-v4-pro` models can be bound to Agent and Prompt Revision text requests; it does not
+participate in the Video Capability registry.
+
 The canonical capability IDs are `text-to-video`, `image-to-video`, `first-last-frame`, and `keyframe-to-video`. Video Models use `capabilities`; the former Video `mode` field is rejected. Image Model `mode` is a separate contract.
 
 Agnes keyframes use semantic roles. Two images mean `first-frame` to `last-frame`; three mean `first-frame` to `intermediate-keyframe` to `last-frame`. Array position never assigns meaning. Seedance nine-image reference generation is a deferred capability, not an extension of `image-to-video`.
