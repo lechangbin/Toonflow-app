@@ -652,6 +652,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             enable: 0,
           },
           {
+            id: "deepseek",
+            inputValues: "{}",
+            models: "[]",
+            enable: 0,
+          },
+          {
             id: "volcengineSd2",
             inputValues: "{}",
             models: "[]",

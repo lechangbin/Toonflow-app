@@ -50,7 +50,7 @@ test("a fresh database owns the explicit Video production records without legacy
     assert.ok(artifactColumns.videoTrackId);
 
     const vendorIds = (await knex("o_vendorConfig").select("id")).map((row) => row.id).sort();
-    assert.deepEqual(vendorIds, ["agnes", "minimax", "volcengine", "volcengineSd2"]);
+    assert.deepEqual(vendorIds, ["agnes", "deepseek", "minimax", "volcengine", "volcengineSd2"]);
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });
@@ -101,6 +101,7 @@ test("an upgraded database drops legacy Video routing and creates durable produc
     assert.equal(await knex.schema.hasTable("o_generationTask"), true);
     assert.equal(await knex.schema.hasTable("o_artifactRevision"), true);
     assert.equal(await knex("o_vendorConfig").where("id", "openai").first(), undefined);
+    assert.ok(await knex("o_vendorConfig").where("id", "deepseek").first());
     assert.equal(await knex("o_prompt").where("type", "videoPromptGeneration").first(), undefined);
   } finally {
     await knex.destroy();

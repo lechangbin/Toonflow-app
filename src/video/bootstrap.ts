@@ -6,7 +6,7 @@ import { loadVendorRuntime } from "@/lib/vendorRuntime";
 import getPath from "@/utils/getPath";
 import { VideoPromptProfileRegistry } from "./promptProfile";
 
-export const RETAINED_VENDOR_IDS = ["agnes", "minimax", "volcengine", "volcengineSd2"] as const;
+export const RETAINED_VENDOR_IDS = ["agnes", "deepseek", "minimax", "volcengine", "volcengineSd2"] as const;
 
 export interface VideoRuntimeValidationResult {
   vendorIds: string[];
