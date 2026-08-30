@@ -236951,6 +236951,43 @@ function parseVideoModel(value) {
   }
   return parsed.data;
 }
+function validateVideoCapabilitySelection(modelValue, selection) {
+  const model = parseVideoModel(modelValue);
+  if (selection.modelId !== model.modelName) {
+    throw new VideoCapabilityError(
+      "GENERATION_COMMAND_INVALID",
+      `selection model ${selection.modelId} does not match ${model.modelName}`
+    );
+  }
+  const capability = model.capabilities.find((item) => item.id === selection.capabilityId);
+  if (!capability) {
+    throw new VideoCapabilityError(
+      "CAPABILITY_NOT_SUPPORTED",
+      `${model.modelName} does not support ${selection.capabilityId}`
+    );
+  }
+  const audioMatches = capability.audio.generation === "none" && selection.audio.generation === "none" || capability.audio.generation === "native" && selection.audio.generation === "native" && (capability.audio.policy === "optional" || selection.audio.enabled);
+  if (!audioMatches) {
+    throw new VideoCapabilityError(
+      "AUDIO_CONTRACT_MISMATCH",
+      `${model.modelName}/${capability.id} does not allow ${JSON.stringify(selection.audio)} under ${JSON.stringify(capability.audio)}`
+    );
+  }
+  const preset = capability.outputPresets.find((item) => item.id === selection.output.presetId);
+  if (!preset) {
+    throw new VideoCapabilityError(
+      "OUTPUT_PRESET_NOT_SUPPORTED",
+      `${model.modelName}/${capability.id} does not expose preset ${selection.output.presetId}`
+    );
+  }
+  if (preset.resolution !== selection.output.resolution || !preset.aspectRatios.includes(selection.output.aspectRatio) || !durationIsAllowed(preset, selection.output.duration)) {
+    throw new VideoCapabilityError(
+      "OUTPUT_SELECTION_INVALID",
+      `output does not match preset ${preset.id} for ${model.modelName}/${capability.id}`
+    );
+  }
+  return capability;
+}
 function validateVideoGenerationCommand(modelValue, commandValue) {
   const model = parseVideoModel(modelValue);
   const parsedCommand = validatedVideoGenerationCommandSchema.safeParse(commandValue);
@@ -236958,39 +236995,7 @@ function validateVideoGenerationCommand(modelValue, commandValue) {
     throw new VideoCapabilityError("GENERATION_COMMAND_INVALID", external_exports.prettifyError(parsedCommand.error));
   }
   const command = parsedCommand.data;
-  if (command.modelId !== model.modelName) {
-    throw new VideoCapabilityError(
-      "GENERATION_COMMAND_INVALID",
-      `command model ${command.modelId} does not match ${model.modelName}`
-    );
-  }
-  const capability = model.capabilities.find((item) => item.id === command.capabilityId);
-  if (!capability) {
-    throw new VideoCapabilityError(
-      "CAPABILITY_NOT_SUPPORTED",
-      `${model.modelName} does not support ${command.capabilityId}`
-    );
-  }
-  const audioMatches = capability.audio.generation === "none" && command.audio.generation === "none" || capability.audio.generation === "native" && command.audio.generation === "native" && (capability.audio.policy === "optional" || command.audio.enabled);
-  if (!audioMatches) {
-    throw new VideoCapabilityError(
-      "AUDIO_CONTRACT_MISMATCH",
-      `${model.modelName}/${capability.id} does not allow ${JSON.stringify(command.audio)} under ${JSON.stringify(capability.audio)}`
-    );
-  }
-  const preset = capability.outputPresets.find((item) => item.id === command.output.presetId);
-  if (!preset) {
-    throw new VideoCapabilityError(
-      "OUTPUT_PRESET_NOT_SUPPORTED",
-      `${model.modelName}/${capability.id} does not expose preset ${command.output.presetId}`
-    );
-  }
-  if (preset.resolution !== command.output.resolution || !preset.aspectRatios.includes(command.output.aspectRatio) || !durationIsAllowed(preset, command.output.duration)) {
-    throw new VideoCapabilityError(
-      "OUTPUT_SELECTION_INVALID",
-      `output does not match preset ${preset.id} for ${model.modelName}/${capability.id}`
-    );
-  }
+  validateVideoCapabilitySelection(model, command);
   return command;
 }
 var videoCapabilityIdSchema, videoInputRoleSchema, videoInputSchema, videoAudioContractSchema, integerRangeDurationsSchema, valueDurationsSchema, videoOutputPresetSchema, capabilityBaseShape, textToVideoCapabilitySchema, imageToVideoCapabilitySchema, firstLastFrameCapabilitySchema, keyframeToVideoCapabilitySchema, videoCapabilitySchema, videoModelSchema, resolvedImageSchema, videoOutputSelectionSchema, videoAudioSelectionSchema, commandBaseShape, textToVideoCommandSchema, imageToVideoCommandSchema, firstLastFrameCommandSchema, keyframeToVideoCommandSchema, validatedVideoGenerationCommandSchema, VideoCapabilityError;
@@ -242098,16 +242103,101 @@ var init_addTrack = __esm({
   }
 });
 
+// src/video/productionContract.ts
+function validateVideoTrackInputReferences(capability, references) {
+  const declaredRoles = new Map(capability.inputs.map((input) => [input.role, input]));
+  const suppliedRoles = /* @__PURE__ */ new Set();
+  for (const reference of references) {
+    if (suppliedRoles.has(reference.role)) throw new Error(`\u8F93\u5165\u89D2\u8272 ${reference.role} \u53EA\u80FD\u51FA\u73B0\u4E00\u6B21`);
+    suppliedRoles.add(reference.role);
+    if (!declaredRoles.has(reference.role)) {
+      throw new Error(`${capability.id} \u4E0D\u63A5\u53D7\u8F93\u5165\u89D2\u8272 ${reference.role}`);
+    }
+  }
+  for (const input of capability.inputs) {
+    if (input.required && !suppliedRoles.has(input.role)) {
+      throw new Error(`${capability.id} \u7F3A\u5C11\u5FC5\u9700\u8F93\u5165\u89D2\u8272 ${input.role}`);
+    }
+  }
+}
+var videoTrackInputReferenceSchema, videoTrackSelectionSchema, videoGenerationItemSchema, videoGenerationBatchRequestSchema;
+var init_productionContract = __esm({
+  "src/video/productionContract.ts"() {
+    "use strict";
+    init_zod();
+    init_capability();
+    videoTrackInputReferenceSchema = external_exports.object({
+      role: videoInputRoleSchema,
+      source: external_exports.enum(["storyboard", "asset", "uploaded-media"]),
+      sourceId: external_exports.number().int().positive().optional(),
+      filePath: external_exports.string().min(1).optional()
+    }).strict().superRefine((reference, context2) => {
+      if (reference.source === "uploaded-media" && !reference.filePath) {
+        context2.addIssue({ code: "custom", path: ["filePath"], message: "uploaded-media requires filePath" });
+      }
+      if (reference.source === "uploaded-media" && reference.sourceId) {
+        context2.addIssue({ code: "custom", path: ["sourceId"], message: "uploaded-media cannot include sourceId" });
+      }
+      if (reference.source !== "uploaded-media" && !reference.sourceId) {
+        context2.addIssue({ code: "custom", path: ["sourceId"], message: `${reference.source} requires sourceId` });
+      }
+      if (reference.source !== "uploaded-media" && reference.filePath) {
+        context2.addIssue({ code: "custom", path: ["filePath"], message: `${reference.source} cannot include filePath` });
+      }
+    });
+    videoTrackSelectionSchema = external_exports.object({
+      vendorId: external_exports.string().min(1),
+      modelId: external_exports.string().min(1),
+      capabilityId: videoCapabilityIdSchema,
+      inputs: external_exports.array(videoTrackInputReferenceSchema),
+      output: videoOutputSelectionSchema,
+      audio: videoAudioSelectionSchema
+    }).strict();
+    videoGenerationItemSchema = external_exports.object({
+      trackId: external_exports.number().int().positive(),
+      vendorId: external_exports.string().min(1),
+      modelId: external_exports.string().min(1),
+      capabilityId: videoCapabilityIdSchema,
+      inputs: external_exports.array(videoTrackInputReferenceSchema),
+      output: videoOutputSelectionSchema,
+      audio: videoAudioSelectionSchema,
+      promptRevisionId: external_exports.number().int().positive()
+    }).strict();
+    videoGenerationBatchRequestSchema = external_exports.object({
+      projectId: external_exports.number().int().positive(),
+      scriptId: external_exports.number().int().positive(),
+      requestedBy: external_exports.enum(["user", "project-agent"]),
+      items: external_exports.array(videoGenerationItemSchema).nonempty()
+    }).strict().superRefine((request, context2) => {
+      const trackIds = /* @__PURE__ */ new Set();
+      for (const [index, item] of request.items.entries()) {
+        if (trackIds.has(item.trackId)) {
+          context2.addIssue({ code: "custom", path: ["items", index, "trackId"], message: "each Track may appear once per action" });
+        }
+        trackIds.add(item.trackId);
+      }
+    });
+  }
+});
+
 // src/video/promptGeneration.ts
 function createVideoPromptGeneration(dependencies) {
+  function serialize2(value) {
+    return JSON.stringify(value);
+  }
+  async function validateTrackSelection(input) {
+    const models = await dependencies.getVendorModels(input.vendorId);
+    const model = models.find((item) => item.modelName === input.modelId && item.type === "video");
+    if (!model) throw new Error(`\u672A\u627E\u5230 Video Model ${input.vendorId}:${input.modelId}`);
+    const capability = validateVideoCapabilitySelection(model, input);
+    validateVideoTrackInputReferences(capability, input.inputs);
+    return capability;
+  }
   async function generateVideoPromptRevision2(inputValue) {
     const input = generateVideoPromptRequestSchema.parse(inputValue);
     const track = await dependencies.db("o_videoTrack").where({ id: input.trackId, projectId: input.projectId }).first();
     if (!track) throw new Error(`Video Track ${input.trackId} \u4E0D\u5C5E\u4E8E Project ${input.projectId}`);
-    const models = await dependencies.getVendorModels(input.vendorId);
-    const model = models.find((item) => item.modelName === input.modelId && item.type === "video");
-    const capability = model?.capabilities?.find((item) => item.id === input.capabilityId);
-    if (!capability) throw new Error(`${input.vendorId}:${input.modelId} \u4E0D\u652F\u6301 ${input.capabilityId}`);
+    const capability = await validateTrackSelection(input);
     const profile = dependencies.profiles.get(capability.promptProfileId);
     const [actionId] = await dependencies.db("o_productionAction").insert({
       projectId: input.projectId,
@@ -242138,7 +242228,11 @@ function createVideoPromptGeneration(dependencies) {
           vendorId: input.vendorId,
           modelId: input.modelId,
           capabilityId: input.capabilityId,
+          inputRefs: serialize2(input.inputs),
+          outputSelection: serialize2(input.output),
+          audioSelection: serialize2(input.audio),
           promptRevisionId: ids[0],
+          duration: input.output.duration,
           state: "\u5DF2\u5B8C\u6210"
         });
         await trx("o_productionAction").where("id", actionId).update({ status: "succeeded", completedAt: dependencies.now() });
@@ -242164,11 +242258,15 @@ function createVideoPromptGeneration(dependencies) {
   }
   async function createCustomVideoPromptRevision2(inputValue) {
     const input = customVideoPromptRevisionSchema.parse(inputValue);
+    const capability = await validateTrackSelection(input);
     return dependencies.db.transaction(async (trx) => {
       const track = await trx("o_videoTrack").where({ id: input.trackId, projectId: input.projectId }).first();
       if (!track?.promptRevisionId) throw new Error("Video Track \u5C1A\u65E0\u53EF\u7F16\u8F91\u7684 Prompt Revision");
-      const current = await trx("o_promptRevision").where("id", track.promptRevisionId).first();
-      if (!current) throw new Error(`Prompt Revision ${track.promptRevisionId} \u4E0D\u5B58\u5728`);
+      const current = await trx("o_promptRevision").where({ id: track.promptRevisionId, projectId: input.projectId, videoTrackId: input.trackId }).first();
+      if (!current) throw new Error(`Prompt Revision ${track.promptRevisionId} \u4E0D\u5C5E\u4E8E\u5F53\u524D Project/Track`);
+      if (current.profileId !== capability.promptProfileId) {
+        throw new Error(`${input.modelId}/${input.capabilityId} \u8981\u6C42 Prompt Profile ${capability.promptProfileId}`);
+      }
       const [actionId] = await trx("o_productionAction").insert({
         projectId: input.projectId,
         actionType: "edit-video-prompt",
@@ -242189,7 +242287,18 @@ function createVideoPromptGeneration(dependencies) {
         status: "active",
         createdAt: dependencies.now()
       });
-      await trx("o_videoTrack").where("id", input.trackId).update({ promptRevisionId, state: "\u5DF2\u5B8C\u6210", reason: null });
+      await trx("o_videoTrack").where("id", input.trackId).update({
+        vendorId: input.vendorId,
+        modelId: input.modelId,
+        capabilityId: input.capabilityId,
+        inputRefs: serialize2(input.inputs),
+        outputSelection: serialize2(input.output),
+        audioSelection: serialize2(input.audio),
+        promptRevisionId,
+        duration: input.output.duration,
+        state: "\u5DF2\u5B8C\u6210",
+        reason: null
+      });
       return { actionId, promptRevisionId, renderedPrompt: input.renderedPrompt, strategy: "custom" };
     });
   }
@@ -242224,18 +242333,16 @@ var init_promptGeneration = __esm({
     init_zod();
     init_utils3();
     init_capability();
+    init_productionContract();
     init_promptProfile();
-    generateVideoPromptRequestSchema = external_exports.object({
+    generateVideoPromptRequestSchema = videoTrackSelectionSchema.extend({
       trackId: external_exports.number().int().positive(),
       projectId: external_exports.number().int().positive(),
-      vendorId: external_exports.string().min(1),
-      modelId: external_exports.string().min(1),
-      capabilityId: videoCapabilityIdSchema,
       requestedBy: external_exports.enum(["user", "project-agent"]).default("user"),
       strategy: external_exports.enum(["standard", "standard-with-guidance"]),
       brief: videoPromptBriefSchema
     }).strict();
-    customVideoPromptRevisionSchema = external_exports.object({
+    customVideoPromptRevisionSchema = videoTrackSelectionSchema.extend({
       trackId: external_exports.number().int().positive(),
       projectId: external_exports.number().int().positive(),
       requestedBy: external_exports.enum(["user", "project-agent"]).default("user"),
@@ -242267,75 +242374,6 @@ var init_batchGeneratePrompt = __esm({
         res.status(200).send(success3(revisions));
       } catch (error73) {
         next(error73);
-      }
-    });
-  }
-});
-
-// src/video/productionContract.ts
-function validateVideoTrackInputReferences(capability, references) {
-  const declaredRoles = new Map(capability.inputs.map((input) => [input.role, input]));
-  const suppliedRoles = /* @__PURE__ */ new Set();
-  for (const reference of references) {
-    if (suppliedRoles.has(reference.role)) throw new Error(`\u8F93\u5165\u89D2\u8272 ${reference.role} \u53EA\u80FD\u51FA\u73B0\u4E00\u6B21`);
-    suppliedRoles.add(reference.role);
-    if (!declaredRoles.has(reference.role)) {
-      throw new Error(`${capability.id} \u4E0D\u63A5\u53D7\u8F93\u5165\u89D2\u8272 ${reference.role}`);
-    }
-  }
-  for (const input of capability.inputs) {
-    if (input.required && !suppliedRoles.has(input.role)) {
-      throw new Error(`${capability.id} \u7F3A\u5C11\u5FC5\u9700\u8F93\u5165\u89D2\u8272 ${input.role}`);
-    }
-  }
-}
-var videoTrackInputReferenceSchema, videoGenerationItemSchema, videoGenerationBatchRequestSchema;
-var init_productionContract = __esm({
-  "src/video/productionContract.ts"() {
-    "use strict";
-    init_zod();
-    init_capability();
-    videoTrackInputReferenceSchema = external_exports.object({
-      role: videoInputRoleSchema,
-      source: external_exports.enum(["storyboard", "asset", "uploaded-media"]),
-      sourceId: external_exports.number().int().positive().optional(),
-      filePath: external_exports.string().min(1).optional()
-    }).strict().superRefine((reference, context2) => {
-      if (reference.source === "uploaded-media" && !reference.filePath) {
-        context2.addIssue({ code: "custom", path: ["filePath"], message: "uploaded-media requires filePath" });
-      }
-      if (reference.source === "uploaded-media" && reference.sourceId) {
-        context2.addIssue({ code: "custom", path: ["sourceId"], message: "uploaded-media cannot include sourceId" });
-      }
-      if (reference.source !== "uploaded-media" && !reference.sourceId) {
-        context2.addIssue({ code: "custom", path: ["sourceId"], message: `${reference.source} requires sourceId` });
-      }
-      if (reference.source !== "uploaded-media" && reference.filePath) {
-        context2.addIssue({ code: "custom", path: ["filePath"], message: `${reference.source} cannot include filePath` });
-      }
-    });
-    videoGenerationItemSchema = external_exports.object({
-      trackId: external_exports.number().int().positive(),
-      vendorId: external_exports.string().min(1),
-      modelId: external_exports.string().min(1),
-      capabilityId: videoCapabilityIdSchema,
-      inputs: external_exports.array(videoTrackInputReferenceSchema),
-      output: videoOutputSelectionSchema,
-      audio: videoAudioSelectionSchema,
-      promptRevisionId: external_exports.number().int().positive()
-    }).strict();
-    videoGenerationBatchRequestSchema = external_exports.object({
-      projectId: external_exports.number().int().positive(),
-      scriptId: external_exports.number().int().positive(),
-      requestedBy: external_exports.enum(["user", "project-agent"]),
-      items: external_exports.array(videoGenerationItemSchema).nonempty()
-    }).strict().superRefine((request, context2) => {
-      const trackIds = /* @__PURE__ */ new Set();
-      for (const [index, item] of request.items.entries()) {
-        if (trackIds.has(item.trackId)) {
-          context2.addIssue({ code: "custom", path: ["items", index, "trackId"], message: "each Track may appear once per action" });
-        }
-        trackIds.add(item.trackId);
       }
     });
   }
@@ -243046,6 +243084,42 @@ async function readVideoTrackProjections(dependencies, input) {
         track.outputSelection,
         (value) => videoOutputSelectionSchema.parse(value)
       );
+      const trackTasks = tasks.filter((task) => task.videoTrackId === track.id);
+      const latestTask = trackTasks.at(-1);
+      const trackArtifacts = artifacts.filter((artifact) => artifact.videoTrackId === track.id);
+      const latestArtifact = trackArtifacts.at(-1);
+      const trackVideos = videos.filter((video) => video.videoTrackId === track.id);
+      const selectedVideo = track.videoId ? trackVideos.find((video) => video.id === track.videoId) : void 0;
+      if (track.videoId && !selectedVideo) {
+        throw new Error(`Video ${track.videoId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`);
+      }
+      const selectedArtifact = selectedVideo?.artifactRevisionId ? trackArtifacts.find((artifact) => artifact.id === selectedVideo.artifactRevisionId) : void 0;
+      if (selectedVideo?.artifactRevisionId && !selectedArtifact) {
+        throw new Error(`Artifact Revision ${selectedVideo.artifactRevisionId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`);
+      }
+      if (selectedArtifact?.videoId && selectedArtifact.videoId !== selectedVideo?.id) {
+        throw new Error(`Artifact Revision ${selectedArtifact.id} \u4E0D\u5C5E\u4E8E Video ${selectedVideo?.id}`);
+      }
+      if (latestArtifact?.videoId && !trackVideos.some((video) => video.id === latestArtifact.videoId)) {
+        throw new Error(`Artifact Revision ${latestArtifact.id} \u7684 Video ${latestArtifact.videoId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`);
+      }
+      if (latestArtifact?.generationTaskId && !trackTasks.some((task) => task.id === latestArtifact.generationTaskId)) {
+        throw new Error(
+          `Artifact Revision ${latestArtifact.id} \u7684 Generation Task ${latestArtifact.generationTaskId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`
+        );
+      }
+      for (const video of trackVideos) {
+        if (video.generationTaskId && !trackTasks.some((task) => task.id === video.generationTaskId)) {
+          throw new Error(`Video ${video.id} \u7684 Generation Task ${video.generationTaskId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`);
+        }
+        const artifact = video.artifactRevisionId ? trackArtifacts.find((candidate) => candidate.id === video.artifactRevisionId) : void 0;
+        if (video.artifactRevisionId && !artifact) {
+          throw new Error(`Artifact Revision ${video.artifactRevisionId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`);
+        }
+        if (artifact?.videoId && artifact.videoId !== video.id) {
+          throw new Error(`Artifact Revision ${artifact.id} \u4E0D\u5C5E\u4E8E Video ${video.id}`);
+        }
+      }
       let promptRevision = null;
       if (track.promptRevisionId) {
         const revision = await dependencies.db("o_promptRevision").where("id", track.promptRevisionId).first();
@@ -243073,24 +243147,9 @@ async function readVideoTrackProjections(dependencies, input) {
           createdAt: revision.createdAt
         };
       }
-      const trackTasks = tasks.filter((task) => task.videoTrackId === track.id);
-      const latestTask = trackTasks.at(-1);
-      const trackArtifacts = artifacts.filter((artifact) => artifact.videoTrackId === track.id);
-      const latestArtifact = trackArtifacts.at(-1);
-      const selectedVideo = track.videoId ? videos.find((video) => video.id === track.videoId) : void 0;
-      if (track.videoId && !selectedVideo) {
-        throw new Error(`Video ${track.videoId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`);
-      }
-      const selectedArtifact = selectedVideo?.artifactRevisionId ? trackArtifacts.find((artifact) => artifact.id === selectedVideo.artifactRevisionId) : void 0;
-      if (selectedVideo?.artifactRevisionId && !selectedArtifact) {
-        throw new Error(`Artifact Revision ${selectedVideo.artifactRevisionId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`);
-      }
       const videoList = await Promise.all(
-        videos.filter((video) => video.videoTrackId === track.id).map(async (video) => {
+        trackVideos.map(async (video) => {
           const artifact = video.artifactRevisionId ? trackArtifacts.find((candidate) => candidate.id === video.artifactRevisionId) : void 0;
-          if (video.artifactRevisionId && !artifact) {
-            throw new Error(`Artifact Revision ${video.artifactRevisionId} \u4E0D\u5C5E\u4E8E Video Track ${track.id}`);
-          }
           return {
             id: video.id,
             src: video.filePath ? await dependencies.getFileUrl(video.filePath) : "",
@@ -259763,13 +259822,17 @@ init_vendorRuntime();
 init_getPath();
 init_promptProfile();
 var RETAINED_VENDOR_IDS = ["agnes", "minimax", "volcengine", "volcengineSd2"];
-async function validateConfiguredVideoRuntimeData(knex3, dataRoot = getPath_default()) {
-  const promptProfiles = VideoPromptProfileRegistry.load(import_node_path7.default.join(dataRoot, "promptProfiles", "video"));
-  const vendorDir = import_node_path7.default.join(dataRoot, "vendor");
+function readVendorSourceFiles(vendorDir) {
   const sourceFiles = import_node_fs3.default.readdirSync(vendorDir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".ts")).map((entry) => entry.name).sort();
   const expectedFiles = RETAINED_VENDOR_IDS.map((id) => `${id}.ts`).sort();
   const missingFiles = expectedFiles.filter((fileName) => !sourceFiles.includes(fileName));
   if (missingFiles.length) throw new Error(`Vendor Registry \u7F3A\u5C11\u5185\u7F6E\u914D\u7F6E: ${missingFiles.join(", ")}`);
+  return sourceFiles;
+}
+async function validateConfiguredVideoRuntimeData(knex3, dataRoot = getPath_default()) {
+  const promptProfiles = VideoPromptProfileRegistry.load(import_node_path7.default.join(dataRoot, "promptProfiles", "video"));
+  const vendorDir = import_node_path7.default.join(dataRoot, "vendor");
+  const sourceFiles = readVendorSourceFiles(vendorDir);
   const rows = await knex3("o_vendorConfig").select("id", "inputValues", "models");
   const configuredById = new Map(rows.map((row) => [row.id, row]));
   const missingConfiguredFiles = rows.filter((row) => !sourceFiles.includes(`${row.id}.ts`)).map((row) => `${row.id}.ts`);

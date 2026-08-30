@@ -136,10 +136,47 @@ test("fake prompt and video dependencies drive a successful durable orchestratio
       vendorId: "agnes",
       modelId: "agnes-video-v2.0",
       capabilityId: "text-to-video",
+      inputs: [],
+      output: { presetId: "720p", duration: 5, resolution: "720p", aspectRatio: "16:9" },
+      audio: { generation: "native", enabled: true },
       requestedBy: "project-agent",
       strategy: "standard-with-guidance",
       brief: { subject: "A lantern", motion: "Slowly sways in the wind" },
     });
+    let track = await db("o_videoTrack").where("id", 11).first();
+    assert.equal(track.promptRevisionId, prompt.promptRevisionId);
+    assert.deepEqual(JSON.parse(track.inputRefs), []);
+    assert.deepEqual(JSON.parse(track.outputSelection), {
+      presetId: "720p",
+      duration: 5,
+      resolution: "720p",
+      aspectRatio: "16:9",
+    });
+    assert.deepEqual(JSON.parse(track.audioSelection), { generation: "native", enabled: true });
+
+    const editedPrompt = await promptGeneration.createCustomVideoPromptRevision({
+      trackId: 11,
+      projectId: 1,
+      vendorId: "agnes",
+      modelId: "agnes-video-v2.0",
+      capabilityId: "text-to-video",
+      inputs: [],
+      output: { presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "16:9" },
+      audio: { generation: "native", enabled: true },
+      requestedBy: "user",
+      renderedPrompt: "A lantern sways in the wind",
+    });
+    track = await db("o_videoTrack").where("id", 11).first();
+    assert.equal(track.vendorId, "agnes");
+    assert.equal(track.modelId, "agnes-video-v2.0");
+    assert.equal(track.capabilityId, "text-to-video");
+    assert.deepEqual(JSON.parse(track.outputSelection), {
+      presetId: "720p",
+      duration: 6,
+      resolution: "720p",
+      aspectRatio: "16:9",
+    });
+    assert.equal(track.promptRevisionId, editedPrompt.promptRevisionId);
 
     const production = createVideoProduction({
       db,
@@ -171,9 +208,9 @@ test("fake prompt and video dependencies drive a successful durable orchestratio
           modelId: "agnes-video-v2.0",
           capabilityId: "text-to-video",
           inputs: [],
-          output: { presetId: "720p", duration: 5, resolution: "720p", aspectRatio: "16:9" },
+          output: { presetId: "720p", duration: 6, resolution: "720p", aspectRatio: "16:9" },
           audio: { generation: "native", enabled: true },
-          promptRevisionId: prompt.promptRevisionId,
+          promptRevisionId: editedPrompt.promptRevisionId,
         },
       ],
     });
@@ -184,9 +221,9 @@ test("fake prompt and video dependencies drive a successful durable orchestratio
     assert.equal((await db("o_generationTask").first()).status, "succeeded");
     assert.equal((await db("o_artifactRevision").first()).status, "generated");
     assert.equal((await db("o_video").first()).state, "生成成功");
-    const track = await db("o_videoTrack").where("id", 11).first();
+    track = await db("o_videoTrack").where("id", 11).first();
     assert.equal(track.state, "已完成");
-    assert.equal(track.promptRevisionId, prompt.promptRevisionId);
+    assert.equal(track.promptRevisionId, editedPrompt.promptRevisionId);
     assert.deepEqual(JSON.parse(track.audioSelection), { generation: "native", enabled: true });
   } finally {
     await db.destroy();
@@ -211,6 +248,9 @@ test("a fake adapter failure rejects the Artifact and fails every owning record"
       vendorId: "agnes",
       modelId: "agnes-video-v2.0",
       capabilityId: "text-to-video",
+      inputs: [],
+      output: { presetId: "720p", duration: 5, resolution: "720p", aspectRatio: "16:9" },
+      audio: { generation: "native", enabled: true },
       requestedBy: "user",
       strategy: "standard",
       brief: { subject: "A lantern" },

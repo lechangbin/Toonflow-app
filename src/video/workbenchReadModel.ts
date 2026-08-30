@@ -104,6 +104,50 @@ export async function readVideoTrackProjections(
         videoOutputSelectionSchema.parse(value),
       );
 
+      const trackTasks = tasks.filter((task) => task.videoTrackId === track.id);
+      const latestTask = trackTasks.at(-1);
+      const trackArtifacts = artifacts.filter((artifact) => artifact.videoTrackId === track.id);
+      const latestArtifact = trackArtifacts.at(-1);
+      const trackVideos = videos.filter((video) => video.videoTrackId === track.id);
+      const selectedVideo = track.videoId
+        ? trackVideos.find((video) => video.id === track.videoId)
+        : undefined;
+      if (track.videoId && !selectedVideo) {
+        throw new Error(`Video ${track.videoId} 不属于 Video Track ${track.id}`);
+      }
+      const selectedArtifact = selectedVideo?.artifactRevisionId
+        ? trackArtifacts.find((artifact) => artifact.id === selectedVideo.artifactRevisionId)
+        : undefined;
+      if (selectedVideo?.artifactRevisionId && !selectedArtifact) {
+        throw new Error(`Artifact Revision ${selectedVideo.artifactRevisionId} 不属于 Video Track ${track.id}`);
+      }
+      if (selectedArtifact?.videoId && selectedArtifact.videoId !== selectedVideo?.id) {
+        throw new Error(`Artifact Revision ${selectedArtifact.id} 不属于 Video ${selectedVideo?.id}`);
+      }
+
+      if (latestArtifact?.videoId && !trackVideos.some((video) => video.id === latestArtifact.videoId)) {
+        throw new Error(`Artifact Revision ${latestArtifact.id} 的 Video ${latestArtifact.videoId} 不属于 Video Track ${track.id}`);
+      }
+      if (latestArtifact?.generationTaskId && !trackTasks.some((task) => task.id === latestArtifact.generationTaskId)) {
+        throw new Error(
+          `Artifact Revision ${latestArtifact.id} 的 Generation Task ${latestArtifact.generationTaskId} 不属于 Video Track ${track.id}`,
+        );
+      }
+      for (const video of trackVideos) {
+        if (video.generationTaskId && !trackTasks.some((task) => task.id === video.generationTaskId)) {
+          throw new Error(`Video ${video.id} 的 Generation Task ${video.generationTaskId} 不属于 Video Track ${track.id}`);
+        }
+        const artifact = video.artifactRevisionId
+          ? trackArtifacts.find((candidate) => candidate.id === video.artifactRevisionId)
+          : undefined;
+        if (video.artifactRevisionId && !artifact) {
+          throw new Error(`Artifact Revision ${video.artifactRevisionId} 不属于 Video Track ${track.id}`);
+        }
+        if (artifact?.videoId && artifact.videoId !== video.id) {
+          throw new Error(`Artifact Revision ${artifact.id} 不属于 Video ${video.id}`);
+        }
+      }
+
       let promptRevision = null;
       if (track.promptRevisionId) {
         const revision = await dependencies.db("o_promptRevision").where("id", track.promptRevisionId).first();
@@ -128,31 +172,12 @@ export async function readVideoTrackProjections(
         };
       }
 
-      const trackTasks = tasks.filter((task) => task.videoTrackId === track.id);
-      const latestTask = trackTasks.at(-1);
-      const trackArtifacts = artifacts.filter((artifact) => artifact.videoTrackId === track.id);
-      const latestArtifact = trackArtifacts.at(-1);
-      const selectedVideo = track.videoId ? videos.find((video) => video.id === track.videoId) : undefined;
-      if (track.videoId && !selectedVideo) {
-        throw new Error(`Video ${track.videoId} 不属于 Video Track ${track.id}`);
-      }
-      const selectedArtifact = selectedVideo?.artifactRevisionId
-        ? trackArtifacts.find((artifact) => artifact.id === selectedVideo.artifactRevisionId)
-        : undefined;
-      if (selectedVideo?.artifactRevisionId && !selectedArtifact) {
-        throw new Error(`Artifact Revision ${selectedVideo.artifactRevisionId} 不属于 Video Track ${track.id}`);
-      }
-
       const videoList = await Promise.all(
-        videos
-          .filter((video) => video.videoTrackId === track.id)
+        trackVideos
           .map(async (video) => {
             const artifact = video.artifactRevisionId
               ? trackArtifacts.find((candidate) => candidate.id === video.artifactRevisionId)
               : undefined;
-            if (video.artifactRevisionId && !artifact) {
-              throw new Error(`Artifact Revision ${video.artifactRevisionId} 不属于 Video Track ${track.id}`);
-            }
             return {
               id: video.id,
               src: video.filePath ? await dependencies.getFileUrl(video.filePath) : "",

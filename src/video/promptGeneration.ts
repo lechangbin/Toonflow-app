@@ -3,7 +3,8 @@ import type { Knex } from "knex";
 import { z } from "zod";
 
 import u from "@/utils";
-import { videoCapabilityIdSchema } from "./capability";
+import { validateVideoCapabilitySelection } from "./capability";
+import { validateVideoTrackInputReferences, videoTrackSelectionSchema } from "./productionContract";
 import {
   VideoPromptProfileRegistry,
   createVideoPromptDraftInstruction,
@@ -13,13 +14,10 @@ import {
   videoPromptDraftSchema,
 } from "./promptProfile";
 
-export const generateVideoPromptRequestSchema = z
-  .object({
+export const generateVideoPromptRequestSchema = videoTrackSelectionSchema
+  .extend({
     trackId: z.number().int().positive(),
     projectId: z.number().int().positive(),
-    vendorId: z.string().min(1),
-    modelId: z.string().min(1),
-    capabilityId: videoCapabilityIdSchema,
     requestedBy: z.enum(["user", "project-agent"]).default("user"),
     strategy: z.enum(["standard", "standard-with-guidance"]),
     brief: videoPromptBriefSchema,
@@ -28,8 +26,8 @@ export const generateVideoPromptRequestSchema = z
 
 export type GenerateVideoPromptRequest = z.infer<typeof generateVideoPromptRequestSchema>;
 
-export const customVideoPromptRevisionSchema = z
-  .object({
+export const customVideoPromptRevisionSchema = videoTrackSelectionSchema
+  .extend({
     trackId: z.number().int().positive(),
     projectId: z.number().int().positive(),
     requestedBy: z.enum(["user", "project-agent"]).default("user"),
@@ -46,14 +44,24 @@ export interface VideoPromptGenerationDependencies {
 }
 
 export function createVideoPromptGeneration(dependencies: VideoPromptGenerationDependencies) {
+function serialize(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+async function validateTrackSelection(input: z.infer<typeof videoTrackSelectionSchema>) {
+  const models = await dependencies.getVendorModels(input.vendorId);
+  const model = models.find((item: any) => item.modelName === input.modelId && item.type === "video");
+  if (!model) throw new Error(`未找到 Video Model ${input.vendorId}:${input.modelId}`);
+  const capability = validateVideoCapabilitySelection(model, input);
+  validateVideoTrackInputReferences(capability, input.inputs);
+  return capability;
+}
+
 async function generateVideoPromptRevision(inputValue: unknown) {
   const input = generateVideoPromptRequestSchema.parse(inputValue);
   const track = await dependencies.db("o_videoTrack").where({ id: input.trackId, projectId: input.projectId }).first();
   if (!track) throw new Error(`Video Track ${input.trackId} 不属于 Project ${input.projectId}`);
-  const models = await dependencies.getVendorModels(input.vendorId);
-  const model = models.find((item: any) => item.modelName === input.modelId && item.type === "video");
-  const capability = model?.capabilities?.find((item: any) => item.id === input.capabilityId);
-  if (!capability) throw new Error(`${input.vendorId}:${input.modelId} 不支持 ${input.capabilityId}`);
+  const capability = await validateTrackSelection(input);
 
   const profile = dependencies.profiles.get(capability.promptProfileId);
   const [actionId] = await dependencies.db("o_productionAction").insert({
@@ -86,7 +94,11 @@ async function generateVideoPromptRevision(inputValue: unknown) {
         vendorId: input.vendorId,
         modelId: input.modelId,
         capabilityId: input.capabilityId,
+        inputRefs: serialize(input.inputs),
+        outputSelection: serialize(input.output),
+        audioSelection: serialize(input.audio),
         promptRevisionId: ids[0],
+        duration: input.output.duration,
         state: "已完成",
       });
       await trx("o_productionAction").where("id", actionId).update({ status: "succeeded", completedAt: dependencies.now() });
@@ -113,11 +125,17 @@ async function generateVideoPromptRevision(inputValue: unknown) {
 
 async function createCustomVideoPromptRevision(inputValue: unknown) {
   const input = customVideoPromptRevisionSchema.parse(inputValue);
+  const capability = await validateTrackSelection(input);
   return dependencies.db.transaction(async (trx) => {
     const track = await trx("o_videoTrack").where({ id: input.trackId, projectId: input.projectId }).first();
     if (!track?.promptRevisionId) throw new Error("Video Track 尚无可编辑的 Prompt Revision");
-    const current = await trx("o_promptRevision").where("id", track.promptRevisionId).first();
-    if (!current) throw new Error(`Prompt Revision ${track.promptRevisionId} 不存在`);
+    const current = await trx("o_promptRevision")
+      .where({ id: track.promptRevisionId, projectId: input.projectId, videoTrackId: input.trackId })
+      .first();
+    if (!current) throw new Error(`Prompt Revision ${track.promptRevisionId} 不属于当前 Project/Track`);
+    if (current.profileId !== capability.promptProfileId) {
+      throw new Error(`${input.modelId}/${input.capabilityId} 要求 Prompt Profile ${capability.promptProfileId}`);
+    }
     const [actionId] = await trx("o_productionAction").insert({
       projectId: input.projectId,
       actionType: "edit-video-prompt",
@@ -138,7 +156,18 @@ async function createCustomVideoPromptRevision(inputValue: unknown) {
       status: "active",
       createdAt: dependencies.now(),
     });
-    await trx("o_videoTrack").where("id", input.trackId).update({ promptRevisionId, state: "已完成", reason: null });
+    await trx("o_videoTrack").where("id", input.trackId).update({
+      vendorId: input.vendorId,
+      modelId: input.modelId,
+      capabilityId: input.capabilityId,
+      inputRefs: serialize(input.inputs),
+      outputSelection: serialize(input.output),
+      audioSelection: serialize(input.audio),
+      promptRevisionId,
+      duration: input.output.duration,
+      state: "已完成",
+      reason: null,
+    });
     return { actionId, promptRevisionId, renderedPrompt: input.renderedPrompt, strategy: "custom" as const };
   });
 }

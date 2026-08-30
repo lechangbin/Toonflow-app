@@ -292,6 +292,62 @@ export function parseVideoModel(value: unknown): VideoModel {
   return parsed.data;
 }
 
+export interface VideoCapabilitySelection {
+  modelId: string;
+  capabilityId: VideoCapabilityId;
+  output: z.infer<typeof videoOutputSelectionSchema>;
+  audio: VideoAudioSelection;
+}
+
+export function validateVideoCapabilitySelection(
+  modelValue: unknown,
+  selection: VideoCapabilitySelection,
+): VideoCapability {
+  const model = parseVideoModel(modelValue);
+  if (selection.modelId !== model.modelName) {
+    throw new VideoCapabilityError(
+      "GENERATION_COMMAND_INVALID",
+      `selection model ${selection.modelId} does not match ${model.modelName}`,
+    );
+  }
+  const capability = model.capabilities.find((item) => item.id === selection.capabilityId);
+  if (!capability) {
+    throw new VideoCapabilityError(
+      "CAPABILITY_NOT_SUPPORTED",
+      `${model.modelName} does not support ${selection.capabilityId}`,
+    );
+  }
+  const audioMatches =
+    (capability.audio.generation === "none" && selection.audio.generation === "none") ||
+    (capability.audio.generation === "native" &&
+      selection.audio.generation === "native" &&
+      (capability.audio.policy === "optional" || selection.audio.enabled));
+  if (!audioMatches) {
+    throw new VideoCapabilityError(
+      "AUDIO_CONTRACT_MISMATCH",
+      `${model.modelName}/${capability.id} does not allow ${JSON.stringify(selection.audio)} under ${JSON.stringify(capability.audio)}`,
+    );
+  }
+  const preset = capability.outputPresets.find((item) => item.id === selection.output.presetId);
+  if (!preset) {
+    throw new VideoCapabilityError(
+      "OUTPUT_PRESET_NOT_SUPPORTED",
+      `${model.modelName}/${capability.id} does not expose preset ${selection.output.presetId}`,
+    );
+  }
+  if (
+    preset.resolution !== selection.output.resolution ||
+    !preset.aspectRatios.includes(selection.output.aspectRatio) ||
+    !durationIsAllowed(preset, selection.output.duration)
+  ) {
+    throw new VideoCapabilityError(
+      "OUTPUT_SELECTION_INVALID",
+      `output does not match preset ${preset.id} for ${model.modelName}/${capability.id}`,
+    );
+  }
+  return capability;
+}
+
 export function validateVideoGenerationCommand(
   modelValue: unknown,
   commandValue: unknown,
@@ -302,46 +358,6 @@ export function validateVideoGenerationCommand(
     throw new VideoCapabilityError("GENERATION_COMMAND_INVALID", z.prettifyError(parsedCommand.error));
   }
   const command = parsedCommand.data;
-  if (command.modelId !== model.modelName) {
-    throw new VideoCapabilityError(
-      "GENERATION_COMMAND_INVALID",
-      `command model ${command.modelId} does not match ${model.modelName}`,
-    );
-  }
-  const capability = model.capabilities.find((item) => item.id === command.capabilityId);
-  if (!capability) {
-    throw new VideoCapabilityError(
-      "CAPABILITY_NOT_SUPPORTED",
-      `${model.modelName} does not support ${command.capabilityId}`,
-    );
-  }
-  const audioMatches =
-    (capability.audio.generation === "none" && command.audio.generation === "none") ||
-    (capability.audio.generation === "native" &&
-      command.audio.generation === "native" &&
-      (capability.audio.policy === "optional" || command.audio.enabled));
-  if (!audioMatches) {
-    throw new VideoCapabilityError(
-      "AUDIO_CONTRACT_MISMATCH",
-      `${model.modelName}/${capability.id} does not allow ${JSON.stringify(command.audio)} under ${JSON.stringify(capability.audio)}`,
-    );
-  }
-  const preset = capability.outputPresets.find((item) => item.id === command.output.presetId);
-  if (!preset) {
-    throw new VideoCapabilityError(
-      "OUTPUT_PRESET_NOT_SUPPORTED",
-      `${model.modelName}/${capability.id} does not expose preset ${command.output.presetId}`,
-    );
-  }
-  if (
-    preset.resolution !== command.output.resolution ||
-    !preset.aspectRatios.includes(command.output.aspectRatio) ||
-    !durationIsAllowed(preset, command.output.duration)
-  ) {
-    throw new VideoCapabilityError(
-      "OUTPUT_SELECTION_INVALID",
-      `output does not match preset ${preset.id} for ${model.modelName}/${capability.id}`,
-    );
-  }
+  validateVideoCapabilitySelection(model, command);
   return command;
 }

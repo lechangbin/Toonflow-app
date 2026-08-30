@@ -390,9 +390,12 @@ test("corrupt persisted audioSelection fails explicitly at the read seam", async
   }
 });
 
-test("foreign Prompt and Artifact Revisions are rejected by the read seam", async () => {
+test("a selected Video owned by a sibling Track is rejected before Prompt ownership is evaluated", async () => {
   const db = await createDatabase();
-  await db("o_videoTrack").insert({ id: 10, projectId: 1, scriptId: 2, videoId: 32, promptRevisionId: 22 });
+  await db("o_videoTrack").insert([
+    { id: 10, projectId: 1, scriptId: 2, videoId: 32, promptRevisionId: 22 },
+    { id: 11, projectId: 1, scriptId: 2 },
+  ]);
   await db("o_promptRevision").insert({
     id: 22,
     projectId: 99,
@@ -401,15 +404,65 @@ test("foreign Prompt and Artifact Revisions are rejected by the read seam", asyn
     strategy: "custom",
     renderedPrompt: "foreign",
   });
-  await db("o_video").insert({ id: 32, videoTrackId: 10, artifactRevisionId: 52 });
-  await db("o_artifactRevision").insert({ id: 52, videoTrackId: 99, videoId: 32, revision: 1, status: "accepted" });
+  await db("o_video").insert({ id: 32, videoTrackId: 11 });
   try {
     await assert.rejects(
       readVideoTrackProjections(
         { db, getVendorModels, getFileUrl: async (filePath) => filePath },
         { projectId: 1, scriptId: 2 },
       ),
-      /Prompt Revision 22 不属于 Project 1 \/ Video Track 10/,
+      /Video 32 不属于 Video Track 10/,
+    );
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a selected Artifact Revision owned by a sibling Track is rejected independently", async () => {
+  const db = await createDatabase();
+  await db("o_videoTrack").insert([
+    { id: 16, projectId: 1, scriptId: 2, videoId: 33 },
+    { id: 17, projectId: 1, scriptId: 2 },
+  ]);
+  await db("o_video").insert({ id: 33, videoTrackId: 16, artifactRevisionId: 53 });
+  await db("o_artifactRevision").insert({
+    id: 53,
+    videoTrackId: 17,
+    videoId: 33,
+    revision: 1,
+    status: "accepted",
+  });
+  try {
+    await assert.rejects(
+      readVideoTrackProjections(
+        { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+        { projectId: 1, scriptId: 2 },
+      ),
+      /Artifact Revision 53 不属于 Video Track 16/,
+    );
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a foreign Prompt Revision is rejected independently", async () => {
+  const db = await createDatabase();
+  await db("o_videoTrack").insert({ id: 18, projectId: 1, scriptId: 2, promptRevisionId: 23 });
+  await db("o_promptRevision").insert({
+    id: 23,
+    projectId: 99,
+    videoTrackId: 18,
+    profileId: "agnes/keyframe-v1",
+    strategy: "custom",
+    renderedPrompt: "foreign",
+  });
+  try {
+    await assert.rejects(
+      readVideoTrackProjections(
+        { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+        { projectId: 1, scriptId: 2 },
+      ),
+      /Prompt Revision 23 不属于 Project 1 \/ Video Track 18/,
     );
   } finally {
     await db.destroy();

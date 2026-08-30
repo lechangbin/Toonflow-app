@@ -101,17 +101,10 @@ const runtimeDataBuildConfig: esbuild.BuildOptions = {
       esbuild.build(runtimeDataBuildConfig),
     ]);
 
-    // 生成的文本 bundle 会保留依赖源码中的行尾空白；机械清理保证 git diff --check 可用
-    const trackedBundles = [
-      path.resolve("data/serve/app.js"),
-      ...fs
-        .readdirSync(path.resolve("data/web"), { withFileTypes: true })
-        .filter((entry) => entry.isFile() && /\.(?:css|html|js)$/.test(entry.name))
-        .map((entry) => path.resolve("data/web", entry.name)),
-    ];
-    for (const trackedBundle of trackedBundles) {
-      fs.writeFileSync(trackedBundle, fs.readFileSync(trackedBundle, "utf8").replace(/[ \t]+$/gm, ""));
-    }
+    // Only normalize the backend bundle produced above. data/web must remain byte-for-byte
+    // identical to the separate Toonflow-web dist output.
+    const appBundle = path.resolve("data/serve/app.js");
+    fs.writeFileSync(appBundle, fs.readFileSync(appBundle, "utf8").replace(/[ \t]+$/gm, ""));
 
     console.log("✅ 后端服务构建完成: build/app.js");
     console.log("✅ Electron主进程构建完成: build/main.js");

@@ -34,6 +34,19 @@ export const videoTrackInputReferenceSchema = z
 
 export type VideoTrackInputReference = z.infer<typeof videoTrackInputReferenceSchema>;
 
+export const videoTrackSelectionSchema = z
+  .object({
+    vendorId: z.string().min(1),
+    modelId: z.string().min(1),
+    capabilityId: videoCapabilityIdSchema,
+    inputs: z.array(videoTrackInputReferenceSchema),
+    output: videoOutputSelectionSchema,
+    audio: videoAudioSelectionSchema,
+  })
+  .strict();
+
+export type VideoTrackSelection = z.infer<typeof videoTrackSelectionSchema>;
+
 export function validateVideoTrackInputReferences(
   capability: {
     id: VideoCapabilityId;
