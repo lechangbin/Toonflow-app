@@ -26,7 +26,7 @@ test("an empty runtime volume receives only versioned seed resources", async () 
     await mkdir(path.join(seedDir, "web"), { recursive: true });
     await mkdir(path.join(seedDir, "vendor"), { recursive: true });
     await mkdir(path.join(seedDir, "oss"), { recursive: true });
-    await writeFile(path.join(seedDir, "version.txt"), "1.1.8\n");
+    await writeFile(path.join(seedDir, "version.txt"), "1.1.9\n");
     await writeFile(path.join(seedDir, "web", "index.html"), "<main>Toonflow</main>");
     await writeFile(path.join(seedDir, "vendor", "agnes.ts"), "export const vendor = {};\n");
     await writeFile(path.join(seedDir, "db2.sqlite"), "local database must not be seeded");
@@ -35,7 +35,7 @@ test("an empty runtime volume receives only versioned seed resources", async () 
 
     const result = await initializeRuntimeData({ runtimeDir, seedDir });
 
-    assert.deepEqual(result, { status: "initialized", version: "1.1.8" });
+    assert.deepEqual(result, { status: "initialized", version: "1.1.9" });
     assert.equal(await readFile(path.join(runtimeDir, "web", "index.html"), "utf8"), "<main>Toonflow</main>");
     assert.equal(
       await readFile(path.join(runtimeDir, "vendor", "agnes.ts"), "utf8"),
@@ -46,7 +46,7 @@ test("an empty runtime volume receives only versioned seed resources", async () 
     await assert.rejects(readFile(path.join(runtimeDir, ".env")), { code: "ENOENT" });
 
     const marker = JSON.parse(await readFile(path.join(runtimeDir, ".toonflow-seed.json"), "utf8"));
-    assert.deepEqual(marker, { version: "1.1.8" });
+    assert.deepEqual(marker, { version: "1.1.9" });
   });
 });
 
@@ -54,7 +54,7 @@ test("an unmarked non-empty runtime volume fails before seed resources are merge
   await withTemporaryDataDirectories(async ({ runtimeDir, seedDir }) => {
     await mkdir(runtimeDir, { recursive: true });
     await mkdir(path.join(seedDir, "web"), { recursive: true });
-    await writeFile(path.join(seedDir, "version.txt"), "1.1.8\n");
+    await writeFile(path.join(seedDir, "version.txt"), "1.1.9\n");
     await writeFile(path.join(seedDir, "web", "index.html"), "new version");
     await writeFile(path.join(runtimeDir, "db2.sqlite"), "pre-existing data");
 
@@ -66,11 +66,11 @@ test("an unmarked non-empty runtime volume fails before seed resources are merge
   });
 });
 
-test("a restart refreshes immutable Web assets while keeping mutable runtime changes", async () => {
+test("a restart with the same seed version never mutates initialized runtime data", async () => {
   await withTemporaryDataDirectories(async ({ runtimeDir, seedDir }) => {
     await mkdir(path.join(seedDir, "vendor"), { recursive: true });
     await mkdir(path.join(seedDir, "web"), { recursive: true });
-    await writeFile(path.join(seedDir, "version.txt"), "1.1.8\n");
+    await writeFile(path.join(seedDir, "version.txt"), "1.1.9\n");
     await writeFile(path.join(seedDir, "vendor", "agnes.ts"), "versioned seed");
     await writeFile(path.join(seedDir, "web", "index.html"), "first Web build");
 
@@ -81,10 +81,27 @@ test("a restart refreshes immutable Web assets while keeping mutable runtime cha
 
     assert.deepEqual(await initializeRuntimeData({ runtimeDir, seedDir }), {
       status: "existing",
-      version: "1.1.8",
+      version: "1.1.9",
     });
     assert.equal(await readFile(path.join(runtimeDir, "vendor", "agnes.ts"), "utf8"), "user configuration");
-    assert.equal(await readFile(path.join(runtimeDir, "web", "index.html"), "utf8"), "upgraded Web build");
-    await assert.rejects(readFile(path.join(runtimeDir, "web", "stale.js")), { code: "ENOENT" });
+    assert.equal(await readFile(path.join(runtimeDir, "web", "index.html"), "utf8"), "first Web build");
+    assert.equal(await readFile(path.join(runtimeDir, "web", "stale.js"), "utf8"), "stale asset");
+  });
+});
+
+test("an older marked runtime volume fails instead of being silently migrated", async () => {
+  await withTemporaryDataDirectories(async ({ runtimeDir, seedDir }) => {
+    await mkdir(path.join(seedDir, "web"), { recursive: true });
+    await mkdir(path.join(runtimeDir, "web"), { recursive: true });
+    await writeFile(path.join(seedDir, "version.txt"), "1.1.9\n");
+    await writeFile(path.join(seedDir, "web", "index.html"), "new release");
+    await writeFile(path.join(runtimeDir, ".toonflow-seed.json"), `${JSON.stringify({ version: "1.1.8" })}\n`);
+    await writeFile(path.join(runtimeDir, "web", "index.html"), "old release");
+
+    await assert.rejects(
+      initializeRuntimeData({ runtimeDir, seedDir }),
+      /initialized from seed 1\.1\.8, but this image provides 1\.1\.9/,
+    );
+    assert.equal(await readFile(path.join(runtimeDir, "web", "index.html"), "utf8"), "old release");
   });
 });

@@ -1,4 +1,4 @@
-import { access, cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const VERSIONED_SEED_ENTRIES = [
@@ -10,8 +10,6 @@ export const VERSIONED_SEED_ENTRIES = [
   "web",
   "version.txt",
 ] as const;
-
-export const IMMUTABLE_SEED_ENTRIES = ["web"] as const;
 
 const SEED_MARKER = ".toonflow-seed.json";
 
@@ -48,21 +46,6 @@ async function readExistingSeedVersion(runtimeDir: string): Promise<string | und
   }
 }
 
-async function synchronizeImmutableSeedEntries(runtimeDir: string, seedDir: string): Promise<void> {
-  for (const entry of IMMUTABLE_SEED_ENTRIES) {
-    const source = path.join(seedDir, entry);
-    try {
-      await access(source);
-    } catch (error) {
-      if (isMissingFile(error)) continue;
-      throw error;
-    }
-    const destination = path.join(runtimeDir, entry);
-    await rm(destination, { force: true, recursive: true });
-    await cp(source, destination, { recursive: true });
-  }
-}
-
 export async function initializeRuntimeData({
   runtimeDir,
   seedDir,
@@ -77,7 +60,6 @@ export async function initializeRuntimeData({
         `Runtime data was initialized from seed ${existingVersion}, but this image provides ${version}; use a new versioned volume`,
       );
     }
-    await synchronizeImmutableSeedEntries(runtimeDir, seedDir);
     return { status: "existing", version };
   }
 

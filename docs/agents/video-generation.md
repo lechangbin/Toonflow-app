@@ -56,7 +56,7 @@ Build validates packaged Vendor sources and Prompt Profiles. Startup additionall
 
 ## HTTP and future Agent adapters
 
-The current prompt routes call `generateVideoPromptRevision`; current video routes call `startVideoGenerationBatch`. Single and batch routes share the same strict item schema in `src/video/productionContract.ts`. Future Project Agent tools must call these shared modules with `requestedBy: "project-agent"`; they should not duplicate orchestration or treat socket messages as state.
+The current prompt routes call `generateVideoPromptRevision`; current video routes call `startVideoGenerationBatch`. Prompt generation and manual Prompt Revision edits carry the complete Track selection (`vendorId`, `modelId`, `capabilityId`, `inputs`, `output`, and `audio`) and persist it atomically with the active `promptRevisionId`. Single and batch routes share the strict selection schemas in `src/video/productionContract.ts`. Future Project Agent tools must call these shared modules with `requestedBy: "project-agent"`; they should not duplicate orchestration or treat socket messages as state.
 
 The future infinite-canvas Agent window may compose asset extraction, prompt generation, and video generation, but the backend records remain the source of truth. That UI and Agent-tool expansion is outside Issue #2.
 
@@ -72,3 +72,6 @@ This workspace contains generated `data/web` assets, not editable Toonflow-web s
 - Keep Seedance multi-reference UI disabled until a separate capability is implemented.
 
 Do not patch `data/web` by hand. Rebuild it from Toonflow-web after that repository adopts the contract.
+
+The currently integrated frontend bundle was built from `lechangbin/Toonflow-web` commit
+`93557eaa5844ff1307c140d225c4405291e11b2d`.

@@ -14,9 +14,7 @@ export interface VideoRuntimeValidationResult {
   promptProfileCount: number;
 }
 
-export function validateVideoRuntimeData(dataRoot = getPath()): VideoRuntimeValidationResult {
-  const promptProfiles = VideoPromptProfileRegistry.load(path.join(dataRoot, "promptProfiles", "video"));
-  const vendorDir = path.join(dataRoot, "vendor");
+function readVendorSourceFiles(vendorDir: string): string[] {
   const sourceFiles = fs
     .readdirSync(vendorDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
@@ -25,6 +23,13 @@ export function validateVideoRuntimeData(dataRoot = getPath()): VideoRuntimeVali
   const expectedFiles = RETAINED_VENDOR_IDS.map((id) => `${id}.ts`).sort();
   const missingFiles = expectedFiles.filter((fileName) => !sourceFiles.includes(fileName));
   if (missingFiles.length) throw new Error(`Vendor Registry 缺少内置配置: ${missingFiles.join(", ")}`);
+  return sourceFiles;
+}
+
+export function validateVideoRuntimeData(dataRoot = getPath()): VideoRuntimeValidationResult {
+  const promptProfiles = VideoPromptProfileRegistry.load(path.join(dataRoot, "promptProfiles", "video"));
+  const vendorDir = path.join(dataRoot, "vendor");
+  const sourceFiles = readVendorSourceFiles(vendorDir);
 
   let videoModelCount = 0;
   const vendorIds = sourceFiles.map((fileName) => {
@@ -46,14 +51,7 @@ export async function validateConfiguredVideoRuntimeData(
 ): Promise<VideoRuntimeValidationResult> {
   const promptProfiles = VideoPromptProfileRegistry.load(path.join(dataRoot, "promptProfiles", "video"));
   const vendorDir = path.join(dataRoot, "vendor");
-  const sourceFiles = fs
-    .readdirSync(vendorDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
-    .map((entry) => entry.name)
-    .sort();
-  const expectedFiles = RETAINED_VENDOR_IDS.map((id) => `${id}.ts`).sort();
-  const missingFiles = expectedFiles.filter((fileName) => !sourceFiles.includes(fileName));
-  if (missingFiles.length) throw new Error(`Vendor Registry 缺少内置配置: ${missingFiles.join(", ")}`);
+  const sourceFiles = readVendorSourceFiles(vendorDir);
 
   const rows = await knex("o_vendorConfig").select("id", "inputValues", "models");
   const configuredById = new Map(rows.map((row) => [row.id, row]));
