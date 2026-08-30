@@ -175243,13 +175243,13 @@ var require_dist7 = __commonJS({
       };
     }
     var import_provider_utils210 = require_dist6();
-    var import_zod154 = require_zod();
-    var qwenErrorDataSchema = import_zod154.z.object({
-      object: import_zod154.z.literal("error"),
-      message: import_zod154.z.string(),
-      type: import_zod154.z.string(),
-      param: import_zod154.z.string().nullable(),
-      code: import_zod154.z.string().nullable()
+    var import_zod155 = require_zod();
+    var qwenErrorDataSchema = import_zod155.z.object({
+      object: import_zod155.z.literal("error"),
+      message: import_zod155.z.string(),
+      type: import_zod155.z.string(),
+      param: import_zod155.z.string().nullable(),
+      code: import_zod155.z.string().nullable()
     });
     var qwenFailedResponseHandler = (0, import_provider_utils210.createJsonErrorResponseHandler)({
       errorSchema: qwenErrorDataSchema,
@@ -254837,6 +254837,72 @@ var init_exportScript = __esm({
   }
 });
 
+// src/script/assetExtractionContract.ts
+function decodeJson(value, field) {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const source = fenced?.[1] ?? trimmed;
+  try {
+    return JSON.parse(source);
+  } catch {
+    throw new Error(`\u8D44\u4EA7\u63D0\u53D6\u7ED3\u679C\u7684 ${field} \u4E0D\u662F\u6709\u6548 JSON`);
+  }
+}
+function parseAssetExtractionToolInput(input) {
+  const decodedInput = decodeJson(input, "\u5DE5\u5177\u53C2\u6570");
+  if (!decodedInput || typeof decodedInput !== "object" || Array.isArray(decodedInput)) {
+    throw new Error("\u8D44\u4EA7\u63D0\u53D6\u7ED3\u679C\u5FC5\u987B\u662F\u5BF9\u8C61");
+  }
+  const candidate = decodedInput;
+  const result = AssetExtractionToolResultSchema.safeParse({
+    newAssets: decodeJson(candidate.newAssets, "newAssets"),
+    existingAssetRefs: decodeJson(candidate.existingAssetRefs, "existingAssetRefs")
+  });
+  if (!result.success) {
+    const fields = [...new Set(result.error.issues.map((issue3) => issue3.path.join(".")).filter(Boolean))];
+    throw new Error(`\u8D44\u4EA7\u63D0\u53D6\u7ED3\u679C\u683C\u5F0F\u65E0\u6548\uFF1A${fields.join("\u3001") || "\u5DE5\u5177\u53C2\u6570"}`);
+  }
+  return result.data;
+}
+var NewAssetSchema, ExistingAssetRefSchema, AssetExtractionToolResultSchema, assetExtractionToolInputSchema;
+var init_assetExtractionContract = __esm({
+  "src/script/assetExtractionContract.ts"() {
+    "use strict";
+    init_dist22();
+    init_zod();
+    NewAssetSchema = external_exports.object({
+      name: external_exports.string().describe("\u8D44\u4EA7\u540D\u79F0\uFF0C\u4EC5\u4E3A\u540D\u79F0\uFF0C\u4E0D\u505A\u5176\u4ED6\u8868\u8FF0"),
+      desc: external_exports.string().describe("\u8D44\u4EA7\u63CF\u8FF0"),
+      type: external_exports.enum(["role", "tool", "scene"]).describe("\u8D44\u4EA7\u7C7B\u578B"),
+      scriptIds: external_exports.array(external_exports.number()).describe("\u4F7F\u7528\u8BE5\u8D44\u4EA7\u7684\u5267\u672C ID \u6570\u7EC4")
+    });
+    ExistingAssetRefSchema = external_exports.object({
+      name: external_exports.string().describe("\u5DF2\u6709\u8D44\u4EA7\u540D\u79F0\uFF0C\u5FC5\u987B\u4E0E\u5DF2\u6709\u8D44\u4EA7\u5217\u8868\u4E2D\u7684\u540D\u79F0\u5B8C\u5168\u4E00\u81F4"),
+      scriptIds: external_exports.array(external_exports.number()).describe("\u4F7F\u7528\u8BE5\u8D44\u4EA7\u7684\u5267\u672C ID \u6570\u7EC4")
+    });
+    AssetExtractionToolResultSchema = external_exports.object({
+      newAssets: external_exports.array(NewAssetSchema).describe("\u65B0\u53D1\u73B0\u7684\u8D44\u4EA7\u5217\u8868\uFF0C\u9700\u8981\u5B8C\u6574\u7684\u540D\u79F0\u3001\u63CF\u8FF0\u3001\u7C7B\u578B\u548C\u5267\u672C ID"),
+      existingAssetRefs: external_exports.array(ExistingAssetRefSchema).describe("\u5DF2\u6709\u8D44\u4EA7\u7684\u5F15\u7528\u5217\u8868\uFF0C\u53EA\u5305\u542B\u540D\u79F0\u548C\u5267\u672C ID")
+    });
+    assetExtractionToolInputSchema = jsonSchema(
+      AssetExtractionToolResultSchema.toJSONSchema(),
+      {
+        validate(value) {
+          try {
+            return { success: true, value: parseAssetExtractionToolInput(value) };
+          } catch (error73) {
+            return {
+              success: false,
+              error: error73 instanceof Error ? error73 : new Error(String(error73))
+            };
+          }
+        }
+      }
+    );
+  }
+});
+
 // src/routes/script/extractAssets.ts
 function chunkArray(arr, groupSize) {
   const chunks = [];
@@ -254849,7 +254915,7 @@ function chunkArray(arr, groupSize) {
   }
   return groupChunks;
 }
-var import_express113, router110, NewAssetSchema, ExistingAssetRefSchema, AssetSchema, extractAssets_default;
+var import_express113, router110, extractAssets_default;
 var init_extractAssets = __esm({
   "src/routes/script/extractAssets.ts"() {
     "use strict";
@@ -254859,22 +254925,8 @@ var init_extractAssets = __esm({
     init_responseFormat();
     init_middleware();
     init_dist22();
+    init_assetExtractionContract();
     router110 = import_express113.default.Router();
-    NewAssetSchema = external_exports.object({
-      name: external_exports.string().describe("\u8D44\u4EA7\u540D\u79F0,\u4EC5\u4E3A\u540D\u79F0\u4E0D\u505A\u5176\u4ED6\u4EFB\u4F55\u8868\u8FF0"),
-      desc: external_exports.string().describe("\u8D44\u4EA7\u63CF\u8FF0"),
-      type: external_exports.enum(["role", "tool", "scene"]).describe("\u8D44\u4EA7\u7C7B\u578B"),
-      scriptIds: external_exports.array(external_exports.number()).describe("\u4F7F\u7528\u8BE5\u8D44\u4EA7\u7684\u5267\u672Cid\u6570\u7EC4")
-    });
-    ExistingAssetRefSchema = external_exports.object({
-      name: external_exports.string().describe("\u5DF2\u6709\u8D44\u4EA7\u7684\u540D\u79F0,\u5FC5\u987B\u4E0E\u5DF2\u6709\u8D44\u4EA7\u5217\u8868\u4E2D\u7684\u540D\u79F0\u5B8C\u5168\u4E00\u81F4"),
-      scriptIds: external_exports.array(external_exports.number()).describe("\u4F7F\u7528\u8BE5\u8D44\u4EA7\u7684\u5267\u672Cid\u6570\u7EC4")
-    });
-    AssetSchema = external_exports.object({
-      name: external_exports.string().describe("\u8D44\u4EA7\u540D\u79F0,\u4EC5\u4E3A\u540D\u79F0\u4E0D\u505A\u5176\u4ED6\u4EFB\u4F55\u8868\u8FF0"),
-      desc: external_exports.string().describe("\u8D44\u4EA7\u63CF\u8FF0"),
-      type: external_exports.enum(["role", "tool", "scene"]).describe("\u8D44\u4EA7\u7C7B\u578B")
-    });
     extractAssets_default = router110.post(
       "/",
       validateFields({
@@ -254973,15 +255025,10 @@ ${script.content}`).join("\n\n");
             try {
               const resultTool = tool({
                 description: "\u8FD4\u56DE\u7ED3\u679C\u65F6\u5FC5\u987B\u8C03\u7528\u8FD9\u4E2A\u5DE5\u5177",
-                inputSchema: jsonSchema(
-                  external_exports.object({
-                    newAssets: external_exports.array(NewAssetSchema).describe("\u65B0\u53D1\u73B0\u7684\u8D44\u4EA7\u5217\u8868\uFF08\u4E0D\u5728\u5DF2\u6709\u8D44\u4EA7\u5217\u8868\u4E2D\u7684\uFF09\uFF0C\u9700\u8981\u5B8C\u6574\u7684 prompt\u3001name\u3001desc\u3001type \u548C\u4F7F\u7528\u8BE5\u8D44\u4EA7\u7684 scriptIds"),
-                    existingAssetRefs: external_exports.array(ExistingAssetRefSchema).describe("\u5DF2\u6709\u8D44\u4EA7\u7684\u5F15\u7528\u5217\u8868\uFF08\u5728\u5DF2\u6709\u8D44\u4EA7\u5217\u8868\u4E2D\u5DF2\u5B58\u5728\u7684\uFF09\uFF0C\u53EA\u9700\u7ED9\u51FA\u8D44\u4EA7\u540D\u79F0\u548C\u4F7F\u7528\u8BE5\u8D44\u4EA7\u7684 scriptIds")
-                  }).toJSONSchema()
-                ),
+                inputSchema: assetExtractionToolInputSchema,
                 execute: async ({ newAssets, existingAssetRefs }) => {
-                  if (newAssets?.length) collectedNew = newAssets;
-                  if (existingAssetRefs?.length) collectedExisting = existingAssetRefs;
+                  collectedNew = newAssets;
+                  collectedExisting = existingAssetRefs;
                   return "\u65E0\u9700\u56DE\u590D\u7528\u6237\u4EFB\u4F55\u5185\u5BB9";
                 }
               });
@@ -254996,7 +255043,7 @@ ${script.content}`).join("\n\n");
 
 \u3010\u5DF2\u6709\u8D44\u4EA7\u5217\u8868\u3011\uFF1A${existingAssetsList}
 \u5BF9\u4E8E\u5DF2\u6709\u8D44\u4EA7\uFF0C\u5982\u679C\u5728\u5267\u672C\u4E2D\u51FA\u73B0\uFF0C\u53EA\u9700\u5728 existingAssetRefs \u4E2D\u7ED9\u51FA\u8D44\u4EA7\u540D\u79F0\u548C\u5BF9\u5E94\u7684 scriptIds \u6570\u7EC4\u5373\u53EF\uFF0C\u65E0\u9700\u91CD\u590D\u751F\u6210 desc/type\u3002\u5BF9\u4E8E\u65B0\u53D1\u73B0\u7684\u8D44\u4EA7\uFF08\u4E0D\u5728\u5DF2\u6709\u5217\u8868\u4E2D\uFF09\uFF0C\u8BF7\u5728 newAssets \u4E2D\u7ED9\u51FA\u5B8C\u6574\u4FE1\u606F\u3002` : "";
-              const output = await utils_default.Ai.Text("universalAi").invoke({
+              await utils_default.Ai.Text("universalAi").invoke({
                 messages: [
                   {
                     role: "system",

@@ -3,35 +3,15 @@ import u from "@/utils";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { useSkill } from "@/utils/agent/skillsTools";
-import { tool, jsonSchema } from "ai";
+import { tool } from "ai";
 import { o_script } from "@/types/database";
+import {
+  assetExtractionToolInputSchema,
+  type ExistingAssetRef,
+  type NewAsset,
+} from "@/script/assetExtractionContract";
 
 const router = express.Router();
-
-/** 新资产：AI 首次识别到的资产，需要完整信息 */
-const NewAssetSchema = z.object({
-  name: z.string().describe("资产名称,仅为名称不做其他任何表述"),
-  desc: z.string().describe("资产描述"),
-  type: z.enum(["role", "tool", "scene"]).describe("资产类型"),
-  scriptIds: z.array(z.number()).describe("使用该资产的剧本id数组"),
-});
-
-/** 已有资产：数据库中已存在的资产，只需给出名称和关联的剧本 */
-const ExistingAssetRefSchema = z.object({
-  name: z.string().describe("已有资产的名称,必须与已有资产列表中的名称完全一致"),
-  scriptIds: z.array(z.number()).describe("使用该资产的剧本id数组"),
-});
-
-export const AssetSchema = z.object({
-  name: z.string().describe("资产名称,仅为名称不做其他任何表述"),
-  desc: z.string().describe("资产描述"),
-  type: z.enum(["role", "tool", "scene"]).describe("资产类型"),
-});
-
-type NewAsset = z.infer<typeof NewAssetSchema>;
-type ExistingAssetRef = z.infer<typeof ExistingAssetRefSchema>;
-type Asset = z.infer<typeof AssetSchema>;
 
 /** 每批 AI 调用的结果 */
 type GroupResult = {
@@ -185,21 +165,10 @@ export default router.post(
         try {
           const resultTool = tool({
             description: "返回结果时必须调用这个工具",
-            inputSchema: jsonSchema<{ newAssets: NewAsset[]; existingAssetRefs: ExistingAssetRef[] }>(
-              z
-                .object({
-                  newAssets: z
-                    .array(NewAssetSchema)
-                    .describe("新发现的资产列表（不在已有资产列表中的），需要完整的 prompt、name、desc、type 和使用该资产的 scriptIds"),
-                  existingAssetRefs: z
-                    .array(ExistingAssetRefSchema)
-                    .describe("已有资产的引用列表（在已有资产列表中已存在的），只需给出资产名称和使用该资产的 scriptIds"),
-                })
-                .toJSONSchema(),
-            ),
+            inputSchema: assetExtractionToolInputSchema,
             execute: async ({ newAssets, existingAssetRefs }) => {
-              if (newAssets?.length) collectedNew = newAssets;
-              if (existingAssetRefs?.length) collectedExisting = existingAssetRefs;
+              collectedNew = newAssets;
+              collectedExisting = existingAssetRefs;
               return "无需回复用户任何内容";
             },
           });
@@ -213,7 +182,7 @@ export default router.post(
           const existingHint = existingAssetsList
             ? `\n\n【已有资产列表】：${existingAssetsList}\n对于已有资产，如果在剧本中出现，只需在 existingAssetRefs 中给出资产名称和对应的 scriptIds 数组即可，无需重复生成 desc/type。对于新发现的资产（不在已有列表中），请在 newAssets 中给出完整信息。`
             : "";
-          const output = await u.Ai.Text("universalAi").invoke({
+          await u.Ai.Text("universalAi").invoke({
             messages: [
               {
                 role: "system",
