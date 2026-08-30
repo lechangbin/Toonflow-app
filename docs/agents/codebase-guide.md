@@ -50,6 +50,8 @@ Read `docs/agents/video-generation.md` before changing Video Models, Prompt Prof
 
 Inspect the matching `src/agents/<agent>/`, `src/socket/routes/<agent>.ts`, `src/utils/agent/memory.ts`, and Markdown Skills under `data/skills/`. Preserve abort, streaming, memory, and message state together.
 
+Asset Extraction Model tool output crosses the provider-independent seam in `src/script/assetExtractionContract.ts`. Keep provider wire-format normalization and strict runtime validation in that module; routes must consume only its canonical arrays and must not branch on Vendor or Model names.
+
 ## Verification
 
 Run the narrow test first, then:
