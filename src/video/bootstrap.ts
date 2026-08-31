@@ -3,10 +3,9 @@ import path from "node:path";
 import type { Knex } from "knex";
 
 import { loadVendorRuntime } from "@/lib/vendorRuntime";
+import { releasedVendorIds, releasedVendorSourceFileNames } from "@/lib/vendorRegistry";
 import getPath from "@/utils/getPath";
 import { VideoPromptProfileRegistry } from "./promptProfile";
-
-export const RETAINED_VENDOR_IDS = ["agnes", "deepseek", "minimax", "volcengine", "volcengineSd2"] as const;
 
 export interface VideoRuntimeValidationResult {
   vendorIds: string[];
@@ -20,10 +19,32 @@ function readVendorSourceFiles(vendorDir: string): string[] {
     .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
     .map((entry) => entry.name)
     .sort();
-  const expectedFiles = RETAINED_VENDOR_IDS.map((id) => `${id}.ts`).sort();
+  const expectedFiles = releasedVendorSourceFileNames().sort();
   const missingFiles = expectedFiles.filter((fileName) => !sourceFiles.includes(fileName));
   if (missingFiles.length) throw new Error(`Vendor Registry 缺少内置配置: ${missingFiles.join(", ")}`);
   return sourceFiles;
+}
+
+/**
+ * Release build validation: the runtime data must load and must cover every
+ * built-in Vendor the registry declares as released.
+ */
+export function validateReleaseBuildVendorData(dataRoot = getPath()): VideoRuntimeValidationResult {
+  const result = validateVideoRuntimeData(dataRoot);
+  const missingReleasedVendors = releasedVendorIds().filter((id) => !result.vendorIds.includes(id));
+  if (missingReleasedVendors.length) {
+    throw new Error(`Video Registry 缺少发布内置 Vendor: ${missingReleasedVendors.join(", ")}`);
+  }
+  return result;
+}
+
+/** Reads the released built-in Vendor sources that make up the generated runtime manifest. */
+export function readReleasedVendorSources(vendorDir: string): Record<string, string> {
+  const sources: Record<string, string> = {};
+  for (const fileName of releasedVendorSourceFileNames()) {
+    sources[fileName] = fs.readFileSync(path.join(vendorDir, fileName), "utf8");
+  }
+  return sources;
 }
 
 export function validateVideoRuntimeData(dataRoot = getPath()): VideoRuntimeValidationResult {

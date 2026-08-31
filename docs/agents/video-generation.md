@@ -7,12 +7,12 @@ Read this document before changing Video Models, Prompt Profiles, Video Track pe
 1. Update the provider-independent schemas in `src/video/capability.ts` or `src/video/productionContract.ts`. The change is complete when invalid legacy and ambiguous inputs fail before persistence or provider calls.
 2. Update the matching Prompt Profile under `data/promptProfiles/video/<family>/`. The file path and frontmatter `id` must match, and every Video Capability must resolve its declared profile.
 3. Update the shared orchestration in `src/video/promptGeneration.ts` or `src/video/production.ts`. Single and batch HTTP routes remain thin adapters over these modules.
-4. Update only the affected retained Vendor adapters, regenerate `src/lib/vendor.json`, and add contract plus adapter regression coverage.
+4. Update only the affected retained Vendor adapters. When release inclusion or default-enable policy changes, change `src/lib/vendorRegistry.ts` once; fresh defaults, repair, startup, build validation, and manifest generation follow. Regenerate `src/lib/vendor.json`, and add contract plus adapter regression coverage.
 5. Update fresh schema, upgrade repair, generated database types, and this document together. Completion requires test, typecheck, Vendor manifest, build, and diff checks to pass.
 
 ## Capability registry
 
-Only these built-in Vendor sources are retained. Additional user-created Vendor files remain supported but pass the same strict runtime validation.
+Built-in Vendor identity, release inclusion, and default-enable policy are owned by the built-in Vendor registry in `src/lib/vendorRegistry.ts`; no second retained or removed Vendor list exists. The table below records the Video Models, Video Capabilities, and audio policy that the retained Vendor adapter programs declare. Additional user-created Vendor files remain supported and pass the same strict runtime validation.
 
 | Vendor | Models in this iteration | Capabilities | Audio policy |
 | --- | --- | --- | --- |
