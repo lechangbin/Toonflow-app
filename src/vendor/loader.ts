@@ -31,6 +31,8 @@ import type {
 export interface ConfiguredVendorDependencies {
   work<T>(operation: (db: Knex) => Promise<T> | T): Promise<T>;
   readVendorSource(vendorId: string): string;
+  writeVendorSource(vendorId: string, source: string): void;
+  deleteVendorSource(vendorId: string): void;
   promptProfiles: Pick<VideoPromptProfileRegistry, "get">;
   dependencyOverrides?: VmBoundaryOverrides;
 }
