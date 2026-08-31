@@ -1,6 +1,8 @@
 import { Knex } from "knex";
 import { v4 as uuid } from "uuid";
 
+import { vendorRegistry } from "./vendorRegistry";
+
 interface TableSchema {
   name: string;
   builder: (table: Knex.CreateTableBuilder) => void;
@@ -644,38 +646,14 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["id"]);
       },
       initData: async (knex) => {
-        await knex("o_vendorConfig").insert([
-          {
-            id: "agnes",
+        await knex("o_vendorConfig").insert(
+          vendorRegistry.releasedVendorRegistrations().map(({ id, defaultEnabled }) => ({
+            id,
             inputValues: "{}",
             models: "[]",
-            enable: 0,
-          },
-          {
-            id: "deepseek",
-            inputValues: "{}",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "volcengineSd2",
-            inputValues: "{}",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "volcengine",
-            inputValues: "{}",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "minimax",
-            inputValues: "{}",
-            models: "[]",
-            enable: 0,
-          },
-        ]);
+            enable: defaultEnabled ? 1 : 0,
+          })),
+        );
       },
     },
     //图片工作流表
