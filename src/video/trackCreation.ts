@@ -10,7 +10,7 @@ import {
 
 export interface CreateVideoTrackDependencies {
   db: DatabaseWork;
-  getVendorModels(vendorId: string): Promise<unknown[]>;
+  getVendorModels(vendorId: string): Promise<readonly unknown[]>;
 }
 
 export interface CreateVideoTrackInput {

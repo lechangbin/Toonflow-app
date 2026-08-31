@@ -1,5 +1,7 @@
 import express from "express";
 import u from "@/utils";
+
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { success } from "@/lib/responseFormat";
@@ -20,15 +22,14 @@ export default router.post(
     const matches = fileUrl.match(/^data:image\/\w+;base64,(.+)$/);
     const realBase64 = matches ? matches[1] : fileUrl;
     await u.oss.writeFile(imagePath, Buffer.from(realBase64, "base64"));
-    await u
-      .db("o_artStyle")
+    await getDatabaseRuntime().work((db) => db("o_artStyle")
       .update({
         name,
         fileUrl: imagePath,
         label: name,
         prompt,
       })
-      .where("id", id);
+      .where("id", id));
     res.status(200).send(success("艺术风格编辑成功"));
   },
 );

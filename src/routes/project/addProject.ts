@@ -1,6 +1,6 @@
 import express from "express";
-import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
+import { getDefaultConfiguredVendor, type VideoModelSummary } from "@/vendor";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -41,8 +41,10 @@ export default router.post(
       imageQuality,
     } = req.body;
 
-    const videoModels = await u.vendor.getModelList(videoVendorId);
-    const videoModel = videoModels.find((model: any) => model.modelName === videoModelId && model.type === "video");
+    const videoModels = (await getDefaultConfiguredVendor().inspectVendor(videoVendorId)).models;
+    const videoModel = videoModels.find(
+      (model): model is VideoModelSummary => model.type === "video" && model.modelName === videoModelId,
+    );
     const capability = videoModel?.capabilities?.find((item: any) => item.id === videoCapabilityId);
     const outputPreset = capability?.outputPresets?.find((preset: any) => preset.id === videoOutputPresetId);
     if (!outputPreset || !outputPreset.aspectRatios.includes(videoRatio)) {

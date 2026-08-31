@@ -1,5 +1,7 @@
 import express from "express";
 import u from "@/utils";
+
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -14,11 +16,10 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, scriptId, videoIds } = req.body;
-    const videoList = await u
-      .db("o_video")
+    const videoList = await getDatabaseRuntime().work((db) => db("o_video")
       .whereIn("id", videoIds)
       .whereIn("state", ["生成成功", "生成失败"])
-      .select("id", "state", "errorReason", "filePath");
+      .select("id", "state", "errorReason", "filePath"));
     res.status(200).send(
       success(
         await Promise.all(

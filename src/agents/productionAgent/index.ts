@@ -10,6 +10,7 @@ import ResTool from "@/socket/resTool";
 import * as fs from "fs";
 import path from "path";
 
+import { getDatabaseRuntime } from "@/database";
 export interface AgentContext {
   socket: Socket;
   isolationKey: string;
@@ -49,7 +50,7 @@ export async function runDecisionAI(ctx: AgentContext) {
   const skill = path.join(u.getPath("skills"), "production_agent_decision.md");
   const prompt = await fs.promises.readFile(skill, "utf-8");
 
-  const projectInfo = await u.db("o_project").where("id", ctx.resTool.data.projectId).first();
+  const projectInfo = await getDatabaseRuntime().work((db) => db("o_project").where("id", ctx.resTool.data.projectId).first());
   if (!projectInfo) throw new Error(`项目不存在，ID: ${ctx.resTool.data.projectId}`);
   const [_, imageModelName] = projectInfo.imageModel!.split(/:(.+)/);
   if (!projectInfo.videoVendorId || !projectInfo.videoModelId || !projectInfo.videoCapabilityId) {
@@ -144,7 +145,7 @@ async function createSubAgent(parentCtx: AgentContext) {
     })
     .toJSONSchema();
 
-  const projectInfo = await u.db("o_project").where("id", resTool.data.projectId).first();
+  const projectInfo = await getDatabaseRuntime().work((db) => db("o_project").where("id", resTool.data.projectId).first());
   if (!projectInfo) throw new Error(`项目不存在，ID: ${resTool.data.projectId}`);
   const artSkills = await createArtSkills(projectInfo?.artStyle!, projectInfo?.directorManual!);
 

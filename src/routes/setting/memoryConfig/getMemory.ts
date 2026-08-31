@@ -1,11 +1,10 @@
 import express from "express";
 import { error, success } from "@/lib/responseFormat";
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 const router = express.Router();
 
 export default router.get("/", async (req, res) => {
-  const settingData = await u
-    .db("o_setting")
+  const settingData = await getDatabaseRuntime().work((db) => db("o_setting")
     .whereIn("key", [
       "messagesPerSummary",
       "shortTermLimit",
@@ -15,7 +14,7 @@ export default router.get("/", async (req, res) => {
       "deepRetrieveSummaryLimit",
       "modelOnnxFile",
       "modelDtype",
-    ]);
+    ]));
 
   if (!settingData) return res.status(400).send(error(`获取记忆配置失败`));
   const memoryObj: Record<string, number | string | string[]> = {};

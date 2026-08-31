@@ -2,18 +2,23 @@ import * as ONNX_WEB from "onnxruntime-web";
 import { pipeline, env as transformersEnv, FeatureExtractionPipeline } from "@huggingface/transformers";
 import path from "path";
 import fs from "fs";
+import type { Knex } from "knex";
 import getPath from "@/utils/getPath";
-import db from "@/utils/db";
+import { getDatabaseRuntime } from "@/database";
 
 // ── 模型配置 ──
 // const modelOnnxFile = ["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]; // 模型文件路径
 // const modelDtype = "fp16" as const; // 量化类型：fp32
 let extractor: FeatureExtractionPipeline | null = null;
 
-export async function initEmbedding(): Promise<void> {
+export async function initEmbedding(db?: Knex): Promise<void> {
   if (extractor) return;
 
-  const modelConfigData = await db("o_setting").whereIn("key", ["modelOnnxFile", "modelDtype"]);
+  const readModelSettings = (handle: Knex) =>
+    handle("o_setting").whereIn("key", ["modelOnnxFile", "modelDtype"]);
+  const modelConfigData = db
+    ? await readModelSettings(db)
+    : await getDatabaseRuntime().work(readModelSettings);
   const modelObj: Record<string, string> = {};
   Object.entries(modelConfigData).forEach(([key, value]) => {
     modelObj[key] = value as string;
@@ -34,8 +39,8 @@ export async function initEmbedding(): Promise<void> {
   extractor = await pipeline("feature-extraction", modelFolder, { dtype: modelDtype });
 }
 
-export async function getEmbedding(text: string): Promise<number[]> {
-  if (!extractor) await initEmbedding();
+export async function getEmbedding(text: string, db?: Knex): Promise<number[]> {
+  if (!extractor) await initEmbedding(db);
   const output = await extractor!(text, { pooling: "mean", normalize: true });
   return Array.from(output.data as Float32Array);
 }

@@ -1,4 +1,4 @@
-import db from "@/utils/db";
+import { getDatabaseRuntime } from "@/database";
 
 const taskStateMap = {
   "0": "进行中",
@@ -38,23 +38,27 @@ export default async function taskRecord(
     }
   }
 
-  const [id] = await db("o_tasks").insert({
+  const [id] = await getDatabaseRuntime().work((db) =>
+    db("o_tasks").insert({
     projectId,
     taskClass,
     relatedObjects: opteorContent,
     model: modelName,
     describe,
-    state: taskStateMap[0],
-    startTime: Date.now(),
-  });
+      state: taskStateMap[0],
+      startTime: Date.now(),
+    }),
+  );
 
   /** 任务成功时调用 done(1)，失败时调用 done(-1, '原因') */
   return async function done(state: 1 | -1, reason?: string) {
-    await db("o_tasks")
-      .where("id", id)
-      .update({
-        state: taskStateMap[state],
-        reason: state === -1 ? (reason ?? "") : null,
-      });
+    await getDatabaseRuntime().work((db) =>
+      db("o_tasks")
+        .where("id", id)
+        .update({
+          state: taskStateMap[state],
+          reason: state === -1 ? (reason ?? "") : null,
+        }),
+    );
   };
 }

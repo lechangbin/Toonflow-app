@@ -1,7 +1,6 @@
 import type { Knex } from "knex";
 
 import { DatabaseAccess, DatabaseNotOpenError, DatabaseUnavailableError, type DatabaseRuntimeState } from "./access";
-import { activateLegacyDatabaseHandle, clearLegacyDatabaseHandle } from "./bridge";
 import type { MaintenanceCommand, MaintenanceResultFor } from "./maintenance";
 import { openResources, type OpenResourcesOptions, type ReadinessContext } from "./readiness";
 
@@ -75,16 +74,11 @@ async function startOpening(options: OpenDatabaseOptions): Promise<DatabaseRunti
   let context: ReadinessContext | undefined;
   try {
     context = await openResources(options);
-    // Legacy readiness code — the fresh-database skill seeder reads the global
-    // handle through `u.db` — still runs inside the lifecycle, so the bridge is
-    // live from the moment the connection opens and is withdrawn on any failure.
-    activateLegacyDatabaseHandle(context.knex);
     const runtime = createRuntime(new DatabaseAccess(context));
     await runtime.start();
     active = runtime;
     return runtime;
   } catch (error) {
-    clearLegacyDatabaseHandle();
     if (context) await context.knex.destroy().catch(() => undefined);
     throw error;
   } finally {
@@ -103,7 +97,6 @@ function createRuntime(access: DatabaseAccess): InternalDatabaseRuntime {
     maintenance: <TCommand extends MaintenanceCommand>(command: TCommand) => access.maintenance(command),
     close: async () => {
       if (active === runtime) active = undefined;
-      clearLegacyDatabaseHandle();
       await access.close();
     },
     get state() {

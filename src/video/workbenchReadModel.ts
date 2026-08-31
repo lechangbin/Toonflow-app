@@ -6,7 +6,7 @@ import { videoPromptBriefSchema, videoPromptDraftSchema } from "./promptProfile"
 
 export interface VideoWorkbenchReadDependencies {
   db: DatabaseWork;
-  getVendorModels(vendorId: string): Promise<unknown[]>;
+  getVendorModels(vendorId: string): Promise<readonly unknown[]>;
   getFileUrl(filePath: string): Promise<string>;
 }
 
