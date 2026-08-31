@@ -1,6 +1,6 @@
 import express from "express";
 import u from "@/utils";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -14,7 +14,7 @@ export default router.post(
   async (req, res) => {
     const { images } = req.body;
     try {
-      const resText = await createDefaultConfiguredVendor().invokeText({
+      const resText = await getDefaultConfiguredVendor().invokeText({
         target: { kind: "logical", key: "universalAi" },
         input: {
           system:

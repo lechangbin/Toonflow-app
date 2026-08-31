@@ -8,6 +8,19 @@ import { failInterruptedVideoProduction } from "@/video/recovery";
 
 const vendorData = rawVendorData as Record<string, string>;
 
+/**
+ * Columns that older releases created and the current schema no longer keeps.
+ * The repair path drops them from live databases, and the import preflight
+ * accepts them in backups (dropping them the same way) while rejecting every
+ * other unknown column before mutation. This map is the single source of that
+ * legacy-shape knowledge.
+ */
+export const legacyDroppedColumns: Readonly<Record<string, readonly string[]>> = {
+  o_project: ["videoModel", "mode"],
+  o_videoTrack: ["prompt"],
+  o_vendorConfig: ["author", "description", "name", "icon", "inputs", "createTime"],
+};
+
 export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   const addColumn = async (table: string, column: string, type: string) => {
     if (!(await knex.schema.hasTable(table))) return;
@@ -68,8 +81,9 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   await addColumn("o_project", "videoModelId", "string");
   await addColumn("o_project", "videoCapabilityId", "string");
   await addColumn("o_project", "videoOutputPresetId", "string");
-  await dropColumn("o_project", "videoModel");
-  await dropColumn("o_project", "mode");
+  for (const [table, columns] of Object.entries(legacyDroppedColumns)) {
+    for (const column of columns) await dropColumn(table, column);
+  }
   await addColumn("o_videoTrack", "vendorId", "string");
   await addColumn("o_videoTrack", "modelId", "string");
   await addColumn("o_videoTrack", "capabilityId", "string");
@@ -77,7 +91,6 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   await addColumn("o_videoTrack", "outputSelection", "text");
   await addColumn("o_videoTrack", "audioSelection", "text");
   await addColumn("o_videoTrack", "promptRevisionId", "integer");
-  await dropColumn("o_videoTrack", "prompt");
   await addColumn("o_video", "generationTaskId", "integer");
   await addColumn("o_video", "artifactRevisionId", "integer");
   await addColumn("o_generationTask", "promptRevisionId", "integer");
@@ -178,13 +191,6 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
       if (tsCode) await tempOnsert(knex, id, tsCode, rootDir);
     }
   }
-
-  await dropColumn("o_vendorConfig", "author");
-  await dropColumn("o_vendorConfig", "description");
-  await dropColumn("o_vendorConfig", "name");
-  await dropColumn("o_vendorConfig", "icon");
-  await dropColumn("o_vendorConfig", "inputs");
-  await dropColumn("o_vendorConfig", "createTime");
 
   for (const id of retainedVendorIds) {
     const source = vendorData[`${id}.ts`];

@@ -1,7 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -200,7 +200,7 @@ export default router.post(
           const existingHint = existingAssetsList
             ? `\n\n【已有资产列表】：${existingAssetsList}\n对于已有资产，如果在剧本中出现，只需在 existingAssetRefs 中给出资产名称和对应的 scriptIds 数组即可，无需重复生成 desc/type。对于新发现的资产（不在已有列表中），请在 newAssets 中给出完整信息。`
             : "";
-          await createDefaultConfiguredVendor().invokeText({
+          await getDefaultConfiguredVendor().invokeText({
             target: { kind: "logical", key: "universalAi" },
             input: {
               messages: [

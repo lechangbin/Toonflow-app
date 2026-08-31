@@ -174,5 +174,6 @@ async function inspectVendor(dependencies: ConfiguredVendorDependencies, vendorI
 }
 
 export type { ConfiguredVendorDependencies, ConfiguredVendorConfig } from "./loader";
+export { parseVendorModelName } from "./loader";
 export * from "./contract";
 export { validateConfiguredVendors } from "./startup";

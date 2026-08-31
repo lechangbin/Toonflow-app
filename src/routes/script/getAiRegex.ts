@@ -1,5 +1,5 @@
 import express from "express";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -20,7 +20,7 @@ export default router.post(
 3. 只返回正则表达式字符串本身，不要有任何其他解释文字或markdown格式。
 4. 如果文本中没有明显的章节分隔模式，返回空字符串。`;
 
-    const resText = await createDefaultConfiguredVendor().invokeText({
+    const resText = await getDefaultConfiguredVendor().invokeText({
       target: { kind: "logical", key: "universalAi" },
       input: {
         system: systemPrompt,

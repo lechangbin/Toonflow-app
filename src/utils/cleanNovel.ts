@@ -2,7 +2,7 @@ import { EventEmitter } from "events";
 import { o_novel } from "@/types/database";
 import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import { stripThink } from "@/utils/stripThink";
 export interface EventType {
   id: number;
@@ -36,7 +36,7 @@ class CleanNovel {
       } else {
         eventExtraction = promptData?.data ?? undefined;
       }
-      const resData = await createDefaultConfiguredVendor().invokeText({
+      const resData = await getDefaultConfiguredVendor().invokeText({
         target: { kind: "logical", key: "universalAi" },
         input: {
           system: eventExtraction ? JSON.stringify(eventExtraction) : (prompt as string),

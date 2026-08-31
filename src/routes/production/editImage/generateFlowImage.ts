@@ -4,8 +4,8 @@ import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import axios from "axios";
-import { createDefaultConfiguredVendor } from "@/vendor";
-import { parseVendorModelName } from "@/vendor/loader";
+import { getDefaultConfiguredVendor } from "@/vendor";
+import { parseVendorModelName } from "@/vendor";
 import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 const router = express.Router();
 
@@ -39,7 +39,7 @@ export default router.post(
       });
       let result: string;
       try {
-        const vendor = createDefaultConfiguredVendor();
+        const vendor = getDefaultConfiguredVendor();
         const { version } = await vendor.inspectVendor(vendorId);
         const input = applyLegacyImageReferenceConversion(version, {
           prompt: prompt,

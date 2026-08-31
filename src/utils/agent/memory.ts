@@ -3,7 +3,7 @@ import { getEmbedding, cosineSimilarity } from "./embedding";
 import type { memories as MemoryRow } from "@/types/database";
 import { tool, jsonSchema } from "ai";
 import { z } from "zod";
-import { createDefaultConfiguredVendor, type ConfiguredVendor, type TextLogicalRole } from "@/vendor";
+import { getDefaultConfiguredVendor, type ConfiguredVendor, type TextLogicalRole } from "@/vendor";
 
 // ── 可调配置默认值 ──
 import { getDatabaseRuntime } from "@/database";
@@ -42,7 +42,7 @@ class Memory {
   constructor(
     agentType: string,
     isolationKey: string,
-    textVendor: Pick<ConfiguredVendor, "invokeText"> = createDefaultConfiguredVendor(),
+    textVendor: Pick<ConfiguredVendor, "invokeText"> = getDefaultConfiguredVendor(),
   ) {
     this.agentType = agentType;
     this.isolationKey = isolationKey;

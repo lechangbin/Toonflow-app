@@ -2,7 +2,7 @@ import { Socket } from "socket.io";
 import { z } from "zod";
 import { tool, jsonSchema } from "ai";
 import u from "@/utils";
-import { createDefaultConfiguredVendor, type TextLogicalKey } from "@/vendor";
+import { getDefaultConfiguredVendor, type TextLogicalKey } from "@/vendor";
 import Memory from "@/utils/agent/memory";
 import { createSkillTools, parseFrontmatter, scanSkills, useSkill } from "@/utils/agent/skillsTools";
 import useTools from "@/agents/productionAgent/tools";
@@ -60,7 +60,7 @@ export async function runDecisionAI(ctx: AgentContext) {
 
   const mem = buildMemPrompt(await memory.get(text));
 
-  const { fullStream } = await createDefaultConfiguredVendor().streamText({
+  const { fullStream } = await getDefaultConfiguredVendor().streamText({
     target: { kind: "logical", key: "productionAgent:decisionAgent" },
     think: ctx.thinkConfig.think,
     thinkLevel: ctx.thinkConfig.thinlLevel,
@@ -114,7 +114,7 @@ async function createSubAgent(parentCtx: AgentContext) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
 
-    const { fullStream } = await createDefaultConfiguredVendor().streamText({
+    const { fullStream } = await getDefaultConfiguredVendor().streamText({
       target: { kind: "logical", key },
       think: parentCtx.thinkConfig.think,
       thinkLevel: parentCtx.thinkConfig.thinlLevel,

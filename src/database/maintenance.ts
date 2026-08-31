@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 
 import initDB from "@/lib/initDB";
+import { legacyDroppedColumns } from "@/lib/fixDB";
 
 /**
  * A maintenance command that was rejected before any mutation. Routes map this
@@ -129,9 +130,16 @@ async function listUserTables(knex: Knex): Promise<string[]> {
 
 /**
  * Preflight for `import`: rejects a malformed, unknown, or unsupported payload
- * without touching the live database.
+ * without touching the live database. Every column must be either part of the
+ * current schema or a legacy column the repair path itself drops; anything else
+ * is data the current release does not understand and must be rejected, never
+ * silently discarded.
  */
-function validateImportPayload(tables: unknown, knownTables: ReadonlySet<string>): ValidatedBackup {
+function validateImportPayload(
+  tables: unknown,
+  knownTables: ReadonlySet<string>,
+  schemaColumns: ReadonlyMap<string, ReadonlySet<string>>,
+): ValidatedBackup {
   if (!isPlainObject(tables)) {
     throw new MaintenanceValidationError("无效的导入数据格式");
   }
@@ -143,10 +151,20 @@ function validateImportPayload(tables: unknown, knownTables: ReadonlySet<string>
     if (!Array.isArray(rows)) {
       throw new MaintenanceValidationError("备份数据格式不受支持");
     }
+    const columns = schemaColumns.get(tableName);
+    if (!columns) {
+      throw new MaintenanceValidationError(`未知的表: ${tableName}`);
+    }
+    const legacyColumns = legacyDroppedColumns[tableName] ?? [];
     const cleanRows: Record<string, unknown>[] = [];
     for (const row of rows) {
       if (!isPlainObject(row)) {
         throw new MaintenanceValidationError("备份数据格式不受支持");
+      }
+      for (const column of Object.keys(row)) {
+        if (!columns.has(column) && !legacyColumns.includes(column)) {
+          throw new MaintenanceValidationError(`未知的列: ${tableName}.${column}`);
+        }
       }
       cleanRows.push(row);
     }
@@ -194,7 +212,11 @@ export const maintenanceRegistry: MaintenanceRegistry = {
 
   import: async (context, command) => {
     const knownTables = new Set(await listUserTables(context.knex));
-    const backup = validateImportPayload(command.tables, knownTables);
+    const schemaColumns = new Map<string, Set<string>>();
+    for (const tableName of knownTables) {
+      schemaColumns.set(tableName, new Set(Object.keys(await context.knex(tableName).columnInfo())));
+    }
+    const backup = validateImportPayload(command.tables, knownTables, schemaColumns);
 
     // `enforceForeignCheck: false` disables the foreign-key pragma for the
     // destructive rebuild and restores its prior value in a `finally`, on both
