@@ -2,6 +2,7 @@ import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { tool, jsonSchema } from "ai";
 const router = express.Router();
@@ -82,9 +83,12 @@ export default router.post(
       });
 
       if (type == "text") {
-        const { textStream } = await u.Ai.Text(`${id}:${modelName}`).stream({
-          prompt: "请调用工具获取火星的天气，并回答我多少气温",
-          tools: { getWeatherTool },
+        const { textStream } = await createDefaultConfiguredVendor().streamText({
+          target: { kind: "direct", vendorId: id, modelId: modelName },
+          input: {
+            prompt: "请调用工具获取火星的天气，并回答我多少气温",
+            tools: { getWeatherTool },
+          },
         });
         let fullResponse = "";
         for await (const chunk of textStream) {

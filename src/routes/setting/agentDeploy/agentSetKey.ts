@@ -1,6 +1,7 @@
 import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import u from "@/utils";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
@@ -24,8 +25,11 @@ export default router.post(
         inputValues: JSON.stringify(inputValue),
       });
     try {
-      const resText = await u.Ai.Text(`toonflow:claude-haiku-4-5-20251001`).invoke({
-        prompt: "1+1等于几？,请直接回答2，不要解释",
+      const resText = await createDefaultConfiguredVendor().invokeText({
+        target: { kind: "direct", vendorId: "toonflow", modelId: "claude-haiku-4-5-20251001" },
+        input: {
+          prompt: "1+1等于几？,请直接回答2，不要解释",
+        },
       });
       if (resText.text) {
         await u.db("o_agentDeploy").where("key", "scriptAgent").update({
