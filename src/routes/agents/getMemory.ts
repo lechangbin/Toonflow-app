@@ -1,5 +1,5 @@
 import express from "express";
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -20,11 +20,10 @@ export default router.post(
     const { projectId, agentType, episodesId } = req.body;
     const isolationKey = `${projectId}:${agentType}${episodesId ? `:${episodesId}` : ""}`;
 
-    const rows = await u
-      .db("memories")
+    const rows = await getDatabaseRuntime().work((db) => db("memories")
       .where({ isolationKey, type: "message" })
       .orderBy("createTime", "asc")
-      .select("id", "role", "name", "content", "createTime");
+      .select("id", "role", "name", "content", "createTime"));
 
     const history = rows.map((row) => ({
       id: row.id,

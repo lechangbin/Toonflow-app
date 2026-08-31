@@ -1,5 +1,7 @@
 import express from "express";
 import u from "@/utils";
+
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -27,12 +29,11 @@ export default router.post(
       }
     });
 
-    await u
-      .db("o_imageFlow")
+    await getDatabaseRuntime().work((db) => db("o_imageFlow")
       .where("id", flowId)
       .update({
         flowData: JSON.stringify({ edges, nodes }),
-      });
+      }));
     return res.status(200).send(success());
   },
 );

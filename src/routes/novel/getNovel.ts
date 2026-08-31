@@ -1,5 +1,5 @@
 import express from "express";
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -17,8 +17,7 @@ export default router.post(
   async (req, res) => {
     const { projectId, page, limit, search } = req.body;
     const offset = (page - 1) * limit;
-    const data = await u
-      .db("o_novel")
+    const data = await getDatabaseRuntime().work((db) => db("o_novel")
       .where("projectId", projectId)
       .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState", "errorReason")
       .andWhere((qb) => {
@@ -28,11 +27,10 @@ export default router.post(
       })
       .orderBy("chapterIndex", "asc")
       .limit(limit)
-      .offset(offset);
+      .offset(offset));
 
     // 统计总数
-    const totalQuery = (await u
-      .db("o_novel")
+    const totalQuery = (await getDatabaseRuntime().work((db) => db("o_novel")
       .where("projectId", projectId)
       .andWhere((qb) => {
         if (search) {
@@ -40,7 +38,7 @@ export default router.post(
         }
       })
       .count("* as total")
-      .first()) as any;
+      .first())) as any;
 
     res.status(200).send(success({ data, total: totalQuery.total }));
   },

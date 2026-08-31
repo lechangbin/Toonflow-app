@@ -39,7 +39,7 @@ export const customVideoPromptRevisionSchema = videoTrackSelectionSchema
 export interface VideoPromptGenerationDependencies {
   db: DatabaseWork;
   profiles: VideoPromptProfileRegistry;
-  getVendorModels(vendorId: string): Promise<any[]>;
+  getVendorModels(vendorId: string): Promise<readonly any[]>;
   generateDraft(instruction: string): Promise<unknown>;
   now(): number;
 }
@@ -196,7 +196,8 @@ function createDefaultVideoPromptGeneration() {
   return createVideoPromptGeneration({
     db: (operation) => getDatabaseRuntime().work(operation),
     profiles: VideoPromptProfileRegistry.load(u.getPath(["promptProfiles", "video"])),
-    getVendorModels: (vendorId) => u.vendor.getModelList(vendorId),
+    getVendorModels: (vendorId) =>
+      createDefaultConfiguredVendor().inspectVendor(vendorId).then((inspection) => inspection.models),
     generateDraft: async (instruction) => {
       const result = await createDefaultConfiguredVendor().invokeText({
         target: { kind: "logical", key: "universalAi" },

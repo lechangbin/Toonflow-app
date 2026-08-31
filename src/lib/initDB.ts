@@ -971,7 +971,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         ];
         await Promise.all(
           list.map(async (item) => {
-            const embedding = await getEmbedding(item.description);
+            const embedding = await getEmbedding(item.description, knex);
             item.embedding = JSON.stringify(embedding);
           }),
         );

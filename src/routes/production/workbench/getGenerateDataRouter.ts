@@ -9,7 +9,7 @@ import { readVideoTrackProjections } from "@/video/workbenchReadModel";
 
 export interface GenerateDataRouteDependencies {
   db: DatabaseWork;
-  getVendorModels(vendorId: string): Promise<unknown[]>;
+  getVendorModels(vendorId: string): Promise<readonly unknown[]>;
   getFileUrl(filePath: string): Promise<string>;
   getSmallImageUrl(filePath: string): Promise<string>;
 }

@@ -2,17 +2,18 @@ import express from "express";
 
 import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
-import u from "@/utils";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import { listEnabledVideoCapabilities } from "@/video/capabilityCatalog";
 
 const router = express.Router();
 
 export default router.post("/", async (_req, res, next) => {
   try {
+    const vendor = getDefaultConfiguredVendor();
     const catalog = await listEnabledVideoCapabilities({
       db: (operation) => getDatabaseRuntime().work(operation),
-      getVendor: (vendorId) => u.vendor.getVendor(vendorId),
-      getVendorModels: (vendorId) => u.vendor.getModelList(vendorId),
+      getVendor: (vendorId) => vendor.inspectVendor(vendorId),
+      getVendorModels: (vendorId) => vendor.inspectVendor(vendorId).then((inspection) => inspection.models),
     });
     res.status(200).send(success(catalog));
   } catch (error) {

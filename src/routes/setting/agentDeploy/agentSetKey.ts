@@ -1,6 +1,5 @@
 import express from "express";
 import { success, error } from "@/lib/responseFormat";
-import u from "@/utils";
 import { createDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { validateFields } from "@/middleware/middleware";
@@ -19,12 +18,11 @@ export default router.post(
     if (!vendorConfigData.inputValues) return res.status(500).send(error("未找到模型配置数据"));
     const inputValue = JSON.parse(vendorConfigData.inputValues!);
     inputValue.apiKey = key;
-    await u
-      .db("o_vendorConfig")
+    await getDatabaseRuntime().work((db) => db("o_vendorConfig")
       .where("id", "toonflow")
       .update({
         inputValues: JSON.stringify(inputValue),
-      });
+      }));
     try {
       const resText = await createDefaultConfiguredVendor().invokeText({
         target: { kind: "direct", vendorId: "toonflow", modelId: "claude-haiku-4-5-20251001" },
@@ -53,10 +51,9 @@ export default router.post(
     } catch (err) {
       console.error(err);
       inputValue.apiKey = "";
-      await u
-        .db("o_vendorConfig")
+      await getDatabaseRuntime().work((db) => db("o_vendorConfig")
         .where("id", "toonflow")
-        .update({ inputValues: JSON.stringify(inputValue) });
+        .update({ inputValues: JSON.stringify(inputValue) }));
       res.status(400).send(error("KEY无效，请重新输入"));
     }
   },

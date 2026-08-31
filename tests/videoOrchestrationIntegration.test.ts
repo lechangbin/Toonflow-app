@@ -4,7 +4,7 @@ import test from "node:test";
 
 import knexFactory, { type Knex } from "knex";
 
-import { db as globalDatabase, dbReady } from "../src/utils/db";
+import { closeDatabase } from "../src/database";
 import { createVideoProduction } from "../src/video/production";
 import { createVideoPromptGeneration } from "../src/video/promptGeneration";
 import { VideoPromptProfileRegistry } from "../src/video/promptProfile";
@@ -34,8 +34,7 @@ const model: VideoModelSummary = {
 };
 
 test.after(async () => {
-  await dbReady;
-  await globalDatabase.destroy();
+  await closeDatabase();
 });
 
 async function createDatabase(): Promise<Knex> {
