@@ -25,7 +25,7 @@ import {
   type ConfiguredVendorDependencies,
   type ResolvedTextModel,
 } from "./loader";
-import { readVendorSourceFile, validateConfiguredVendorsWith } from "./startup";
+import { deleteVendorSourceFile, readVendorSourceFile, validateConfiguredVendorsWith, writeVendorSourceFile } from "./startup";
 
 /**
  * The public configured-Vendor interface. Every operation is typed and none of
@@ -61,11 +61,26 @@ export function createConfiguredVendor(dependencies: ConfiguredVendorDependencie
 }
 
 export function createDefaultConfiguredVendor(): ConfiguredVendor {
+  const dataRoot = getPath();
   return createConfiguredVendor({
     work: (operation) => getDatabaseRuntime().work(operation),
-    readVendorSource: (vendorId) => readVendorSourceFile(vendorId, getPath()),
+    readVendorSource: (vendorId) => readVendorSourceFile(vendorId, dataRoot),
+    writeVendorSource: (vendorId, source) => writeVendorSourceFile(vendorId, source, dataRoot),
+    deleteVendorSource: (vendorId) => deleteVendorSourceFile(vendorId, dataRoot),
     promptProfiles: VideoPromptProfileRegistry.load(getPath(["promptProfiles", "video"])),
   });
+}
+
+let defaultConfiguredVendor: ConfiguredVendor | undefined;
+
+/**
+ * The single process-wide configured-Vendor instance. Created lazily so route
+ * modules can import it without touching the database or data root at import
+ * time; its `work` closure resolves the runtime on every call.
+ */
+export function getDefaultConfiguredVendor(): ConfiguredVendor {
+  if (!defaultConfiguredVendor) defaultConfiguredVendor = createDefaultConfiguredVendor();
+  return defaultConfiguredVendor;
 }
 
 async function invokeText(dependencies: ConfiguredVendorDependencies, request: TextInvokeRequest) {
