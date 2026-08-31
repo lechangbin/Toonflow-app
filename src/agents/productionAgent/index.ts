@@ -2,6 +2,7 @@ import { Socket } from "socket.io";
 import { z } from "zod";
 import { tool, jsonSchema } from "ai";
 import u from "@/utils";
+import { createDefaultConfiguredVendor, type TextLogicalKey } from "@/vendor";
 import Memory from "@/utils/agent/memory";
 import { createSkillTools, parseFrontmatter, scanSkills, useSkill } from "@/utils/agent/skillsTools";
 import useTools from "@/agents/productionAgent/tools";
@@ -58,20 +59,25 @@ export async function runDecisionAI(ctx: AgentContext) {
 
   const mem = buildMemPrompt(await memory.get(text));
 
-  const { fullStream } = await u.Ai.Text("productionAgent:decisionAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
-    messages: [
-      { role: "system", content: prompt },
-      { role: "assistant", content: mem + "\n" + modelInfo },
-      { role: "user", content: text },
-    ],
-    abortSignal,
-    tools: {
-      ...memory.getTools(),
-      ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
-      ...(await createSubAgent(ctx)),
-    },
-    onFinish: async (completion) => {
-      await memory.add("assistant:decision", removeAllXmlTags(completion.text));
+  const { fullStream } = await createDefaultConfiguredVendor().streamText({
+    target: { kind: "logical", key: "productionAgent:decisionAgent" },
+    think: ctx.thinkConfig.think,
+    thinkLevel: ctx.thinkConfig.thinlLevel,
+    input: {
+      messages: [
+        { role: "system", content: prompt },
+        { role: "assistant", content: mem + "\n" + modelInfo },
+        { role: "user", content: text },
+      ],
+      abortSignal,
+      tools: {
+        ...memory.getTools(),
+        ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
+        ...(await createSubAgent(ctx)),
+      },
+      onFinish: async (completion) => {
+        await memory.add("assistant:decision", removeAllXmlTags(completion.text));
+      },
     },
   });
 
@@ -96,7 +102,7 @@ async function createSubAgent(parentCtx: AgentContext) {
     tools: extraTools,
     messages,
   }: {
-    key: `${string}:${string}`;
+    key: TextLogicalKey;
     prompt: string;
     system: string;
     name: string;
@@ -107,11 +113,16 @@ async function createSubAgent(parentCtx: AgentContext) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
 
-    const { fullStream } = await u.Ai.Text(key, parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel).stream({
-      system,
-      messages: messages ?? [{ role: "user", content: prompt }],
-      abortSignal,
-      tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
+    const { fullStream } = await createDefaultConfiguredVendor().streamText({
+      target: { kind: "logical", key },
+      think: parentCtx.thinkConfig.think,
+      thinkLevel: parentCtx.thinkConfig.thinlLevel,
+      input: {
+        system,
+        messages: messages ?? [{ role: "user", content: prompt }],
+        abortSignal,
+        tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
+      },
     });
 
     const fullResponse = await consumeFullStream(fullStream, subMsg);

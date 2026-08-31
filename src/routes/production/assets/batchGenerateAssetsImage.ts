@@ -2,6 +2,7 @@ import express from "express";
 import u from "@/utils";
 import { z } from "zod";
 import { getDatabaseRuntime } from "@/database";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import sharp from "sharp";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -79,16 +80,19 @@ export default router.post(
       const imageId = imageIdMap[item.id!];
       const typeConfig = promptRecord[item.type!] || promptRecord["role"];
 
-      const { text } = await u.Ai.Text("universalAi").invoke({
-        system: `${typeConfig.prompt}`,
-        messages: [
-          {
-            role: "user",
-            content: `
+      const { text } = await createDefaultConfiguredVendor().invokeText({
+        target: { kind: "logical", key: "universalAi" },
+        input: {
+          system: `${typeConfig.prompt}`,
+          messages: [
+            {
+              role: "user",
+              content: `
             父级资产描述: ${item.parentDescribe || "无详细描述"}
             当前资产描述: ${item.describe || "无详细描述"}`,
-          },
-        ],
+            },
+          ],
+        },
       });
         await getDatabaseRuntime().work((db) => db("o_assets").where("id", item.id).update({ prompt: text }));
 

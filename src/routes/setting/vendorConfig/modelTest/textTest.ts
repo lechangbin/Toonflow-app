@@ -2,6 +2,7 @@ import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { tool, jsonSchema } from "ai";
 const router = express.Router();
@@ -28,8 +29,6 @@ export default router.post(
       if (!vendorConfigData) return res.status(500).send(error("未找到该供应商配置"));
       if (!vendorConfigData.models) return res.status(500).send(error("未找到模型列表"));
 
-      const modelList = await u.vendor.getModelList(vendorConfigData.id!);
-
       const getWeatherTool = tool({
         description: "Get the weather in a location",
         inputSchema: jsonSchema<{ location: string }>(
@@ -47,9 +46,12 @@ export default router.post(
         },
       });
 
-      const data = await u.Ai.Text(`${id}:${modelName}`).invoke({
-        messages,
-        tools: { getWeatherTool },
+      const data = await createDefaultConfiguredVendor().invokeText({
+        target: { kind: "direct", vendorId: id, modelId: modelName },
+        input: {
+          messages,
+          tools: { getWeatherTool },
+        },
       });
       console.log("%c Line:46 🍐 data", "background:#6ec1c2", data);
       if (!data) return res.status(500).send(error("模型未返回结果"));

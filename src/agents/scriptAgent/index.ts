@@ -2,6 +2,7 @@ import { Socket } from "socket.io";
 import { tool, jsonSchema } from "ai";
 import { z } from "zod";
 import u from "@/utils";
+import { createDefaultConfiguredVendor, type TextLogicalKey } from "@/vendor";
 import Memory from "@/utils/agent/memory";
 import useTools from "@/agents/scriptAgent/tools";
 import ResTool from "@/socket/resTool";
@@ -62,20 +63,25 @@ export async function runDecisionAI(ctx: AgentContext) {
     `章节数量：${novelData.length}章`,
   ].join("\n");
 
-  const { fullStream } = await u.Ai.Text("scriptAgent:decisionAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
-    messages: [
-      { role: "system", content: prompt },
-      { role: "assistant", content: projectInfo + "\n" + mem },
-      { role: "user", content: text },
-    ],
-    abortSignal,
-    tools: {
-      ...memory.getTools(),
-      ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
-      ...createSubAgent(ctx),
-    },
-    onFinish: async (completion) => {
-      await memory.add("assistant:decision", removeAllXmlTags(completion.text));
+  const { fullStream } = await createDefaultConfiguredVendor().streamText({
+    target: { kind: "logical", key: "scriptAgent:decisionAgent" },
+    think: ctx.thinkConfig.think,
+    thinkLevel: ctx.thinkConfig.thinlLevel,
+    input: {
+      messages: [
+        { role: "system", content: prompt },
+        { role: "assistant", content: projectInfo + "\n" + mem },
+        { role: "user", content: text },
+      ],
+      abortSignal,
+      tools: {
+        ...memory.getTools(),
+        ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
+        ...createSubAgent(ctx),
+      },
+      onFinish: async (completion) => {
+        await memory.add("assistant:decision", removeAllXmlTags(completion.text));
+      },
     },
   });
 
@@ -101,7 +107,7 @@ function createSubAgent(parentCtx: AgentContext) {
     tools: extraTools,
     messages,
   }: {
-    key: `${string}:${string}`;
+    key: TextLogicalKey;
     prompt: string;
     system: string;
     name: string;
@@ -112,11 +118,16 @@ function createSubAgent(parentCtx: AgentContext) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
 
-    const { fullStream } = await u.Ai.Text(key, parentCtx.thinkConfig.think, parentCtx.thinkConfig.thinlLevel).stream({
-      system,
-      messages: messages ?? [{ role: "user", content: prompt }],
-      abortSignal,
-      tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
+    const { fullStream } = await createDefaultConfiguredVendor().streamText({
+      target: { kind: "logical", key },
+      think: parentCtx.thinkConfig.think,
+      thinkLevel: parentCtx.thinkConfig.thinlLevel,
+      input: {
+        system,
+        messages: messages ?? [{ role: "user", content: prompt }],
+        abortSignal,
+        tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
+      },
     });
 
     const fullResponse = await consumeFullStream(fullStream, subMsg);

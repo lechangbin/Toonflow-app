@@ -1,5 +1,5 @@
 import express from "express";
-import u from "@/utils";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -20,14 +20,17 @@ export default router.post(
 3. 只返回正则表达式字符串本身，不要有任何其他解释文字或markdown格式。
 4. 如果文本中没有明显的章节分隔模式，返回空字符串。`;
 
-    const resText = await u.Ai.Text("universalAi").invoke({
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: content.slice(0, 2000),
-        },
-      ],
+    const resText = await createDefaultConfiguredVendor().invokeText({
+      target: { kind: "logical", key: "universalAi" },
+      input: {
+        system: systemPrompt,
+        messages: [
+          {
+            role: "user",
+            content: content.slice(0, 2000),
+          },
+        ],
+      },
     });
     const result = (resText.text || "").trim();
     res.status(200).send(success(result));

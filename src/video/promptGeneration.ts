@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getDatabaseRuntime, type DatabaseWork } from "@/database";
 import u from "@/utils";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import { validateVideoCapabilitySelection } from "./capability";
 import { validateVideoTrackInputReferences, videoTrackSelectionSchema } from "./productionContract";
 import {
@@ -197,9 +198,12 @@ function createDefaultVideoPromptGeneration() {
     profiles: VideoPromptProfileRegistry.load(u.getPath(["promptProfiles", "video"])),
     getVendorModels: (vendorId) => u.vendor.getModelList(vendorId),
     generateDraft: async (instruction) => {
-      const result = await u.Ai.Text("universalAi").invoke({
-        prompt: instruction,
-        output: Output.object({ schema: videoPromptDraftSchema, name: "video_prompt_draft" }),
+      const result = await createDefaultConfiguredVendor().invokeText({
+        target: { kind: "logical", key: "universalAi" },
+        input: {
+          prompt: instruction,
+          output: Output.object({ schema: videoPromptDraftSchema, name: "video_prompt_draft" }),
+        },
       });
       return result.output;
     },

@@ -1,6 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -64,26 +65,29 @@ export default router.post(
         } else {
           audioBindPrompt = promptData?.data ?? undefined;
         }
-        const { text } = await u.Ai.Text("universalAi").invoke({
-          messages: [
-            {
-              role: "system",
-              content: `
+        const { text } = await createDefaultConfiguredVendor().invokeText({
+          target: { kind: "logical", key: "universalAi" },
+          input: {
+            messages: [
+              {
+                role: "system",
+                content: `
               ${audioBindPrompt}
               `,
-            },
-            {
-              role: "user",
-              content: `
+              },
+              {
+                role: "user",
+                content: `
                 ## 候选音频列表
                 ${audioList}
                 ## 待匹配资产
                 - ID:${asset.id} | 名称:${asset.name} | 描述:${asset.describe ?? "无"} | 类型：${asset.type}
                 请从候选音频列表中为该资产选出来一个最符合该角色设定的音色，并调用 resultTool 提交结果。
            `,
-            },
-          ],
-          tools: { resultTool },
+              },
+            ],
+            tools: { resultTool },
+          },
         });
       } catch (e) {
         await getDatabaseRuntime().work(async (db) => {

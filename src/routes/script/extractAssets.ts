@@ -1,6 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -199,21 +200,24 @@ export default router.post(
           const existingHint = existingAssetsList
             ? `\n\n【已有资产列表】：${existingAssetsList}\n对于已有资产，如果在剧本中出现，只需在 existingAssetRefs 中给出资产名称和对应的 scriptIds 数组即可，无需重复生成 desc/type。对于新发现的资产（不在已有列表中），请在 newAssets 中给出完整信息。`
             : "";
-          await u.Ai.Text("universalAi").invoke({
-            messages: [
-              {
-                role: "system",
-                content:
-                  scriptAssetExtraction +
-                  "\n\n提取剧本中涉及的资产（角色、场景、道具），参考技能 script_assets_extract 规范，结果必须通过 resultTool 工具返回。" +
-                  "\n\n注意：本次会同时提供多集剧本，每集剧本以 ===== 【剧本ID: xxx】 ===== 分隔。你需要分析每集剧本使用了哪些资产，并在输出中用 scriptIds 数组标明每个资产在哪些剧本中出现。",
-              },
-              {
-                role: "user",
-                content: `当前已有资产列表：${existingHint}\n\n请根据以下${validScripts.length}集剧本提取对应的剧本资产（角色、场景、道具）:\n\n${scriptsContent}`,
-              },
-            ],
-            tools: { resultTool },
+          await createDefaultConfiguredVendor().invokeText({
+            target: { kind: "logical", key: "universalAi" },
+            input: {
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    scriptAssetExtraction +
+                    "\n\n提取剧本中涉及的资产（角色、场景、道具），参考技能 script_assets_extract 规范，结果必须通过 resultTool 工具返回。" +
+                    "\n\n注意：本次会同时提供多集剧本，每集剧本以 ===== 【剧本ID: xxx】 ===== 分隔。你需要分析每集剧本使用了哪些资产，并在输出中用 scriptIds 数组标明每个资产在哪些剧本中出现。",
+                },
+                {
+                  role: "user",
+                  content: `当前已有资产列表：${existingHint}\n\n请根据以下${validScripts.length}集剧本提取对应的剧本资产（角色、场景、道具）:\n\n${scriptsContent}`,
+                },
+              ],
+              tools: { resultTool },
+            },
           });
           await persistGroupResult({
             batchScriptIds: validScriptIds,

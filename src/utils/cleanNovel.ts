@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import { o_novel } from "@/types/database";
 import u from "@/utils";
+import { createDefaultConfiguredVendor } from "@/vendor";
 import { stripThink } from "@/utils/stripThink";
 export interface EventType {
   id: number;
@@ -34,22 +35,25 @@ class CleanNovel {
       } else {
         eventExtraction = promptData?.data ?? undefined;
       }
-      const resData = await u.Ai.Text("universalAi").invoke({
-        system: eventExtraction ? JSON.stringify(eventExtraction) : (prompt as string),
-        messages: [
-          {
-            role: "user",
-            content:
-              "请根据以下小说章节数：" +
-              novel.chapterIndex +
-              "小说章节券：" +
-              novel.reel +
-              "小说章节名称：" +
-              novel.chapter +
-              "、小说章节内容生成事件摘要：\n" +
-              novel.chapterData!,
-          },
-        ],
+      const resData = await createDefaultConfiguredVendor().invokeText({
+        target: { kind: "logical", key: "universalAi" },
+        input: {
+          system: eventExtraction ? JSON.stringify(eventExtraction) : (prompt as string),
+          messages: [
+            {
+              role: "user",
+              content:
+                "请根据以下小说章节数：" +
+                novel.chapterIndex +
+                "小说章节券：" +
+                novel.reel +
+                "小说章节名称：" +
+                novel.chapter +
+                "、小说章节内容生成事件摘要：\n" +
+                novel.chapterData!,
+            },
+          ],
+        },
       });
       const preData = stripThink(resData.text);
       this.emitter.emit("item", { id: novel.id, event: preData });
