@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { success } from "@/lib/responseFormat";
@@ -28,29 +29,26 @@ export default router.post(
       const savePath = `/${projectId}/${type}/${uuidv4()}.png`;
       // 写入文件
       await u.oss.writeFile(savePath, Buffer.from(realBase64, "base64"));
-      // 插入图片表
-      const [idData] = await u.db("o_image").insert({
-        assetsId: id,
-        filePath: savePath,
-        type: type,
-        state: "已完成",
-      });
-      // 更新资产表图片为新图片
-      await u
-        .db("o_assets")
-        .where("id", id)
-        .update({
+      // 插入图片表并更新资产表图片为新图片
+      await getDatabaseRuntime().work(async (db) => {
+        const [idData] = await db("o_image").insert({
+          assetsId: id,
+          filePath: savePath,
+          type: type,
+          state: "已完成",
+        });
+        await db("o_assets").where("id", id).update({
           prompt: prompt ?? "",
           imageId: idData,
         });
+      });
     } else {
-      await u
-        .db("o_assets")
-        .where("id", id)
-        .update({
+      await getDatabaseRuntime().work(async (db) => {
+        await db("o_assets").where("id", id).update({
           prompt: prompt ?? "",
           imageId: imageId,
         });
+      });
     }
     res.status(200).send(success({ message: "保存资产图片成功" }));
   },

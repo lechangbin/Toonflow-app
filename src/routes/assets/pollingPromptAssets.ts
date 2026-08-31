@@ -1,5 +1,5 @@
 import express from "express";
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -12,7 +12,9 @@ export default router.post(
   }),
   async (req, res) => {
     const { ids } = req.body;
-    const data = await u.db("o_assets").whereIn("id", ids).whereNot("promptState", "生成中").select("*");
+    const data = await getDatabaseRuntime().work(async (db) =>
+      db("o_assets").whereIn("id", ids).whereNot("promptState", "生成中").select("*"),
+    );
     res.status(200).send(success(data));
   },
 );

@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -21,31 +22,36 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, data } = req.body;
-    const totalNovelId = [];
-    const getLastChapterIndex = await u.db("o_novel").where("projectId", projectId).select("chapterIndex").orderBy("chapterIndex", "desc").first();
+    const totalNovelId: number[] = [];
+    const getLastChapterIndex = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_novel").where("projectId", projectId).select("chapterIndex").orderBy("chapterIndex", "desc").first();
+    });
     let lastChapterIndex = 0;
     if (getLastChapterIndex) {
       lastChapterIndex = getLastChapterIndex.chapterIndex!;
     }
-    for (const item of data) {
-      const [id] = await u.db("o_novel").insert({
-        projectId,
-        chapterIndex: ++lastChapterIndex,
-        reel: item.reel,
-        chapter: item.chapter,
-        chapterData: item.chapterData,
-        createTime: Date.now(),
-        eventState: 0,
-      });
-      totalNovelId.push(id);
-    }
-    const chapterAllList = await u.db("o_novel").where("projectId", projectId).whereIn("id", totalNovelId);
+    await getDatabaseRuntime().work(async (db) => {
+      for (const item of data) {
+        const [id] = await db("o_novel").insert({
+          projectId,
+          chapterIndex: ++lastChapterIndex,
+          reel: item.reel,
+          chapter: item.chapter,
+          chapterData: item.chapterData,
+          createTime: Date.now(),
+          eventState: 0,
+        });
+        totalNovelId.push(id);
+      }
+    });
+    const chapterAllList = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_novel").where("projectId", projectId).whereIn("id", totalNovelId);
+    });
     const novelClass = new u.cleanNovel();
     novelClass.emitter.on("item", async (item) => {
-      await u
-        .db("o_novel")
-        .where("id", item.id)
-        .update({ event: item.event, eventState: item.event ? 1 : -1, errorReason: item?.errReason ?? null });
+      await getDatabaseRuntime().work(async (db) => {
+        await db("o_novel").where("id", item.id).update({ event: item.event, eventState: item.event ? 1 : -1, errorReason: item?.errReason ?? null });
+      });
     });
     novelClass.start(chapterAllList, projectId);
 
