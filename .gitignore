@@ -28,6 +28,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cache
 *.tsbuildinfo
 
+# WorkBuddy workspace data
+.workbuddy/
+
 # IntelliJ based IDEs
 .idea
 
