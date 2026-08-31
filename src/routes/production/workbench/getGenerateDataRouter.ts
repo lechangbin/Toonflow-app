@@ -1,14 +1,14 @@
 import express from "express";
-import type { Knex } from "knex";
 import { z } from "zod";
 
+import type { DatabaseWork } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { resolveVideoReferenceMediaType } from "@/lib/videoPromptReferences";
 import { readVideoTrackProjections } from "@/video/workbenchReadModel";
 
 export interface GenerateDataRouteDependencies {
-  db: Knex;
+  db: DatabaseWork;
   getVendorModels(vendorId: string): Promise<unknown[]>;
   getFileUrl(filePath: string): Promise<string>;
   getSmallImageUrl(filePath: string): Promise<string>;
@@ -49,10 +49,12 @@ export function createGetGenerateDataRouter(dependencies: GenerateDataRouteDepen
     }),
     async (req, res) => {
       const { projectId, scriptId } = req.body;
-      const projectData = await dependencies.db("o_project")
-        .where("id", projectId)
-        .select("id", "videoVendorId", "videoModelId", "videoCapabilityId", "videoOutputPresetId", "videoRatio")
-        .first();
+      const projectData = await dependencies.db((db) =>
+        db("o_project")
+          .where("id", projectId)
+          .select("id", "videoVendorId", "videoModelId", "videoCapabilityId", "videoOutputPresetId", "videoRatio")
+          .first(),
+      );
 
       const projectDefaults =
         projectData?.videoVendorId && projectData.videoModelId && projectData.videoCapabilityId
@@ -77,7 +79,9 @@ export function createGetGenerateDataRouter(dependencies: GenerateDataRouteDepen
         (projectData?.videoCapabilityId != null && projectData.videoCapabilityId !== "text-to-video") ||
         trackProjections.some((track) => track.actual.capabilityId && track.actual.capabilityId !== "text-to-video");
 
-      const storyboardList = await dependencies.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
+      const storyboardList = await dependencies.db((db) =>
+        db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc"),
+      );
       await Promise.all(
         storyboardList.map(async (i) => {
           i.filePath = i.filePath ? await dependencies.getSmallImageUrl(i.filePath) : "";
@@ -112,26 +116,30 @@ export function createGetGenerateDataRouter(dependencies: GenerateDataRouteDepen
       if (acceptsImageInputs) {
         const storyIds = storyboardList.map((s) => s.id);
 
-        const assetDatas = await dependencies.db("o_assets2Storyboard")
-          .leftJoin("o_assets", "o_assets2Storyboard.assetId", "o_assets.id")
-          .leftJoin("o_image", "o_image.id", "o_assets.imageId")
-          .whereIn("o_assets2Storyboard.storyboardId", storyIds as number[])
-          .select("o_assets.*", "o_image.filePath", "o_image.type as storedFileType", "o_assets2Storyboard.storyboardId");
+        const assetDatas = await dependencies.db((db) =>
+          db("o_assets2Storyboard")
+            .leftJoin("o_assets", "o_assets2Storyboard.assetId", "o_assets.id")
+            .leftJoin("o_image", "o_image.id", "o_assets.imageId")
+            .whereIn("o_assets2Storyboard.storyboardId", storyIds as number[])
+            .select("o_assets.*", "o_image.filePath", "o_image.type as storedFileType", "o_assets2Storyboard.storyboardId"),
+        );
 
         const queryAudioIds = [...assetDatas.map((i) => i.id!), ...assetDatas.map((i) => i.assetsId!)].filter(Boolean);
-        const assets2AudioData = await dependencies.db("o_assetsRole2Audio")
-          .leftJoin("o_assets", "o_assets.assetsId", "o_assetsRole2Audio.assetsAudioId")
-          .leftJoin("o_image", "o_image.id", "o_assets.imageId")
-          .whereIn("o_assetsRole2Audio.assetsRoleId", queryAudioIds)
-          .select(
-            "o_assets.id",
-            "o_assets.name",
-            "o_assetsRole2Audio.assetsRoleId",
-            "o_assets.describe",
-            "o_assets.type",
-            "o_assets.prompt",
-            "o_image.filePath",
-          );
+        const assets2AudioData = await dependencies.db((db) =>
+          db("o_assetsRole2Audio")
+            .leftJoin("o_assets", "o_assets.assetsId", "o_assetsRole2Audio.assetsAudioId")
+            .leftJoin("o_image", "o_image.id", "o_assets.imageId")
+            .whereIn("o_assetsRole2Audio.assetsRoleId", queryAudioIds)
+            .select(
+              "o_assets.id",
+              "o_assets.name",
+              "o_assetsRole2Audio.assetsRoleId",
+              "o_assets.describe",
+              "o_assets.type",
+              "o_assets.prompt",
+              "o_image.filePath",
+            ),
+        );
         const audioRecord: Record<string, any> = {};
         await Promise.all(
           assets2AudioData.map(async (i) => {

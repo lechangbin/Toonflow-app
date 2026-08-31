@@ -1,7 +1,7 @@
-import type { Knex } from "knex";
+import type { DatabaseWork } from "@/database";
 
 export interface VideoInputUploadDependencies {
-  db: Knex;
+  db: DatabaseWork;
   createId(): string;
   writeFile(filePath: string, bytes: Buffer): Promise<void>;
   getFileUrl(filePath: string): Promise<string>;
@@ -57,9 +57,11 @@ export async function uploadVideoInputImage(
   dependencies: VideoInputUploadDependencies,
   request: VideoInputUploadRequest,
 ) {
-  const project = await dependencies.db("o_project").where("id", request.projectId).first();
+  const project = await dependencies.db((db) => db("o_project").where("id", request.projectId).first());
   if (!project) throw new Error(`Project ${request.projectId} 不存在`);
-  const script = await dependencies.db("o_script").where({ id: request.scriptId, projectId: request.projectId }).first();
+  const script = await dependencies.db((db) =>
+    db("o_script").where({ id: request.scriptId, projectId: request.projectId }).first(),
+  );
   if (!script) throw new Error(`Script ${request.scriptId} 不属于 Project ${request.projectId}`);
 
   const match = request.base64Data.match(/^data:([^;]+);base64,([A-Za-z0-9+/]+={0,2})$/);

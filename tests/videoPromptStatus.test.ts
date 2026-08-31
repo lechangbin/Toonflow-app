@@ -7,6 +7,7 @@ import knexFactory, { Knex } from "knex";
 
 import { createCheckVideoPromptRouter } from "../src/routes/production/workbench/checkVideoPromptRouter";
 import { readVideoPromptStatuses } from "../src/video/promptStatus";
+import { workOf } from "./databaseTestSupport";
 
 async function createPromptStatusDatabase(): Promise<Knex> {
   const db = knexFactory({
@@ -49,7 +50,7 @@ test("completed Video Track returns its immutable Prompt Revision without a lega
       renderedPrompt: "A deliberate camera move",
     });
 
-    const statuses = await readVideoPromptStatuses(db, {
+    const statuses = await readVideoPromptStatuses(workOf(db), {
       projectId: 1,
       scriptId: 2,
       trackIds: [7],
@@ -87,7 +88,7 @@ test("prompt polling HTTP route returns the completed Track prompt projection", 
 
   const app = express();
   app.use(express.json());
-  app.use(createCheckVideoPromptRouter(db));
+  app.use(createCheckVideoPromptRouter(workOf(db)));
   app.use((error: Error, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
     response.status(500).json({ message: error.message });
   });
@@ -129,7 +130,7 @@ test("completed Video Track without a Prompt Revision fails explicitly", async (
     });
 
     await assert.rejects(
-      readVideoPromptStatuses(db, { projectId: 3, scriptId: 4, trackIds: [9] }),
+      readVideoPromptStatuses(workOf(db), { projectId: 3, scriptId: 4, trackIds: [9] }),
       /Video Track 9 已完成但没有 Prompt Revision/,
     );
   } finally {
@@ -150,11 +151,11 @@ test("completed Video Track rejects a Prompt Revision owned by another Project o
     ]);
 
     await assert.rejects(
-      readVideoPromptStatuses(db, { projectId: 3, scriptId: 4, trackIds: [10] }),
+      readVideoPromptStatuses(workOf(db), { projectId: 3, scriptId: 4, trackIds: [10] }),
       /Prompt Revision 13 不属于 Project 3 \/ Video Track 10/,
     );
     await assert.rejects(
-      readVideoPromptStatuses(db, { projectId: 3, scriptId: 4, trackIds: [11] }),
+      readVideoPromptStatuses(workOf(db), { projectId: 3, scriptId: 4, trackIds: [11] }),
       /Prompt Revision 14 不属于 Project 3 \/ Video Track 11/,
     );
   } finally {
@@ -174,7 +175,7 @@ test("failed Video Track returns its reason and an empty prompt without a Prompt
       promptRevisionId: null,
     });
 
-    assert.deepEqual(await readVideoPromptStatuses(db, { projectId: 3, scriptId: 4, trackIds: [12] }), [
+    assert.deepEqual(await readVideoPromptStatuses(workOf(db), { projectId: 3, scriptId: 4, trackIds: [12] }), [
       {
         id: 12,
         state: "生成失败",
@@ -190,7 +191,7 @@ test("failed Video Track returns its reason and an empty prompt without a Prompt
 test("empty Track IDs return an empty prompt status list", async () => {
   const db = await createPromptStatusDatabase();
   try {
-    assert.deepEqual(await readVideoPromptStatuses(db, { projectId: 3, scriptId: 4, trackIds: [] }), []);
+    assert.deepEqual(await readVideoPromptStatuses(workOf(db), { projectId: 3, scriptId: 4, trackIds: [] }), []);
   } finally {
     await db.destroy();
   }
@@ -212,7 +213,7 @@ test("prompt polling omits Tracks outside the requested Project, Script, or term
     ]);
 
     assert.deepEqual(
-      await readVideoPromptStatuses(db, { projectId: 3, scriptId: 4, trackIds: [13, 14, 15, 16] }),
+      await readVideoPromptStatuses(workOf(db), { projectId: 3, scriptId: 4, trackIds: [13, 14, 15, 16] }),
       [{ id: 13, state: "已完成", reason: null, prompt: "requested prompt" }],
     );
   } finally {

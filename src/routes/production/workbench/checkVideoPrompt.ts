@@ -1,5 +1,5 @@
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 
 import { createCheckVideoPromptRouter } from "./checkVideoPromptRouter";
 
-export default createCheckVideoPromptRouter(u.db);
+export default createCheckVideoPromptRouter((operation) => getDatabaseRuntime().work(operation));

@@ -1,6 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { z } from "zod";
+import { getDatabaseRuntime } from "@/database";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { createVideoTrack } from "@/video/trackCreation";
@@ -29,20 +30,22 @@ export default router.post(
     const { prompt, duration, state, src, scriptId, projectId, videoDesc, shouldGenerateImage } = req.body;
     const trackId = Date.now();
     await createVideoTrack(
-      { db: u.db, getVendorModels: (vendorId) => u.vendor.getModelList(vendorId) },
+      { db: (operation) => getDatabaseRuntime().work(operation), getVendorModels: (vendorId) => u.vendor.getModelList(vendorId) },
       { id: trackId, projectId, scriptId, duration },
     );
-    const [id] = await u.db("o_storyboard").insert({
-      prompt,
-      duration,
-      state,
-      filePath: u.replaceUrl(src),
-      trackId,
-      videoDesc,
-      shouldGenerateImage: src ? 1 : 0,
-      scriptId: scriptId,
-      projectId: projectId,
-    });
+    const [id] = await getDatabaseRuntime().work((db) =>
+      db("o_storyboard").insert({
+        prompt,
+        duration,
+        state,
+        filePath: u.replaceUrl(src),
+        trackId,
+        videoDesc,
+        shouldGenerateImage: src ? 1 : 0,
+        scriptId: scriptId,
+        projectId: projectId,
+      }),
+    );
     return res.status(200).send(success({ id }));
   },
 );

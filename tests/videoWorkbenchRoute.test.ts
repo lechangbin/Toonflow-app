@@ -6,6 +6,7 @@ import express from "express";
 import knexFactory, { type Knex } from "knex";
 
 import { createGetGenerateDataRouter } from "../src/routes/production/workbench/getGenerateDataRouter";
+import { workOf } from "./databaseTestSupport";
 
 const textToVideoModel = {
   name: "Agnes Video V2.0",
@@ -124,7 +125,7 @@ function createApp(db: Knex) {
   app.use(express.json());
   app.use(
     createGetGenerateDataRouter({
-      db,
+      db: workOf(db),
       getVendorModels: async () => [textToVideoModel],
       getFileUrl: async (filePath) => `/oss${filePath}`,
       getSmallImageUrl: async (filePath) => `/small${filePath}`,

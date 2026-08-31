@@ -6,8 +6,8 @@ import axios from "axios";
 import type { Knex } from "knex";
 import { v4 as uuid } from "uuid";
 
+import { getDatabaseRuntime, type DatabaseWork } from "@/database";
 import { loadVendorRuntime } from "@/lib/vendorRuntime";
-import db from "@/utils/db";
 import getPath from "@/utils/getPath";
 import oss from "@/utils/oss";
 import {
@@ -47,7 +47,7 @@ interface VideoProductionRuntime {
 }
 
 export interface VideoProductionDependencies {
-  db: Knex;
+  db: DatabaseWork;
   profiles: VideoPromptProfileRegistry;
   loadRuntime(vendorId: string): Promise<VideoProductionRuntime>;
   readImage(filePath: string): Promise<string>;
@@ -92,7 +92,7 @@ async function resolveImages(
   for (const reference of references) {
     if (roles.has(reference.role)) throw new Error(`输入角色 ${reference.role} 只能出现一次`);
     roles.add(reference.role);
-    const filePath = await resolveInputPath(dependencies.db, reference);
+    const filePath = await dependencies.db((db) => resolveInputPath(db, reference));
     resolved.set(reference.role, { mediaType: "image", base64: await dependencies.readImage(filePath) });
   }
   return resolved;
@@ -158,7 +158,9 @@ function commandSnapshot(
 }
 
 async function loadDefaultRuntime(vendorId: string) {
-  const vendorConfig = await db("o_vendorConfig").where("id", vendorId).first();
+  const vendorConfig = await getDatabaseRuntime().work((db) =>
+    db("o_vendorConfig").where("id", vendorId).first(),
+  );
   if (!vendorConfig) throw new Error(`未找到供应商 ${vendorId}`);
   const sourcePath = path.join(getPath("vendor"), `${vendorId}.ts`);
   if (!fs.existsSync(sourcePath)) throw new Error(`未找到供应商配置文件 ${vendorId}.ts`);
@@ -205,39 +207,45 @@ async function executePrepared(dependencies: VideoProductionDependencies, prepar
   const command = {
     ...prepared.command,
     onTaskCheckpoint: async (checkpoint: unknown) => {
-      await dependencies.db("o_generationTask")
-        .where("id", prepared.generationTaskId)
-        .update({ providerTaskSnapshot: serialize(checkpoint) });
+      await dependencies.db((db) =>
+        db("o_generationTask")
+          .where("id", prepared.generationTaskId)
+          .update({ providerTaskSnapshot: serialize(checkpoint) }),
+      );
     },
   };
   try {
     const result = await request(command);
     await dependencies.writeVideo(prepared.videoPath, await normalizeAdapterResult(dependencies, result));
     const completedAt = dependencies.now();
-    await dependencies.db.transaction(async (trx) => {
-      await trx("o_video")
-        .where("id", prepared.videoId)
-        .update({ state: "生成成功", artifactRevisionId: prepared.artifactRevisionId });
-      await trx("o_videoTrack").where("id", prepared.trackId).update({ state: "已完成", reason: null });
-      await trx("o_artifactRevision").where("id", prepared.artifactRevisionId).update({ status: "generated" });
-      await trx("o_generationTask").where("id", prepared.generationTaskId).update({
-        status: "succeeded",
-        artifactRevisionId: prepared.artifactRevisionId,
-        completedAt,
-      });
-    });
+    await dependencies.db((db) =>
+      db.transaction(async (trx) => {
+        await trx("o_video")
+          .where("id", prepared.videoId)
+          .update({ state: "生成成功", artifactRevisionId: prepared.artifactRevisionId });
+        await trx("o_videoTrack").where("id", prepared.trackId).update({ state: "已完成", reason: null });
+        await trx("o_artifactRevision").where("id", prepared.artifactRevisionId).update({ status: "generated" });
+        await trx("o_generationTask").where("id", prepared.generationTaskId).update({
+          status: "succeeded",
+          artifactRevisionId: prepared.artifactRevisionId,
+          completedAt,
+        });
+      }),
+    );
     return true;
   } catch (error: any) {
     const message = error instanceof Error ? error.message : String(error);
     const completedAt = dependencies.now();
-    await dependencies.db.transaction(async (trx) => {
-      await trx("o_video").where("id", prepared.videoId).update({ state: "生成失败", errorReason: message });
-      await trx("o_videoTrack").where("id", prepared.trackId).update({ state: "生成失败", reason: message });
-      await trx("o_artifactRevision").where("id", prepared.artifactRevisionId).update({ status: "rejected" });
-      await trx("o_generationTask")
-        .where("id", prepared.generationTaskId)
-        .update({ status: "failed", completedAt, error: message });
-    });
+    await dependencies.db((db) =>
+      db.transaction(async (trx) => {
+        await trx("o_video").where("id", prepared.videoId).update({ state: "生成失败", errorReason: message });
+        await trx("o_videoTrack").where("id", prepared.trackId).update({ state: "生成失败", reason: message });
+        await trx("o_artifactRevision").where("id", prepared.artifactRevisionId).update({ status: "rejected" });
+        await trx("o_generationTask")
+          .where("id", prepared.generationTaskId)
+          .update({ status: "failed", completedAt, error: message });
+      }),
+    );
     return false;
   }
 }
@@ -249,9 +257,11 @@ async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVi
   const preparedItems: Omit<PreparedGeneration, "trackId" | "videoId" | "generationTaskId" | "artifactRevisionId">[] = [];
 
   for (const item of input.items) {
-    const track = await dependencies.db("o_videoTrack")
-      .where({ id: item.trackId, projectId: input.projectId, scriptId: input.scriptId })
-      .first();
+    const track = await dependencies.db((db) =>
+      db("o_videoTrack")
+        .where({ id: item.trackId, projectId: input.projectId, scriptId: input.scriptId })
+        .first(),
+    );
     if (!track) throw new Error(`Video Track ${item.trackId} 不属于当前 Project/Script`);
     const runtime = await dependencies.loadRuntime(item.vendorId);
     const model = runtime.getModel(item.modelId);
@@ -260,7 +270,7 @@ async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVi
       : undefined;
     if (!capability) throw new Error(`${item.vendorId}:${item.modelId} 不支持 ${item.capabilityId}`);
     validateVideoTrackInputReferences(capability, item.inputs);
-    const promptRevision = await materializePrompt(dependencies.db, item, input.projectId, profiles);
+    const promptRevision = await dependencies.db((db) => materializePrompt(db, item, input.projectId, profiles));
     if (capability.promptProfileId !== promptRevision.profileId) {
       throw new Error(`${item.modelId}/${item.capabilityId} 要求 Prompt Profile ${capability.promptProfileId}`);
     }
@@ -274,76 +284,80 @@ async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVi
   }
 
   const prepared: PreparedGeneration[] = [];
-  const actionId = await dependencies.db.transaction(async (trx) => {
-    const [newActionId] = await trx("o_productionAction").insert({
-      projectId: input.projectId,
-      actionType: "generate-video",
-      requestedBy: input.requestedBy,
-      status: "running",
-      createdAt: dependencies.now(),
-    });
-
-    for (const [index, item] of input.items.entries()) {
-      const track = await trx("o_videoTrack")
-        .where({ id: item.trackId, projectId: input.projectId, scriptId: input.scriptId })
-        .first();
-      if (!track) throw new Error(`Video Track ${item.trackId} 不属于当前 Project/Script`);
-      await trx("o_videoTrack").where("id", item.trackId).update({
-        vendorId: item.vendorId,
-        modelId: item.modelId,
-        capabilityId: item.capabilityId,
-        inputRefs: serialize(item.inputs),
-        outputSelection: serialize(item.output),
-        audioSelection: serialize(item.audio),
-        promptRevisionId: item.promptRevisionId,
-        duration: item.output.duration,
-        state: "生成中",
-        reason: null,
-      });
-      const [generationTaskId] = await trx("o_generationTask").insert({
-        actionId: newActionId,
+  const actionId = await dependencies.db((db) =>
+    db.transaction(async (trx) => {
+      const [newActionId] = await trx("o_productionAction").insert({
         projectId: input.projectId,
-        videoTrackId: item.trackId,
-        vendorId: item.vendorId,
-        modelId: item.modelId,
-        capabilityId: item.capabilityId,
-        promptRevisionId: item.promptRevisionId,
-        commandSnapshot: serialize(commandSnapshot(preparedItems[index].command, item.inputs)),
+        actionType: "generate-video",
+        requestedBy: input.requestedBy,
         status: "running",
-        startedAt: dependencies.now(),
-      });
-      const [videoId] = await trx("o_video").insert({
-        filePath: preparedItems[index].videoPath,
-        time: dependencies.now(),
-        state: "生成中",
-        scriptId: input.scriptId,
-        projectId: input.projectId,
-        videoTrackId: item.trackId,
-        generationTaskId,
-      });
-      const revisionRow = await trx("o_artifactRevision")
-        .where("videoTrackId", item.trackId)
-        .max<{ revision?: number }>("revision as revision")
-        .first();
-      const [artifactRevisionId] = await trx("o_artifactRevision").insert({
-        actionId: newActionId,
-        generationTaskId,
-        videoId,
-        videoTrackId: item.trackId,
-        revision: (revisionRow?.revision ?? 0) + 1,
-        status: "draft",
         createdAt: dependencies.now(),
       });
-      await trx("o_video").where("id", videoId).update({ artifactRevisionId });
-      prepared.push({ ...preparedItems[index], trackId: item.trackId, videoId, generationTaskId, artifactRevisionId });
-    }
-    return newActionId;
-  });
+
+      for (const [index, item] of input.items.entries()) {
+        const track = await trx("o_videoTrack")
+          .where({ id: item.trackId, projectId: input.projectId, scriptId: input.scriptId })
+          .first();
+        if (!track) throw new Error(`Video Track ${item.trackId} 不属于当前 Project/Script`);
+        await trx("o_videoTrack").where("id", item.trackId).update({
+          vendorId: item.vendorId,
+          modelId: item.modelId,
+          capabilityId: item.capabilityId,
+          inputRefs: serialize(item.inputs),
+          outputSelection: serialize(item.output),
+          audioSelection: serialize(item.audio),
+          promptRevisionId: item.promptRevisionId,
+          duration: item.output.duration,
+          state: "生成中",
+          reason: null,
+        });
+        const [generationTaskId] = await trx("o_generationTask").insert({
+          actionId: newActionId,
+          projectId: input.projectId,
+          videoTrackId: item.trackId,
+          vendorId: item.vendorId,
+          modelId: item.modelId,
+          capabilityId: item.capabilityId,
+          promptRevisionId: item.promptRevisionId,
+          commandSnapshot: serialize(commandSnapshot(preparedItems[index].command, item.inputs)),
+          status: "running",
+          startedAt: dependencies.now(),
+        });
+        const [videoId] = await trx("o_video").insert({
+          filePath: preparedItems[index].videoPath,
+          time: dependencies.now(),
+          state: "生成中",
+          scriptId: input.scriptId,
+          projectId: input.projectId,
+          videoTrackId: item.trackId,
+          generationTaskId,
+        });
+        const revisionRow = await trx("o_artifactRevision")
+          .where("videoTrackId", item.trackId)
+          .max<{ revision?: number }>("revision as revision")
+          .first();
+        const [artifactRevisionId] = await trx("o_artifactRevision").insert({
+          actionId: newActionId,
+          generationTaskId,
+          videoId,
+          videoTrackId: item.trackId,
+          revision: (revisionRow?.revision ?? 0) + 1,
+          status: "draft",
+          createdAt: dependencies.now(),
+        });
+        await trx("o_video").where("id", videoId).update({ artifactRevisionId });
+        prepared.push({ ...preparedItems[index], trackId: item.trackId, videoId, generationTaskId, artifactRevisionId });
+      }
+      return newActionId;
+    }),
+  );
 
   const completion = Promise.all(prepared.map((item) => executePrepared(dependencies, item))).then(async (results) => {
     const successes = results.filter(Boolean).length;
     const status = successes === results.length ? "succeeded" : successes === 0 ? "failed" : "partial";
-    await dependencies.db("o_productionAction").where("id", actionId).update({ status, completedAt: dependencies.now() });
+    await dependencies.db((db) =>
+      db("o_productionAction").where("id", actionId).update({ status, completedAt: dependencies.now() }),
+    );
   });
 
   return {
@@ -363,7 +377,7 @@ return { startVideoGenerationBatch };
 
 function createDefaultVideoProduction() {
   return createVideoProduction({
-    db,
+    db: (operation) => getDatabaseRuntime().work(operation),
     profiles: VideoPromptProfileRegistry.load(getPath(["promptProfiles", "video"])),
     loadRuntime: loadDefaultRuntime,
     readImage: (filePath) => oss.getImageBase64(filePath),
