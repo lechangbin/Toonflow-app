@@ -2,12 +2,12 @@ import express from "express";
 import u from "@/utils";
 import { z } from "zod";
 import { getDatabaseRuntime } from "@/database";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import sharp from "sharp";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { Output } from "ai";
-import { parseVendorModelName } from "@/vendor/loader";
+import { parseVendorModelName } from "@/vendor";
 import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 const router = express.Router();
 
@@ -82,7 +82,7 @@ export default router.post(
       const imageId = imageIdMap[item.id!];
       const typeConfig = promptRecord[item.type!] || promptRecord["role"];
 
-      const { text } = await createDefaultConfiguredVendor().invokeText({
+      const { text } = await getDefaultConfiguredVendor().invokeText({
         target: { kind: "logical", key: "universalAi" },
         input: {
           system: `${typeConfig.prompt}`,
@@ -112,7 +112,7 @@ export default router.post(
         });
         let result: string;
         try {
-          const vendor = createDefaultConfiguredVendor();
+          const vendor = getDefaultConfiguredVendor();
           const { version } = await vendor.inspectVendor(vendorId);
           const input = applyLegacyImageReferenceConversion(version, {
             referenceList: imageBase64 ? [{ type: "image", base64: imageBase64 }] : [],

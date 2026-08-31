@@ -1,6 +1,6 @@
 import express from "express";
 import { success, error } from "@/lib/responseFormat";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { validateFields } from "@/middleware/middleware";
 import { getDatabaseRuntime } from "@/database";
@@ -24,7 +24,7 @@ export default router.post(
         inputValues: JSON.stringify(inputValue),
       }));
     try {
-      const resText = await createDefaultConfiguredVendor().invokeText({
+      const resText = await getDefaultConfiguredVendor().invokeText({
         target: { kind: "direct", vendorId: "toonflow", modelId: "claude-haiku-4-5-20251001" },
         input: {
           prompt: "1+1等于几？,请直接回答2，不要解释",

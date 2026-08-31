@@ -1,7 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -70,7 +70,7 @@ export default router.post(
     if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
     const systemPrompt = visualManual;
     try {
-      const { _output } = (await createDefaultConfiguredVendor().invokeText({
+      const { _output } = (await getDefaultConfiguredVendor().invokeText({
         target: { kind: "logical", key: "universalAi" },
         input: {
           system: systemPrompt,

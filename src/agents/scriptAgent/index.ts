@@ -2,7 +2,7 @@ import { Socket } from "socket.io";
 import { tool, jsonSchema } from "ai";
 import { z } from "zod";
 import u from "@/utils";
-import { createDefaultConfiguredVendor, type TextLogicalKey } from "@/vendor";
+import { getDefaultConfiguredVendor, type TextLogicalKey } from "@/vendor";
 import Memory from "@/utils/agent/memory";
 import useTools from "@/agents/scriptAgent/tools";
 import ResTool from "@/socket/resTool";
@@ -64,7 +64,7 @@ export async function runDecisionAI(ctx: AgentContext) {
     `章节数量：${novelData.length}章`,
   ].join("\n");
 
-  const { fullStream } = await createDefaultConfiguredVendor().streamText({
+  const { fullStream } = await getDefaultConfiguredVendor().streamText({
     target: { kind: "logical", key: "scriptAgent:decisionAgent" },
     think: ctx.thinkConfig.think,
     thinkLevel: ctx.thinkConfig.thinlLevel,
@@ -119,7 +119,7 @@ function createSubAgent(parentCtx: AgentContext) {
     parentCtx.msg.complete();
     const subMsg = resTool.newMessage("assistant", name);
 
-    const { fullStream } = await createDefaultConfiguredVendor().streamText({
+    const { fullStream } = await getDefaultConfiguredVendor().streamText({
       target: { kind: "logical", key },
       think: parentCtx.thinkConfig.think,
       thinkLevel: parentCtx.thinkConfig.thinlLevel,

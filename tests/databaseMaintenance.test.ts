@@ -59,6 +59,12 @@ test("import preflight rejects malformed, unknown, and unsupported backups witho
     assert.equal(runtime.state, "ready");
 
     await assert.rejects(
+      () => runtime.maintenance({ kind: "import", tables: { o_project: [{ id: 1, name: "x", whatIsThis: "unknown" }] } }),
+      (error: unknown) => error instanceof MaintenanceValidationError && error.message === "未知的列: o_project.whatIsThis",
+    );
+    assert.equal(runtime.state, "ready", "an unknown column is rejected before any mutation");
+
+    await assert.rejects(
       () => runtime.maintenance({ kind: "import", tables: { o_project: "not-an-array" } }),
       (error: unknown) => error instanceof MaintenanceValidationError && error.message === "备份数据格式不受支持",
     );
