@@ -16,8 +16,8 @@ This repository contains the Node.js/Express backend and Electron shell. The edi
 - `src/app.ts` composes HTTP, static files, authentication, Socket.IO, and generated routes.
 - `src/core.ts` generates `src/router.ts` from `src/routes/**/*.ts` during development.
 - `src/socket/routes/` connects Script Agent and Production Agent sessions.
-- `src/database/` owns database readiness: one fixed lifecycle, ordinary work through a shared lease, and typed exclusive maintenance. `src/utils/db.ts` is only a temporary bridge for the remaining `u.db(...)` call sites.
-- `src/utils/ai.ts`, `src/utils/vendor.ts`, and `src/utils/vm.ts` load and execute programmable Vendor code.
+- `src/database/` owns database readiness (ADR-0004): one fixed lifecycle, ordinary work through a shared lease, and typed exclusive maintenance. Every caller borrows the database through `getDatabaseRuntime().work(...)`; `tests/staticContractGuards.test.ts` rejects raw `u.db(...)` bypasses.
+- `src/vendor/` is the configured Vendor execution module (ADR-0005): typed Text invocation/streaming, Image, Video, and TTS generation, Vendor inspection and listing, startup validation, and typed configuration commands. Business code composes `getDefaultConfiguredVendor()`; the source-level runtime in `src/lib/vendorRuntime.ts` stays internal to its configured/source-validation seams.
 - `data/vendor/*.ts` are Vendor source adapters; `src/lib/vendor.json` is their generated runtime manifest.
 
 ## Generated artifacts
@@ -36,7 +36,7 @@ Treat these files as generated and update their source first:
 
 ### Vendor adapter
 
-Inspect `data/vendor/<vendor>.ts`, `src/utils/ai.ts`, `src/utils/vendor.ts`, `src/utils/vm.ts`, `scripts/vendor2json.ts`, and Vendor tests. Regenerate `src/lib/vendor.json`. Built-in Vendor identity, release inclusion, and default-enable policy live only in `src/lib/vendorRegistry.ts`; adapter sources keep names, versions, inputs, Models, and Capabilities. Keep credentials in runtime configuration and test through injected dependencies.
+Inspect `data/vendor/<vendor>.ts`, `src/vendor/`, `src/lib/vendorRuntime.ts`, `scripts/vendor2json.ts`, and Vendor tests. Regenerate `src/lib/vendor.json`. Built-in Vendor identity, release inclusion, and default-enable policy live only in `src/lib/vendorRegistry.ts`; adapter sources keep names, versions, inputs, Models, and Capabilities. Keep credentials in runtime configuration and test through injected dependencies.
 
 ### Database schema or defaults
 
