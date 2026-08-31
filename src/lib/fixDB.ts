@@ -3,6 +3,7 @@ import fs from "fs";
 import { Knex } from "knex";
 import getPath from "@/utils/getPath";
 import rawVendorData from "./vendor.json";
+import { vendorRegistry } from "./vendorRegistry";
 import { failInterruptedVideoProduction } from "@/video/recovery";
 
 const vendorData = rawVendorData as Record<string, string>;
@@ -147,8 +148,8 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   await knex("o_prompt").where("type", "videoPromptGeneration").delete();
 
   //迁移供应商函数
-  const retainedVendorIds = ["agnes", "deepseek", "minimax", "volcengine", "volcengineSd2"];
-  const removedBuiltInVendorIds = ["atlascloud", "grsai", "klingai", "null", "openai", "toonflow", "vidu"];
+  const retainedVendorIds = vendorRegistry.releasedVendorIds();
+  const removedBuiltInVendorIds = vendorRegistry.unreleasedBuiltInVendorIds();
   await knex("o_vendorConfig").whereIn("id", removedBuiltInVendorIds).delete();
   const rootDir = path.join(dataRoot, "vendor");
   if (fs.existsSync(rootDir)) {

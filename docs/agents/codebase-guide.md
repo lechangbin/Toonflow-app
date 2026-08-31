@@ -36,7 +36,7 @@ Treat these files as generated and update their source first:
 
 ### Vendor adapter
 
-Inspect `data/vendor/<vendor>.ts`, `src/utils/ai.ts`, `src/utils/vendor.ts`, `src/utils/vm.ts`, `scripts/vendor2json.ts`, and Vendor tests. Regenerate `src/lib/vendor.json`. Keep credentials in runtime configuration and test through injected dependencies.
+Inspect `data/vendor/<vendor>.ts`, `src/utils/ai.ts`, `src/utils/vendor.ts`, `src/utils/vm.ts`, `scripts/vendor2json.ts`, and Vendor tests. Regenerate `src/lib/vendor.json`. Built-in Vendor identity, release inclusion, and default-enable policy live only in `src/lib/vendorRegistry.ts`; adapter sources keep names, versions, inputs, Models, and Capabilities. Keep credentials in runtime configuration and test through injected dependencies.
 
 ### Database schema or defaults
 

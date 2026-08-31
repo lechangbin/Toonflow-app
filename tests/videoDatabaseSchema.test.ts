@@ -8,6 +8,7 @@ import knexFactory from "knex";
 
 import initDB from "../src/lib/initDB";
 import fixDB from "../src/lib/fixDB";
+import { releasedVendorIds } from "../src/lib/vendorRegistry";
 
 function createTemporaryDatabase() {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "toonflow-video-schema-"));
@@ -50,7 +51,7 @@ test("a fresh database owns the explicit Video production records without legacy
     assert.ok(artifactColumns.videoTrackId);
 
     const vendorIds = (await knex("o_vendorConfig").select("id")).map((row) => row.id).sort();
-    assert.deepEqual(vendorIds, ["agnes", "deepseek", "minimax", "volcengine", "volcengineSd2"]);
+    assert.deepEqual(vendorIds, releasedVendorIds().slice().sort());
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });
