@@ -6,6 +6,9 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { createDefaultConfiguredVendor } from "@/vendor";
+import { parseVendorModelName } from "@/vendor/loader";
+import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 
 const router = express.Router();
 
@@ -122,22 +125,29 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
       const describe = `生成${cfg.label}图，名称：${item.name}，提示词：${item.prompt}`;
       const relatedObjects = { id: item.id, projectId, type: cfg.label };
       try {
-        const aiImage = u.Ai.Image(model);
-        await aiImage.run(
-          {
+        const { vendorId, modelId } = parseVendorModelName(model);
+        const taskRecord = await u.task(projectId, cfg.taskClass, modelId, {
+          describe,
+          content: JSON.stringify(relatedObjects),
+        });
+        let result: string;
+        try {
+          const vendor = createDefaultConfiguredVendor();
+          const { version } = await vendor.inspectVendor(vendorId);
+          const input = applyLegacyImageReferenceConversion(version, {
             prompt: userPrompt,
             referenceList: item.base64 ? [{ base64: item.base64, type: "image" }] : [],
             size: resolution,
             aspectRatio: "16:9",
-          },
-          {
-            taskClass: cfg.taskClass,
-            describe,
-            projectId,
-            relatedObjects: JSON.stringify(relatedObjects),
-          },
-        );
-        aiImage.save(imagePath);
+          });
+          result = await vendor.generateImage({ target: { vendorId, modelId }, input });
+          result = await normalizeHttpResult(result);
+        } catch (e) {
+          taskRecord(-1, u.error(e).message);
+          throw new Error(u.error(e).message);
+        }
+        taskRecord(1);
+        void u.oss.writeFile(imagePath, result);
 
         const imageData = await getDatabaseRuntime().work(async (db) => {
           return await db("o_image").where("id", imageId).select("*").first();
@@ -150,7 +160,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
             state: "已完成",
             filePath: imagePath,
             type: item.type,
-            model: model.split(/:(.+)/)[1],
+            model: modelId,
             resolution,
           });
         });
