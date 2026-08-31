@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import type { DatabaseWork } from "@/database";
 
 import {
   deriveAudioSelection,
@@ -9,7 +9,7 @@ import {
 } from "./capability";
 
 export interface CreateVideoTrackDependencies {
-  db: Knex;
+  db: DatabaseWork;
   getVendorModels(vendorId: string): Promise<unknown[]>;
 }
 
@@ -48,13 +48,13 @@ export async function createVideoTrack(
   dependencies: CreateVideoTrackDependencies,
   input: CreateVideoTrackInput,
 ): Promise<CreatedVideoTrack> {
-  const project = await dependencies.db("o_project").where("id", input.projectId).first();
+  const project = await dependencies.db((db) => db("o_project").where("id", input.projectId).first());
   if (!project) throw new Error(`Project ${input.projectId} 不存在`);
   if (!project.videoVendorId || !project.videoModelId || !project.videoCapabilityId || !project.videoOutputPresetId) {
     throw new Error("项目尚未配置完整的 Video Capability 默认值");
   }
 
-  const script = await dependencies.db("o_script").where("id", input.scriptId).first();
+  const script = await dependencies.db((db) => db("o_script").where("id", input.scriptId).first());
   if (!script) throw new Error(`Script ${input.scriptId} 不存在`);
   if (script.projectId !== input.projectId) {
     throw new Error(`Script ${input.scriptId} 不属于 Project ${input.projectId}`);
@@ -100,11 +100,13 @@ export async function createVideoTrack(
     outputSelection,
     audioSelection,
   };
-  await dependencies.db("o_videoTrack").insert({
-    ...track,
-    inputRefs: JSON.stringify(track.inputRefs),
-    outputSelection: JSON.stringify(track.outputSelection),
-    audioSelection: JSON.stringify(track.audioSelection),
-  });
+  await dependencies.db((db) =>
+    db("o_videoTrack").insert({
+      ...track,
+      inputRefs: JSON.stringify(track.inputRefs),
+      outputSelection: JSON.stringify(track.outputSelection),
+      audioSelection: JSON.stringify(track.audioSelection),
+    }),
+  );
   return track;
 }

@@ -4,6 +4,7 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { listEnabledVideoCapabilities } from "../src/video/capabilityCatalog";
+import { workOf } from "./databaseTestSupport";
 
 test("the enabled Video capability catalog omits credentials and Vendor source code", async () => {
   const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
@@ -20,7 +21,7 @@ test("the enabled Video capability catalog omits credentials and Vendor source c
 
   try {
     const catalog = await listEnabledVideoCapabilities({
-      db,
+      db: workOf(db),
       getVendor: () => ({ id: "agnes", name: "Agnes AI", inputValues: { apiKey: "secret" }, sourceCode: "secret" }),
       getVendorModels: async () => [
         { name: "Agnes Text", modelName: "agnes-text", type: "text", think: true },

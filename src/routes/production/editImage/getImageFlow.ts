@@ -1,6 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { z } from "zod";
+import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
@@ -12,7 +13,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { id, type } = req.body;
-    const imageFlowData = await u.db("o_imageFlow").where("id", id).first();
+    const imageFlowData = await getDatabaseRuntime().work((db) => db("o_imageFlow").where("id", id).first());
     if (imageFlowData?.flowData) {
       const parseFlow = JSON.parse(imageFlowData.flowData);
       await Promise.all(

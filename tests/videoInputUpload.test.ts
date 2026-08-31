@@ -4,6 +4,7 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { uploadVideoInputImage } from "../src/video/inputUpload";
+import { workOf } from "./databaseTestSupport";
 
 const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const jpegSignature = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
@@ -33,7 +34,7 @@ test("a Project/Script-scoped image upload returns a persistable relative filePa
   try {
     const result = await uploadVideoInputImage(
       {
-        db,
+        db: workOf(db),
         createId: () => "fixed-id",
         writeFile: async (filePath, bytes) => {
           written = { filePath, bytes };
@@ -68,7 +69,7 @@ test("a Video input upload rejects a Script owned by another Project before writ
     await assert.rejects(
       uploadVideoInputImage(
         {
-          db,
+          db: workOf(db),
           createId: () => "fixed-id",
           writeFile: async () => {
             wrote = true;
@@ -92,7 +93,7 @@ test("a corrupt or unrecognised image payload is rejected before the file is wri
     await assert.rejects(
       uploadVideoInputImage(
         {
-          db,
+          db: workOf(db),
           createId: () => "fixed-id",
           writeFile: async () => {
             wrote = true;
@@ -115,7 +116,7 @@ test("the saved extension follows the real magic bytes, not the declared data UR
   try {
     const result = await uploadVideoInputImage(
       {
-        db,
+        db: workOf(db),
         createId: () => "fixed-id",
         writeFile: async (filePath, bytes) => {
           written = { filePath, bytes };
@@ -137,7 +138,7 @@ test("WebP magic bytes are accepted and saved with the webp extension", async ()
   try {
     const result = await uploadVideoInputImage(
       {
-        db,
+        db: workOf(db),
         createId: () => "fixed-id",
         writeFile: async (filePath, bytes) => {
           written = { filePath, bytes };

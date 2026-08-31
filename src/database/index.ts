@@ -17,13 +17,21 @@ export type {
 } from "./maintenance";
 
 /**
+ * A shared lease on the open database: the operation receives a Knex instance
+ * and the lease is released only when the operation settles. Migrated callers
+ * depend on this shape instead of a raw `Knex` handle, so their database access
+ * cannot bypass readiness.
+ */
+export type DatabaseWork = <T>(operation: (db: Knex) => Promise<T> | T) => Promise<T>;
+
+/**
  * The single database readiness interface. Ordinary work borrows a shared lease
  * on a Knex instance handed into the callback; maintenance takes exclusive,
  * writer-preferred access. No raw handle is exposed, so no caller can bypass
  * readiness.
  */
 export interface DatabaseRuntime {
-  work<T>(operation: (db: Knex) => Promise<T> | T): Promise<T>;
+  work: DatabaseWork;
   maintenance<TCommand extends MaintenanceCommand>(command: TCommand): Promise<MaintenanceResultFor<TCommand>>;
   close(): Promise<void>;
   readonly state: DatabaseRuntimeState;
