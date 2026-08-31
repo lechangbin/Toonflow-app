@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -12,11 +13,13 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-    await u.db("o_assets").where({ imageId: id }).update({
-      imageId: null,
+    const assetsData = await getDatabaseRuntime().work(async (db) => {
+      await db("o_assets").where({ imageId: id }).update({
+        imageId: null,
+      });
+      await db("o_image").where({ id: id }).delete();
+      return await db("o_image").where("id", id);
     });
-    await u.db("o_image").where({ id: id }).delete();
-    const assetsData = await u.db("o_image").where("id", id);
     await Promise.all(assetsData.map((i) => i.filePath && u.oss.deleteFile(i.filePath)));
     res.status(200).send(success({ message: "资产图片删除成功" }));
   },
