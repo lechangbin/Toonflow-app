@@ -8,9 +8,10 @@ import { db as globalDatabase, dbReady } from "../src/utils/db";
 import { createVideoProduction } from "../src/video/production";
 import { createVideoPromptGeneration } from "../src/video/promptGeneration";
 import { VideoPromptProfileRegistry } from "../src/video/promptProfile";
+import type { VideoModelSummary } from "../src/vendor";
 import { workOf } from "./databaseTestSupport";
 
-const model = {
+const model: VideoModelSummary = {
   name: "Agnes Video V2.0",
   modelName: "agnes-video-v2.0",
   type: "video",
@@ -182,10 +183,15 @@ test("fake prompt and video dependencies drive a successful durable orchestratio
     const production = createVideoProduction({
       db: workOf(db),
       profiles,
-      loadRuntime: async () => ({
-        getModel: () => model,
-        getRequest: () => async () => "VIDEO_BASE64",
-      }),
+      vendor: {
+        inspectVendor: async () => ({
+          vendorId: "agnes",
+          name: "Agnes",
+          inputs: [],
+          models: [model],
+        }),
+        generateVideo: async () => "VIDEO_BASE64",
+      },
       readImage: async () => {
         throw new Error("text-to-video must not load images");
       },
@@ -259,12 +265,17 @@ test("a fake adapter failure rejects the Artifact and fails every owning record"
     const production = createVideoProduction({
       db: workOf(db),
       profiles,
-      loadRuntime: async () => ({
-        getModel: () => model,
-        getRequest: () => async () => {
+      vendor: {
+        inspectVendor: async () => ({
+          vendorId: "agnes",
+          name: "Agnes",
+          inputs: [],
+          models: [model],
+        }),
+        generateVideo: async () => {
           throw new Error("provider rejected request");
         },
-      }),
+      },
       readImage: async () => "",
       writeVideo: async () => undefined,
       downloadVideo: async () => "",
