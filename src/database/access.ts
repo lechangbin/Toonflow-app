@@ -96,7 +96,17 @@ export class DatabaseAccess {
         this.currentState = "ready";
         return result;
       } catch (error) {
+        // A handler may reject its preflight without mutating, or fail mid-way
+        // and roll back via its transaction. Revalidate whatever state remains:
+        // a clean rollback reopens as ready, and only a failed revalidation
+        // leaves the runtime unavailable.
         this.currentState = "unavailable";
+        try {
+          await runReadiness(this.context);
+          this.currentState = "ready";
+        } catch {
+          // stays unavailable
+        }
         throw error;
       } finally {
         this.maintenanceRunning = false;

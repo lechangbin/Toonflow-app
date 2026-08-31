@@ -7,11 +7,18 @@ import { openResources, type OpenResourcesOptions, type ReadinessContext } from 
 
 export type { DatabaseRuntimeState } from "./access";
 export { DatabaseNotOpenError, DatabaseUnavailableError } from "./access";
+export { MaintenanceValidationError } from "./maintenance";
 export type {
+  ClearTableMaintenanceCommand,
+  ClearTableMaintenanceResult,
+  ImportMaintenanceCommand,
+  ImportMaintenanceResult,
   MaintenanceCommand,
   MaintenanceCommandKind,
   MaintenanceResult,
   MaintenanceResultFor,
+  ResetMaintenanceCommand,
+  ResetMaintenanceResult,
   VerifyMaintenanceCommand,
   VerifyMaintenanceResult,
 } from "./maintenance";
