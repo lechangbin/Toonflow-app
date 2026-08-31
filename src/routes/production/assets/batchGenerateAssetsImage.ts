@@ -7,6 +7,9 @@ import sharp from "sharp";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { Output } from "ai";
+import { createDefaultConfiguredVendor } from "@/vendor";
+import { parseVendorModelName } from "@/vendor/loader";
+import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 const router = express.Router();
 
 export default router.post(
@@ -103,20 +106,28 @@ export default router.post(
           size: projectSettingData?.imageQuality as "1K" | "2K" | "4K",
           aspectRatio: "16:9" as `${number}:${number}`,
         };
-        const imageCls = await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`).run(
-          {
+        const { vendorId, modelId } = parseVendorModelName(projectSettingData?.imageModel as `${string}:${string}`);
+        const taskRecord = await u.task(projectId, "生成图片", modelId, {
+          describe: "资产图片生成",
+          content: JSON.stringify(repeloadObj),
+        });
+        let result: string;
+        try {
+          const vendor = createDefaultConfiguredVendor();
+          const { version } = await vendor.inspectVendor(vendorId);
+          const input = applyLegacyImageReferenceConversion(version, {
             referenceList: imageBase64 ? [{ type: "image", base64: imageBase64 }] : [],
             ...repeloadObj,
-          },
-          {
-            taskClass: "生成图片",
-            describe: "资产图片生成",
-            relatedObjects: JSON.stringify(repeloadObj),
-            projectId: projectId,
-          },
-        );
+          });
+          result = await vendor.generateImage({ target: { vendorId, modelId }, input });
+          result = await normalizeHttpResult(result);
+        } catch (e) {
+          taskRecord(-1, u.error(e).message);
+          throw new Error(u.error(e).message);
+        }
+        taskRecord(1);
         const savePath = `/${projectId}/assets/${scriptId}/${item.type}/${u.uuid()}.jpg`;
-        await imageCls.save(savePath);
+        await u.oss.writeFile(savePath, result);
         await getDatabaseRuntime().work((db) =>
           db("o_image").where({ id: imageId }).update({ state: "已完成", filePath: savePath }),
         );

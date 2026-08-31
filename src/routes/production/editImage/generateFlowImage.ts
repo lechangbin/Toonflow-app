@@ -4,6 +4,9 @@ import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import axios from "axios";
+import { createDefaultConfiguredVendor } from "@/vendor";
+import { parseVendorModelName } from "@/vendor/loader";
+import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 const router = express.Router();
 
 async function urlToBase64(imageUrl: string): Promise<string> {
@@ -29,8 +32,16 @@ export default router.post(
   async (req, res) => {
     const { model, references = [], quality, ratio, prompt, projectId } = req.body;
     try {
-      const imageClass = await u.Ai.Image(model).run(
-        {
+      const { vendorId, modelId } = parseVendorModelName(model);
+      const taskRecord = await u.task(projectId, "工作流图片生成", modelId, {
+        describe: "工作流图片生成",
+        content: JSON.stringify(req.body),
+      });
+      let result: string;
+      try {
+        const vendor = createDefaultConfiguredVendor();
+        const { version } = await vendor.inspectVendor(vendorId);
+        const input = applyLegacyImageReferenceConversion(version, {
           prompt: prompt,
           referenceList: await (async () => {
             const list: { type: "image"; base64: string }[] = [];
@@ -41,16 +52,16 @@ export default router.post(
           })(),
           size: quality,
           aspectRatio: ratio,
-        },
-        {
-          taskClass: "工作流图片生成",
-          describe: "工作流图片生成",
-          relatedObjects: JSON.stringify(req.body),
-          projectId: projectId,
-        },
-      );
+        });
+        result = await vendor.generateImage({ target: { vendorId, modelId }, input });
+        result = await normalizeHttpResult(result);
+      } catch (e) {
+        taskRecord(-1, u.error(e).message);
+        throw new Error(u.error(e).message);
+      }
+      taskRecord(1);
       const savePath = `${projectId}/workFlow/${u.uuid()}.jpg`;
-      await imageClass.save(savePath);
+      await u.oss.writeFile(savePath, result);
 
       const url = await u.oss.getSmallImageUrl(savePath);
       return res.status(200).send(success({ url }));
