@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { error, success } from "@/lib/responseFormat";
 import u from "@/utils";
+import { getDefaultConfiguredVendor } from "@/vendor";
+import { normalizeHttpResult } from "@/utils/imageGeneration";
 import {
   validateVideoGenerationCommand,
   videoAudioSelectionSchema,
@@ -35,8 +37,8 @@ const requestSchema = z
 export default router.post("/", async (req, res) => {
   try {
     const input = requestSchema.parse(req.body);
-    const modelList = await u.vendor.getModelList(input.vendorId);
-    const model = modelList.find((item: any) => item.modelName === input.modelId);
+    const vendor = getDefaultConfiguredVendor();
+    const model = (await vendor.inspectVendor(input.vendorId)).models.find((item) => item.modelName === input.modelId);
     if (!model) return res.status(404).send(error("未找到测试模型"));
     const images = new Map(input.images.map((image) => [image.role, { mediaType: "image" as const, base64: image.base64 }]));
     const base = {
@@ -61,9 +63,11 @@ export default router.post("/", async (req, res) => {
                 lastFrame: images.get("last-frame"),
               },
     );
-    const request = u.Ai.Video(`${input.vendorId}:${input.modelId}`);
-    await request.run(command);
-    await request.save("test.mp4");
+    const result = await vendor.generateVideo({
+      target: { vendorId: input.vendorId, modelId: input.modelId },
+      input: command,
+    });
+    await u.oss.writeFile("test.mp4", await normalizeHttpResult(result));
     res.status(200).send(success(await u.oss.getFileUrl("test.mp4")));
   } catch (cause) {
     res.status(400).send(error(u.error(cause).message));

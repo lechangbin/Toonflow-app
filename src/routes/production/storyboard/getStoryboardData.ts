@@ -1,5 +1,7 @@
 import express from "express";
 import u from "@/utils";
+
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -17,8 +19,7 @@ export default router.post(
     const { scriptId, page, limit, name } = req.body;
     const offset = (page - 1) * limit;
 
-    const storyboardData = await u
-      .db("o_storyboard")
+    const storyboardData = await getDatabaseRuntime().work((db) => db("o_storyboard")
       .where({ scriptId })
       .modify((qb) => {
         if (name) {
@@ -26,7 +27,7 @@ export default router.post(
         }
       })
       .offset(offset)
-      .limit(limit);
+      .limit(limit));
     const data = await Promise.all(
       storyboardData.map(async (i: any) => {
         return {
@@ -37,8 +38,7 @@ export default router.post(
         };
       }),
     );
-    const totalQuery = (await u
-      .db("o_storyboard")
+    const totalQuery = (await getDatabaseRuntime().work((db) => db("o_storyboard")
       .where({ scriptId })
       .modify((qb) => {
         if (name) {
@@ -46,7 +46,7 @@ export default router.post(
         }
       })
       .count("* as total")
-      .first()) as any;
+      .first())) as any;
 
     res.status(200).send(success({ data: data, total: totalQuery?.total }));
   },

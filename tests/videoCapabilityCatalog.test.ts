@@ -22,7 +22,7 @@ test("the enabled Video capability catalog omits credentials and Vendor source c
   try {
     const catalog = await listEnabledVideoCapabilities({
       db: workOf(db),
-      getVendor: () => ({ id: "agnes", name: "Agnes AI", inputValues: { apiKey: "secret" }, sourceCode: "secret" }),
+      getVendor: async () => ({ id: "agnes", name: "Agnes AI", inputValues: { apiKey: "secret" }, sourceCode: "secret" }),
       getVendorModels: async () => [
         { name: "Agnes Text", modelName: "agnes-text", type: "text", think: true },
         {

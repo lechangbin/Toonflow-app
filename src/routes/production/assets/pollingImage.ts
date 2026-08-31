@@ -1,5 +1,7 @@
 import express from "express";
 import u from "@/utils";
+
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -12,12 +14,11 @@ export default router.post(
   }),
   async (req, res) => {
     const { ids } = req.body;
-    const data = await u
-      .db("o_assets")
+    const data = await getDatabaseRuntime().work((db) => db("o_assets")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .whereIn("o_assets.id", ids)
       .whereNot("o_image.state", "生成中")
-      .select("o_image.state", "o_assets.id", "o_image.filePath", "o_image.errorReason","o_assets.prompt");
+      .select("o_image.state", "o_assets.id", "o_image.filePath", "o_image.errorReason","o_assets.prompt"));
     const result = await Promise.all(
       data.map(async (item: any) => ({
         ...item,

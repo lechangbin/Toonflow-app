@@ -142,6 +142,8 @@ export interface ImageModelSummary {
   readonly type: "image";
   readonly name: string;
   readonly modelName: string;
+  /** Reference modes the Model supports; consumed by the settings UI. */
+  readonly mode: readonly ("text" | "singleImage" | "multiReference")[];
 }
 
 export interface VideoModelSummary {

@@ -218,7 +218,12 @@ export function summarizeModel(model: ConfiguredVendorModel): ModelSummary {
     return { type: "text", name: model.name, modelName: model.modelName, think: model.think === true };
   }
   if (model.type === "image") {
-    return { type: "image", name: model.name, modelName: model.modelName };
+    return {
+      type: "image",
+      name: model.name,
+      modelName: model.modelName,
+      mode: Array.isArray(model.mode) ? (model.mode as ("text" | "singleImage" | "multiReference")[]) : [],
+    };
   }
   if (model.type === "tts") {
     return { type: "tts", name: model.name, modelName: model.modelName };
