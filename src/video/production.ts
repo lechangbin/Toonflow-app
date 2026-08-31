@@ -1,15 +1,13 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 
 import axios from "axios";
 import type { Knex } from "knex";
 import { v4 as uuid } from "uuid";
 
 import { getDatabaseRuntime, type DatabaseWork } from "@/database";
-import { loadVendorRuntime } from "@/lib/vendorRuntime";
 import getPath from "@/utils/getPath";
 import oss from "@/utils/oss";
+import { createDefaultConfiguredVendor, type ConfiguredVendor } from "@/vendor";
 import {
   validateVideoGenerationCommand,
   type ResolvedImage,
@@ -38,18 +36,20 @@ interface PreparedGeneration {
   generationTaskId: number;
   artifactRevisionId: number;
   command: ValidatedVideoGenerationCommand;
-  runtime: VideoProductionRuntime;
+  vendorId: string;
 }
 
-interface VideoProductionRuntime {
-  getModel(modelId: string): any;
-  getRequest(name: "videoRequest", modelId: string): (command: any) => Promise<string>;
-}
+/**
+ * The configured-Vendor surface Video production needs: capability inspection
+ * before persistence and typed generation at the source runtime boundary. Video
+ * production keeps its own loader out of the picture entirely.
+ */
+export type VideoVendorPort = Pick<ConfiguredVendor, "inspectVendor" | "generateVideo">;
 
 export interface VideoProductionDependencies {
   db: DatabaseWork;
   profiles: VideoPromptProfileRegistry;
-  loadRuntime(vendorId: string): Promise<VideoProductionRuntime>;
+  vendor: VideoVendorPort;
   readImage(filePath: string): Promise<string>;
   writeVideo(filePath: string, base64: string): Promise<unknown>;
   downloadVideo(url: string): Promise<string>;
@@ -157,19 +157,6 @@ function commandSnapshot(
   return snapshot;
 }
 
-async function loadDefaultRuntime(vendorId: string) {
-  const vendorConfig = await getDatabaseRuntime().work((db) =>
-    db("o_vendorConfig").where("id", vendorId).first(),
-  );
-  if (!vendorConfig) throw new Error(`未找到供应商 ${vendorId}`);
-  const sourcePath = path.join(getPath("vendor"), `${vendorId}.ts`);
-  if (!fs.existsSync(sourcePath)) throw new Error(`未找到供应商配置文件 ${vendorId}.ts`);
-  return loadVendorRuntime(fs.readFileSync(sourcePath, "utf8"), {
-    inputValues: JSON.parse(vendorConfig.inputValues ?? "{}"),
-    customModels: JSON.parse(vendorConfig.models ?? "[]"),
-  });
-}
-
 async function materializePrompt(
   database: Knex,
   item: VideoGenerationItem,
@@ -203,7 +190,6 @@ async function normalizeAdapterResult(dependencies: VideoProductionDependencies,
 }
 
 async function executePrepared(dependencies: VideoProductionDependencies, prepared: PreparedGeneration): Promise<boolean> {
-  const request = prepared.runtime.getRequest("videoRequest", prepared.command.modelId);
   const command = {
     ...prepared.command,
     onTaskCheckpoint: async (checkpoint: unknown) => {
@@ -215,7 +201,10 @@ async function executePrepared(dependencies: VideoProductionDependencies, prepar
     },
   };
   try {
-    const result = await request(command);
+    const result = await dependencies.vendor.generateVideo({
+      target: { vendorId: prepared.vendorId, modelId: prepared.command.modelId },
+      input: command,
+    });
     await dependencies.writeVideo(prepared.videoPath, await normalizeAdapterResult(dependencies, result));
     const completedAt = dependencies.now();
     await dependencies.db((db) =>
@@ -263,11 +252,14 @@ async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVi
         .first(),
     );
     if (!track) throw new Error(`Video Track ${item.trackId} 不属于当前 Project/Script`);
-    const runtime = await dependencies.loadRuntime(item.vendorId);
-    const model = runtime.getModel(item.modelId);
-    const capability = model.type === "video" && Array.isArray(model.capabilities)
-      ? (model.capabilities as any[]).find((candidate) => candidate.id === item.capabilityId)
-      : undefined;
+    const inspection = await dependencies.vendor.inspectVendor(item.vendorId);
+    const model = inspection.models.find(
+      (candidate) => candidate.type === "video" && candidate.modelName === item.modelId,
+    );
+    if (!model || model.type !== "video") {
+      throw new Error(`未找到 Video Model ${item.vendorId}:${item.modelId}`);
+    }
+    const capability = model.capabilities.find((candidate) => candidate.id === item.capabilityId);
     if (!capability) throw new Error(`${item.vendorId}:${item.modelId} 不支持 ${item.capabilityId}`);
     validateVideoTrackInputReferences(capability, item.inputs);
     const promptRevision = await dependencies.db((db) => materializePrompt(db, item, input.projectId, profiles));
@@ -278,7 +270,7 @@ async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVi
     const command = validateVideoGenerationCommand(model, buildCommand(item, promptRevision.renderedPrompt, images));
     preparedItems.push({
       command,
-      runtime,
+      vendorId: item.vendorId,
       videoPath: dependencies.createVideoPath(input.projectId),
     });
   }
@@ -379,7 +371,7 @@ function createDefaultVideoProduction() {
   return createVideoProduction({
     db: (operation) => getDatabaseRuntime().work(operation),
     profiles: VideoPromptProfileRegistry.load(getPath(["promptProfiles", "video"])),
-    loadRuntime: loadDefaultRuntime,
+    vendor: createDefaultConfiguredVendor(),
     readImage: (filePath) => oss.getImageBase64(filePath),
     writeVideo: (filePath, base64) => oss.writeFile(filePath, base64),
     downloadVideo: async (url) => {
