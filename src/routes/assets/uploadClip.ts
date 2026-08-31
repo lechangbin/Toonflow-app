@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
@@ -40,20 +41,22 @@ export default router.post(
     const savePath = `/${projectId}/assets/${uuid()}.${ext}`;
 
     await u.oss.writeFile(savePath, Buffer.from(base64Data.match(/base64,([A-Za-z0-9+/=]+)/)[1] ?? "", "base64"));
-    const [id] = await u.db("o_assets").insert({
-      type: type,
-      projectId: projectId,
-      name,
-      startTime: Date.now(),
-    });
-    const [imageId] = await u.db("o_image").insert({
-      filePath: savePath,
-      type,
-      assetsId: id,
-      state: "已完成",
-    });
-    await u.db("o_assets").where("id", id).update({
-      imageId: imageId,
+    await getDatabaseRuntime().work(async (db) => {
+      const [id] = await db("o_assets").insert({
+        type: type,
+        projectId: projectId,
+        name,
+        startTime: Date.now(),
+      });
+      const [imageId] = await db("o_image").insert({
+        filePath: savePath,
+        type,
+        assetsId: id,
+        state: "已完成",
+      });
+      await db("o_assets").where("id", id).update({
+        imageId: imageId,
+      });
     });
     res.status(200).send(success("上传成功"));
   },

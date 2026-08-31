@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -21,14 +22,20 @@ export default router.post(
   async (req, res) => {
     const { assetsId, projectId, type, name, describe } = req.body;
     //获取风格
-    const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
+    const project = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
+    });
     //如果没有找到对应的项目，返回错误
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
-    await u.db("o_assets").where("id", assetsId).update({ promptState: "生成中" });
+    await getDatabaseRuntime().work(async (db) => {
+      await db("o_assets").where("id", assetsId).update({ promptState: "生成中" });
+    });
 
     //查询资产是否是衍生资产
-    const assetsData = await u.db("o_assets").where("id", assetsId).select("assetsId").first();
+    const assetsData = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_assets").where("id", assetsId).select("assetsId").first();
+    });
     if (!assetsData) return { code: 500, message: "资产不存在" };
     const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string; visualManual: string }> = {
       role: {
@@ -76,14 +83,15 @@ export default router.post(
       })) as any;
 
       if (!_output) return res.status(500).send("失败");
-      await u.db("o_assets").where("id", assetsId).update({ prompt: _output, promptState: "已完成" });
+      await getDatabaseRuntime().work(async (db) => {
+        await db("o_assets").where("id", assetsId).update({ prompt: _output, promptState: "已完成" });
+      });
 
       res.status(200).send(success({ prompt: _output, assetsId }));
     } catch (e: any) {
-      await u
-        .db("o_assets")
-        .where("id", assetsId)
-        .update({ promptState: "失败", promptErrorReason: u.error(e).message });
+      await getDatabaseRuntime().work(async (db) => {
+        await db("o_assets").where("id", assetsId).update({ promptState: "失败", promptErrorReason: u.error(e).message });
+      });
       return res.status(500).send(error(e?.data?.error?.message ?? e?.message ?? "生成失败"));
     }
   },

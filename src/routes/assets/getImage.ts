@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { z } from "zod";
 import { validateFields } from "@/middleware/middleware";
@@ -14,9 +15,11 @@ export default router.post(
   async (req, res) => {
     const { assetsId } = req.body;
 
-    const assets = await u.db("o_assets").where("id", assetsId).select("id", "imageId", "type").first();
-
-    const rawTempAssets = await u.db("o_image").where("assetsId", assetsId).select("id", "filePath", "assetsId", "type", "state");
+    const { assets, rawTempAssets } = await getDatabaseRuntime().work(async (db) => {
+      const assets = await db("o_assets").where("id", assetsId).select("id", "imageId", "type").first();
+      const rawTempAssets = await db("o_image").where("assetsId", assetsId).select("id", "filePath", "assetsId", "type", "state");
+      return { assets, rawTempAssets };
+    });
 
     const tempAssets = await Promise.all(
       rawTempAssets.map(async (item) => ({

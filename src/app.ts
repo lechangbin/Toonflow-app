@@ -15,7 +15,7 @@ import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
 import { isEletron } from "@/utils/getPath";
 import { ensureThumbnail, ThumbnailSize } from "@/utils/image";
-import { openDatabase } from "@/database";
+import { getDatabaseRuntime, openDatabase } from "@/database";
 import { resolveServerConfig } from "@/server/config";
 import { createHealthRouter } from "@/server/health";
 
@@ -158,7 +158,9 @@ export default async function startServe(randomPort: Boolean = false) {
   app.use(createHealthRouter());
 
   app.use(async (req, res, next) => {
-    const setting = await u.db("o_setting").where("key", "tokenKey").select("value").first();
+    const setting = await getDatabaseRuntime().work(async (db) =>
+      db("o_setting").where("key", "tokenKey").select("value").first(),
+    );
     if (!setting) return res.status(444).send({ message: "服务器秘钥未配置，请联系管理员" });
     const { value: tokenKey } = setting;
     // 从 header 或 query 参数获取 token

@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -16,14 +17,17 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, assetsIds, concurrentCount } = req.body;
-    const assetsData = await u.db("o_assets").whereIn("id", assetsIds).andWhere("projectId", projectId).select("id", "name", "describe", "type");
+    const assetsData = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_assets").whereIn("id", assetsIds).andWhere("projectId", projectId).select("id", "name", "describe", "type");
+    });
 
-    const audioData = await u
-      .db("o_assets")
-      .where("type", "audio")
-      .whereNull("assetsId")
-      .andWhere("projectId", projectId)
-      .select("id", "name", "describe");
+    const audioData = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_assets")
+        .where("type", "audio")
+        .whereNull("assetsId")
+        .andWhere("projectId", projectId)
+        .select("id", "name", "describe");
+    });
 
     if (!audioData.length) return res.status(400).send(error("暂无设置音频，请先前往资产中心上传音频"));
 
@@ -41,15 +45,19 @@ export default router.post(
               .toJSONSchema(),
           ),
           execute: async (result) => {
-            await u.db("o_assetsRole2Audio").where("assetsRoleId", asset.id).delete();
-            if (result?.audioId) await u.db("o_assetsRole2Audio").insert({ assetsRoleId: asset.id, assetsAudioId: result.audioId });
-            await u.db("o_assets").where("id", asset.id).update("audioBindState", "已完成");
+            await getDatabaseRuntime().work(async (db) => {
+              await db("o_assetsRole2Audio").where("assetsRoleId", asset.id).delete();
+              if (result?.audioId) await db("o_assetsRole2Audio").insert({ assetsRoleId: asset.id, assetsAudioId: result.audioId });
+              await db("o_assets").where("id", asset.id).update("audioBindState", "已完成");
+            });
             return "无需回复用户任何内容";
           },
         });
 
         const audioList = audioData.map((i) => `- ID:${i.id} | 名称:${i.name} | 描述:${i.describe ?? "无"}`).join("\n");
-        const promptData = await u.db("o_prompt").where("type", "audioBindPrompt").first();
+        const promptData = await getDatabaseRuntime().work(async (db) => {
+          return await db("o_prompt").where("type", "audioBindPrompt").first();
+        });
         let audioBindPrompt = "" as string | undefined;
         if (promptData && promptData.useData) {
           audioBindPrompt = promptData.useData;
@@ -78,7 +86,9 @@ export default router.post(
           tools: { resultTool },
         });
       } catch (e) {
-        await u.db("o_assets").where("id", asset.id).update("audioBindState", "生成失败");
+        await getDatabaseRuntime().work(async (db) => {
+          await db("o_assets").where("id", asset.id).update("audioBindState", "生成失败");
+        });
         console.error(`[bindAudio] 资产 ${asset.id} 处理失败:`, e);
       }
     }
@@ -90,13 +100,14 @@ export default router.post(
         await Promise.all(batch.map((asset) => processAsset(asset)));
       }
     }
-    await u
-      .db("o_assets")
-      .whereIn(
-        "id",
-        assetsData.map((i) => i.id),
-      )
-      .update("audioBindState", "生成中");
+    await getDatabaseRuntime().work(async (db) => {
+      await db("o_assets")
+        .whereIn(
+          "id",
+          assetsData.map((i) => i.id),
+        )
+        .update("audioBindState", "生成中");
+    });
     runWithConcurrency();
     res.status(200).send(success());
   },

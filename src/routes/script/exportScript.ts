@@ -1,5 +1,5 @@
 import express from "express";
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import compressing from "compressing";
@@ -13,7 +13,9 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-    const scripts = await u.db("o_script").whereIn("id", id);
+    const scripts = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_script").whereIn("id", id);
+    });
     const textList = scripts.map((s) => ({ name: s.name, text: s.content }));
     //压缩为zip文件
     const zipStream = new compressing.zip.Stream();

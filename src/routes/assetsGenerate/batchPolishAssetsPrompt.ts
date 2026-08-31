@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import pLimit from "p-limit";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
@@ -46,18 +47,24 @@ export default router.post(
   async (req, res) => {
     const { projectId, items, concurrentCount, otherTextPrompt } = req.body;
     //获取风格
-    const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
+    const project = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
+    });
     //如果没有找到对应的项目，返回错误
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
     // 预加载公共数据
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);
     //查询所有资产，用于判断每个资产是否是衍生资产
-    const assetsDataList = await u.db("o_assets").whereIn("id", assetsIds).select("id", "assetsId");
+    const assetsDataList = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_assets").whereIn("id", assetsIds).select("id", "assetsId");
+    });
     if (!assetsDataList || assetsDataList.length === 0) return res.status(500).send(error("资产不存在"));
     const assetsDataMap = new Map(assetsDataList.map((a: any) => [a.id, a]));
     // 所有前置检测通过后，再批量更新状态为生成中
-    await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
+    await getDatabaseRuntime().work(async (db) => {
+      await db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
+    });
 
     const getTypeConfig = (
       isDerivative: boolean,
@@ -97,7 +104,9 @@ export default router.post(
         //获取到视觉手册
         const visualManual = await u.getArtPrompt(project.artStyle as string, "art_skills", config.visualManual);
         if (!visualManual) {
-          await u.db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败", promptErrorReason: "视觉手册未定义" });
+          await getDatabaseRuntime().work(async (db) => {
+            await db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败", promptErrorReason: "视觉手册未定义" });
+          });
           return;
         }
         const systemPrompt = visualManual;
@@ -117,16 +126,19 @@ export default router.post(
           })) as any;
 
           if (!_output) {
-            await u.db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败" });
+            await getDatabaseRuntime().work(async (db) => {
+              await db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败" });
+            });
             return;
           }
 
-          await u.db("o_assets").where("id", item.assetsId).update({ prompt: _output, promptState: "已完成" });
+          await getDatabaseRuntime().work(async (db) => {
+            await db("o_assets").where("id", item.assetsId).update({ prompt: _output, promptState: "已完成" });
+          });
         } catch (e: any) {
-          await u
-            .db("o_assets")
-            .where("id", item.assetsId)
-            .update({ promptState: "失败", promptErrorReason: u.error(e).message });
+          await getDatabaseRuntime().work(async (db) => {
+            await db("o_assets").where("id", item.assetsId).update({ promptState: "失败", promptErrorReason: u.error(e).message });
+          });
         }
       }),
     );

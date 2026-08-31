@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -48,23 +49,25 @@ export default router.post(
       throw new Error("项目 Video Vendor/Model/Capability/Output Preset 默认值无效");
     }
 
-    await u.db("o_project").insert({
-      id: Date.now(),
-      projectType,
-      name,
-      intro,
-      type,
-      artStyle,
-      videoRatio,
-      directorManual,
-      userId: 1,
-      imageModel,
-      videoVendorId,
-      videoModelId,
-      videoCapabilityId,
-      videoOutputPresetId,
-      createTime: Date.now(),
-      imageQuality,
+    await getDatabaseRuntime().work(async (db) => {
+      await db("o_project").insert({
+        id: Date.now(),
+        projectType,
+        name,
+        intro,
+        type,
+        artStyle,
+        videoRatio,
+        directorManual,
+        userId: 1,
+        imageModel,
+        videoVendorId,
+        videoModelId,
+        videoCapabilityId,
+        videoOutputPresetId,
+        createTime: Date.now(),
+        imageQuality,
+      });
     });
 
     res.status(200).send(success({ message: "新增项目成功" }));
