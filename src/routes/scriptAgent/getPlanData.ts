@@ -3,6 +3,7 @@ import { success } from "@/lib/responseFormat";
 import u from "@/utils";
 import { z } from "zod";
 import { validateFields } from "@/middleware/middleware";
+import { getDatabaseRuntime } from "@/database";
 const router = express.Router();
 
 export default router.post(
@@ -13,17 +14,17 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, agentType } = req.body;
-    const row = await u.db("o_agentWorkData").where({ projectId: projectId, key: agentType }).first();
+    const row = await getDatabaseRuntime().work((db) => db("o_agentWorkData").where({ projectId: projectId, key: agentType }).first());
 
     if (!row) {
-      const [id] = await u.db("o_agentWorkData").insert({
+      const [id] = await getDatabaseRuntime().work((db) => db("o_agentWorkData").insert({
         projectId: projectId,
         key: agentType,
         data: JSON.stringify({
           storySkeleton: "",
           adaptationStrategy: "",
         }),
-      });
+      }));
       return res.status(200).send(
         success({
           data: {
@@ -35,7 +36,7 @@ export default router.post(
       );
     }
     const data = JSON.parse(row.data ?? "{}");
-    data.script = await u.db("o_script").where({ projectId }).select("id", "name", "content");
+    data.script = await getDatabaseRuntime().work((db) => db("o_script").where({ projectId }).select("id", "name", "content"));
 
     res.status(200).send(success({ data, id: row.id }));
   },

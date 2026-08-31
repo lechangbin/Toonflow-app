@@ -4,6 +4,7 @@ import { z } from "zod";
 import _ from "lodash";
 import ResTool from "@/socket/resTool";
 
+import { getDatabaseRuntime } from "@/database";
 export const ScriptSchema = z.object({
   name: z.string().describe("剧本名称"),
   content: z.string().describe("剧本内容"),
@@ -87,7 +88,7 @@ export default (toolCpnfig: ToolConfig) => {
       execute: async ({ chapterIndex }) => {
         console.log("[tools] get_novel_text", "[tools] get_novel_text", chapterIndex);
         const thinking = msg.thinking(`正在获取小说章节原文...`);
-        const data = await u.db("o_novel").where("projectId", resTool.data.projectId).where({ chapterIndex }).select("chapterData").first();
+        const data = await getDatabaseRuntime().work((db) => db("o_novel").where("projectId", resTool.data.projectId).where({ chapterIndex }).select("chapterData").first());
         const text = data && data?.chapterData ? data.chapterData : "";
         thinking.appendText(`获取到原文:\n` + text);
         thinking.updateTitle(`获取小说章节原文完成`);
@@ -107,7 +108,7 @@ export default (toolCpnfig: ToolConfig) => {
       execute: async ({ ids }) => {
         console.log("[tools] get_script_content", "[tools] get_script_content", ids);
         const thinking = msg.thinking(`正在获取脚本内容...`);
-        const data = await u.db("o_script").whereIn("id", ids).select("content", "name");
+        const data = await getDatabaseRuntime().work((db) => db("o_script").whereIn("id", ids).select("content", "name"));
         const text = data && data.length ? data.map((d) => `<scriptItem name="${d.name}">${d.content}</scriptItem>`).join("\n") : "";
         thinking.appendText(`获取到脚本内容:\n` + JSON.stringify(data, null, 2));
         thinking.updateTitle(`获取脚本内容完成`);

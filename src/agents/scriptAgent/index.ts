@@ -9,6 +9,7 @@ import ResTool from "@/socket/resTool";
 import * as fs from "fs";
 import path from "path";
 
+import { getDatabaseRuntime } from "@/database";
 export interface AgentContext {
   socket: Socket;
   isolationKey: string;
@@ -49,9 +50,9 @@ export async function runDecisionAI(ctx: AgentContext) {
 
   const mem = buildMemPrompt(await memory.get(text));
 
-  const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
+  const projectData = await getDatabaseRuntime().work((db) => db("o_project").where("id", resTool.data.projectId).first());
 
-  const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex");
+  const novelData = await getDatabaseRuntime().work((db) => db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex"));
 
   const projectInfo = [
     "## 项目信息",
@@ -196,12 +197,12 @@ function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "script_execution_script.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
-      const scriptList = await u.db("o_script").where("projectId", resTool.data.projectId).select("id", "name");
+      const scriptList = await getDatabaseRuntime().work((db) => db("o_script").where("projectId", resTool.data.projectId).select("id", "name"));
       const scriptPrompt = ["## 可用剧本(ID:名称)", scriptList.map((s: any) => `${s.id}:${(s.name || "").replace(/[,:]/g, "")}`).join(","), ""].join(
         "\n",
       );
 
-      const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex");
+      const novelData = await getDatabaseRuntime().work((db) => db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex"));
 
       const formatPrompt = `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`;
 

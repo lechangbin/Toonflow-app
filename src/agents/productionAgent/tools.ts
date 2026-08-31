@@ -4,6 +4,7 @@ import _ from "lodash";
 import ResTool from "@/socket/resTool";
 import u from "@/utils";
 
+import { getDatabaseRuntime } from "@/database";
 const deriveAssetSchema = z.object({
   id: z.number().describe("衍生资产ID,如果新增则为空"),
   assetsId: z.number().describe("关联的资产ID"),
@@ -131,7 +132,7 @@ export default (toolCpnfig: ToolConfig) => {
         const thinking = msg.thinking("正在操作资产...");
         const { projectId, scriptId } = resTool.data;
         const startTime = Date.now();
-        const parentAssets = await u.db("o_assets").where("id", deriveAsset.assetsId).select("id", "type").first();
+        const parentAssets = await getDatabaseRuntime().work((db) => db("o_assets").where("id", deriveAsset.assetsId).select("id", "type").first());
         if (!parentAssets) return "关联的资产不存在";
 
         const data = {
@@ -144,12 +145,12 @@ export default (toolCpnfig: ToolConfig) => {
           startTime,
         };
         if (deriveAsset.id) {
-          await u.db("o_assets").where("id", deriveAsset.id).update(data);
+          await getDatabaseRuntime().work((db) => db("o_assets").where("id", deriveAsset.id).update(data));
           thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
         } else {
-          const [insertedId] = await u.db("o_assets").insert(data);
+          const [insertedId] = await getDatabaseRuntime().work((db) => db("o_assets").insert(data));
           data.id = insertedId;
-          await u.db("o_scriptAssets").insert({ scriptId, assetId: insertedId });
+          await getDatabaseRuntime().work((db) => db("o_scriptAssets").insert({ scriptId, assetId: insertedId }));
           thinking.appendText(`已新增衍生资产，ID: ${insertedId}\n`);
         }
         const res = await new Promise((resolve) => socket.emit("addDeriveAsset", data, (res: any) => resolve(res)));
@@ -171,8 +172,8 @@ export default (toolCpnfig: ToolConfig) => {
       execute: async ({ assetsId, id }) => {
         const thinking = msg.thinking("正在操作资产...");
         const { scriptId } = resTool.data;
-        await u.db("o_assets").where("id", id).del();
-        await u.db("o_scriptAssets").where({ scriptId, assetId: id }).del();
+        await getDatabaseRuntime().work((db) => db("o_assets").where("id", id).del());
+        await getDatabaseRuntime().work((db) => db("o_scriptAssets").where({ scriptId, assetId: id }).del());
         thinking.appendText(`已删除衍生资产，ID: ${id}\n`);
         const res = await new Promise((resolve) => socket.emit("delDeriveAsset", { assetsId, id }, (res: any) => resolve(res)));
         thinking.updateTitle("资产操作完成");

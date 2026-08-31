@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createDefaultConfiguredVendor, type ConfiguredVendor, type TextLogicalRole } from "@/vendor";
 
 // ── 可调配置默认值 ──
+import { getDatabaseRuntime } from "@/database";
 const DEFAULTS: {
   messagesPerSummary: number;
   summaryMaxLength: number;
@@ -79,7 +80,7 @@ class Memory {
   }
   private async getConfigData<T extends Record<string, string | number>>(defaults: T): Promise<T> {
     const keys = Object.keys(defaults) as (keyof T & string)[];
-    const rows = await u.db("o_setting").whereIn("key", keys);
+    const rows = await getDatabaseRuntime().work((db) => db("o_setting").whereIn("key", keys));
 
     const dbMap: Record<string, string | null> = {};
     for (const row of rows) {
@@ -102,7 +103,7 @@ class Memory {
     const embedding = await getEmbedding(content);
     const isolationKey = this.isolationKey;
 
-    await u.db("memories").insert({
+    await getDatabaseRuntime().work((db) => db("memories").insert({
       id,
       isolationKey,
       type: "message",
@@ -113,10 +114,10 @@ class Memory {
       relatedMessageIds: null,
       summarized: 0,
       createTime: options?.createTime ?? Date.now(),
-    } as any);
+    } as any));
 
     // 检查未总结消息数量
-    const unsummarized = await u.db("memories").where({ isolationKey, type: "message", summarized: 0 }).orderBy("createTime", "asc");
+    const unsummarized = await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "message", summarized: 0 }).orderBy("createTime", "asc"));
 
     if (unsummarized.length >= Number(messagesPerSummary)) {
       const batch = unsummarized.slice(0, Number(messagesPerSummary));
@@ -127,7 +128,7 @@ class Memory {
       const summaryEmbedding = await getEmbedding(summaryContent);
       const summaryId = uuidv4();
 
-      await u.db("memories").insert({
+      await getDatabaseRuntime().work((db) => db("memories").insert({
         id: summaryId,
         isolationKey,
         type: "summary",
@@ -136,10 +137,10 @@ class Memory {
         relatedMessageIds: JSON.stringify(batchIds),
         summarized: 0,
         createTime: Date.now(),
-      } as any);
+      } as any));
 
       // 标记已总结
-      await u.db("memories").whereIn("id", batchIds).update({ summarized: 1 });
+      await getDatabaseRuntime().work((db) => db("memories").whereIn("id", batchIds).update({ summarized: 1 }));
     }
   }
 
@@ -160,12 +161,12 @@ class Memory {
     shortTerm.reverse(); // 最旧在前
 
     // summaries: 最近的 summary
-    const summaries = await u.db("memories").where({ isolationKey, type: "summary" }).orderBy("createTime", "desc").limit(Number(summaryLimit));
+    const summaries = await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "summary" }).orderBy("createTime", "desc").limit(Number(summaryLimit)));
     summaries.reverse();
 
     // rag: 向量搜索所有 messages
     const queryEmbedding = await getEmbedding(text);
-    const allMessages = await u.db("memories").where({ isolationKey, type: "message" });
+    const allMessages = await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "message" }));
     const ragResults = vectorSearch(allMessages, queryEmbedding, Number(ragLimit));
 
     return {
@@ -186,7 +187,7 @@ class Memory {
     const isolationKey = this.isolationKey;
     // 步骤1: 向量搜索 summary
     const queryEmbedding = await getEmbedding(keyword);
-    const allSummaries = await u.db("memories").where({ isolationKey, type: "summary" });
+    const allSummaries = await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "summary" }));
     const topSummaries = vectorSearch(allSummaries, queryEmbedding, Number(deepRetrieveSummaryLimit));
 
     if (topSummaries.length === 0) return [];
@@ -205,7 +206,7 @@ class Memory {
 
     if (messageIds.length === 0) return [];
 
-    const messages = await u.db("memories").whereIn("id", messageIds).orderBy("createTime", "asc");
+    const messages = await getDatabaseRuntime().work((db) => db("memories").whereIn("id", messageIds).orderBy("createTime", "asc"));
 
     return messages.map((m) => ({ id: m.id, content: m.content, createTime: m.createTime }));
   }

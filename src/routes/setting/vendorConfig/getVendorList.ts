@@ -1,17 +1,18 @@
 import express from "express";
 import { success } from "@/lib/responseFormat";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 const router = express.Router();
 
 export default router.post("/", async (req, res) => {
-  const data = await u.db("o_vendorConfig").select("*");
+  const data = await getDatabaseRuntime().work((db) => db("o_vendorConfig").select("*"));
 
   const list = (
     await Promise.all(
       data.map(async (item) => {
         const vendor = u.vendor.getVendor(item.id!);
         if (!vendor) {
-          await u.db("o_vendorConfig").where("id", item.id).delete();
+          await getDatabaseRuntime().work((db) => db("o_vendorConfig").where("id", item.id).delete());
           return null
         };
         return {
