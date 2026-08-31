@@ -1,10 +1,13 @@
 import express from "express";
-import { success, error } from "@/lib/responseFormat";
+import { z } from "zod";
+
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
-import { z } from "zod";
-import { loadVendorRuntime, validateVendorRequiredInputs } from "@/lib/vendorRuntime";
+import { getDefaultConfiguredVendor } from "@/vendor";
+
 const router = express.Router();
+
 export default router.post(
   "/",
   validateFields({
@@ -12,17 +15,12 @@ export default router.post(
     enable: z.number(),
   }),
   async (req, res) => {
-    const { id, enable } = req.body;
-    if (enable === 1) {
-      const configured = await u.db("o_vendorConfig").where("id", id).first();
-      if (!configured) throw new Error(`未找到供应商配置 id=${id}`);
-      const runtime = loadVendorRuntime(u.vendor.getCode(id), {
-        inputValues: JSON.parse(configured.inputValues ?? "{}"),
-        customModels: JSON.parse(configured.models ?? "[]"),
-      });
-      validateVendorRequiredInputs(runtime.vendor);
+    try {
+      const { id, enable } = req.body;
+      await getDefaultConfiguredVendor().configure({ kind: "enable-disable", vendorId: id, enable: enable === 1 });
+      res.status(200).send(success("更新成功"));
+    } catch (cause) {
+      res.status(400).send(error(u.error(cause).message));
     }
-    await u.db("o_vendorConfig").where("id", id).update({ enable });
-    res.status(200).send(success("更新成功"));
   },
 );

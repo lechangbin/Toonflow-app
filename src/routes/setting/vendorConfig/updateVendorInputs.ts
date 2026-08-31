@@ -1,9 +1,11 @@
 import express from "express";
-import { success, error } from "@/lib/responseFormat";
+import { z } from "zod";
+
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
-import { z } from "zod";
-import { transform } from "sucrase";
+import { getDefaultConfiguredVendor } from "@/vendor";
+
 const router = express.Router();
 
 export default router.post(
@@ -13,14 +15,12 @@ export default router.post(
     inputValues: z.record(z.string(), z.string()),
   }),
   async (req, res) => {
-    const { id, inputValues } = req.body;
-
-    await u
-      .db("o_vendorConfig")
-      .where("id", id)
-      .update({
-        inputValues: JSON.stringify(inputValues),
-      });
-    res.status(200).send(success("更新成功"));
+    try {
+      const { id, inputValues } = req.body;
+      await getDefaultConfiguredVendor().configure({ kind: "input-update", vendorId: id, inputValues });
+      res.status(200).send(success("更新成功"));
+    } catch (cause) {
+      res.status(400).send(error(u.error(cause).message));
+    }
   },
 );

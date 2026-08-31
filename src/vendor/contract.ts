@@ -182,6 +182,22 @@ export interface ConfiguredVendorValidationResult {
   readonly textBindingCount: number;
 }
 
+/**
+ * A single Agent binding change. The `id` is the `o_agentDeploy` row identity
+ * (the logical role is its `key` column); `modelName` is the `vendorId:modelId`
+ * binding the caller wants to apply. An empty `modelName` clears the binding.
+ */
+export interface AgentBindingUpdate {
+  readonly id: number;
+  readonly name: string;
+  readonly model: string;
+  readonly modelName: string;
+  readonly vendorId: string | null;
+  readonly desc: string;
+  readonly temperature?: number;
+  readonly maxOutputTokens?: number;
+}
+
 /** Typed configuration-command seam, mirroring the database maintenance seam. */
 export type ConfiguredVendorCommand =
   | { readonly kind: "validate" }
@@ -190,7 +206,16 @@ export type ConfiguredVendorCommand =
       readonly vendorId: string;
       readonly inputValues: Record<string, unknown>;
       readonly customModels: readonly CustomVendorModelInput[];
-    };
+    }
+  | { readonly kind: "add"; readonly source: string }
+  | { readonly kind: "program-update"; readonly vendorId: string; readonly source: string }
+  | { readonly kind: "input-update"; readonly vendorId: string; readonly inputValues: Record<string, unknown> }
+  | { readonly kind: "custom-model-update"; readonly vendorId: string; readonly model: CustomVendorModelInput }
+  | { readonly kind: "custom-model-remove"; readonly vendorId: string; readonly modelName: string }
+  | { readonly kind: "enable-disable"; readonly vendorId: string; readonly enable: boolean }
+  | { readonly kind: "delete"; readonly vendorId: string }
+  | { readonly kind: "agent-mode"; readonly mode: "0" | "1" }
+  | { readonly kind: "agent-binding"; readonly bindings: readonly AgentBindingUpdate[] };
 
 export type ConfiguredVendorCommandKind = ConfiguredVendorCommand["kind"];
 
@@ -204,7 +229,63 @@ export interface SetVendorConfigResult {
   readonly vendorId: string;
 }
 
-export type ConfiguredVendorResult = ValidateConfiguredVendorResult | SetVendorConfigResult;
+export interface AddVendorResult {
+  readonly kind: "add";
+  readonly vendorId: string;
+}
+
+export interface ProgramUpdateVendorResult {
+  readonly kind: "program-update";
+  readonly vendorId: string;
+}
+
+export interface InputUpdateVendorResult {
+  readonly kind: "input-update";
+  readonly vendorId: string;
+}
+
+export interface CustomModelUpdateResult {
+  readonly kind: "custom-model-update";
+  readonly vendorId: string;
+}
+
+export interface CustomModelRemoveResult {
+  readonly kind: "custom-model-remove";
+  readonly vendorId: string;
+}
+
+export interface EnableDisableVendorResult {
+  readonly kind: "enable-disable";
+  readonly vendorId: string;
+}
+
+export interface DeleteVendorResult {
+  readonly kind: "delete";
+  readonly vendorId: string;
+}
+
+export interface AgentModeResult {
+  readonly kind: "agent-mode";
+  readonly mode: "0" | "1";
+}
+
+export interface AgentBindingResult {
+  readonly kind: "agent-binding";
+  readonly count: number;
+}
+
+export type ConfiguredVendorResult =
+  | ValidateConfiguredVendorResult
+  | SetVendorConfigResult
+  | AddVendorResult
+  | ProgramUpdateVendorResult
+  | InputUpdateVendorResult
+  | CustomModelUpdateResult
+  | CustomModelRemoveResult
+  | EnableDisableVendorResult
+  | DeleteVendorResult
+  | AgentModeResult
+  | AgentBindingResult;
 
 export type ConfiguredVendorResultFor<TCommand extends ConfiguredVendorCommand> = TCommand extends {
   kind: "validate";
@@ -212,4 +293,22 @@ export type ConfiguredVendorResultFor<TCommand extends ConfiguredVendorCommand> 
   ? ValidateConfiguredVendorResult
   : TCommand extends { kind: "set-vendor-config" }
     ? SetVendorConfigResult
-    : never;
+    : TCommand extends { kind: "add" }
+      ? AddVendorResult
+      : TCommand extends { kind: "program-update" }
+        ? ProgramUpdateVendorResult
+        : TCommand extends { kind: "input-update" }
+          ? InputUpdateVendorResult
+          : TCommand extends { kind: "custom-model-update" }
+            ? CustomModelUpdateResult
+            : TCommand extends { kind: "custom-model-remove" }
+              ? CustomModelRemoveResult
+              : TCommand extends { kind: "enable-disable" }
+                ? EnableDisableVendorResult
+                : TCommand extends { kind: "delete" }
+                  ? DeleteVendorResult
+                  : TCommand extends { kind: "agent-mode" }
+                    ? AgentModeResult
+                    : TCommand extends { kind: "agent-binding" }
+                      ? AgentBindingResult
+                      : never;
