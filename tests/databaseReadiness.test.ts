@@ -3,7 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import legacyDatabaseClient, { db, dbReady } from "../src/utils/db";
 import { closeDatabase, getDatabaseRuntime, openDatabase } from "../src/database";
 import { openSqliteFile, withDataRoot } from "./databaseTestSupport";
 
@@ -155,25 +154,6 @@ async function createInterruptedDatabase(databaseFile: string): Promise<void> {
   }
 }
 
-test("importing the legacy database bridge performs no filesystem or database work", async () => {
-  const dataRoot = await withDataRoot(READINESS_PREFIX, async (root) => {
-    assert.equal(
-      fs.existsSync(path.join(root, "db2.sqlite")),
-      false,
-      "no database file may exist before openDatabase() runs",
-    );
-    assert.deepEqual(
-      fs.readdirSync(root).sort(),
-      ["models", "promptProfiles"],
-      "importing must not create data-directory entries; only the seeded fixtures are present",
-    );
-    assert.throws(() => getDatabaseRuntime(), /数据库尚未就绪/);
-    assert.throws(() => legacyDatabaseClient("o_setting"), /数据库尚未就绪/);
-    return root;
-  });
-  assert.equal(fs.existsSync(dataRoot), false, "the temporary data directory is removed again");
-});
-
 test("fresh startup opens a ready runtime with the current schema and required defaults", async () => {
   await withDataRoot(READINESS_PREFIX, async (dataRoot) => {
     const runtime = await openDatabase();
@@ -308,31 +288,6 @@ test("closing releases the runtime and permits a fresh reopen", async () => {
     assert.equal(reopened.state, "ready");
     const settings = await reopened.work((database) => database("o_setting").select("key"));
     assert.ok(settings.length > 0);
-  });
-});
-
-test("the legacy bridge resolves the activated handle once openDatabase succeeds", async () => {
-  await withDataRoot(READINESS_PREFIX, async () => {
-    assert.throws(() => legacyDatabaseClient("o_setting"), /数据库尚未就绪/);
-    assert.throws(() => db("o_setting"), /数据库尚未就绪/);
-
-    await openDatabase();
-
-    const rows = await legacyDatabaseClient("o_setting").select("key");
-    assert.ok(rows.length > 0, "the bridge reads through the handle the readiness module activated");
-    const sameRows = await db("o_setting").select("key");
-    assert.equal(sameRows.length, rows.length);
-  });
-});
-
-test("dbReady is a thin await of openDatabase and starts no work before it is awaited", async () => {
-  await withDataRoot(READINESS_PREFIX, async (dataRoot) => {
-    assert.equal(fs.existsSync(path.join(dataRoot, "db2.sqlite")), false);
-
-    await dbReady;
-
-    assert.equal(fs.existsSync(path.join(dataRoot, "db2.sqlite")), true);
-    assert.equal(getDatabaseRuntime().state, "ready");
   });
 });
 

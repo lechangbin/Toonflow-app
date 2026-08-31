@@ -1,25 +1,28 @@
 import express from "express";
 import { success } from "@/lib/responseFormat";
-import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
+import { getDefaultConfiguredVendor } from "@/vendor";
 const router = express.Router();
 
 export default router.post("/", async (req, res) => {
   const data = await getDatabaseRuntime().work((db) => db("o_vendorConfig").select("*"));
 
+  const vendorModule = getDefaultConfiguredVendor();
   const list = (
     await Promise.all(
       data.map(async (item) => {
-        const vendor = u.vendor.getVendor(item.id!);
-        if (!vendor) {
+        let vendor;
+        try {
+          vendor = await vendorModule.inspectVendor(item.id!);
+        } catch {
+          // 源文件缺失或失效的配置行：沿用历史自愈行为，清掉无效行
           await getDatabaseRuntime().work((db) => db("o_vendorConfig").where("id", item.id).delete());
-          return null
-        };
+          return null;
+        }
         return {
           ...item,
           inputValues: JSON.parse(item.inputValues ?? "{}"),
-          models: await u.vendor.getModelList(item.id!),
-          code: u.vendor.getCode(item.id!),
+          models: vendor.models,
           description: vendor.description ?? "",
           inputs: vendor.inputs,
           author: vendor.author,

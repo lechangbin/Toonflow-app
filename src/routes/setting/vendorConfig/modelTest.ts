@@ -2,7 +2,10 @@ import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { createDefaultConfiguredVendor, type VideoModelSummary } from "@/vendor";
+import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
+import type { ImageGenerationInput } from "@/vendor/contract";
+import type { ValidatedVideoGenerationCommand } from "@/video/capability";
 import { z } from "zod";
 import { tool, jsonSchema } from "ai";
 import { getDatabaseRuntime } from "@/database";
@@ -39,9 +42,12 @@ export default router.post(
       if (!vendorConfigData) return res.status(500).send(error("未找到该供应商配置"));
       if (!vendorConfigData.models) return res.status(500).send(error("未找到模型列表"));
 
-      const modelList = await u.vendor.getModelList(vendorConfigData.id!);
+      const vendor = createDefaultConfiguredVendor();
+      const modelList = (await vendor.inspectVendor(vendorConfigData.id!)).models;
 
-      const selectedModel = modelList.find((i: any) => i.modelName == modelName);
+      const selectedModel = modelList.find(
+        (model): model is VideoModelSummary => model.type === "video" && model.modelName === modelName,
+      );
       if (type == "video") {
         const capability = selectedModel?.capabilities?.find((item: any) => item.id === "text-to-video");
         const preset = capability?.outputPresets?.[0];
@@ -98,14 +104,21 @@ export default router.post(
         if (!fullResponse) return res.status(500).send(error("模型未返回结果"));
         res.status(200).send(success(fullResponse));
       } else {
-        const aiTypeFn = {
-          image: "Image",
-          video: "Video",
-        } as const;
-        const reqFn = await u.Ai[aiTypeFn[type as "image" | "video"]](`${id}:${modelName}`).run({
-          ...reqConfig.modelData,
-        });
-        await reqFn.save(type == "video" ? "test.mp4" : "testImage.jpg");
+        if (type === "image") {
+          const { version } = await vendor.inspectVendor(id);
+          const input = applyLegacyImageReferenceConversion(
+            version,
+            reqConfig.modelData as unknown as ImageGenerationInput,
+          );
+          const result = await vendor.generateImage({ target: { vendorId: id, modelId: modelName }, input });
+          await u.oss.writeFile("testImage.jpg", await normalizeHttpResult(result));
+        } else {
+          const result = await vendor.generateVideo({
+            target: { vendorId: id, modelId: modelName },
+            input: reqConfig.modelData as unknown as ValidatedVideoGenerationCommand,
+          });
+          await u.oss.writeFile("test.mp4", await normalizeHttpResult(result));
+        }
         const resultUrl = await u.oss.getFileUrl(type == "video" ? "test.mp4" : "testImage.jpg");
         res.status(200).send(success(resultUrl));
       }

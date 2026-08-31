@@ -1,4 +1,3 @@
-import u from "@/utils";
 import { v4 as uuidv4 } from "uuid";
 import { getEmbedding, cosineSimilarity } from "./embedding";
 import type { memories as MemoryRow } from "@/types/database";
@@ -153,11 +152,10 @@ class Memory {
 
     const isolationKey = this.isolationKey;
     // shortTerm: 最近未被总结的 messages
-    const shortTerm = await u
-      .db("memories")
+    const shortTerm = await getDatabaseRuntime().work((db) => db("memories")
       .where({ isolationKey, type: "message", summarized: 0 })
       .orderBy("createTime", "desc")
-      .limit(Number(shortTermLimit));
+      .limit(Number(shortTermLimit)));
     shortTerm.reverse(); // 最旧在前
 
     // summaries: 最近的 summary

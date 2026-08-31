@@ -1,5 +1,4 @@
 import express from "express";
-import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -26,10 +25,9 @@ export default router.post(
       await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "summary" }).del());
     } else {
       // 删 summary 时将关联的 message 重置为未总结，使其重新进入 shortTerm
-      await u
-        .db("memories")
+      await getDatabaseRuntime().work((db) => db("memories")
         .where({ isolationKey, type: "message", summarized: 1 })
-        .update({ summarized: 0 });
+        .update({ summarized: 0 }));
       await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "summary" }).del());
     }
 

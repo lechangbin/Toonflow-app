@@ -1,6 +1,6 @@
 import express from "express";
 import { success } from "@/lib/responseFormat";
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
@@ -22,12 +22,11 @@ export default router.post(
   }),
   async (req, res) => {
     const { id, data } = req.body;
-    await u
-      .db("o_agentWorkData")
+    await getDatabaseRuntime().work((db) => db("o_agentWorkData")
       .where({ id: id })
       .update({
         data: JSON.stringify(data),
-      });
+      }));
     res.status(200).send(success("更新成功"));
   },
 );

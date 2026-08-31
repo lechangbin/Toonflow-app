@@ -1,6 +1,5 @@
 import express from "express";
 import { success } from "@/lib/responseFormat";
-import u from "@/utils";
 import { z } from "zod";
 import { validateFields } from "@/middleware/middleware";
 import { getDatabaseRuntime } from "@/database";
@@ -18,12 +17,11 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, agentType, data } = req.body;
-    await u
-      .db("o_agentWorkData")
+    await getDatabaseRuntime().work((db) => db("o_agentWorkData")
       .where({ projectId: projectId, key: agentType })
       .update({
         data: JSON.stringify(data),
-      });
+      }));
     const script = data.script;
 
     await Promise.all(

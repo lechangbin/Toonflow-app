@@ -4,8 +4,8 @@ import { parseVideoModel } from "./capability";
 
 export interface VideoCapabilityCatalogDependencies {
   db: DatabaseWork;
-  getVendor(vendorId: string): { id?: string; name?: string };
-  getVendorModels(vendorId: string): Promise<unknown[]>;
+  getVendor(vendorId: string): Promise<{ id?: string; name?: string }>;
+  getVendorModels(vendorId: string): Promise<readonly unknown[]>;
 }
 
 export async function listEnabledVideoCapabilities(dependencies: VideoCapabilityCatalogDependencies) {
@@ -14,7 +14,7 @@ export async function listEnabledVideoCapabilities(dependencies: VideoCapability
   );
   return Promise.all(
     enabledVendors.map(async ({ id }) => {
-      const vendor = dependencies.getVendor(id);
+      const vendor = await dependencies.getVendor(id);
       const models = (await dependencies.getVendorModels(id))
         .filter((model: any) => model?.type === "video")
         .map((model) => {

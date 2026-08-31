@@ -1,5 +1,4 @@
 import { tool, jsonSchema, Tool } from "ai";
-import u from "@/utils";
 import { z } from "zod";
 import _ from "lodash";
 import ResTool from "@/socket/resTool";
@@ -44,11 +43,10 @@ export default (toolCpnfig: ToolConfig) => {
       execute: async ({ chapterIndexs }) => {
         console.log("[tools] get_novel_events", chapterIndexs);
         const thinking = msg.thinking("正在查询章节事件...");
-        const data = await u
-          .db("o_novel")
+        const data = await getDatabaseRuntime().work((db) => db("o_novel")
           .where("projectId", resTool.data.projectId)
           .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState")
-          .whereIn("chapterIndex", chapterIndexs);
+          .whereIn("chapterIndex", chapterIndexs));
         thinking.appendText("正在查询章节编号: " + chapterIndexs.join(","));
         const eventString = data.map((i: any) => [`第${i.index}章，标题:${i.chapter}，事件:${i.event}`].join("\n")).join("\n");
         thinking.appendText("查询结果:\n" + eventString);
