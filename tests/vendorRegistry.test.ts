@@ -262,11 +262,12 @@ test("release build validation and the generated manifest consume the registry",
   assert.deepEqual(sorted(validation.vendorIds), sorted(releasedVendorIds()));
 
   assert.deepEqual(sorted(Object.keys(vendorManifest)), sorted(releasedVendorSourceFileNames()));
-  assert.deepEqual(readReleasedVendorSources(releaseVendorDir), vendorManifest);
+  const releasedSources = readReleasedVendorSources(releaseVendorDir);
+  assert.deepEqual(releasedSources, vendorManifest);
   for (const fileName of releasedVendorSourceFileNames()) {
     assert.equal(
       vendorManifest[fileName],
-      fs.readFileSync(path.join(releaseVendorDir, fileName), "utf8"),
+      releasedSources[fileName],
       `the manifest must carry the real ${fileName} program`,
     );
   }

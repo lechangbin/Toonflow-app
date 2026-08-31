@@ -38,11 +38,15 @@ export function validateReleaseBuildVendorData(dataRoot = getPath()): VideoRunti
   return result;
 }
 
-/** Reads the released built-in Vendor sources that make up the generated runtime manifest. */
+/**
+ * Reads the released built-in Vendor sources that make up the generated runtime
+ * manifest. Line endings are normalised to LF so the generated manifest is
+ * byte-stable across checkouts regardless of the host's line-ending policy.
+ */
 export function readReleasedVendorSources(vendorDir: string): Record<string, string> {
   const sources: Record<string, string> = {};
   for (const fileName of releasedVendorSourceFileNames()) {
-    sources[fileName] = fs.readFileSync(path.join(vendorDir, fileName), "utf8");
+    sources[fileName] = fs.readFileSync(path.join(vendorDir, fileName), "utf8").replace(/\r\n/g, "\n");
   }
   return sources;
 }
