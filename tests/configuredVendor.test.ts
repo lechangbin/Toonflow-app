@@ -161,12 +161,19 @@ async function createKnex(): Promise<Knex> {
 }
 
 function makeDeps(knex: Knex, sources: Record<string, string>, overrides: VmBoundaryOverrides = {}): ConfiguredVendorDependencies {
+  const store = new Map(Object.entries(sources));
   return {
     work: async (operation) => operation(knex),
     readVendorSource: (vendorId) => {
-      const source = sources[vendorId];
+      const source = store.get(vendorId);
       if (!source) throw new Error(`未找到供应商配置文件 ${vendorId}.ts`);
       return source;
+    },
+    writeVendorSource: (vendorId, source) => {
+      store.set(vendorId, source);
+    },
+    deleteVendorSource: (vendorId) => {
+      store.delete(vendorId);
     },
     promptProfiles,
     dependencyOverrides: overrides,

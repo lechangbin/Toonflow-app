@@ -86,6 +86,9 @@ export async function validateConfiguredVendors(
   return validateConfiguredVendorsWith({
     work: async (operation) => operation(knex),
     readVendorSource: (vendorId) => readVendorSourceFile(vendorId, dataRoot),
+    // Readiness validation never mutates the filesystem.
+    writeVendorSource: () => undefined,
+    deleteVendorSource: () => undefined,
     promptProfiles: VideoPromptProfileRegistry.load(path.join(dataRoot, "promptProfiles", "video")),
   });
 }
@@ -96,4 +99,19 @@ function readVendorSourceFile(vendorId: string, dataRoot: string): string {
   return fs.readFileSync(sourcePath, "utf8");
 }
 
-export { readVendorSourceFile };
+/**
+ * Filesystem side-effects for the configuration seam. The command registry owns
+ * identity validation and atomic compensation; these write/delete primitives are
+ * deliberately identity-agnostic so a failed candidate is never half-committed.
+ */
+function writeVendorSourceFile(vendorId: string, source: string, dataRoot: string): void {
+  const vendorDir = path.join(dataRoot, "vendor");
+  fs.mkdirSync(vendorDir, { recursive: true });
+  fs.writeFileSync(path.join(vendorDir, `${vendorId}.ts`), source);
+}
+
+function deleteVendorSourceFile(vendorId: string, dataRoot: string): void {
+  fs.rmSync(path.join(dataRoot, "vendor", `${vendorId}.ts`), { force: true });
+}
+
+export { readVendorSourceFile, writeVendorSourceFile, deleteVendorSourceFile };
