@@ -1,92 +1,75 @@
-import { readFile, writeFile } from "fs/promises";
-import getPath from "@/utils/getPath";
-import fs from "fs";
-import path from "path";
-import knex from "knex";
-import initDB from "@/lib/initDB";
-// import fixDB from "@/lib/fixDB";
+import type { Knex } from "knex";
+
+import { openDatabase } from "@/database";
+import { resolveLegacyDatabaseHandle } from "@/database/bridge";
 import type { DB } from "@/types/database";
-import crypto from "crypto";
-import fixDB from "@/lib/fixDB";
 
 type TableName = keyof DB & string;
 type RowType<TName extends TableName> = DB[TName];
 
-const dbPath = getPath("db2.sqlite");
-console.log("数据库目录:", dbPath);
-const dbDir = path.dirname(dbPath);
+type DatabaseClient = Knex & {
+  <TName extends TableName>(table: TName): Knex.QueryBuilder<RowType<TName>, RowType<TName>[]>;
+};
 
-// 确保数据库目录存在
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-}
-
-// 创建空数据库文件
-if (!fs.existsSync(dbPath)) {
-  fs.writeFileSync(dbPath, "");
-}
-
-const db = knex({
-  client: "better-sqlite3",
-  connection: {
-    filename: dbPath,
-  },
-  useNullAsDefault: true,
-});
-
-export const dbReady = (async () => {
-  await initDB(db);
-  await fixDB(db);
-  if (process.env.NODE_ENV == "dev") initKnexType(db);
-})();
-
-const dbClient = Object.assign(<TName extends TableName>(table: TName) => db<RowType<TName>, RowType<TName>[]>(table), db);
-dbClient.schema = db.schema;
-export default dbClient;
-
-export { db };
-
-async function initKnexType(knexDb: any) {
-  const { Client } = await import("@rmp135/sql-ts");
-  const outFile = "src/types/database.d.ts";
-  const dbClient = Client.fromConfig({
-    interfaceNameFormat: "${table}",
-    typeMap: {
-      number: ["bigint"],
-      string: ["text", "varchar", "char"],
+/**
+ * Legacy bridge for the ~130 `u.db(...)` call sites (#16/#17 migrate them).
+ *
+ * This module performs no filesystem or database work at import time. Every
+ * access resolves the handle the readiness module activated, so importing this
+ * file is free and using the handle before `openDatabase()` succeeded throws an
+ * actionable error instead of silently touching a half-initialised database.
+ */
+function lazyHandle<T extends object>(resolve: () => T): T {
+  return new Proxy(function () {} as unknown as T, {
+    apply: (_target, _thisArg, args) => (resolve() as unknown as (...args: unknown[]) => unknown)(...args),
+    get: (_target, property) => {
+      const handle = resolve() as unknown as Record<string | symbol, unknown>;
+      const value = handle[property];
+      return typeof value === "function" ? value.bind(handle) : value;
     },
-  }).fetchDatabase(knexDb);
-  const declarations = await dbClient.toTypescript();
-  const dbObject = await dbClient.toObject();
-  const customHeader = `//该文件由脚本自动生成，请勿手动修改`;
-  // 清除上次的注释头
-  let declBody = declarations.replace(/^\/\*[\s\S]*?\*\/\s*/, "");
-  declBody = declBody.replace(/(\n\s*)\/\*([^*][\s\S]*?)\*\//g, "$1/**$2*/");
-  const tableInterfaces = dbObject.schemas.flatMap((schema) => schema.tables.map((table) => table.interfaceName));
-  const aggregateTypes = `
-export interface DB {
-${tableInterfaces.map((name) => `  ${JSON.stringify(name)}: ${name};`).join("\n")}
-}
-`;
-  // 哈希仅基于结构化信息，header和空格不算
-  const hashSource = JSON.stringify({
-    tableInterfaces,
-    declBody,
+    set: (_target, property, value) => {
+      (resolve() as unknown as Record<string | symbol, unknown>)[property] = value;
+      return true;
+    },
+    has: (_target, property) => property in (resolve() as unknown as object),
+    ownKeys: () => Reflect.ownKeys(resolve() as unknown as object),
+    getOwnPropertyDescriptor: (_target, property) => {
+      const descriptor = Reflect.getOwnPropertyDescriptor(resolve() as unknown as object, property);
+      // The proxy target is a bare function, so every reported property has to
+      // stay configurable to satisfy the proxy invariants.
+      return descriptor ? { ...descriptor, configurable: true } : undefined;
+    },
   });
-  const hash = crypto.createHash("md5").update(hashSource).digest("hex");
-  // 文件内容
-  const content = `// @db-hash ${hash}\n${customHeader}\n\n` + declBody + aggregateTypes;
-  let needWrite = true;
-  try {
-    const current = await readFile(outFile, "utf8");
-    // 文件头已存在相同 hash，不需要写
-    const match = current.match(/^\/\/\s*@db-hash\s*([a-zA-Z0-9]+)\n/);
-    const currentHash = match ? match[1] : null;
-    if (currentHash === hash) {
-      needWrite = false;
-    }
-  } catch (err) {
-    needWrite = true;
-  }
-  if (needWrite) await writeFile(outFile, content, "utf8");
 }
+
+export const db = lazyHandle<Knex>(() => resolveLegacyDatabaseHandle());
+
+let cachedHandle: Knex | undefined;
+let cachedClient: DatabaseClient | undefined;
+
+function resolveClient(): DatabaseClient {
+  const handle = resolveLegacyDatabaseHandle();
+  if (cachedClient && cachedHandle === handle) return cachedClient;
+  const client = Object.assign(
+    <TName extends TableName>(table: TName) => handle<RowType<TName>, RowType<TName>[]>(table),
+    handle,
+  ) as unknown as DatabaseClient;
+  client.schema = handle.schema;
+  cachedHandle = handle;
+  cachedClient = client;
+  return client;
+}
+
+/**
+ * Thin await of `openDatabase()` for callers that still import `dbReady`.
+ * It is a thenable rather than an eager promise so importing this module does
+ * not start any database work; the lifecycle runs on the first `await`.
+ */
+export const dbReady: PromiseLike<void> = {
+  then(onfulfilled, onrejected) {
+    const ready: Promise<void> = openDatabase().then(() => undefined);
+    return ready.then(onfulfilled, onrejected);
+  },
+};
+
+export default lazyHandle<DatabaseClient>(resolveClient);

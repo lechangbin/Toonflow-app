@@ -16,7 +16,7 @@ This repository contains the Node.js/Express backend and Electron shell. The edi
 - `src/app.ts` composes HTTP, static files, authentication, Socket.IO, and generated routes.
 - `src/core.ts` generates `src/router.ts` from `src/routes/**/*.ts` during development.
 - `src/socket/routes/` connects Script Agent and Production Agent sessions.
-- `src/utils/db.ts` opens SQLite and currently triggers initialization and repair during module loading.
+- `src/database/` owns database readiness: one fixed lifecycle, ordinary work through a shared lease, and typed exclusive maintenance. `src/utils/db.ts` is only a temporary bridge for the remaining `u.db(...)` call sites.
 - `src/utils/ai.ts`, `src/utils/vendor.ts`, and `src/utils/vm.ts` load and execute programmable Vendor code.
 - `data/vendor/*.ts` are Vendor source adapters; `src/lib/vendor.json` is their generated runtime manifest.
 
@@ -40,7 +40,7 @@ Inspect `data/vendor/<vendor>.ts`, `src/utils/ai.ts`, `src/utils/vendor.ts`, `sr
 
 ### Database schema or defaults
 
-Inspect `src/lib/initDB.ts`, `src/lib/fixDB.ts`, `src/utils/db.ts`, and `src/types/database.d.ts`. Account for a fresh database, an upgraded database, and interrupted generation state.
+Inspect `src/database/`, `src/lib/initDB.ts`, `src/lib/fixDB.ts`, and `src/types/database.d.ts`. Account for a fresh database, an upgraded database, and interrupted generation state. Readiness order lives in `src/database/readiness.ts`; do not add a second lifecycle.
 
 ### Production video generation
 

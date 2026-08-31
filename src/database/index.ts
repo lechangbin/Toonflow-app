@@ -1,0 +1,99 @@
+import type { Knex } from "knex";
+
+import { DatabaseAccess, DatabaseNotOpenError, DatabaseUnavailableError, type DatabaseRuntimeState } from "./access";
+import { activateLegacyDatabaseHandle, clearLegacyDatabaseHandle } from "./bridge";
+import type { MaintenanceCommand, MaintenanceResultFor } from "./maintenance";
+import { openResources, type OpenResourcesOptions, type ReadinessContext } from "./readiness";
+
+export type { DatabaseRuntimeState } from "./access";
+export { DatabaseNotOpenError, DatabaseUnavailableError } from "./access";
+export type {
+  MaintenanceCommand,
+  MaintenanceCommandKind,
+  MaintenanceResult,
+  MaintenanceResultFor,
+  VerifyMaintenanceCommand,
+  VerifyMaintenanceResult,
+} from "./maintenance";
+
+/**
+ * The single database readiness interface. Ordinary work borrows a shared lease
+ * on a Knex instance handed into the callback; maintenance takes exclusive,
+ * writer-preferred access. No raw handle is exposed, so no caller can bypass
+ * readiness.
+ */
+export interface DatabaseRuntime {
+  work<T>(operation: (db: Knex) => Promise<T> | T): Promise<T>;
+  maintenance<TCommand extends MaintenanceCommand>(command: TCommand): Promise<MaintenanceResultFor<TCommand>>;
+  close(): Promise<void>;
+  readonly state: DatabaseRuntimeState;
+}
+
+export type OpenDatabaseOptions = OpenResourcesOptions;
+
+let opening: Promise<DatabaseRuntime> | undefined;
+let active: DatabaseRuntime | undefined;
+
+/** Opens the database and resolves only after the fixed readiness lifecycle succeeds. Single-flight. */
+export function openDatabase(options: OpenDatabaseOptions = {}): Promise<DatabaseRuntime> {
+  if (active) return Promise.resolve(active);
+  if (opening) return opening;
+  opening = startOpening(options);
+  return opening;
+}
+
+/** Returns the active runtime. Throws when opening has not succeeded yet. */
+export function getDatabaseRuntime(): DatabaseRuntime {
+  if (!active) throw new DatabaseNotOpenError();
+  return active;
+}
+
+/** Closes the active runtime and forgets it, so a later `openDatabase()` reopens from scratch. */
+export async function closeDatabase(): Promise<void> {
+  if (!active && opening) await opening.catch(() => undefined);
+  const runtime = active;
+  active = undefined;
+  if (runtime) await runtime.close();
+}
+
+async function startOpening(options: OpenDatabaseOptions): Promise<DatabaseRuntime> {
+  let context: ReadinessContext | undefined;
+  try {
+    context = await openResources(options);
+    // Legacy readiness code — the fresh-database skill seeder reads the global
+    // handle through `u.db` — still runs inside the lifecycle, so the bridge is
+    // live from the moment the connection opens and is withdrawn on any failure.
+    activateLegacyDatabaseHandle(context.knex);
+    const runtime = createRuntime(new DatabaseAccess(context));
+    await runtime.start();
+    active = runtime;
+    return runtime;
+  } catch (error) {
+    clearLegacyDatabaseHandle();
+    if (context) await context.knex.destroy().catch(() => undefined);
+    throw error;
+  } finally {
+    opening = undefined;
+  }
+}
+
+interface InternalDatabaseRuntime extends DatabaseRuntime {
+  start(): Promise<void>;
+}
+
+function createRuntime(access: DatabaseAccess): InternalDatabaseRuntime {
+  const runtime: InternalDatabaseRuntime = {
+    start: () => access.start(),
+    work: (operation) => access.work(operation),
+    maintenance: <TCommand extends MaintenanceCommand>(command: TCommand) => access.maintenance(command),
+    close: async () => {
+      if (active === runtime) active = undefined;
+      clearLegacyDatabaseHandle();
+      await access.close();
+    },
+    get state() {
+      return access.state;
+    },
+  };
+  return runtime;
+}
