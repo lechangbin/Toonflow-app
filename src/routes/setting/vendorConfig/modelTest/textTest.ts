@@ -2,7 +2,7 @@ import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
-import { createDefaultConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { tool, jsonSchema } from "ai";
 import { getDatabaseRuntime } from "@/database";
@@ -47,7 +47,7 @@ export default router.post(
         },
       });
 
-      const data = await createDefaultConfiguredVendor().invokeText({
+      const data = await getDefaultConfiguredVendor().invokeText({
         target: { kind: "direct", vendorId: id, modelId: modelName },
         input: {
           messages,

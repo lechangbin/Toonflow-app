@@ -7,8 +7,8 @@ import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { Output, tool } from "ai";
 import { assetItemSchema } from "@/agents/productionAgent/tools";
-import { createDefaultConfiguredVendor } from "@/vendor";
-import { parseVendorModelName } from "@/vendor/loader";
+import { getDefaultConfiguredVendor } from "@/vendor";
+import { parseVendorModelName } from "@/vendor";
 import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 const router = express.Router();
 export type AssetData = z.infer<typeof assetItemSchema>;
@@ -124,7 +124,7 @@ export default router.post(
         });
         let result: string;
         try {
-          const vendor = createDefaultConfiguredVendor();
+          const vendor = getDefaultConfiguredVendor();
           const { version } = await vendor.inspectVendor(vendorId);
           const input = applyLegacyImageReferenceConversion(version, {
             referenceList: await getAssetsImageBase64(assetRecord[item.id!] || []),

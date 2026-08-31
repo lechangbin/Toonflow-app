@@ -2,7 +2,7 @@ import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
-import { createDefaultConfiguredVendor, type VideoModelSummary } from "@/vendor";
+import { getDefaultConfiguredVendor, type VideoModelSummary } from "@/vendor";
 import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 import type { ImageGenerationInput } from "@/vendor/contract";
 import type { ValidatedVideoGenerationCommand } from "@/video/capability";
@@ -42,7 +42,7 @@ export default router.post(
       if (!vendorConfigData) return res.status(500).send(error("未找到该供应商配置"));
       if (!vendorConfigData.models) return res.status(500).send(error("未找到模型列表"));
 
-      const vendor = createDefaultConfiguredVendor();
+      const vendor = getDefaultConfiguredVendor();
       const modelList = (await vendor.inspectVendor(vendorConfigData.id!)).models;
 
       const selectedModel = modelList.find(
@@ -90,7 +90,7 @@ export default router.post(
       });
 
       if (type == "text") {
-        const { textStream } = await createDefaultConfiguredVendor().streamText({
+        const { textStream } = await getDefaultConfiguredVendor().streamText({
           target: { kind: "direct", vendorId: id, modelId: modelName },
           input: {
             prompt: "请调用工具获取火星的天气，并回答我多少气温",
