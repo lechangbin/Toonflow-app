@@ -54,7 +54,7 @@ Provider checkpoints may change while a task is running; `commandSnapshot` does 
 
 ## Runtime boundary
 
-`loadVendorRuntime` is the executable boundary. For Video, it validates the Model and command before invoking `videoRequest(command, model)`. Adapters translate that command to provider fields, upload media, submit or resume tasks, checkpoint provider IDs, poll, and return the result. They do not read Project defaults, Tracks, Prompt Profiles, or the database.
+`loadVendorRuntime` is the executable boundary. For Video, it validates the Model and command before invoking `videoRequest(command, model)`. Adapters translate that command to provider fields, upload media, submit or resume tasks, checkpoint provider IDs, poll, and return the result. They do not read Project defaults, Tracks, Prompt Profiles, or the database. Business and Agent code reach these adapters only through the configured Vendor module (`src/vendor/`, ADR-0005); `src/video/production.ts` receives `generateVideo` and `inspectVendor` as injected dependencies rather than loading Vendor code itself.
 
 Build validates packaged Vendor sources and Prompt Profiles. Startup additionally validates configured input values and custom Models. Vendor add, source update, and custom Model routes validate before writing. Any invalid built-in or custom Video configuration stops that operation; partial registration and fallback are outside the contract.
 
