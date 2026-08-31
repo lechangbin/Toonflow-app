@@ -15,8 +15,7 @@ import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
 import { isEletron } from "@/utils/getPath";
 import { ensureThumbnail, ThumbnailSize } from "@/utils/image";
-import { validateConfiguredVideoRuntimeData } from "@/video/bootstrap";
-import db, { dbReady } from "@/utils/db";
+import { openDatabase } from "@/database";
 import { resolveServerConfig } from "@/server/config";
 import { createHealthRouter } from "@/server/health";
 
@@ -49,8 +48,9 @@ async function checkPermissions() {
 
 export default async function startServe(randomPort: Boolean = false) {
   await checkPermissions();
-  await dbReady;
-  await validateConfiguredVideoRuntimeData(db);
+  // Startup crosses the database readiness module: the server only listens once
+  // schema, upgrades, defaults, recovery, and validation have all succeeded.
+  await openDatabase();
 
   await u.writeVersion();
   const io = new Server(server, { cors: { origin: "*" } });
