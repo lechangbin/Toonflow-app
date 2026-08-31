@@ -5,11 +5,12 @@ import test from "node:test";
 import { getDatabaseRuntime, openDatabase, type DatabaseWork } from "../src/database";
 import { createVideoProduction } from "../src/video/production";
 import { VideoPromptProfileRegistry } from "../src/video/promptProfile";
+import type { VideoModelSummary } from "../src/vendor";
 import { sleep, withDataRoot } from "./databaseTestSupport";
 
 const PREFIX = "toonflow-prod-readiness-";
 
-const model = {
+const model: VideoModelSummary = {
   name: "Agnes Video V2.0",
   modelName: "agnes-video-v2.0",
   type: "video",
@@ -87,13 +88,18 @@ test("the migrated production flow runs through the readiness seam and tracks th
     const production = createVideoProduction({
       db: (operation) => getDatabaseRuntime().work(operation),
       profiles,
-      loadRuntime: async () => ({
-        getModel: () => model,
-        getRequest: () => async () => {
+      vendor: {
+        inspectVendor: async () => ({
+          vendorId: "agnes",
+          name: "Agnes",
+          inputs: [],
+          models: [model],
+        }),
+        generateVideo: async () => {
           await providerGate;
           return "VIDEO_BASE64";
         },
-      }),
+      },
       readImage: async () => {
         throw new Error("text-to-video must not load images");
       },
@@ -160,13 +166,18 @@ test("maintenance waits for an active detached completion write and new work par
     const production = createVideoProduction({
       db,
       profiles,
-      loadRuntime: async () => ({
-        getModel: () => model,
-        getRequest: () => async () => {
+      vendor: {
+        inspectVendor: async () => ({
+          vendorId: "agnes",
+          name: "Agnes",
+          inputs: [],
+          models: [model],
+        }),
+        generateVideo: async () => {
           await providerGate;
           return "VIDEO_BASE64";
         },
-      }),
+      },
       readImage: async () => {
         throw new Error("text-to-video must not load images");
       },
