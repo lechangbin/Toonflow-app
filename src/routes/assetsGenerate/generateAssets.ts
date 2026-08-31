@@ -5,8 +5,8 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { createDefaultConfiguredVendor } from "@/vendor";
-import { parseVendorModelName } from "@/vendor/loader";
+import { getDefaultConfiguredVendor } from "@/vendor";
+import { parseVendorModelName } from "@/vendor";
 import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 
 const router = express.Router();
@@ -114,7 +114,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
     });
     let result: string;
     try {
-      const vendor = createDefaultConfiguredVendor();
+      const vendor = getDefaultConfiguredVendor();
       const { version } = await vendor.inspectVendor(vendorId);
       const input = applyLegacyImageReferenceConversion(version, {
         prompt: userPrompt,

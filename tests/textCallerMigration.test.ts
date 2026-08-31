@@ -43,7 +43,7 @@ test("migrated Text callers no longer use the old ai/vendor helpers", () => {
     assert.ok(!source.includes('from "@/utils/ai"'), `${relative} 仍加载旧 ai 模块`);
     assert.ok(!source.includes('from "@/utils/vendor"'), `${relative} 仍加载旧 vendor 模块`);
     assert.ok(source.includes('from "@/vendor"'), `${relative} 未依赖 configured Vendor 模块`);
-    assert.ok(source.includes("createDefaultConfiguredVendor"), `${relative} 未使用 createDefaultConfiguredVendor`);
+    assert.ok(source.includes("getDefaultConfiguredVendor"), `${relative} 未使用 getDefaultConfiguredVendor`);
   }
 });
 

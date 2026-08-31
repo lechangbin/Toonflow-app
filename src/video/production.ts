@@ -7,7 +7,7 @@ import { v4 as uuid } from "uuid";
 import { getDatabaseRuntime, type DatabaseWork } from "@/database";
 import getPath from "@/utils/getPath";
 import oss from "@/utils/oss";
-import { createDefaultConfiguredVendor, type ConfiguredVendor } from "@/vendor";
+import { getDefaultConfiguredVendor, type ConfiguredVendor } from "@/vendor";
 import {
   validateVideoGenerationCommand,
   type ResolvedImage,
@@ -371,7 +371,7 @@ function createDefaultVideoProduction() {
   return createVideoProduction({
     db: (operation) => getDatabaseRuntime().work(operation),
     profiles: VideoPromptProfileRegistry.load(getPath(["promptProfiles", "video"])),
-    vendor: createDefaultConfiguredVendor(),
+    vendor: getDefaultConfiguredVendor(),
     readImage: (filePath) => oss.getImageBase64(filePath),
     writeVideo: (filePath, base64) => oss.writeFile(filePath, base64),
     downloadVideo: async (url) => {
