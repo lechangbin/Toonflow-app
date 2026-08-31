@@ -7,6 +7,7 @@ import { v4 as uuid } from "uuid";
 import initDB from "@/lib/initDB";
 import fixDB from "@/lib/fixDB";
 import getPath from "@/utils/getPath";
+import { validateConfiguredVendors } from "@/vendor/startup";
 import { validateConfiguredVideoRuntimeData } from "@/video/bootstrap";
 import { failInterruptedVideoProduction } from "@/video/recovery";
 
@@ -112,6 +113,7 @@ export async function recoverInterruptedWork(context: ReadinessContext): Promise
 
 /** Phase 6: validate the database and the required runtime invariants. */
 export async function validateDatabase(context: ReadinessContext): Promise<void> {
+  await validateConfiguredVendors(context.knex, context.dataRoot);
   await validateConfiguredVideoRuntimeData(context.knex, context.dataRoot);
 }
 
