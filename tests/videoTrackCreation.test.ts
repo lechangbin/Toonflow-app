@@ -4,6 +4,7 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { createVideoTrack } from "../src/video/trackCreation";
+import { workOf } from "./databaseTestSupport";
 
 const agnesVideoModel = {
   name: "Agnes Video V2.0",
@@ -70,7 +71,7 @@ test("a new Video Track copies validated Project defaults as its actual selectio
 
   try {
     const track = await createVideoTrack(
-      { db, getVendorModels: async () => [agnesVideoModel] },
+      { db: workOf(db), getVendorModels: async () => [agnesVideoModel] },
       { id: 101, projectId: 1, scriptId: 2, duration: 6 },
     );
 
@@ -122,7 +123,7 @@ test("a Video Track rejects a Script owned by another Project before persistence
   try {
     await assert.rejects(
       createVideoTrack(
-        { db, getVendorModels: async () => [agnesVideoModel] },
+        { db: workOf(db), getVendorModels: async () => [agnesVideoModel] },
         { id: 102, projectId: 1, scriptId: 2, duration: 6 },
       ),
       /Script 2 不属于 Project 1/,

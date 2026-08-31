@@ -1,6 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { z } from "zod";
+import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { id } from "zod/locales";
@@ -20,12 +21,16 @@ export default router.post(
         const storyboardIds = items.filter((item: any) => item.sources == "storyboard").map((item: any) => item.id)
         const totalFilePaths = []
         if (storyboardIds.length) {
-            const storyBoardPaths = await u.db("o_storyboard").whereIn("id", storyboardIds).select("id", "filePath");
+            const storyBoardPaths = await getDatabaseRuntime().work((db) =>
+                db("o_storyboard").whereIn("id", storyboardIds).select("id", "filePath"),
+            );
             totalFilePaths.push(...storyBoardPaths.map(i => ({ id: i.id, filePath: i.filePath, sources: "storyboard" })))
         }
         const assetsIds = items.filter((item: any) => item.sources == "assets").map((item: any) => item.id)
         if (assetsIds.length) {
-            const assetsPaths = await u.db("o_assets").leftJoin("o_image", "o_image.id", "o_assets.imageId").whereIn("o_assets.id", assetsIds).select("o_assets.id", "o_image.filePath");
+            const assetsPaths = await getDatabaseRuntime().work((db) =>
+                db("o_assets").leftJoin("o_image", "o_image.id", "o_assets.imageId").whereIn("o_assets.id", assetsIds).select("o_assets.id", "o_image.filePath"),
+            );
             totalFilePaths.push(...assetsPaths.map(i => ({ id: i.id, filePath: i.filePath, sources: "assets" })))
         }
 

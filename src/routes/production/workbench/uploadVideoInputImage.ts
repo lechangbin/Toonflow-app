@@ -2,6 +2,7 @@ import express from "express";
 import { v4 as uuid } from "uuid";
 import { z } from "zod";
 
+import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
@@ -20,7 +21,7 @@ export default router.post(
     try {
       const result = await uploadVideoInputImage(
         {
-          db: u.db,
+          db: (operation) => getDatabaseRuntime().work(operation),
           createId: uuid,
           writeFile: (filePath, bytes) => u.oss.writeFile(filePath, bytes),
           getFileUrl: (filePath) => u.oss.getFileUrl(filePath),

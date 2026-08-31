@@ -1,11 +1,14 @@
 import jwt from "jsonwebtoken";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { Namespace, Socket } from "socket.io";
 import * as agent from "@/agents/scriptAgent/index";
 import ResTool from "@/socket/resTool";
 
 async function verifyToken(rawToken: string): Promise<Boolean> {
-  const setting = await u.db("o_setting").where("key", "tokenKey").select("value").first();
+  const setting = await getDatabaseRuntime().work((db) =>
+    db("o_setting").where("key", "tokenKey").select("value").first(),
+  );
   if (!setting) return false;
   const { value: tokenKey } = setting;
   if (!rawToken) return false;

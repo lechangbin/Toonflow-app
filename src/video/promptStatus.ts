@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import type { DatabaseWork } from "@/database";
 
 export interface VideoPromptStatusRequest {
   projectId: number;
@@ -23,29 +23,31 @@ interface PromptStatusRow {
 }
 
 export async function readVideoPromptStatuses(
-  db: Knex,
+  db: DatabaseWork,
   input: VideoPromptStatusRequest,
 ): Promise<VideoPromptStatus[]> {
   if (input.trackIds.length === 0) return [];
 
-  const rows = (await db("o_videoTrack as track")
-    .leftJoin("o_promptRevision as revision", function joinOwnedPromptRevision() {
-      this.on("revision.id", "=", "track.promptRevisionId")
-        .andOn("revision.projectId", "=", "track.projectId")
-        .andOn("revision.videoTrackId", "=", "track.id");
-    })
-    .where("track.projectId", input.projectId)
-    .where("track.scriptId", input.scriptId)
-    .whereIn("track.id", input.trackIds)
-    .whereIn("track.state", ["已完成", "生成失败"])
-    .select({
-      id: "track.id",
-      state: "track.state",
-      reason: "track.reason",
-      promptRevisionId: "track.promptRevisionId",
-      revisionId: "revision.id",
-      renderedPrompt: "revision.renderedPrompt",
-    })) as PromptStatusRow[];
+  const rows = (await db((database) =>
+    database("o_videoTrack as track")
+      .leftJoin("o_promptRevision as revision", function joinOwnedPromptRevision() {
+        this.on("revision.id", "=", "track.promptRevisionId")
+          .andOn("revision.projectId", "=", "track.projectId")
+          .andOn("revision.videoTrackId", "=", "track.id");
+      })
+      .where("track.projectId", input.projectId)
+      .where("track.scriptId", input.scriptId)
+      .whereIn("track.id", input.trackIds)
+      .whereIn("track.state", ["已完成", "生成失败"])
+      .select({
+        id: "track.id",
+        state: "track.state",
+        reason: "track.reason",
+        promptRevisionId: "track.promptRevisionId",
+        revisionId: "revision.id",
+        renderedPrompt: "revision.renderedPrompt",
+      }),
+  )) as PromptStatusRow[];
 
   return rows.map((row) => {
     if (row.state === "生成失败") {

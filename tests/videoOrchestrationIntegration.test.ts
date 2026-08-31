@@ -8,6 +8,7 @@ import { db as globalDatabase, dbReady } from "../src/utils/db";
 import { createVideoProduction } from "../src/video/production";
 import { createVideoPromptGeneration } from "../src/video/promptGeneration";
 import { VideoPromptProfileRegistry } from "../src/video/promptProfile";
+import { workOf } from "./databaseTestSupport";
 
 const model = {
   name: "Agnes Video V2.0",
@@ -124,7 +125,7 @@ test("fake prompt and video dependencies drive a successful durable orchestratio
 
   try {
     const promptGeneration = createVideoPromptGeneration({
-      db,
+      db: workOf(db),
       profiles,
       getVendorModels: async () => [model],
       generateDraft: async () => ({ subject: "A lantern", motion: "Slowly sways in the wind" }),
@@ -179,7 +180,7 @@ test("fake prompt and video dependencies drive a successful durable orchestratio
     assert.equal(track.promptRevisionId, editedPrompt.promptRevisionId);
 
     const production = createVideoProduction({
-      db,
+      db: workOf(db),
       profiles,
       loadRuntime: async () => ({
         getModel: () => model,
@@ -237,7 +238,7 @@ test("a fake adapter failure rejects the Artifact and fails every owning record"
 
   try {
     const prompt = await createVideoPromptGeneration({
-      db,
+      db: workOf(db),
       profiles,
       getVendorModels: async () => [model],
       generateDraft: async () => ({ subject: "A lantern" }),
@@ -256,7 +257,7 @@ test("a fake adapter failure rejects the Artifact and fails every owning record"
       brief: { subject: "A lantern" },
     });
     const production = createVideoProduction({
-      db,
+      db: workOf(db),
       profiles,
       loadRuntime: async () => ({
         getModel: () => model,

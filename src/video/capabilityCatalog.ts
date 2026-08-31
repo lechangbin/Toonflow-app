@@ -1,15 +1,17 @@
-import type { Knex } from "knex";
+import type { DatabaseWork } from "@/database";
 
 import { parseVideoModel } from "./capability";
 
 export interface VideoCapabilityCatalogDependencies {
-  db: Knex;
+  db: DatabaseWork;
   getVendor(vendorId: string): { id?: string; name?: string };
   getVendorModels(vendorId: string): Promise<unknown[]>;
 }
 
 export async function listEnabledVideoCapabilities(dependencies: VideoCapabilityCatalogDependencies) {
-  const enabledVendors = await dependencies.db("o_vendorConfig").where("enable", 1).select("id").orderBy("id", "asc");
+  const enabledVendors = await dependencies.db((db) =>
+    db("o_vendorConfig").where("enable", 1).select("id").orderBy("id", "asc"),
+  );
   return Promise.all(
     enabledVendors.map(async ({ id }) => {
       const vendor = dependencies.getVendor(id);

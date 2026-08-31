@@ -1,11 +1,11 @@
-import type { Knex } from "knex";
+import type { DatabaseWork } from "@/database";
 
 import { deriveAudioSelection, parseVideoModel, videoAudioSelectionSchema, videoOutputSelectionSchema } from "./capability";
 import { videoTrackInputReferenceSchema } from "./productionContract";
 import { videoPromptBriefSchema, videoPromptDraftSchema } from "./promptProfile";
 
 export interface VideoWorkbenchReadDependencies {
-  db: Knex;
+  db: DatabaseWork;
   getVendorModels(vendorId: string): Promise<unknown[]>;
   getFileUrl(filePath: string): Promise<string>;
 }
@@ -74,12 +74,18 @@ export async function readVideoTrackProjections(
   dependencies: VideoWorkbenchReadDependencies,
   input: VideoWorkbenchReadInput,
 ): Promise<any[]> {
-  const tracks = await dependencies.db("o_videoTrack").where({ projectId: input.projectId, scriptId: input.scriptId });
+  const { tracks, videos, tasks, artifacts } = await dependencies.db(async (db) => {
+    const tracks = await db("o_videoTrack").where({ projectId: input.projectId, scriptId: input.scriptId });
+    if (!tracks.length) return { tracks: [] as any[], videos: [] as any[], tasks: [] as any[], artifacts: [] as any[] };
+    const trackIds = tracks.map((track) => track.id);
+    const [videos, tasks, artifacts] = await Promise.all([
+      db("o_video").whereIn("videoTrackId", trackIds),
+      db("o_generationTask").whereIn("videoTrackId", trackIds).orderBy("id", "asc"),
+      db("o_artifactRevision").whereIn("videoTrackId", trackIds).orderBy("revision", "asc"),
+    ]);
+    return { tracks, videos, tasks, artifacts };
+  });
   if (!tracks.length) return [];
-  const trackIds = tracks.map((track) => track.id);
-  const videos = await dependencies.db("o_video").whereIn("videoTrackId", trackIds);
-  const tasks = await dependencies.db("o_generationTask").whereIn("videoTrackId", trackIds).orderBy("id", "asc");
-  const artifacts = await dependencies.db("o_artifactRevision").whereIn("videoTrackId", trackIds).orderBy("revision", "asc");
 
   return Promise.all(
     tracks.map(async (track) => {
@@ -150,7 +156,9 @@ export async function readVideoTrackProjections(
 
       let promptRevision = null;
       if (track.promptRevisionId) {
-        const revision = await dependencies.db("o_promptRevision").where("id", track.promptRevisionId).first();
+        const revision = await dependencies.db((db) =>
+          db("o_promptRevision").where("id", track.promptRevisionId).first(),
+        );
         if (!revision || revision.projectId !== input.projectId || revision.videoTrackId !== track.id) {
           throw new Error(`Prompt Revision ${track.promptRevisionId} 不属于 Project ${input.projectId} / Video Track ${track.id}`);
         }

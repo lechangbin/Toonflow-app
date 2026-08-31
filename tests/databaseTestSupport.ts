@@ -2,9 +2,19 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import knexFactory from "knex";
+import knexFactory, { type Knex } from "knex";
 
-import { closeDatabase } from "../src/database";
+import { closeDatabase, type DatabaseWork } from "../src/database";
+
+/**
+ * A pass-through `DatabaseWork` adapter over a bare Knex instance, for tests
+ * that exercise the migrated Production/Workbench modules without opening the
+ * full readiness lifecycle. It preserves the `work()` call shape so those
+ * modules are proven against the seam rather than a raw handle.
+ */
+export function workOf(db: Knex): DatabaseWork {
+  return async <T>(operation: (database: Knex) => Promise<T> | T): Promise<T> => operation(db);
+}
 
 /**
  * Real temporary SQLite files inside a real temporary data directory. The
