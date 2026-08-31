@@ -7,7 +7,6 @@ import sharp from "sharp";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { Output } from "ai";
-import { createDefaultConfiguredVendor } from "@/vendor";
 import { parseVendorModelName } from "@/vendor/loader";
 import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 const router = express.Router();

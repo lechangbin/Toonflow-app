@@ -91,6 +91,8 @@ function makeDeps(
       if (!source) throw new Error(`未找到供应商配置文件 ${vendorId}.ts`);
       return source;
     },
+    writeVendorSource: () => {},
+    deleteVendorSource: () => {},
     promptProfiles,
     dependencyOverrides: {
       createOpenAICompatible: () => ({
@@ -182,6 +184,8 @@ test("extracts reasoning through the reasoning middleware on the stream path", a
     const vendor = createConfiguredVendor({
       work: async (operation) => operation(knex),
       readVendorSource: () => textVendorSource,
+      writeVendorSource: () => {},
+      deleteVendorSource: () => {},
       promptProfiles,
       dependencyOverrides: {
         createOpenAICompatible: () => ({ chatModel: () => reasoningModel }),
@@ -247,6 +251,8 @@ test("forwards tools and bounds tool loops via stepCountIs stopping", async () =
     const vendor = createConfiguredVendor({
       work: async (operation) => operation(knex),
       readVendorSource: () => textVendorSource,
+      writeVendorSource: () => {},
+      deleteVendorSource: () => {},
       promptProfiles,
       dependencyOverrides: {
         createOpenAICompatible: () => ({ chatModel: () => loopingModel }),
@@ -288,6 +294,8 @@ test("invokeText with Output.object returns the structured output used by Prompt
     const vendor = createConfiguredVendor({
       work: async (operation) => operation(knex),
       readVendorSource: () => textVendorSource,
+      writeVendorSource: () => {},
+      deleteVendorSource: () => {},
       promptProfiles,
       dependencyOverrides: {
         createOpenAICompatible: () => ({ chatModel: () => structuredModel }),

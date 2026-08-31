@@ -83,6 +83,8 @@ function makeDeps(knex: Knex): ConfiguredVendorDependencies {
   return {
     work: async (operation) => operation(knex),
     readVendorSource: () => legacyImageVendorSource,
+    writeVendorSource: () => {},
+    deleteVendorSource: () => {},
     promptProfiles,
   };
 }
