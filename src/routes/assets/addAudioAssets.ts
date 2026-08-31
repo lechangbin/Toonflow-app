@@ -1,5 +1,6 @@
 import express from "express";
 import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -44,33 +45,37 @@ export default router.post(
       }),
     );
 
-    const [id] = await u.db("o_assets").insert({
-      name,
-      describe,
-      type: "audio",
-      projectId,
-      startTime: Date.now(),
-    });
-    for (const item of assetsItem) {
-      const [assetsId] = await u.db("o_assets").insert({
-        prompt: item.prompt,
-        assetsId: id,
+    const [id] = await getDatabaseRuntime().work(async (db) => {
+      return await db("o_assets").insert({
+        name,
+        describe,
         type: "audio",
-        describe: item.describe,
-        name: item.name,
         projectId,
         startTime: Date.now(),
       });
-      const [imageId] = await u.db("o_image").insert({
-        filePath: item.src,
-        type: "audio",
-        assetsId,
-        state: "已完成",
-      });
-      await u.db("o_assets").where("id", assetsId).update({
-        imageId,
-      });
-    }
+    });
+    await getDatabaseRuntime().work(async (db) => {
+      for (const item of assetsItem) {
+        const [assetsId] = await db("o_assets").insert({
+          prompt: item.prompt,
+          assetsId: id,
+          type: "audio",
+          describe: item.describe,
+          name: item.name,
+          projectId,
+          startTime: Date.now(),
+        });
+        const [imageId] = await db("o_image").insert({
+          filePath: item.src,
+          type: "audio",
+          assetsId,
+          state: "已完成",
+        });
+        await db("o_assets").where("id", assetsId).update({
+          imageId,
+        });
+      }
+    });
 
     res.status(200).send(success({ message: "新增资产成功" }));
   },

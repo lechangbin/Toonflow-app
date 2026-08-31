@@ -1,5 +1,5 @@
 import express from "express";
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -19,12 +19,14 @@ export default router.post(
   async (req, res) => {
     const { id, intro, type, artStyle, videoRatio, projectType } = req.body;
 
-    await u.db("o_project").where("id", id).update({
-      intro,
-      type,
-      artStyle,
-      videoRatio,
-      projectType,
+    await getDatabaseRuntime().work(async (db) => {
+      await db("o_project").where("id", id).update({
+        intro,
+        type,
+        artStyle,
+        videoRatio,
+        projectType,
+      });
     });
 
     res.status(200).send(success({ message: "修改成功" }));

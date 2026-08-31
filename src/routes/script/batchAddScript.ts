@@ -1,5 +1,5 @@
 import express from "express";
-import u from "@/utils";
+import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -19,16 +19,18 @@ export default router.post(
   }),
   async (req, res) => {
     const { data, projectId } = req.body;
-    await u.db("o_script").insert(
-      data.map((i: { scriptName: string; scriptData: string }) => {
-        return {
-          name: i.scriptName,
-          content: i.scriptData,
-          projectId,
-          createTime: Date.now(),
-        };
-      }),
-    );
+    await getDatabaseRuntime().work(async (db) => {
+      await db("o_script").insert(
+        data.map((i: { scriptName: string; scriptData: string }) => {
+          return {
+            name: i.scriptName,
+            content: i.scriptData,
+            projectId,
+            createTime: Date.now(),
+          };
+        }),
+      );
+    });
 
     res.status(200).send(success({ message: "添加剧本成功" }));
   },
