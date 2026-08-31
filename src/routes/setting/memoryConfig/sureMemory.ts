@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { getDatabaseRuntime } from "@/database";
 const router = express.Router();
 
 // 获取用户
@@ -23,11 +24,11 @@ export default router.post(
       req.body;
 
     const upsert = async (key: string, value: string) => {
-      const exists = await u.db("o_setting").where("key", key).first();
+      const exists = await getDatabaseRuntime().work((db) => db("o_setting").where("key", key).first());
       if (exists) {
-        await u.db("o_setting").where("key", key).update({ value });
+        await getDatabaseRuntime().work((db) => db("o_setting").where("key", key).update({ value }));
       } else {
-        await u.db("o_setting").insert({ key, value });
+        await getDatabaseRuntime().work((db) => db("o_setting").insert({ key, value }));
       }
     };
 

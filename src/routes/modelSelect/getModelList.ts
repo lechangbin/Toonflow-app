@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { getDatabaseRuntime } from "@/database";
 const router = express.Router();
 
 export default router.post(
@@ -12,7 +13,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { type } = req.body;
-    const dataList = await u.db("o_vendorConfig").select("id").where("enable", 1);
+    const dataList = await getDatabaseRuntime().work((db) => db("o_vendorConfig").select("id").where("enable", 1));
     if (!dataList.length) return res.status(200).send(success([]));
     const modelList = await Promise.all(dataList.map((i) => u.vendor.getModelList(i.id!)));
     const result = await Promise.all(

@@ -5,6 +5,7 @@ import u from "@/utils";
 import { createDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { tool, jsonSchema } from "ai";
+import { getDatabaseRuntime } from "@/database";
 const router = express.Router();
 
 // 检查语言模型
@@ -24,7 +25,7 @@ export default router.post(
     const { modelName, messages, id } = req.body;
 
     try {
-      const vendorConfigData = await u.db("o_vendorConfig").where("id", id).first();
+      const vendorConfigData = await getDatabaseRuntime().work((db) => db("o_vendorConfig").where("id", id).first());
 
       if (!vendorConfigData) return res.status(500).send(error("未找到该供应商配置"));
       if (!vendorConfigData.models) return res.status(500).send(error("未找到模型列表"));
