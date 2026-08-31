@@ -1,6 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { z } from "zod";
+import { getDatabaseRuntime } from "@/database";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
@@ -14,33 +15,38 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, episodesId }: { projectId: number; episodesId: number } = req.body;
-    const sqlData = await u
-      .db("o_agentWorkData")
-      .where("projectId", String(projectId))
-      .andWhere("episodesId", String(episodesId))
-      .select("data")
-      .first();
+    const sqlData = await getDatabaseRuntime().work((db) =>
+      db("o_agentWorkData")
+        .where("projectId", String(projectId))
+        .andWhere("episodesId", String(episodesId))
+        .select("data")
+        .first(),
+    );
 
-    const scriptData = await u.db("o_script").where("projectId", projectId).where("id", episodesId).first();
-    const scriptAssets = await u.db("o_scriptAssets").where("scriptId", episodesId);
+    const scriptData = await getDatabaseRuntime().work((db) =>
+      db("o_script").where("projectId", projectId).where("id", episodesId).first(),
+    );
+    const scriptAssets = await getDatabaseRuntime().work((db) => db("o_scriptAssets").where("scriptId", episodesId));
     const assetIds = scriptAssets.map((i) => i.assetId);
-    const assetsData = await u
-      .db("o_assets")
-      .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason")
-      // @ts-ignore
-      .where("o_assets.id", "in", assetIds)
-      .andWhere("o_assets.assetsId", null)
-      .where("o_assets.projectId", projectId);
+    const assetsData = await getDatabaseRuntime().work((db) =>
+      db("o_assets")
+        .leftJoin("o_image", "o_assets.imageId", "o_image.id")
+        .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason")
+        // @ts-ignore
+        .where("o_assets.id", "in", assetIds)
+        .andWhere("o_assets.assetsId", null)
+        .where("o_assets.projectId", projectId),
+    );
 
-    let childAssetsData = await u
-      .db("o_assets")
-      .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-      .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason")
-      .where("o_assets.projectId", projectId)
-      // @ts-ignore
-      .where("o_assets.assetsId", "in", assetIds)
-      .whereNotNull("o_assets.assetsId");
+    let childAssetsData = await getDatabaseRuntime().work((db) =>
+      db("o_assets")
+        .leftJoin("o_image", "o_assets.imageId", "o_image.id")
+        .select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason")
+        .where("o_assets.projectId", projectId)
+        // @ts-ignore
+        .where("o_assets.assetsId", "in", assetIds)
+        .whereNotNull("o_assets.assetsId"),
+    );
 
     if (!sqlData) {
       const flowData: FlowData = {
@@ -85,7 +91,7 @@ export default router.post(
       return res.status(200).send(success(flowData));
     } else {
       try {
-        const storyboardData = await u.db("o_storyboard").where("scriptId", episodesId);
+        const storyboardData = await getDatabaseRuntime().work((db) => db("o_storyboard").where("scriptId", episodesId));
 
         await Promise.all(
           storyboardData.map(async (i) => {
@@ -101,7 +107,9 @@ export default router.post(
           }),
         );
         const storyboardIds = storyboardData.map((i) => i.id);
-        const assetsIds = await u.db("o_assets2Storyboard").whereIn("storyboardId", storyboardIds).orderBy("rowid");
+        const assetsIds = await getDatabaseRuntime().work((db) =>
+          db("o_assets2Storyboard").whereIn("storyboardId", storyboardIds).orderBy("rowid"),
+        );
 
         const assets2StoryboardMap: Record<number, number[]> = {};
         assetsIds.forEach((i) => {

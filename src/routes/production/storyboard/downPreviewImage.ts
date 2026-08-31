@@ -1,6 +1,7 @@
 import express from "express";
 import u from "@/utils";
 import { z } from "zod";
+import { getDatabaseRuntime } from "@/database";
 import sharp from "sharp";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
@@ -12,7 +13,9 @@ export default router.post(
   }),
   async (req, res) => {
     const { storyboardIds } = req.body;
-    const storyboardImage = await u.db("o_storyboard").whereIn("id", storyboardIds).select("id", "filePath");
+    const storyboardImage = await getDatabaseRuntime().work((db) =>
+      db("o_storyboard").whereIn("id", storyboardIds).select("id", "filePath"),
+    );
 
     // 按 storyboardIds 顺序构建 filePath 映射
     const filePathMap: Record<number, string> = {};

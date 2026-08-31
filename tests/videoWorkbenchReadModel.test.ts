@@ -4,6 +4,7 @@ import test from "node:test";
 import knexFactory, { type Knex } from "knex";
 
 import { readVideoTrackProjections } from "../src/video/workbenchReadModel";
+import { workOf } from "./databaseTestSupport";
 
 async function createDatabase(): Promise<Knex> {
   const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
@@ -172,7 +173,7 @@ test("a configured Video Track resumes its actual selection, Prompt Revision, an
 
   try {
     const [track] = await readVideoTrackProjections(
-      { db, getVendorModels, getFileUrl: async (filePath) => `/oss${filePath}` },
+      { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => `/oss${filePath}` },
       { projectId: 1, scriptId: 2 },
     );
     assert.deepEqual(track.actual, {
@@ -223,7 +224,7 @@ test("an unconfigured Video Track does not inherit Project defaults in the read 
   await db("o_videoTrack").insert({ id: 8, projectId: 1, scriptId: 2, duration: 5, state: null });
   try {
     const [track] = await readVideoTrackProjections(
-      { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+      { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
       { projectId: 1, scriptId: 2 },
     );
     assert.deepEqual(track.actual, {
@@ -260,7 +261,7 @@ test("the persisted audioSelection wins over the last generation task snapshot",
   });
   try {
     const [track] = await readVideoTrackProjections(
-      { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+      { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
       { projectId: 1, scriptId: 2 },
     );
     assert.deepEqual(track.actual.audioSelection, { generation: "native", enabled: false });
@@ -288,7 +289,7 @@ test("a legacy configured Track without persisted audioSelection resumes the las
   });
   try {
     const [track] = await readVideoTrackProjections(
-      { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+      { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
       { projectId: 1, scriptId: 2 },
     );
     assert.deepEqual(track.actual.audioSelection, { generation: "native", enabled: true });
@@ -323,7 +324,7 @@ test("a configured Track without persisted audioSelection or tasks derives the c
   ]);
   try {
     const tracks = await readVideoTrackProjections(
-      { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+      { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
       { projectId: 1, scriptId: 2 },
     );
     assert.deepEqual(tracks.find((track) => track.id === 13)?.actual.audioSelection, {
@@ -354,7 +355,7 @@ test("corrupt persisted Video Track JSON fails explicitly at the read seam", asy
   try {
     await assert.rejects(
       readVideoTrackProjections(
-        { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+        { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
         { projectId: 1, scriptId: 2 },
       ),
       /Video Track 9 inputRefs 包含无效 JSON/,
@@ -380,7 +381,7 @@ test("corrupt persisted audioSelection fails explicitly at the read seam", async
   try {
     await assert.rejects(
       readVideoTrackProjections(
-        { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+        { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
         { projectId: 1, scriptId: 2 },
       ),
       /Video Track 15 audioSelection 无效/,
@@ -408,7 +409,7 @@ test("a selected Video owned by a sibling Track is rejected before Prompt owners
   try {
     await assert.rejects(
       readVideoTrackProjections(
-        { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+        { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
         { projectId: 1, scriptId: 2 },
       ),
       /Video 32 不属于 Video Track 10/,
@@ -435,7 +436,7 @@ test("a selected Artifact Revision owned by a sibling Track is rejected independ
   try {
     await assert.rejects(
       readVideoTrackProjections(
-        { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+        { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
         { projectId: 1, scriptId: 2 },
       ),
       /Artifact Revision 53 不属于 Video Track 16/,
@@ -459,7 +460,7 @@ test("a foreign Prompt Revision is rejected independently", async () => {
   try {
     await assert.rejects(
       readVideoTrackProjections(
-        { db, getVendorModels, getFileUrl: async (filePath) => filePath },
+        { db: workOf(db), getVendorModels, getFileUrl: async (filePath) => filePath },
         { projectId: 1, scriptId: 2 },
       ),
       /Prompt Revision 23 不属于 Project 1 \/ Video Track 18/,
