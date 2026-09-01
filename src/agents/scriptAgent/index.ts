@@ -10,6 +10,7 @@ import * as fs from "fs";
 import path from "path";
 
 import { getDatabaseRuntime } from "@/database";
+import { getRuntimePrompt, runtimePromptKeys } from "@/prompts/runtime";
 export interface AgentContext {
   socket: Socket;
   isolationKey: string;
@@ -157,7 +158,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "script_execution_skeleton.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
-      const formatPrompt = "\n你必须使用如下XML格式写入工作区：\n<storySkeleton>故事骨架内容</storySkeleton>";
+      const formatPrompt = `\n${await getRuntimePrompt(runtimePromptKeys.scriptStorySkeletonFormat)}`;
 
       return runAgent({
         key: "scriptAgent:storySkeletonAgent",
@@ -177,7 +178,7 @@ function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "script_execution_adaptation.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
-      const formatPrompt = "\n你必须使用如下XML格式写入工作区：\n<adaptationStrategy>改编策略内容</adaptationStrategy>";
+      const formatPrompt = `\n${await getRuntimePrompt(runtimePromptKeys.scriptAdaptationFormat)}`;
 
       return runAgent({
         key: "scriptAgent:adaptationStrategyAgent",
@@ -204,7 +205,7 @@ function createSubAgent(parentCtx: AgentContext) {
 
       const novelData = await getDatabaseRuntime().work((db) => db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex"));
 
-      const formatPrompt = `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`;
+      const formatPrompt = `\n${await getRuntimePrompt(runtimePromptKeys.scriptExecutionFormat)}`;
 
       return runAgent({
         key: "scriptAgent:scriptAgent",

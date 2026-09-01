@@ -5,6 +5,7 @@ import getPath from "@/utils/getPath";
 import rawVendorData from "./vendor.json";
 import { vendorRegistry } from "./vendorRegistry";
 import { failInterruptedVideoProduction } from "@/video/recovery";
+import { ensureRuntimePromptDefaults } from "@/prompts/runtime";
 
 const vendorData = rawVendorData as Record<string, string>;
 
@@ -159,6 +160,7 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   // Video prompt generation now resolves immutable Markdown Prompt Profiles.
   // The former model-name/mode router must not remain an active compatibility path.
   await knex("o_prompt").where("type", "videoPromptGeneration").delete();
+  await ensureRuntimePromptDefaults(knex);
 
   //迁移供应商函数
   const retainedVendorIds = vendorRegistry.releasedVendorIds();

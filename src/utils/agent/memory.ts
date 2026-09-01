@@ -4,6 +4,9 @@ import type { memories as MemoryRow } from "@/types/database";
 import { tool, jsonSchema } from "ai";
 import { z } from "zod";
 import { getDefaultConfiguredVendor, type ConfiguredVendor, type TextLogicalRole } from "@/vendor";
+import { getRuntimePrompt, runtimePromptKeys } from "@/prompts/runtime";
+
+type PromptResolver = typeof getRuntimePrompt;
 
 // ── 可调配置默认值 ──
 import { getDatabaseRuntime } from "@/database";
@@ -38,15 +41,18 @@ class Memory {
   private agentType: string;
   private isolationKey: string;
   private readonly textVendor: Pick<ConfiguredVendor, "invokeText">;
+  private readonly promptResolver: PromptResolver;
 
   constructor(
     agentType: string,
     isolationKey: string,
     textVendor: Pick<ConfiguredVendor, "invokeText"> = getDefaultConfiguredVendor(),
+    promptResolver: PromptResolver = getRuntimePrompt,
   ) {
     this.agentType = agentType;
     this.isolationKey = isolationKey;
     this.textVendor = textVendor;
+    this.promptResolver = promptResolver;
   }
 
   async generateSummary(contents: string[]): Promise<string> {
@@ -54,7 +60,7 @@ class Memory {
     const { text } = await this.textVendor.invokeText({
       target: { kind: "logical", key: this.agentType as TextLogicalRole },
       input: {
-        system: `你是一个记忆压缩助手。请将以下多条记忆内容压缩为一段简洁的摘要，不超过${summaryMaxLength}个字符。只输出摘要内容，不要加任何前缀或解释。`,
+        system: await this.promptResolver(runtimePromptKeys.memorySummary, { summaryMaxLength }),
         messages: [{ role: "user", content: contents.map((c, i) => `${i + 1}. ${c}`).join("\n") }],
       },
     });
@@ -66,8 +72,7 @@ class Memory {
     const { text } = await this.textVendor.invokeText({
       target: { kind: "logical", key: this.agentType as TextLogicalRole },
       input: {
-        system:
-          '你是一个信息检索助手。用户会给你一个关键词和一组摘要，请判断哪些摘要可能包含与关键词相关的详细信息。只返回相关摘要的id列表，用JSON数组格式，例如 ["id1","id2"]。不要解释。',
+        system: await this.promptResolver(runtimePromptKeys.memoryRelevance),
         messages: [{ role: "user", content: `关键词: ${keyword}\n\n摘要列表:\n${list}` }],
       },
     });

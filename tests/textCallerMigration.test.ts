@@ -61,7 +61,12 @@ test("Agent Memory compresses and retrieves through the configured logical targe
     },
   } as unknown as Pick<ConfiguredVendor, "invokeText">;
 
-  const memory = new Memory("productionAgent", "iso-key", fakeVendor);
+  const memory = new Memory(
+    "productionAgent",
+    "iso-key",
+    fakeVendor,
+    async () => '你是一个信息检索助手。只返回相关摘要的id列表。',
+  );
   const ids = await memory.judgeSummaryRelevance("关键词", [
     { id: "a", content: "alpha" },
     { id: "b", content: "beta" },
