@@ -467,6 +467,29 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       },
       initData: async (knex) => {},
     },
+    //资产参考图表（Asset Reference：人工上传、人工描述的授权参考图）
+    {
+      name: "o_assetReference",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("projectId");
+        table.integer("assetsId").unsigned().references("id").inTable("o_assets");
+        table.text("mediaPath");
+        table.text("mediaMime");
+        table.integer("orderIndex");
+        table.text("description");
+        table.text("descriptionSource");
+        table.text("analysisState");
+        table.text("visualRole");
+        table.text("requiredTransfers");
+        table.text("exclusions");
+        table.integer("createTime");
+        table.integer("updateTime");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+      initData: async (knex) => {},
+    },
     //生成图片表
     {
       name: "o_image",
