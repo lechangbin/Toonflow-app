@@ -1,4 +1,4 @@
-// @db-hash f5d050145d03a52b5b502043bc559ec0
+// @db-hash 225a7f68ed967c431c3737a4cadd5602
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -23,7 +23,6 @@ export interface o_agentDeploy {
   'modelName'?: string | null;
   'name'?: string | null;
   'temperature'?: number | null;
-  'type'?: string | null;
   'vendorId'?: string | null;
 }
 export interface o_agentWorkData {
@@ -35,12 +34,38 @@ export interface o_agentWorkData {
   'projectId'?: number | null;
   'updateTime'?: number | null;
 }
+export interface o_artifactRevision {
+  'actionId': number;
+  'createdAt': number;
+  'generationTaskId': number;
+  'id'?: number;
+  'revision': number;
+  'status': string;
+  'videoId': number;
+  'videoTrackId': number;
+}
 export interface o_artStyle {
   'fileUrl'?: string | null;
   'id'?: number;
   'label'?: string | null;
   'name'?: string | null;
   'prompt'?: string | null;
+}
+export interface o_assetReference {
+  'analysisState'?: string | null;
+  'assetsId'?: number | null;
+  'createTime'?: number | null;
+  'description'?: string | null;
+  'descriptionSource'?: string | null;
+  'exclusions'?: string | null;
+  'id'?: number;
+  'mediaMime'?: string | null;
+  'mediaPath'?: string | null;
+  'orderIndex'?: number | null;
+  'projectId'?: number | null;
+  'requiredTransfers'?: string | null;
+  'updateTime'?: number | null;
+  'visualRole'?: string | null;
 }
 export interface o_assets {
   'assetsId'?: number | null;
@@ -78,6 +103,23 @@ export interface o_eventChapter {
   'id'?: number;
   'novelId'?: number | null;
 }
+export interface o_generationTask {
+  'actionId': number;
+  'artifactRevisionId'?: number | null;
+  'capabilityId': string;
+  'commandSnapshot': string;
+  'completedAt'?: number | null;
+  'error'?: string | null;
+  'id'?: number;
+  'modelId': string;
+  'projectId': number;
+  'promptRevisionId': number;
+  'providerTaskSnapshot'?: string | null;
+  'startedAt': number;
+  'status': string;
+  'vendorId': string;
+  'videoTrackId': number;
+}
 export interface o_image {
   'assetsId'?: number | null;
   'errorReason'?: string | null;
@@ -97,7 +139,6 @@ export interface o_modelPrompt {
   'id'?: number;
   'model'?: string | null;
   'path'?: string | null;
-  'prompt'?: string | null;
   'vendorId'?: string | null;
 }
 export interface o_novel {
@@ -111,6 +152,15 @@ export interface o_novel {
   'id'?: number;
   'projectId'?: number | null;
   'reel'?: string | null;
+}
+export interface o_productionAction {
+  'actionType': string;
+  'completedAt'?: number | null;
+  'createdAt': number;
+  'id'?: number;
+  'projectId': number;
+  'requestedBy': string;
+  'status': string;
 }
 export interface o_project {
   'artStyle'?: string | null;
@@ -130,31 +180,12 @@ export interface o_project {
   'videoRatio'?: string | null;
   'videoVendorId'?: string | null;
 }
-export interface o_productionAction {
-  'actionType': string;
-  'completedAt'?: number | null;
-  'createdAt': number;
+export interface o_prompt {
+  'data'?: string | null;
   'id'?: number;
-  'projectId': number;
-  'requestedBy': string;
-  'status': string;
-}
-export interface o_generationTask {
-  'actionId': number;
-  'artifactRevisionId'?: number | null;
-  'capabilityId': string;
-  'commandSnapshot': string;
-  'completedAt'?: number | null;
-  'error'?: string | null;
-  'id'?: number;
-  'modelId': string;
-  'promptRevisionId': number;
-  'projectId': number;
-  'providerTaskSnapshot'?: string | null;
-  'startedAt': number;
-  'status': string;
-  'vendorId': string;
-  'videoTrackId': number;
+  'name'?: string | null;
+  'type'?: string | null;
+  'useData'?: string | null;
 }
 export interface o_promptRevision {
   'brief'?: string | null;
@@ -167,23 +198,6 @@ export interface o_promptRevision {
   'status': string;
   'strategy': string;
   'videoTrackId': number;
-}
-export interface o_artifactRevision {
-  'actionId': number;
-  'createdAt': number;
-  'generationTaskId': number;
-  'id'?: number;
-  'revision': number;
-  'status': string;
-  'videoId': number;
-  'videoTrackId': number;
-}
-export interface o_prompt {
-  'data'?: string | null;
-  'id'?: number;
-  'name'?: string | null;
-  'type'?: string | null;
-  'useData'?: string | null;
 }
 export interface o_script {
   'content'?: string | null;
@@ -207,16 +221,7 @@ export interface o_skillAttribution {
   'skillId'?: string;
 }
 export interface o_skillList {
-  'createTime': number;
-  'description': string;
-  'embedding'?: string | null;
-  'id'?: string;
-  'md5': string;
-  'name': string;
-  'path': string;
-  'state': number;
-  'type': string;
-  'updateTime': number;
+  'id'?: string | null;
 }
 export interface o_storyboard {
   'createTime'?: number | null;
@@ -270,29 +275,30 @@ export interface o_video {
   'videoTrackId'?: number | null;
 }
 export interface o_videoTrack {
+  'audioSelection'?: string | null;
   'capabilityId'?: string | null;
   'duration'?: number | null;
   'id'?: number;
-  'projectId'?: number | null;
   'inputRefs'?: string | null;
   'modelId'?: string | null;
   'outputSelection'?: string | null;
-  'audioSelection'?: string | null;
+  'projectId'?: number | null;
   'promptRevisionId'?: number | null;
   'reason'?: string | null;
   'scriptId'?: number | null;
   'selectVideoId'?: number | null;
   'state'?: string | null;
-  'videoId'?: number | null;
   'vendorId'?: string | null;
+  'videoId'?: number | null;
 }
 
 export interface DB {
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentWorkData": o_agentWorkData;
-  "o_artStyle": o_artStyle;
   "o_artifactRevision": o_artifactRevision;
+  "o_artStyle": o_artStyle;
+  "o_assetReference": o_assetReference;
   "o_assets": o_assets;
   "o_assets2Storyboard": o_assets2Storyboard;
   "o_assetsRole2Audio": o_assetsRole2Audio;
@@ -303,8 +309,8 @@ export interface DB {
   "o_imageFlow": o_imageFlow;
   "o_modelPrompt": o_modelPrompt;
   "o_novel": o_novel;
-  "o_project": o_project;
   "o_productionAction": o_productionAction;
+  "o_project": o_project;
   "o_prompt": o_prompt;
   "o_promptRevision": o_promptRevision;
   "o_script": o_script;

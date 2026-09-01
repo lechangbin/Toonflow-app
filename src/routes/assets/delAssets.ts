@@ -4,6 +4,7 @@ import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { removeAssetReferencesForAssets } from "@/assets/assetReferences";
 const router = express.Router();
 
 export default router.post(
@@ -21,6 +22,18 @@ export default router.post(
               if (e?.code !== "ENOENT") throw e;
             })
           : Promise.resolve(),
+      ),
+    );
+    // 同步清理该资产及其子资产的全部参考图（行 + 媒体文件）
+    const childIds = await getDatabaseRuntime().work(async (db) =>
+      (await db("o_assets").where("assetsId", id).select("id")).map((row) => row.id),
+    );
+    const referencePaths = await removeAssetReferencesForAssets(getDatabaseRuntime().work, [id, ...childIds]);
+    await Promise.all(
+      referencePaths.map((mediaPath) =>
+        u.oss.deleteFile(mediaPath).catch((e) => {
+          if (e?.code !== "ENOENT") throw e;
+        }),
       ),
     );
     const imageIds = assetsData.map((i) => i.id).filter(Boolean);
