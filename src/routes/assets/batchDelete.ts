@@ -1,10 +1,10 @@
 import express from "express";
-import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { removeAssetReferencesForAssets } from "@/assets/assetReferences";
+import { removeAssetReferenceRows } from "@/assets/assetReferences";
+import { deleteMediaFileBestEffort } from "@/assets/assetReferenceMedia";
 const router = express.Router();
 
 // 批量删除资产
@@ -15,18 +15,16 @@ export default router.post(
   }),
   async (req, res) => {
     const { id } = req.body;
-    // 同步清理这些资产的全部参考图（行 + 媒体文件）
-    const referencePaths = await removeAssetReferencesForAssets(getDatabaseRuntime().work, id);
-    await Promise.all(
-      referencePaths.map((mediaPath) =>
-        u.oss.deleteFile(mediaPath).catch((e) => {
-          if (e?.code !== "ENOENT") throw e;
-        }),
-      ),
+    // 单一事务：参考图行与资产行要么一起删除，要么都不删除
+    const referenceMediaPaths = await getDatabaseRuntime().work(async (db) =>
+      db.transaction(async (tx) => {
+        const paths = await removeAssetReferenceRows(tx, id);
+        await tx("o_assets").whereIn("id", id).delete();
+        return paths;
+      }),
     );
-    await getDatabaseRuntime().work(async (db) => {
-      await db("o_assets").whereIn("id", id).delete();
-    });
+    // 记录已删除：参考图媒体清理尽力而为，失败只留下孤儿文件
+    await Promise.all(referenceMediaPaths.map((mediaPath) => deleteMediaFileBestEffort(mediaPath)));
     res.status(200).send(success({ message: "删除资产成功" }));
   },
 );

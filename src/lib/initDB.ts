@@ -487,6 +487,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("updateTime");
         table.primary(["id"]);
         table.unique(["id"]);
+        table.unique(["assetsId", "orderIndex"]);
       },
       initData: async (knex) => {},
     },
