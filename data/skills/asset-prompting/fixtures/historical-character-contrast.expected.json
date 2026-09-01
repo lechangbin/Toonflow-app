@@ -1,0 +1,147 @@
+{
+  "schemaVersion": "1.0",
+  "language": "zh-CN",
+  "worldBible": {
+    "eraRegion": ["秦末咸阳宫廷与大泽乡戍卒营地"],
+    "socialOrder": ["皇帝处于礼制顶端，戍卒承担强制行役并承受误期惩罚"],
+    "materialCulture": ["宫廷使用细密绢织与礼制层叠，戍卒使用粗麻短褐并反复缝补"],
+    "shapeLanguage": ["宫廷身份强调封闭、垂直、规整；戍卒行动身份强调短促、前倾、便于劳作"],
+    "paletteLogic": ["胡亥使用低明度玄黑与克制礼制层次；吴广使用被雨泥压暗的麻褐与土灰"],
+    "sharedProhibitions": ["禁止把不同社会身份统一为半束长发加素色及踝长衫", "禁止用随机发饰或无因花纹制造差异"]
+  },
+  "contrastMatrix": [
+    {
+      "dimension": "silhouette",
+      "assignments": [
+        { "assetId": 101, "value": "礼袍形成封闭、垂直、层叠且活动受限的宫廷轮廓" },
+        { "assetId": 102, "value": "短褐与束紧下摆形成精瘦、前倾、便于行役的行动轮廓" }
+      ],
+      "collisionAssetIds": [],
+      "resolution": "以社会身份和行动需求建立相反轮廓"
+    },
+    {
+      "dimension": "wardrobeLayers",
+      "assignments": [
+        { "assetId": 101, "value": "细密绢织礼袍，多层严整，无劳作磨损" },
+        { "assetId": 102, "value": "粗麻短褐，层级少，袖口与下摆反复缝补并有雨泥磨损" }
+      ],
+      "collisionAssetIds": [],
+      "resolution": "用阶层、材料取得方式与使用历史消除通用素色长衫碰撞"
+    },
+    {
+      "dimension": "bodyPosture",
+      "assignments": [
+        { "assetId": 101, "value": "肩颈收紧、重心后置、手部迟疑，表现有权位却缺乏行动控制" },
+        { "assetId": 102, "value": "重心前移、肩背经行役磨炼、站姿准备召集众人" }
+      ],
+      "collisionAssetIds": [],
+      "resolution": "用剧情中的权力处境与行动职责区分体态"
+    }
+  ],
+  "assetBriefs": [
+    {
+      "assetId": 101,
+      "assetType": "character",
+      "isDerived": false,
+      "parentAssetId": null,
+      "name": "胡亥",
+      "narrativeFunction": "秦帝国末期身居最高权位却受权臣逼迫的年轻统治者",
+      "eraRegion": "秦末咸阳宫廷",
+      "evidence": [
+        { "source": "script", "fact": "胡亥是秦二世并身居帝位", "locator": "scriptExcerpt[0]", "confidence": "explicit" },
+        { "source": "script", "fact": "玄色礼制外袍严整、衣料细密且没有体力劳作磨损", "locator": "scriptExcerpt[0]", "confidence": "explicit" },
+        { "source": "script", "fact": "面对赵高逼视与奏牍时反复迟疑", "locator": "scriptExcerpt[0]", "confidence": "explicit" }
+      ],
+      "immutable": ["年轻秦帝国皇帝身份", "非劳作者的宫廷身体痕迹", "规整礼制轮廓"],
+      "flexible": ["礼袍局部暗纹的克制程度", "迟疑微表情的强弱"],
+      "storyChanging": ["奏牍压力下肩颈与手部的紧张状态"],
+      "differenceAnchors": [
+        { "dimension": "socialRole", "value": "礼制顶端的年轻皇帝", "reason": "剧本明确其秦二世身份" },
+        { "dimension": "wardrobeStructure", "value": "玄黑细密绢织、多层垂直礼袍", "reason": "剧本明确礼制外袍、严整与细密材料" },
+        { "dimension": "bodyPosture", "value": "重心后置、肩颈收紧、手部迟疑", "reason": "权位与受控处境形成矛盾" },
+        { "dimension": "wearHistory", "value": "衣料洁净平整，无行役和田间劳作磨损", "reason": "剧本明确日常不经体力劳作" }
+      ],
+      "forbiddenDefaults": ["戍卒短褐", "粗麻缝补", "雨泥磨损", "随时行动的前倾劳作姿态"],
+      "contrastAgainstSiblingAssets": [
+        { "assetId": 102, "dimensions": ["socialRole", "silhouette", "bodyPosture", "wardrobeStructure", "materialsCraft", "wearHistory"], "instruction": "保持宫廷礼制、细密材料与迟疑受控体态，不借用吴广的粗麻短褐、雨泥磨损或行动姿态" }
+      ],
+      "referenceBindings": [],
+      "generationRequirements": {
+        "outputFormat": "角色四视图设定图",
+        "composition": "同一画面依次为头肩特写、正视全身、侧视全身、后视全身",
+        "background": "素灰纯色背景",
+        "requiredElements": ["完整头顶至脚底", "四视图身份与衣着一致", "中性迟疑微表情"],
+        "prohibitedElements": ["文字", "场景", "手持道具", "动态动作"],
+        "aspectRatio": "4:1"
+      },
+      "design": {
+        "identitySummary": "年轻秦二世，礼制身份显赫，但神态与体态透露被权臣控制的迟疑",
+        "socialRole": "秦帝国皇帝",
+        "profession": "最高统治者与奏牍决策者",
+        "agePresentation": "年轻成年男性",
+        "personalityContradiction": "外在礼制威权与内在犹疑受控并存",
+        "silhouette": "多层礼袍形成封闭、垂直、下重的宫廷轮廓",
+        "faceTopology": "年轻、养尊处优但眼周紧张，面部线条偏收束而非风霜粗砺",
+        "hairStructure": "宫廷规整高束，发束收紧、鬓发整洁，不采用松散半束劳作造型",
+        "bodyPosture": "肩颈微收、重心略后、手部克制迟疑，身体缺少长期负重劳作痕迹",
+        "wardrobeStructure": "玄黑礼制长袍，多层交叠、宽阔垂直衣摆、结构严整",
+        "materialsCraft": "细密绢织，缝制工整，装饰克制并服从礼制层级",
+        "wearHistory": "表面洁净平整，仅有坐理奏牍形成的轻微衣褶，无泥污与缝补",
+        "signatureMarks": ["玄黑多层礼制轮廓", "紧张迟疑的肩颈与手部", "细密绢织且无劳作磨损"],
+        "negativeIdentity": ["不是戍卒或农民", "不是粗麻短褐", "不是风霜粗砺的行动领袖"]
+      }
+    },
+    {
+      "assetId": 102,
+      "assetType": "character",
+      "isDerived": false,
+      "parentAssetId": null,
+      "name": "吴广",
+      "narrativeFunction": "在误期危机中准备召集戍卒行动的基层领袖",
+      "eraRegion": "秦末大泽乡戍卒营地",
+      "evidence": [
+        { "source": "script", "fact": "吴广是长期行役的戍卒并准备召集众人", "locator": "scriptExcerpt[1]", "confidence": "explicit" },
+        { "source": "script", "fact": "粗麻短褐被雨水和泥土磨旧，袖口反复缝补", "locator": "scriptExcerpt[1]", "confidence": "explicit" },
+        { "source": "script", "fact": "站姿向前，处于准备行动的状态", "locator": "scriptExcerpt[1]", "confidence": "explicit" }
+      ],
+      "immutable": ["秦末戍卒身份", "长期行役形成的精瘦行动体态", "粗麻短褐与维修痕迹"],
+      "flexible": ["雨泥附着的轻重", "袖口补丁的具体位置"],
+      "storyChanging": ["暴雨后的湿润状态", "召集众人前的前倾警觉姿态"],
+      "differenceAnchors": [
+        { "dimension": "socialRole", "value": "承担强制行役的戍卒领袖", "reason": "剧本明确其戍卒与召集者身份" },
+        { "dimension": "wardrobeStructure", "value": "便于行役的粗麻短褐、束紧袖口与较短下摆", "reason": "剧本明确粗麻短褐并要求行动便利" },
+        { "dimension": "bodyPosture", "value": "重心前移、肩背有长期负重痕迹、随时召集行动", "reason": "长期行役和当前行动职责共同造成" },
+        { "dimension": "wearHistory", "value": "雨泥磨旧、袖口反复缝补、边缘起毛", "reason": "剧本直接提供材料状态与维修历史" }
+      ],
+      "forbiddenDefaults": ["宫廷礼袍", "细密绢织", "无磨损华服", "重心后置的被动宫廷姿态"],
+      "contrastAgainstSiblingAssets": [
+        { "assetId": 101, "dimensions": ["socialRole", "silhouette", "bodyPosture", "wardrobeStructure", "materialsCraft", "wearHistory"], "instruction": "保持戍卒行役、粗麻短褐和维修磨损，不借用胡亥的礼制层叠、细密材料或养尊处优体态" }
+      ],
+      "referenceBindings": [],
+      "generationRequirements": {
+        "outputFormat": "角色四视图设定图",
+        "composition": "同一画面依次为头肩特写、正视全身、侧视全身、后视全身",
+        "background": "素灰纯色背景",
+        "requiredElements": ["完整头顶至脚底", "四视图身份与衣着一致", "前倾警觉但保持设定图站姿"],
+        "prohibitedElements": ["文字", "场景", "手持道具", "奔跑或战斗动作"],
+        "aspectRatio": "4:1"
+      },
+      "design": {
+        "identitySummary": "长期行役、经历暴雨误期危机并准备组织同伴的秦末戍卒领袖",
+        "socialRole": "基层戍卒与行动召集者",
+        "profession": "强制行役戍卒",
+        "agePresentation": "壮年男性",
+        "personalityContradiction": "长期劳役的克制疲惫与准备反抗的主动决断并存",
+        "silhouette": "精瘦紧凑、下摆较短、袖口束紧，身体重心前移",
+        "faceTopology": "面部骨点清晰，皮肤有日晒风雨痕迹，眼神警觉而直接",
+        "hairStructure": "便于行役的紧束发结，鬓角受雨后略散，不采用宫廷规整高束",
+        "bodyPosture": "肩背有负重痕迹，双脚站位稳定、重心前移，保持静态设定姿态中的行动准备感",
+        "wardrobeStructure": "粗麻短褐，层级少，袖口束紧、下摆便于行走，补丁位置服从磨损",
+        "materialsCraft": "粗麻织物、基层手工缝制，针脚可见且不规整",
+        "wearHistory": "连续暴雨造成湿痕和泥点，袖口与下摆起毛，旧裂处反复缝补",
+        "signatureMarks": ["精瘦前倾的行役轮廓", "粗麻短褐与反复缝补", "雨泥磨损和基层手工针脚"],
+        "negativeIdentity": ["不是宫廷贵族", "不是细密绢织礼袍", "不是洁净无磨损的文人士子"]
+      }
+    }
+  ]
+}
