@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://toonflow.local/schemas/asset-brief-batch-1.0.json",
+  "title": "Toonflow Asset Brief Batch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "language", "worldBible", "contrastMatrix", "assetBriefs"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "language": { "const": "zh-CN" },
+    "worldBible": { "$ref": "#/$defs/worldBible" },
+    "contrastMatrix": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/contrastEntry" }
+    },
+    "assetBriefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/assetBrief" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "stringList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "nullableId": { "type": ["integer", "null"], "minimum": 1 },
+    "worldBible": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eraRegion", "socialOrder", "materialCulture", "shapeLanguage", "paletteLogic", "sharedProhibitions"],
+      "properties": {
+        "eraRegion": { "$ref": "#/$defs/stringList" },
+        "socialOrder": { "$ref": "#/$defs/stringList" },
+        "materialCulture": { "$ref": "#/$defs/stringList" },
+        "shapeLanguage": { "$ref": "#/$defs/stringList" },
+        "paletteLogic": { "$ref": "#/$defs/stringList" },
+        "sharedProhibitions": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "contrastEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimension", "assignments", "collisionAssetIds", "resolution"],
+      "properties": {
+        "dimension": { "$ref": "#/$defs/nonEmptyString" },
+        "assignments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["assetId", "value"],
+            "properties": {
+              "assetId": { "type": "integer", "minimum": 1 },
+              "value": { "$ref": "#/$defs/nonEmptyString" }
+            }
+          }
+        },
+        "collisionAssetIds": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "uniqueItems": true
+        },
+        "resolution": { "type": "string" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "fact", "locator", "confidence"],
+      "properties": {
+        "source": { "enum": ["reference", "script", "asset", "parent", "inference", "style-default"] },
+        "fact": { "$ref": "#/$defs/nonEmptyString" },
+        "locator": { "$ref": "#/$defs/nonEmptyString" },
+        "confidence": { "enum": ["explicit", "strong-inference", "bounded-inference", "fallback"] }
+      }
+    },
+    "differenceAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimension", "value", "reason"],
+      "properties": {
+        "dimension": { "$ref": "#/$defs/nonEmptyString" },
+        "value": { "$ref": "#/$defs/nonEmptyString" },
+        "reason": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "siblingContrast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetId", "dimensions", "instruction"],
+      "properties": {
+        "assetId": { "type": "integer", "minimum": 1 },
+        "dimensions": { "$ref": "#/$defs/stringList" },
+        "instruction": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "referenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["referenceId", "label", "description", "primaryRole", "subjectSelector", "mustPreserve", "mustIgnore", "controlledDimensions", "priority", "evidenceSource"],
+      "properties": {
+        "referenceId": { "$ref": "#/$defs/nonEmptyString" },
+        "label": { "$ref": "#/$defs/nonEmptyString" },
+        "description": { "$ref": "#/$defs/nonEmptyString" },
+        "primaryRole": { "enum": ["identity", "structure", "material", "color", "style", "composition", "state"] },
+        "subjectSelector": { "type": ["string", "null"] },
+        "mustPreserve": { "$ref": "#/$defs/stringList" },
+        "mustIgnore": { "$ref": "#/$defs/stringList" },
+        "controlledDimensions": { "$ref": "#/$defs/stringList" },
+        "priority": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "evidenceSource": { "const": "manual" }
+      }
+    },
+    "generationRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outputFormat", "composition", "background", "requiredElements", "prohibitedElements", "aspectRatio"],
+      "properties": {
+        "outputFormat": { "$ref": "#/$defs/nonEmptyString" },
+        "composition": { "$ref": "#/$defs/nonEmptyString" },
+        "background": { "$ref": "#/$defs/nonEmptyString" },
+        "requiredElements": { "$ref": "#/$defs/stringList" },
+        "prohibitedElements": { "$ref": "#/$defs/stringList" },
+        "aspectRatio": { "type": ["string", "null"] }
+      }
+    },
+    "assetBriefBase": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": { "properties": { "isDerived": { "const": true } }, "required": ["isDerived"] },
+          "then": { "properties": { "parentAssetId": { "type": "integer", "minimum": 1 } } },
+          "else": { "properties": { "parentAssetId": { "const": null } } }
+        }
+      ],
+      "required": ["assetId", "assetType", "isDerived", "parentAssetId", "name", "narrativeFunction", "eraRegion", "evidence", "immutable", "flexible", "storyChanging", "differenceAnchors", "forbiddenDefaults", "contrastAgainstSiblingAssets", "referenceBindings", "generationRequirements", "design"],
+      "properties": {
+        "assetId": { "type": "integer", "minimum": 1 },
+        "assetType": { "enum": ["character", "scene", "prop"] },
+        "isDerived": { "type": "boolean" },
+        "parentAssetId": { "$ref": "#/$defs/nullableId" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "narrativeFunction": { "$ref": "#/$defs/nonEmptyString" },
+        "eraRegion": { "$ref": "#/$defs/nonEmptyString" },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+        "immutable": { "$ref": "#/$defs/stringList" },
+        "flexible": { "$ref": "#/$defs/stringList" },
+        "storyChanging": { "$ref": "#/$defs/stringList" },
+        "differenceAnchors": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/differenceAnchor" } },
+        "forbiddenDefaults": { "$ref": "#/$defs/stringList" },
+        "contrastAgainstSiblingAssets": { "type": "array", "items": { "$ref": "#/$defs/siblingContrast" } },
+        "referenceBindings": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/referenceBinding" } },
+        "generationRequirements": { "$ref": "#/$defs/generationRequirements" }
+      }
+    },
+    "characterDesign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identitySummary", "socialRole", "profession", "agePresentation", "personalityContradiction", "silhouette", "faceTopology", "hairStructure", "bodyPosture", "wardrobeStructure", "materialsCraft", "wearHistory", "signatureMarks", "negativeIdentity"],
+      "properties": {
+        "identitySummary": { "$ref": "#/$defs/nonEmptyString" },
+        "socialRole": { "$ref": "#/$defs/nonEmptyString" },
+        "profession": { "$ref": "#/$defs/nonEmptyString" },
+        "agePresentation": { "$ref": "#/$defs/nonEmptyString" },
+        "personalityContradiction": { "$ref": "#/$defs/nonEmptyString" },
+        "silhouette": { "$ref": "#/$defs/nonEmptyString" },
+        "faceTopology": { "$ref": "#/$defs/nonEmptyString" },
+        "hairStructure": { "$ref": "#/$defs/nonEmptyString" },
+        "bodyPosture": { "$ref": "#/$defs/nonEmptyString" },
+        "wardrobeStructure": { "$ref": "#/$defs/nonEmptyString" },
+        "materialsCraft": { "$ref": "#/$defs/nonEmptyString" },
+        "wearHistory": { "$ref": "#/$defs/nonEmptyString" },
+        "signatureMarks": { "$ref": "#/$defs/stringList" },
+        "negativeIdentity": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "sceneDesign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spatialStructure", "actionPlane", "accessPattern", "landmark", "scale", "architecture", "materialsCraft", "maintenanceState", "useTraces", "timeWeatherState", "negativeIdentity"],
+      "properties": {
+        "spatialStructure": { "$ref": "#/$defs/nonEmptyString" },
+        "actionPlane": { "$ref": "#/$defs/nonEmptyString" },
+        "accessPattern": { "$ref": "#/$defs/nonEmptyString" },
+        "landmark": { "$ref": "#/$defs/nonEmptyString" },
+        "scale": { "$ref": "#/$defs/nonEmptyString" },
+        "architecture": { "$ref": "#/$defs/nonEmptyString" },
+        "materialsCraft": { "$ref": "#/$defs/nonEmptyString" },
+        "maintenanceState": { "$ref": "#/$defs/nonEmptyString" },
+        "useTraces": { "$ref": "#/$defs/nonEmptyString" },
+        "timeWeatherState": { "$ref": "#/$defs/nonEmptyString" },
+        "negativeIdentity": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "propDesign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["propClass", "owner", "geometry", "relativeScale", "operation", "materialsCraft", "wearRepairHistory", "distinctiveMarks", "continuity", "negativeIdentity"],
+      "properties": {
+        "propClass": { "enum": ["hero", "action", "evidence", "texture"] },
+        "owner": { "$ref": "#/$defs/nonEmptyString" },
+        "geometry": { "$ref": "#/$defs/nonEmptyString" },
+        "relativeScale": { "$ref": "#/$defs/nonEmptyString" },
+        "operation": { "$ref": "#/$defs/nonEmptyString" },
+        "materialsCraft": { "$ref": "#/$defs/nonEmptyString" },
+        "wearRepairHistory": { "$ref": "#/$defs/nonEmptyString" },
+        "distinctiveMarks": { "$ref": "#/$defs/stringList" },
+        "continuity": { "$ref": "#/$defs/nonEmptyString" },
+        "negativeIdentity": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "assetBrief": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/$defs/assetBriefBase" },
+            { "properties": { "assetType": { "const": "character" }, "design": { "$ref": "#/$defs/characterDesign" } } }
+          ],
+          "unevaluatedProperties": false
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/assetBriefBase" },
+            { "properties": { "assetType": { "const": "scene" }, "design": { "$ref": "#/$defs/sceneDesign" } } }
+          ],
+          "unevaluatedProperties": false
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/assetBriefBase" },
+            { "properties": { "assetType": { "const": "prop" }, "design": { "$ref": "#/$defs/propDesign" } } }
+          ],
+          "unevaluatedProperties": false
+        }
+      ]
+    }
+  }
+}
