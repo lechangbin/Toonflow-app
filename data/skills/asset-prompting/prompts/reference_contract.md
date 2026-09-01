@@ -10,7 +10,7 @@ metaData: asset-prompting
 
 对每张参考图生成独立约束，保持人工标签和描述原文不变：
 
-`{原始标签}（职责：{primaryRole}；主体：{subjectSelector 或“整图指定主体”}）：必须继承 {mustPreserve}；仅控制 {controlledDimensions}；必须忽略 {mustIgnore}。`
+`{原始标签}（人工描述：{description 原文}；职责：{primaryRole}；主体：{subjectSelector 或“整图指定主体”}）：必须继承 {mustPreserve}；仅控制 {controlledDimensions}；必须忽略 {mustIgnore}。`
 
 规则：
 
