@@ -2,9 +2,9 @@
  * 预留的 Asset Reference 图像分析服务 seam（Issue #30）。
  *
  * 本版本人工描述必填，不实现自动分析。此模块只定义可调用的 seam 形状并
- * 提供一个始终报告“未实现”的保留实现：调用方可安全调用，但不会产生任何
- * 持久化副作用，descriptionSource 保持 manual、analysisState 保持 none。
- * 后续接入 AI 分析时替换保留实现即可，领域契约不变。
+ * 提供一个始终报告"未实现"的保留实现：调用方可安全调用，但不会产生任何
+ * 持久化副作用，descriptionSource 保持 manual、analysisState 保持
+ * not_requested。后续接入 AI 分析时替换保留实现即可，领域契约不变。
  */
 
 export interface AssetReferenceAnalysisInput {
@@ -27,24 +27,19 @@ export interface AssetReferenceAnalysisOutcome {
   readonly reason: "analysis-not-implemented";
 }
 
-export interface AssetReferenceImageAnalyzer {
-  analyzeReferenceImage(input: AssetReferenceAnalysisInput): Promise<AssetReferenceAnalysisOutcome>;
+export interface AssetReferenceAnalyzer {
+  analyzeAssetReference(input: AssetReferenceAnalysisInput): Promise<AssetReferenceAnalysisOutcome>;
 }
 
-const reservedAnalyzer: AssetReferenceImageAnalyzer = {
-  async analyzeReferenceImage(): Promise<AssetReferenceAnalysisOutcome> {
+const reservedAnalyzer: AssetReferenceAnalyzer = {
+  async analyzeAssetReference(): Promise<AssetReferenceAnalysisOutcome> {
     return { supported: false, reason: "analysis-not-implemented" };
   },
 };
 
-/** 获取保留的分析器。未来接入真实分析时在此替换实现。 */
-export function getReservedAssetReferenceAnalyzer(): AssetReferenceImageAnalyzer {
-  return reservedAnalyzer;
-}
-
 /** 可调用的 seam 入口：本版本始终返回未实现，且不产生持久化副作用。 */
-export async function analyzeAssetReferenceImage(
+export async function analyzeAssetReference(
   input: AssetReferenceAnalysisInput,
 ): Promise<AssetReferenceAnalysisOutcome> {
-  return reservedAnalyzer.analyzeReferenceImage(input);
+  return reservedAnalyzer.analyzeAssetReference(input);
 }

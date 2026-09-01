@@ -8,17 +8,11 @@ import { validateFields } from "@/middleware/middleware";
 import {
   assetReferenceErrorEnvelope,
   createAssetReference,
-  type AssetReferenceMediaWriter,
+  type AssetReferenceMediaStore,
 } from "@/assets/assetReferences";
+import { deleteMediaFileBestEffort, detectImageMime, extensionForMime } from "@/assets/assetReferenceMedia";
 
 const router = express.Router();
-
-const MIME_EXTENSIONS: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
 
 // 新增资产参考图（人工上传 + 人工描述必填）
 export default router.post(
@@ -35,19 +29,31 @@ export default router.post(
   async (req, res) => {
     const { projectId, assetsId, base64, description, visualRole, requiredTransfers, exclusions } = req.body;
 
-    const writeMedia: AssetReferenceMediaWriter = async ({ projectId: ownerProjectId }) => {
-      const matches = base64.match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
-      const mediaMime = matches?.[1] ?? "image/png";
-      const realBase64 = matches ? matches[2] : base64;
-      const savePath = `/${ownerProjectId}/assetReferences/${uuidv4()}.${MIME_EXTENSIONS[mediaMime] ?? "png"}`;
-      await u.oss.writeFile(savePath, Buffer.from(realBase64, "base64"));
-      return { mediaPath: savePath, mediaMime };
+    // 只信文件头，不信请求声明的 MIME：任意字节伪装成 .png 会被拒绝
+    const matches = base64.match(/^data:image\/[\w.+-]+;base64,(.+)$/);
+    const realBase64 = matches ? matches[1] : base64;
+    const buffer = Buffer.from(realBase64, "base64");
+    const mediaMime = detectImageMime(buffer);
+    if (!mediaMime) {
+      const envelope = assetReferenceErrorEnvelope({ kind: "invalidMedia", message: "" });
+      return res.status(envelope.status).send(envelope.body);
+    }
+
+    const store: AssetReferenceMediaStore = {
+      async write({ projectId: ownerProjectId }) {
+        const savePath = `/${ownerProjectId}/assetReferences/${uuidv4()}.${extensionForMime(mediaMime)}`;
+        await u.oss.writeFile(savePath, buffer);
+        return { mediaPath: savePath, mediaMime };
+      },
+      async remove(mediaPath) {
+        await deleteMediaFileBestEffort(mediaPath);
+      },
     };
 
     const result = await createAssetReference(
       getDatabaseRuntime().work,
       { projectId, assetsId, description, visualRole, requiredTransfers, exclusions },
-      writeMedia,
+      store,
     );
     if (!result.ok) {
       const envelope = assetReferenceErrorEnvelope(result.failure);

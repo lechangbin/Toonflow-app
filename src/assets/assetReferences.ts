@@ -7,7 +7,7 @@ import type { DatabaseWork } from "@/database";
  *
  * 每个 Asset Reference 是人工上传、人工描述的授权参考图，持久化其媒体身份、
  * 顺序、必填人工描述、声明的视觉角色、必传要素与明确排除项。本版本描述来源
- * 固定为人工，AI 图像分析仅预留服务 seam（见 ./referenceImageAnalysis.ts），
+ * 固定为人工，AI 图像分析仅预留服务 seam（见 ./assetReferenceAnalysis.ts），
  * 不实现自动分析。持久化契约不包含任何 Vendor 名称或供应商线格式。
  */
 
@@ -18,9 +18,10 @@ export const ASSET_REFERENCE_LIMIT = 6;
 export const ASSET_REFERENCE_DESCRIPTION_SOURCES = ["manual", "ai"] as const;
 export const ASSET_REFERENCE_MANUAL_SOURCE: (typeof ASSET_REFERENCE_DESCRIPTION_SOURCES)[number] = "manual";
 
-/** 分析生命周期状态。本版本一律落库 none，其余为预留值。 */
-export const ASSET_REFERENCE_ANALYSIS_STATES = ["none", "pending", "analyzing", "analyzed", "failed"] as const;
-export const ASSET_REFERENCE_ANALYSIS_NONE: (typeof ASSET_REFERENCE_ANALYSIS_STATES)[number] = "none";
+/** 已批准的分析生命周期状态。本版本一律落库 not_requested，其余为预留值。 */
+export const ASSET_REFERENCE_ANALYSIS_STATES = ["not_requested", "pending", "completed", "failed"] as const;
+export const ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED: (typeof ASSET_REFERENCE_ANALYSIS_STATES)[number] =
+  "not_requested";
 
 export type AssetReferenceFailureKind =
   | "projectNotFound"
@@ -29,6 +30,7 @@ export type AssetReferenceFailureKind =
   | "referenceNotFound"
   | "referenceLimitExceeded"
   | "descriptionRequired"
+  | "invalidMedia"
   | "orderMismatch";
 
 export interface AssetReferenceFailure {
@@ -62,14 +64,14 @@ export interface AssetReferenceMediaIdentity {
 }
 
 /**
- * 媒体写入器：服务层完成所有权与数量校验后调用，负责把上传内容落盘并返回
- * 媒体身份。路由适配器注入 u.oss 实现，测试注入假实现。
+ * 媒体存储：服务层完成所有权与数量校验后调用 write 落盘媒体；当数据库写入
+ * 失败时调用 remove 回收媒体，避免孤儿文件。remove 必须是尽力而为的，不得
+ * 抛出。路由适配器基于 u.oss 实现，测试注入假实现。
  */
-export type AssetReferenceMediaWriter = (target: {
-  projectId: number;
-  assetsId: number;
-  orderIndex: number;
-}) => Promise<AssetReferenceMediaIdentity>;
+export interface AssetReferenceMediaStore {
+  write(target: { projectId: number; assetsId: number; orderIndex: number }): Promise<AssetReferenceMediaIdentity>;
+  remove(mediaPath: string): Promise<void>;
+}
 
 export interface CreateAssetReferenceInput {
   projectId: number;
@@ -97,6 +99,7 @@ const FAILURE_STATUS: Record<AssetReferenceFailureKind, number> = {
   assetProjectMismatch: 403,
   referenceLimitExceeded: 400,
   descriptionRequired: 400,
+  invalidMedia: 400,
   orderMismatch: 400,
 };
 
@@ -107,6 +110,7 @@ const FAILURE_MESSAGE: Record<AssetReferenceFailureKind, string> = {
   referenceNotFound: "参考图不存在或不属于该资产",
   referenceLimitExceeded: `单个资产最多支持 ${ASSET_REFERENCE_LIMIT} 张参考图`,
   descriptionRequired: "参考图描述为必填项，本版本必须由人工撰写",
+  invalidMedia: "参考图内容不是受支持的图片（PNG/JPEG/WebP/GIF）",
   orderMismatch: "排序列表与资产现有参考图不一致",
 };
 
@@ -165,7 +169,7 @@ function toRecord(row: any): AssetReferenceRecord {
     orderIndex: row.orderIndex ?? 0,
     description: row.description ?? "",
     descriptionSource: row.descriptionSource ?? ASSET_REFERENCE_MANUAL_SOURCE,
-    analysisState: row.analysisState ?? ASSET_REFERENCE_ANALYSIS_NONE,
+    analysisState: row.analysisState ?? ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED,
     visualRole: row.visualRole ?? "",
     requiredTransfers: parseJsonArray(row.requiredTransfers),
     exclusions: parseJsonArray(row.exclusions),
@@ -181,6 +185,34 @@ function normalizeDescription(description: string): string | null {
 
 function normalizeTransfers(values: readonly string[] | undefined): string[] {
   return (values ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
+}
+
+/**
+ * 判断数据库错误是否是 o_assetReference 上的唯一约束冲突。并发请求同时赢得
+ * 准入时，(assetsId, orderIndex) 唯一索引保证只有一方落库，另一方在此被
+ * 折叠为 referenceLimitExceeded，从而第 7 张被一致拒绝。
+ */
+function isReferenceOrderConflict(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("UNIQUE constraint failed") && message.includes("o_assetReference");
+}
+
+/**
+ * 两阶段重编号：先把现有 orderIndex 整体偏移出目标区间，再写入最终值，
+ * 避免 (assetsId, orderIndex) 唯一索引在交换顺序时的临时冲突。
+ */
+async function renumberReferences(
+  tx: Knex,
+  input: { projectId: number; assetsId: number; assignments: readonly { id: number; orderIndex: number }[] },
+): Promise<void> {
+  await tx("o_assetReference")
+    .where({ assetsId: input.assetsId, projectId: input.projectId })
+    .increment("orderIndex", ASSET_REFERENCE_LIMIT);
+  for (const assignment of input.assignments) {
+    await tx("o_assetReference")
+      .where({ id: assignment.id, assetsId: input.assetsId })
+      .update({ orderIndex: assignment.orderIndex, updateTime: Date.now() });
+  }
 }
 
 /** 列出一个资产的全部参考图，按持久化顺序返回。资产可以合法地持有 0 张。 */
@@ -203,52 +235,73 @@ export async function listAssetReferences(
 }
 
 /**
- * 创建参考图。先校验所有权与 0~6 张数量限制（第 7 张在落库前被拒绝），
- * 再通过注入的媒体写入器落盘媒体，最后持久化人工契约。
+ * 创建参考图。准入（所有权 + 0~6 张数量限制）在单个事务内完成；随后通过注
+ * 入的媒体存储落盘媒体，最后持久化人工契约。若数据库写入失败，已落盘的媒
+ * 体会被回收；并发赢得同一顺序槽位的请求由唯一索引兜底，折叠为
+ * referenceLimitExceeded。
  */
 export async function createAssetReference(
   work: DatabaseWork,
   input: CreateAssetReferenceInput,
-  writeMedia: AssetReferenceMediaWriter,
+  store: AssetReferenceMediaStore,
 ): Promise<AssetReferenceResult<AssetReferenceRecord>> {
   const description = normalizeDescription(input.description ?? "");
   if (!description) return { ok: false, failure: failure("descriptionRequired") };
 
-  const existing = await work((db) =>
-    db("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).count("* as total").first(),
-  );
-  const currentCount = Number((existing as any)?.total ?? 0);
-  if (currentCount >= ASSET_REFERENCE_LIMIT) {
-    return { ok: false, failure: failure("referenceLimitExceeded") };
-  }
-
-  const ownership = await work((db) => ownedAssetFailure(db, input.projectId, input.assetsId));
-  if (ownership) return { ok: false, failure: ownership };
-
-  const media = await writeMedia({ projectId: input.projectId, assetsId: input.assetsId, orderIndex: currentCount });
-  const now = Date.now();
-  const record = await work((db) =>
+  const admission = await work((db) =>
     db.transaction(async (tx) => {
-      const [id] = await tx("o_assetReference").insert({
-        projectId: input.projectId,
-        assetsId: input.assetsId,
-        mediaPath: media.mediaPath,
-        mediaMime: media.mediaMime,
-        orderIndex: currentCount,
-        description,
-        descriptionSource: ASSET_REFERENCE_MANUAL_SOURCE,
-        analysisState: ASSET_REFERENCE_ANALYSIS_NONE,
-        visualRole: input.visualRole?.trim() ?? "",
-        requiredTransfers: JSON.stringify(normalizeTransfers(input.requiredTransfers)),
-        exclusions: JSON.stringify(normalizeTransfers(input.exclusions)),
-        createTime: now,
-        updateTime: now,
-      });
-      const row = await tx("o_assetReference").where("id", id).first();
-      return toRecord(row);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      if (ownership) return { ok: false as const, failure: ownership };
+      const existing = await tx("o_assetReference")
+        .where({ assetsId: input.assetsId, projectId: input.projectId })
+        .count("* as total")
+        .first();
+      const total = Number((existing as any)?.total ?? 0);
+      if (total >= ASSET_REFERENCE_LIMIT) {
+        return { ok: false as const, failure: failure("referenceLimitExceeded") };
+      }
+      return { ok: true as const, orderIndex: total };
     }),
   );
-  return { ok: true, value: record };
+  if (!admission.ok) return { ok: false, failure: admission.failure };
+
+  const media = await store.write({
+    projectId: input.projectId,
+    assetsId: input.assetsId,
+    orderIndex: admission.orderIndex,
+  });
+  const now = Date.now();
+  try {
+    const record = await work((db) =>
+      db.transaction(async (tx) => {
+        const [id] = await tx("o_assetReference").insert({
+          projectId: input.projectId,
+          assetsId: input.assetsId,
+          mediaPath: media.mediaPath,
+          mediaMime: media.mediaMime,
+          orderIndex: admission.orderIndex,
+          description,
+          descriptionSource: ASSET_REFERENCE_MANUAL_SOURCE,
+          analysisState: ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED,
+          visualRole: input.visualRole?.trim() ?? "",
+          requiredTransfers: JSON.stringify(normalizeTransfers(input.requiredTransfers)),
+          exclusions: JSON.stringify(normalizeTransfers(input.exclusions)),
+          createTime: now,
+          updateTime: now,
+        });
+        const row = await tx("o_assetReference").where("id", id).first();
+        return toRecord(row);
+      }),
+    );
+    return { ok: true, value: record };
+  } catch (error) {
+    // 数据库写入失败：回收已落盘媒体，避免孤儿文件
+    await store.remove(media.mediaPath);
+    if (isReferenceOrderConflict(error)) {
+      return { ok: false, failure: failure("referenceLimitExceeded") };
+    }
+    throw error;
+  }
 }
 
 /** 更新参考图的人工契约。描述一旦提供必须非空；来源保持 manual，分析状态不被修改。 */
@@ -304,11 +357,11 @@ export async function reorderAssetReferences(
         currentIds.length === orderedIds.length && currentIds.every((id, index) => id === orderedIds[index]);
       if (!sameSet) return { ok: false, failure: failure("orderMismatch") };
 
-      for (let index = 0; index < input.orderedIds.length; index++) {
-        await tx("o_assetReference")
-          .where({ id: input.orderedIds[index], assetsId: input.assetsId })
-          .update({ orderIndex: index, updateTime: Date.now() });
-      }
+      await renumberReferences(tx, {
+        projectId: input.projectId,
+        assetsId: input.assetsId,
+        assignments: input.orderedIds.map((id, orderIndex) => ({ id, orderIndex })),
+      });
       const reordered = await tx("o_assetReference")
         .where({ assetsId: input.assetsId, projectId: input.projectId })
         .orderBy("orderIndex", "asc")
@@ -319,8 +372,8 @@ export async function reorderAssetReferences(
 }
 
 /**
- * 删除单张参考图并压缩剩余顺序。返回被删除参考图的媒体路径，由调用方负责
- * 删除媒体文件。
+ * 删除单张参考图并压缩剩余顺序。返回被删除参考图的媒体路径，由调用方在
+ * 数据库删除成功后尽力清理媒体文件。
  */
 export async function deleteAssetReference(
   work: DatabaseWork,
@@ -340,14 +393,25 @@ export async function deleteAssetReference(
         .orderBy("orderIndex", "asc")
         .orderBy("id", "asc")
         .select();
-      for (let index = 0; index < remaining.length; index++) {
-        if (remaining[index].orderIndex !== index) {
-          await tx("o_assetReference").where("id", remaining[index].id).update({ orderIndex: index });
-        }
-      }
+      await renumberReferences(tx, {
+        projectId: input.projectId,
+        assetsId: input.assetsId,
+        assignments: remaining.map((row, orderIndex) => ({ id: row.id, orderIndex })),
+      });
       return { ok: true as const, value: { mediaPath: removed.mediaPath ?? "" } };
     }),
   );
+}
+
+/**
+ * 在给定数据库句柄（事务内）删除这些资产的全部参考图行，返回媒体路径列表
+ * 供调用方清理媒体文件。供资产删除路由把参考图清理纳入同一事务。
+ */
+export async function removeAssetReferenceRows(db: Knex, assetIds: readonly number[]): Promise<string[]> {
+  if (assetIds.length === 0) return [];
+  const rows = await db("o_assetReference").whereIn("assetsId", assetIds).select("mediaPath");
+  await db("o_assetReference").whereIn("assetsId", assetIds).delete();
+  return rows.map((row) => row.mediaPath ?? "").filter((mediaPath) => mediaPath.length > 0);
 }
 
 /**
@@ -359,9 +423,5 @@ export async function removeAssetReferencesForAssets(
   assetIds: readonly number[],
 ): Promise<string[]> {
   if (assetIds.length === 0) return [];
-  return work(async (db) => {
-    const rows = await db("o_assetReference").whereIn("assetsId", assetIds).select("mediaPath");
-    await db("o_assetReference").whereIn("assetsId", assetIds).delete();
-    return rows.map((row) => row.mediaPath ?? "").filter((mediaPath) => mediaPath.length > 0);
-  });
+  return work(async (db) => removeAssetReferenceRows(db, assetIds));
 }

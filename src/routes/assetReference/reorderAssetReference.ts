@@ -22,6 +22,6 @@ export default router.post(
       const envelope = assetReferenceErrorEnvelope(result.failure);
       return res.status(envelope.status).send(envelope.body);
     }
-    res.status(200).send(success({ list: result.value }, "参考图排序成功"));
+    res.status(200).send(success({ list: result.value, total: result.value.length }, "参考图排序成功"));
   },
 );
