@@ -50,7 +50,8 @@ COPY --from=build /app/data/web ./seed-data/web
 COPY --from=build /app/data/version.txt ./seed-data/version.txt
 COPY docker/entrypoint.sh /usr/local/bin/toonflow-entrypoint
 
-RUN chmod 0755 /usr/local/bin/toonflow-entrypoint && \
+RUN sed -i 's/\r$//' /usr/local/bin/toonflow-entrypoint && \
+    chmod 0755 /usr/local/bin/toonflow-entrypoint && \
     mkdir -p /app/runtime-data && \
     chown -R node:node /app
 
