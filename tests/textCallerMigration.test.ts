@@ -23,8 +23,6 @@ const migratedTextCallers = [
   "routes/script/getAiRegex.ts",
   "utils/cleanNovel.ts",
   "routes/artStyle/extractStylePrompt.ts",
-  "routes/assetsGenerate/batchPolishAssetsPrompt.ts",
-  "routes/assetsGenerate/polishAssetsPrompt.ts",
   "routes/cornerScape/batchBindAudio.ts",
   "routes/production/assets/batchGenerateAssetsImage.ts",
   "routes/setting/agentDeploy/agentSetKey.ts",
@@ -44,6 +42,25 @@ test("migrated Text callers no longer use the old ai/vendor helpers", () => {
     assert.ok(!source.includes('from "@/utils/vendor"'), `${relative} 仍加载旧 vendor 模块`);
     assert.ok(source.includes('from "@/vendor"'), `${relative} 未依赖 configured Vendor 模块`);
     assert.ok(source.includes("getDefaultConfiguredVendor"), `${relative} 未使用 getDefaultConfiguredVendor`);
+  }
+});
+
+test("asset prompt routes delegate Text calls to the orchestration module", () => {
+  // Issue #33：路由是薄适配器，模型调用、模板加载、校验与失效都在共享模块内
+  const orchestration = readSource("assets/assetPromptOrchestration.ts");
+  assert.ok(orchestration.includes('from "@/vendor"'), 'orchestration 未依赖 configured Vendor 模块');
+  assert.ok(orchestration.includes("getDefaultConfiguredVendor"), "orchestration 未使用 getDefaultConfiguredVendor");
+  const assetPromptRoutes = ["routes/assetsGenerate/batchPolishAssetsPrompt.ts", "routes/assetsGenerate/polishAssetsPrompt.ts"];
+  for (const relative of assetPromptRoutes) {
+    const source = readSource(relative);
+    assert.ok(!source.includes("u.Ai.Text"), relative + " 仍调用 u.Ai.Text");
+    assert.ok(!source.includes('from "@/utils/ai"'), relative + " 仍加载旧 ai 模块");
+    assert.ok(!source.includes('from "@/utils/vendor"'), relative + " 仍加载旧 vendor 模块");
+    assert.ok(!source.includes("invokeText"), relative + " 不应直接调用 Text 模型");
+    assert.ok(
+      source.includes('from "@/assets/assetPromptOrchestration"'),
+      relative + " 未委托 orchestration 模块",
+    );
   }
 });
 
