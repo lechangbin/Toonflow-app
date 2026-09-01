@@ -5,7 +5,6 @@ import error from "@/utils/error";
 import cleanNovel from "./utils/cleanNovel";
 import getPath from "@/utils/getPath";
 import task from "@/utils/taskRecord";
-import { getPrompts } from "@/utils/getPrompts";
 import { getArtPrompt } from "@/utils/getArtPrompt";
 import replaceUrl from "@/utils/replaceUrl";
 import writeVersion from "@/utils/writeVersion";
@@ -18,7 +17,6 @@ export default {
   cleanNovel,
   getPath,
   task,
-  getPrompts,
   getArtPrompt,
   replaceUrl,
   writeVersion,

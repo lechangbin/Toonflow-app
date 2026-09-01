@@ -11,6 +11,7 @@ import * as fs from "fs";
 import path from "path";
 
 import { getDatabaseRuntime } from "@/database";
+import { getRuntimePrompt, runtimePromptKeys } from "@/prompts/runtime";
 export interface AgentContext {
   socket: Socket;
   isolationKey: string;
@@ -237,7 +238,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "production_execution_director_plan.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
-      const addPrompt = "\n你必须使用如下XML格式写入工作区：\n```\n<scriptPlan>内容</scriptPlan>\n```";
+      const addPrompt = `\n${await getRuntimePrompt(runtimePromptKeys.productionDirectorPlanFormat)}`;
 
       return runAgent({
         key: "productionAgent:directorPlanAgent",
@@ -296,8 +297,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "production_execution_storyboard_panel.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
-      const addPrompt =
-        "\n你必须使用如下XML格式写入工作区：\n```\n<storyboardItem videoDesc='视频描述' prompt=提示词内容 track='分组' shouldGenerateImage='true/false' duration='视频推荐时间' associateAssetsIds='[该分镜所需的资产ID列表]'></storyboardItem>\n```";
+      const addPrompt = `\n${await getRuntimePrompt(runtimePromptKeys.productionStoryboardPanelFormat)}`;
 
       return runAgent({
         key: "productionAgent:storyboardPanelAgent",
@@ -322,7 +322,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       const skill = path.join(u.getPath("skills"), "production_execution_storyboard_table.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
-      const addPrompt = "\n你必须使用如下XML格式写入工作区：\n```\n<storyboardTable>内容</storyboardTable>\n```";
+      const addPrompt = `\n${await getRuntimePrompt(runtimePromptKeys.productionStoryboardTableFormat)}`;
 
       return runAgent({
         key: "productionAgent:storyboardTableAgent",

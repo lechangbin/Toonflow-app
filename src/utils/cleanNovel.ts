@@ -4,6 +4,7 @@ import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
 import { getDefaultConfiguredVendor } from "@/vendor";
 import { stripThink } from "@/utils/stripThink";
+import { getRuntimePrompt, runtimePromptKeys } from "@/prompts/runtime";
 export interface EventType {
   id: number;
   event: string;
@@ -28,18 +29,11 @@ class CleanNovel {
 
   private async processChapter(novel: o_novel): Promise<EventType | null> {
     try {
-      const prompt = await u.getPrompts("event");
-      const promptData = await getDatabaseRuntime().work((db) => db("o_prompt").where("type", "eventExtraction").first());
-      let eventExtraction = "" as string | undefined;
-      if (promptData && promptData.useData) {
-        eventExtraction = promptData.useData;
-      } else {
-        eventExtraction = promptData?.data ?? undefined;
-      }
+      const eventExtraction = await getRuntimePrompt(runtimePromptKeys.eventExtraction);
       const resData = await getDefaultConfiguredVendor().invokeText({
         target: { kind: "logical", key: "universalAi" },
         input: {
-          system: eventExtraction ? JSON.stringify(eventExtraction) : (prompt as string),
+          system: JSON.stringify(eventExtraction),
           messages: [
             {
               role: "user",
