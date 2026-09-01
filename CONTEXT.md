@@ -28,6 +28,14 @@ _Avoid_: File, media item
 A visual variation that belongs to a parent Asset while preserving its production identity.
 _Avoid_: Duplicate Asset
 
+**Asset Reference**:
+An authorized, human-uploaded image attached to an Asset with a declared visual role, required transfers, and explicit exclusions.
+_Avoid_: Reference Image, Keyframe, Upload
+
+**Asset Brief**:
+A persisted, model-independent visual analysis of one Asset, grounded in the current Script and used to compile differentiated image-generation prompts.
+_Avoid_: Prompt, Asset description, user-facing introduction
+
 **Storyboard**:
 A planned shot that combines narrative intent, visual direction, timing, and related Assets.
 _Avoid_: Image, frame

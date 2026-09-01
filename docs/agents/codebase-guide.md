@@ -46,6 +46,10 @@ Inspect `src/database/`, `src/lib/initDB.ts`, `src/lib/fixDB.ts`, and `src/types
 
 Read `docs/agents/video-generation.md` before changing Video Models, Prompt Profiles, Video Tracks, generation routes, or Artifact selection. The single/batch routes are transport adapters over `src/video/promptGeneration.ts` and `src/video/production.ts`; change the shared modules first.
 
+### Asset image prompting and references
+
+Read `docs/agents/asset-prompt-generation.md` before changing Asset prompt polishing, Asset References, batch Asset generation, Image Vendor input, or the Asset configuration UI. Keep Script-grounded analysis and prompt compilation behind one shared orchestration boundary; routes and Vue components remain adapters.
+
 ### Agent behavior
 
 Inspect the matching `src/agents/<agent>/`, `src/socket/routes/<agent>.ts`, `src/utils/agent/memory.ts`, and Markdown Skills under `data/skills/`. Preserve abort, streaming, memory, and message state together.
