@@ -30,7 +30,10 @@ export type AssetPromptFailureKind =
   | "derivedMismatch"
   | "referenceBindingMismatch"
   | "analysisFailed"
-  | "languageProfileNotAvailable";
+  | "languageProfileNotAvailable"
+  | "promptNotGenerated"
+  | "stalePromptRecord"
+  | "referenceLimitExceeded";
 
 export interface AssetPromptFailure {
   kind: AssetPromptFailureKind;
@@ -316,7 +319,7 @@ export interface ValidatedAssetBriefBatch {
   repairs: ReferenceRepairNote[];
 }
 
-function parseReferenceRowId(referenceId: string): number | null {
+export function parseReferenceRowId(referenceId: string): number | null {
   const match = referenceId.match(/^(?:ref-)?(\d+)$/);
   return match ? Number(match[1]) : null;
 }

@@ -8,11 +8,12 @@ import { getDefaultConfiguredVendor } from "@/vendor";
 import getPath from "@/utils/getPath";
 import { getAllArtPrompts, getArtPrompt } from "@/utils/getArtPrompt";
 
-import { listAssetReferences, type AssetReferenceRecord } from "./assetReferences";
+import { ASSET_REFERENCE_LIMIT, listAssetReferences, type AssetReferenceRecord } from "./assetReferences";
 import {
   assetPromptFailure,
   canonicalAssetBriefType,
   parseAnalysisOutput,
+  parseReferenceRowId,
   presentedReferenceLabel,
   referenceBindingId,
   validateAssetBriefBatch,
@@ -53,7 +54,7 @@ const OUTPUT_SCHEMA_PATH = "references/asset-brief.schema.json";
 const DEFAULT_MODEL_PROFILE: AssetPromptModelProfile = AGNES_IMAGE_2_1_FLASH_PROFILE;
 
 /** 稳定错误信封：kind → 状态码/文案成对映射，模型原始异常不进入响应。 */
-const FAILURE_ENVELOPE: Record<AssetPromptFailureKind, { status: number; message: string }> = {
+export const ASSET_PROMPT_FAILURE_ENVELOPE: Record<AssetPromptFailureKind, { status: number; message: string }> = {
   invalidRequest: { status: 400, message: "请求参数不合法" },
   projectNotFound: { status: 404, message: "项目不存在" },
   assetNotFound: { status: 404, message: "资产不存在" },
@@ -71,13 +72,16 @@ const FAILURE_ENVELOPE: Record<AssetPromptFailureKind, { status: number; message
   referenceBindingMismatch: { status: 502, message: "模型输出的参考图绑定与人工契约不一致" },
   analysisFailed: { status: 502, message: "批量资产分析调用失败" },
   languageProfileNotAvailable: { status: 400, message: "请求的语言 profile 尚未启用" },
+  promptNotGenerated: { status: 409, message: "资产尚未生成提示词，请先生成提示词" },
+  stalePromptRecord: { status: 409, message: "资产提示词已过期，请重新生成提示词" },
+  referenceLimitExceeded: { status: 400, message: `单个资产最多支持 ${ASSET_REFERENCE_LIMIT} 张参考图` },
 };
 
 export function assetPromptErrorEnvelope(failure: AssetPromptFailure): {
   status: number;
   body: { code: number; data: null; message: string; error: AssetPromptFailureKind };
 } {
-  const envelope = FAILURE_ENVELOPE[failure.kind] ?? { status: 500, message: "资产提示词生成失败" };
+  const envelope = ASSET_PROMPT_FAILURE_ENVELOPE[failure.kind] ?? { status: 500, message: "资产提示词生成失败" };
   return {
     status: envelope.status,
     body: {
@@ -155,6 +159,68 @@ function toTypedAssetRow(row: {
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+/** 单资产类型涉及的视觉手册键（衍生资产附加 _derivative）。 */
+function assetManualKeys(asset: TypedAssetRow): string[] {
+  return [visualManualKey(asset.briefType, asset.assetsId != null)];
+}
+
+/**
+ * 单资产上下文哈希：项目事实 + 该资产的剧本 + 该资产事实 + 父资产事实 + 额外
+ * 要求 + 该资产类型涉及的视觉手册。哈希只覆盖单个资产自身的失效输入，与批量
+ * 请求选中了哪些其他资产无关，因此单个与批量生成可以用同一入口做确定性的
+ * 新鲜度判定（文档化失效契约：Script/模板/资产/父资产/参考契约）。
+ */
+function computeAssetContextHash(input: {
+  context: GenerationContext;
+  asset: TypedAssetRow;
+  visualManuals: Map<string, string>;
+  otherTextPrompt: string | null;
+}): string {
+  const { context, asset } = input;
+  const script = context.scripts.find((row) => row.id === asset.scriptId) ?? null;
+  const parent = asset.assetsId != null ? context.parentById.get(asset.assetsId) ?? null : null;
+  const manuals = assetManualKeys(asset)
+    .filter((manualKey) => input.visualManuals.has(manualKey))
+    .map((manualKey) => ({ manualKey, content: input.visualManuals.get(manualKey)! }));
+  return sha256(
+    JSON.stringify({
+      project: {
+        artStyle: context.project.artStyle,
+        type: context.project.type,
+        intro: context.project.intro,
+      },
+      script: script ? { id: script.id, content: script.content } : null,
+      asset: {
+        id: asset.id,
+        name: asset.name,
+        briefType: asset.briefType,
+        describe: asset.describe,
+        assetsId: asset.assetsId,
+        scriptId: asset.scriptId,
+      },
+      parent: parent ? { id: parent.id, name: parent.name, describe: parent.describe } : null,
+      additionalRequirements: input.otherTextPrompt,
+      visualManuals: manuals,
+    }),
+  );
+}
+
+/** 单资产参考契约哈希：该资产参考图 id/顺序/人工描述/视觉角色/必传要素/排除项。 */
+function computeAssetReferenceHash(asset: TypedAssetRow, context: GenerationContext): string {
+  return sha256(
+    JSON.stringify(
+      (context.referencesByAsset.get(asset.id) ?? []).map((reference) => ({
+        id: reference.id,
+        orderIndex: reference.orderIndex,
+        description: reference.description,
+        visualRole: reference.visualRole,
+        requiredTransfers: reference.requiredTransfers,
+        exclusions: reference.exclusions,
+      })),
+    ),
+  );
 }
 
 function normalizeOtherTextPrompt(value: unknown): string | null {
@@ -432,61 +498,44 @@ export function createAssetPromptOrchestration(dependencies: AssetPromptOrchestr
     if (!visualManuals.ok) return failBatch(visualManuals.failure);
 
     const templateHash = sha256(analysisTemplate);
-    const contextHash = sha256(
-      JSON.stringify({
-        project: {
-          artStyle: context.project.artStyle,
-          type: context.project.type,
-          intro: context.project.intro,
-        },
-        scripts: context.scripts.map((script) => ({ id: script.id, content: script.content })),
-        assets: context.assets.map((asset) => ({
-          id: asset.id,
-          name: asset.name,
-          briefType: asset.briefType,
-          describe: asset.describe,
-          assetsId: asset.assetsId,
-          scriptId: asset.scriptId,
-        })),
-        parents: context.parentRows.map((parent) => ({ id: parent.id, name: parent.name, describe: parent.describe })),
-        additionalRequirements: otherTextPrompt,
-        visualManuals: [...visualManuals.value.entries()].map(([manualKey, content]) => ({ manualKey, content })),
-      }),
-    );
-    const referenceHash = sha256(
-      JSON.stringify(
-        context.assets.map((asset) => ({
-          assetsId: asset.id,
-          references: (context.referencesByAsset.get(asset.id) ?? []).map((reference) => ({
-            id: reference.id,
-            orderIndex: reference.orderIndex,
-            description: reference.description,
-            visualRole: reference.visualRole,
-            requiredTransfers: reference.requiredTransfers,
-            exclusions: reference.exclusions,
-          })),
-        })),
-      ),
-    );
     const modelProfileJson = JSON.stringify(DEFAULT_MODEL_PROFILE);
-    const expectation = { templateHash, contextHash, referenceHash, modelProfileJson };
+    // 版本哈希按资产计算：与批量选择的资产集合无关，单个/批量复用判定一致
+    const contextHashByAsset = new Map<number, string>();
+    const referenceHashByAsset = new Map<number, string>();
+    for (const asset of context.assets) {
+      contextHashByAsset.set(
+        asset.id,
+        computeAssetContextHash({ context, asset, visualManuals: visualManuals.value, otherTextPrompt }),
+      );
+      referenceHashByAsset.set(asset.id, computeAssetReferenceHash(asset, context));
+    }
 
     const records = await dependencies.work((db) => db("o_assetPromptRecord").whereIn("assetsId", assetsIds).select());
     const recordByAsset = new Map(records.map((record: Record<string, unknown>) => [record.assetsId as number, record]));
 
+    // 批量复用按整批判定：任一资产过期就整批重新分析，保证 worldBible 与
+    // Contrast Matrix 来自同一次模型调用，不混合新旧批次的分析结果。
+    const anyStale = assetsIds.some((assetsId) =>
+      !isReusableRecord(recordByAsset.get(assetsId), {
+        templateHash,
+        contextHash: contextHashByAsset.get(assetsId)!,
+        referenceHash: referenceHashByAsset.get(assetsId)!,
+        modelProfileJson,
+      }),
+    );
     const reusedEntries: GeneratedAssetPromptEntry[] = [];
     const pendingIds: number[] = [];
-    for (const assetsId of assetsIds) {
-      const record = recordByAsset.get(assetsId);
-      if (isReusableRecord(record, expectation)) {
+    if (anyStale) {
+      pendingIds.push(...assetsIds);
+    } else {
+      for (const assetsId of assetsIds) {
+        const record = recordByAsset.get(assetsId)!;
         reusedEntries.push({
           assetsId,
-          generationPrompt: record!.generationPrompt as string,
+          generationPrompt: record.generationPrompt as string,
           reused: true,
-          validationState: (record!.validationState as "validated" | "repaired") ?? "validated",
+          validationState: (record.validationState as "validated" | "repaired") ?? "validated",
         });
-      } else {
-        pendingIds.push(assetsId);
       }
     }
     if (pendingIds.length === 0) {
@@ -575,8 +624,8 @@ export function createAssetPromptOrchestration(dependencies: AssetPromptOrchestr
             skillVersion: ASSET_PROMPTING_SKILL_VERSION,
             language: validated.value.batch.language,
             templateHash,
-            contextHash,
-            referenceHash,
+            contextHash: contextHashByAsset.get(brief.assetId)!,
+            referenceHash: referenceHashByAsset.get(brief.assetId)!,
             modelProfile: modelProfileJson,
             assetBrief: JSON.stringify(brief),
             batchContext: JSON.stringify(batchContext),
@@ -608,6 +657,156 @@ export function createAssetPromptOrchestration(dependencies: AssetPromptOrchestr
   }
 
   return { generateBatchAssetPrompts };
+}
+
+/** 图片生成解析结果：单个资产的新鲜提示词、版本与有序参考图（Issue #35）。 */
+export interface ResolvedAssetGenerationInput {
+  assetsId: number;
+  /** o_assets.type 原始值，用于 o_image 记录与产物目录映射。 */
+  assetRawType: string;
+  /** 规范 Brief 类型（character/scene/prop）。 */
+  briefType: AssetBriefType;
+  name: string;
+  /** 最终提示词：o_assetPromptRecord.generationPrompt。 */
+  generationPrompt: string;
+  /** 提示词版本：复用判定通过的技能版本与三类来源哈希。 */
+  promptRevision: {
+    skillVersion: string;
+    templateHash: string;
+    contextHash: string;
+    referenceHash: string;
+  };
+  /** 当前持久化参考图（orderIndex 升序，0~6 张）。 */
+  references: AssetReferenceRecord[];
+  /** 参与本次生成的参考图 id（编译器确定性选择，orderIndex 升序）。 */
+  selectedReferenceIds: number[];
+}
+
+/**
+ * 解析图片生成输入（Issue #35）：单个与批量图片生成共用的唯一领域入口。
+ *
+ * 从 o_assetPromptRecord 解析最终提示词，并以与 generateBatchAssetPrompts 完全
+ * 相同的复用判定验证新鲜度：Script/模板/资产事实/视觉手册/参考契约任一变化
+ * 都会让记录失效（stalePromptRecord），绝不静默使用过期提示词。参考图超过
+ * 能力上限时在外部调用前拒绝。本函数不调用 Text Model。
+ */
+export async function resolveAssetGenerationInputs(
+  dependencies: AssetPromptOrchestrationDependencies,
+  input: { projectId: number; assetsIds: readonly number[] },
+): Promise<AssetPromptResult<ResolvedAssetGenerationInput[]>> {
+  const projectId = Number(input?.projectId);
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    return { ok: false, failure: assetPromptFailure("invalidRequest", "projectId 不合法") };
+  }
+  const assetsIds = parseAssetsIds(input?.assetsIds);
+  if (!assetsIds || assetsIds.length === 0) {
+    return { ok: false, failure: assetPromptFailure("invalidRequest", "assetsIds 不合法") };
+  }
+
+  const contextResult = await loadGenerationContext(dependencies, projectId, assetsIds);
+  if (!contextResult.ok) return { ok: false, failure: contextResult.failure };
+  const context = contextResult.value;
+
+  // 参考图超过能力上限：在外部调用前稳定拒绝（第 7 张一律 referenceLimitExceeded）
+  for (const asset of context.assets) {
+    const references = context.referencesByAsset.get(asset.id) ?? [];
+    if (references.length > ASSET_REFERENCE_LIMIT) {
+      return {
+        ok: false,
+        failure: assetPromptFailure(
+          "referenceLimitExceeded",
+          `资产 ${asset.id} 的参考图数量 ${references.length} 超过上限 ${ASSET_REFERENCE_LIMIT}`,
+        ),
+      };
+    }
+  }
+
+  const analysisTemplate = await dependencies.loadSkillFile(ANALYSIS_TEMPLATE_PATH);
+  if (!analysisTemplate) {
+    return { ok: false, failure: assetPromptFailure("skillContractMissing", "batch_asset_analysis.md 缺失") };
+  }
+  const templateHash = sha256(analysisTemplate);
+
+  const visualManuals = await loadVisualManuals(dependencies, context.project.artStyle, context.assets);
+  if (!visualManuals.ok) return { ok: false, failure: visualManuals.failure };
+
+  const modelProfileJson = JSON.stringify(DEFAULT_MODEL_PROFILE);
+  const artStylePrefix = await dependencies.getArtStylePrefix(context.project.artStyle);
+  const assetById = new Map(context.assets.map((asset) => [asset.id, asset]));
+
+  const records = await dependencies.work((db) => db("o_assetPromptRecord").whereIn("assetsId", assetsIds).select());
+  const recordByAsset = new Map(records.map((record: Record<string, unknown>) => [record.assetsId as number, record]));
+
+  const entries: ResolvedAssetGenerationInput[] = [];
+  for (const assetsId of assetsIds) {
+    const asset = assetById.get(assetsId)!;
+    const record = recordByAsset.get(assetsId);
+    if (!record) {
+      return {
+        ok: false,
+        failure: assetPromptFailure("promptNotGenerated", `资产 ${assetsId} 尚未生成提示词，请先生成提示词`),
+      };
+    }
+    // 记录可能来自不同批次（不同 otherTextPrompt），按记录落库值复算该资产哈希
+    const otherTextPrompt = normalizeOtherTextPrompt(record.additionalRequirements);
+    const contextHash = computeAssetContextHash({
+      context,
+      asset,
+      visualManuals: visualManuals.value,
+      otherTextPrompt,
+    });
+    const referenceHash = computeAssetReferenceHash(asset, context);
+    if (!isReusableRecord(record, { templateHash, contextHash, referenceHash, modelProfileJson })) {
+      return {
+        ok: false,
+        failure: assetPromptFailure(
+          "stalePromptRecord",
+          `资产 ${assetsId} 的提示词记录已过期（Script/模板/资产事实/视觉手册或参考契约已变化），请重新生成提示词`,
+        ),
+      };
+    }
+    let brief: AssetBrief;
+    try {
+      brief = JSON.parse(record.assetBrief as string);
+    } catch {
+      return {
+        ok: false,
+        failure: assetPromptFailure("stalePromptRecord", `资产 ${assetsId} 的提示词记录已损坏，请重新生成提示词`),
+      };
+    }
+    const compile = compileAssetGenerationPrompt({
+      brief,
+      parentAsset: brief.parentAssetId != null ? context.parentById.get(brief.parentAssetId) ?? null : null,
+      artStylePrefix,
+      modelProfile: DEFAULT_MODEL_PROFILE,
+      additionalRequirements: otherTextPrompt,
+    });
+    if (!compile.ok) return compile;
+
+    const references = context.referencesByAsset.get(assetsId) ?? [];
+    const referencesById = new Map(references.map((reference) => [reference.id, reference]));
+    const selectedReferenceIds = compile.value.selectedBindings
+      .map((binding) => parseReferenceRowId(binding.referenceId))
+      .filter((rowId): rowId is number => rowId !== null && referencesById.has(rowId))
+      .sort((a, b) => referencesById.get(a)!.orderIndex - referencesById.get(b)!.orderIndex);
+
+    entries.push({
+      assetsId,
+      assetRawType: asset.type ?? "",
+      briefType: asset.briefType,
+      name: asset.name ?? "",
+      generationPrompt: record.generationPrompt as string,
+      promptRevision: {
+        skillVersion: record.skillVersion as string,
+        templateHash,
+        contextHash,
+        referenceHash,
+      },
+      references,
+      selectedReferenceIds,
+    });
+  }
+  return { ok: true, value: entries };
 }
 
 /** 生产环境依赖：真实数据库、Vendor 文本模型、#29 技能文件与美术风格前缀。 */
