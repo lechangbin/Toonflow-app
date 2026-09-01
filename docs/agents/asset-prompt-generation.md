@@ -10,12 +10,13 @@ Single-Asset image generation accepts one temporary Base64 reference, but that r
 
 ## Target flow
 
-1. Analyze the full current Script once for the selected Asset set.
-2. Produce one structured, provider-independent Asset Brief per selected Asset.
-3. Persist each brief with hashes or revisions for its Script, templates, Asset facts, and reference contracts.
-4. Compile the final image-generation prompt from the brief, the matching art manual, current Asset facts, and zero or more Asset References.
-5. Display only the final compiled prompt in the Asset configuration UI.
-6. Submit the compiled prompt and available Asset References through the configured Image Vendor interface.
+1. Analyze the full current Script once for the selected Asset set and establish a shared World Bible.
+2. Run a cross-Asset Contrast Matrix to detect accidental collisions in identity, structure, materials, condition, and value distribution.
+3. Produce one structured, provider-independent Asset Brief per selected Asset.
+4. Persist each brief with hashes or revisions for its Script, templates, Asset facts, and reference contracts.
+5. Compile the final image-generation prompt from the brief, the matching art manual, current Asset facts, and zero or more Asset References.
+6. Display only the final compiled prompt in the Asset configuration UI.
+7. Submit the compiled prompt and available Asset References through the configured Image Vendor interface.
 
 Test the flow at the shared orchestration boundary. HTTP routes and Vue components are transport and interaction adapters; they do not own prompt composition rules.
 
@@ -39,15 +40,17 @@ The configured limit shown by the UI is six references, matching the current Agn
 
 ## Template routing
 
-New templates live outside the editable runtime prompt catalog:
+The internal production Skill lives under `data/skills/asset-prompting/` and stays outside the editable runtime prompt catalog:
 
-| Template | Route |
+| Resource | Route |
 | --- | --- |
-| `batch_asset_analysis.md` | Full-Script analysis for a selected Asset set |
-| `compile_character_asset.md` | Character and Derived Character prompt compilation |
-| `compile_scene_asset.md` | Scene and Derived Scene prompt compilation |
-| `compile_prop_asset.md` | Prop and Derived Prop prompt compilation |
-| `reference_contract.md` | Reference roles, required transfers, and exclusions |
+| `SKILL.md` | Stage selection and invariants |
+| `prompts/batch_asset_analysis.md` | Full-Script analysis for a selected Asset set |
+| `prompts/compile_character_asset.md` | Character and Derived Character prompt compilation |
+| `prompts/compile_scene_asset.md` | Scene and Derived Scene prompt compilation |
+| `prompts/compile_prop_asset.md` | Prop and Derived Prop prompt compilation |
+| `prompts/reference_contract.md` | Reference roles, required transfers, and exclusions |
+| `references/asset-brief.schema.json` | Strict Text Model output contract |
 
 The type router maps both legacy and canonical prop identifiers to the prop compiler. Derived Assets also receive their parent Asset identity and facts. Template resolution and output validation belong to the shared orchestration module, not individual routes.
 
@@ -61,6 +64,8 @@ Restore the earlier prompt-management interaction, including click-to-detail beh
 
 A reusable Asset Brief is valid only when its recorded Script, template, Asset, parent-Asset, and reference-contract revisions still match. Regeneration records the active revisions and preserves enough metadata to explain retries. Intermediate brief content stays hidden from ordinary frontend users but remains inspectable through persistence and tests.
 
-## Open research input
+## Method sources
 
-An external image-asset skill may refine the exact brief schema and template wording. It may not replace the two-stage boundary, the context priority, the manual Asset Reference contract, or the UI boundary without a new recorded decision.
+The external skill search found no installable workflow covering full-Script comparison, Asset Briefs, reference authority, and final prompt compilation together. Toonflow therefore owns this Skill. Its method combines per-Asset specifications, character continuity, production-design specificity, global art direction, explicit keep/change/do-not-copy contracts, and Seedance-style per-dimension reference authority without installing or depending on third-party Skills.
+
+The existing `art_character`, `art_scene`, and `art_prop` manuals remain type-specific output manuals. Their layout, isolation, media, and render rules are hard constraints. Generic hair, clothing, decoration, weather, material, and condition examples are fallback values and cannot override stronger Script-grounded identity or reference evidence.
