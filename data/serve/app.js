@@ -256455,17 +256455,87 @@ ${scriptsContent}`
   }
 });
 
+// src/script/regexAnalysis.ts
+function positionalCaptureCount(source) {
+  let count = 0;
+  let escaped = false;
+  let inCharacterClass = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (character === "[") inCharacterClass = true;
+    if (character === "]") inCharacterClass = false;
+    if (!inCharacterClass && character === "(" && source[index + 1] !== "?") count += 1;
+  }
+  return count;
+}
+function normalizeAiRegex(raw) {
+  let candidate = stripThink(raw).trim();
+  const fenced = candidate.match(/^```(?:regex|javascript|js)?\s*([\s\S]*?)\s*```$/i);
+  if (fenced) candidate = fenced[1].trim();
+  if (candidate.startsWith('"') && candidate.endsWith('"')) {
+    try {
+      candidate = JSON.parse(candidate);
+    } catch {
+    }
+  }
+  const literal3 = candidate.match(/^\/([\s\S]*)\/([dgimsuvy]*)$/);
+  const source = literal3?.[1] ?? candidate;
+  const flags = literal3?.[2] ?? "";
+  try {
+    const compiled = new RegExp(source, flags.includes("g") ? flags : `${flags}g`);
+    if (positionalCaptureCount(compiled.source) < 2) throw new Error("capture groups missing");
+    return `/${compiled.source}/${compiled.flags}`;
+  } catch {
+    throw new Error("AI \u672A\u8FD4\u56DE\u6709\u6548\u7684\u6B63\u5219\u8868\u8FBE\u5F0F\uFF08\u5FC5\u987B\u5305\u542B\u96C6\u6570\u548C\u6807\u9898\u4E24\u4E2A\u6355\u83B7\u7EC4\uFF09");
+  }
+}
+async function resolveRegexAnalysisTarget(database, vendor) {
+  const bindings = await database("o_agentDeploy").whereIn("key", ["universalAi", "scriptAgent"]).select("key", "modelName");
+  const byKey = new Map(bindings.map((binding) => [binding.key, binding.modelName]));
+  for (const key of ["universalAi", "scriptAgent"]) {
+    const modelName = byKey.get(key);
+    if (typeof modelName === "string" && modelName.trim()) {
+      return { kind: "direct", ...parseVendorModelName(modelName) };
+    }
+  }
+  const candidates = (await vendor.listVendors()).filter((item) => item.enabled && item.modelTypes.includes("text")).sort((left, right) => left.modelTypes.length - right.modelTypes.length || left.vendorId.localeCompare(right.vendorId));
+  for (const candidate of candidates) {
+    const inspection = await vendor.inspectVendor(candidate.vendorId);
+    const textModel = inspection.models.find((model) => model.type === "text");
+    if (textModel) return { kind: "direct", vendorId: candidate.vendorId, modelId: textModel.modelName };
+  }
+  throw new Error("AI \u6B63\u5219\u5206\u6790\u6CA1\u6709\u53EF\u7528\u7684\u6587\u672C\u6A21\u578B\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u542F\u7528\u6587\u672C\u4F9B\u5E94\u5546\u6216\u914D\u7F6E\u901A\u7528 AI");
+}
+var init_regexAnalysis = __esm({
+  "src/script/regexAnalysis.ts"() {
+    "use strict";
+    init_vendor2();
+    init_stripThink();
+  }
+});
+
 // src/routes/script/getAiRegex.ts
 var import_express114, router111, getAiRegex_default;
 var init_getAiRegex = __esm({
   "src/routes/script/getAiRegex.ts"() {
     "use strict";
     import_express114 = __toESM(require_express2());
+    init_utils3();
     init_vendor2();
     init_zod();
     init_responseFormat();
     init_middleware();
     init_runtime();
+    init_database();
+    init_regexAnalysis();
     router111 = import_express114.default.Router();
     getAiRegex_default = router111.post(
       "/",
@@ -256473,22 +256543,24 @@ var init_getAiRegex = __esm({
         content: external_exports.string()
       }),
       async (req, res) => {
-        const { content } = req.body;
-        const systemPrompt = await getRuntimePrompt(runtimePromptKeys.scriptRegex);
-        const resText = await getDefaultConfiguredVendor().invokeText({
-          target: { kind: "logical", key: "universalAi" },
-          input: {
-            system: systemPrompt,
-            messages: [
-              {
-                role: "user",
-                content: content.slice(0, 2e3)
-              }
-            ]
-          }
-        });
-        const result = (resText.text || "").trim();
-        res.status(200).send(success3(result));
+        try {
+          const { content } = req.body;
+          const vendor = getDefaultConfiguredVendor();
+          const [systemPrompt, target] = await Promise.all([
+            getRuntimePrompt(runtimePromptKeys.scriptRegex),
+            getDatabaseRuntime().work((database) => resolveRegexAnalysisTarget(database, vendor))
+          ]);
+          const resText = await vendor.invokeText({
+            target,
+            input: {
+              system: systemPrompt,
+              messages: [{ role: "user", content: content.slice(0, 2e3) }]
+            }
+          });
+          res.status(200).send(success3(normalizeAiRegex(resText.text || "")));
+        } catch (cause) {
+          res.status(400).send(error50(utils_default2.error(cause).message));
+        }
       }
     );
   }
