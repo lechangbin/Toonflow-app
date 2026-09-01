@@ -8,6 +8,7 @@ const fixtures = join(skillRoot, "fixtures");
 const input = JSON.parse(readFileSync(join(fixtures, "historical-character-contrast.json"), "utf8"));
 const expected = JSON.parse(readFileSync(join(fixtures, "historical-character-contrast.expected.json"), "utf8"));
 const prompts = JSON.parse(readFileSync(join(fixtures, "historical-character-contrast.expected-prompts.json"), "utf8"));
+const crossType = JSON.parse(readFileSync(join(fixtures, "cross-type-compiler-cases.json"), "utf8"));
 
 const inputIds = input.input.assets.map((asset) => asset.assetId).sort((a, b) => a - b);
 const briefs = expected.assetBriefs;
@@ -46,4 +47,49 @@ for (const phrase of ["半束长发", "素色古装长衫", "基础色、无花�
   assert.ok(collisionCount < 2, `Both prompts regressed to the generic phrase: ${phrase}`);
 }
 
-console.log(`Validated ${briefs.length} differentiated Asset Briefs and ${Object.keys(prompts).length} final prompts.`);
+const controlledDimensions = new Set();
+for (const binding of crossType.referenceContract.bindings) {
+  assert.ok(crossType.referenceContract.expectedClause.includes(binding.label), `Reference label was changed: ${binding.label}`);
+  assert.ok(
+    crossType.referenceContract.expectedClause.includes(binding.description),
+    `Human description was changed: ${binding.referenceId}`,
+  );
+  for (const dimension of binding.controlledDimensions) {
+    assert.ok(!controlledDimensions.has(dimension), `Multiple winning references control ${dimension}`);
+    controlledDimensions.add(dimension);
+  }
+}
+assert.ok(!/上传顺序|第一张|第二张/u.test(crossType.referenceContract.expectedClause), "Reference authority depends on upload order");
+
+const caseIds = crossType.compilerCases.map((item) => item.id);
+assert.equal(new Set(caseIds).size, caseIds.length, "Compiler fixture IDs must be unique");
+for (const compilerCase of crossType.compilerCases) {
+  assert.ok(compilerCase.expectedPrompt.includes(compilerCase.name), `${compilerCase.id} lost its Asset name`);
+  for (const fact of compilerCase.requiredFacts ?? []) {
+    assert.ok(compilerCase.expectedPrompt.includes(fact), `${compilerCase.id} lost required fact: ${fact}`);
+  }
+  assert.ok(!compilerCase.expectedPrompt.includes("参考图"), `${compilerCase.id} invented reference wording`);
+}
+
+const sceneCase = crossType.compilerCases.find((item) => item.assetType === "scene");
+assert.ok(sceneCase.expectedPrompt.includes("无人"), "Scene prompt must exclude people");
+assert.ok(sceneCase.expectedPrompt.includes("纵深中轴"), "Scene prompt must preserve spatial identity");
+
+const propCases = crossType.compilerCases.filter((item) => item.assetType === "prop");
+assert.equal(propCases.length, 2, "Expected base and Derived Prop cases");
+for (const propCase of propCases) {
+  assert.ok(/无人物、无手部、无人持有/u.test(propCase.expectedPrompt), `${propCase.id} broke prop isolation`);
+}
+const derivedProp = propCases.find((item) => item.parentName);
+assert.ok(derivedProp.expectedPrompt.includes(derivedProp.parentName), "Derived Prop lost parent identity");
+for (const anchor of derivedProp.requiredImmutable) {
+  assert.ok(derivedProp.expectedPrompt.includes(anchor), `Derived Prop lost immutable anchor: ${anchor}`);
+}
+for (const change of derivedProp.storyChange) {
+  assert.ok(derivedProp.expectedPrompt.includes(change), `Derived Prop lost story-changing state: ${change}`);
+}
+
+console.log(
+  `Validated ${briefs.length} differentiated Asset Briefs, ${Object.keys(prompts).length} character prompts, ` +
+    `${crossType.compilerCases.length} cross-type compiler cases, and ${crossType.referenceContract.bindings.length} reference bindings.`,
+);
