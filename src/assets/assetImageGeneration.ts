@@ -7,7 +7,9 @@ import {
   type ImageGenerationInput,
   type ImageGenerationRequest,
 } from "@/vendor";
-import u from "@/utils";
+import oss from "@/utils/oss";
+import taskRecord from "@/utils/taskRecord";
+import normalizeError from "@/utils/error";
 import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/utils/imageGeneration";
 
 import type { AssetReferenceRecord } from "./assetReferences";
@@ -79,6 +81,32 @@ export function assetImageGenerationErrorEnvelope(failure: AssetImageGenerationF
 
 function imageFailure(kind: AssetImageGenerationFailureKind, message: string): AssetImageGenerationFailure {
   return { kind, message };
+}
+
+interface ParsedImageGenerationTarget {
+  target: { vendorId: string; modelId: string };
+  resolution: string;
+}
+
+/** 解析并校验公共生成参数：model（vendorId:modelId）与 resolution。 */
+function parseImageGenerationTarget(
+  model: unknown,
+  resolution: unknown,
+): AssetImageGenerationResult<ParsedImageGenerationTarget> {
+  if (typeof model !== "string" || !model.trim()) {
+    return { ok: false, failure: imageFailure("invalidRequest", "model 不合法") };
+  }
+  let target: { vendorId: string; modelId: string };
+  try {
+    target = parseVendorModelName(model);
+  } catch {
+    return { ok: false, failure: imageFailure("invalidRequest", "模型配置格式无效") };
+  }
+  const normalizedResolution = typeof resolution === "string" ? resolution.trim() : "";
+  if (!normalizedResolution) {
+    return { ok: false, failure: imageFailure("invalidRequest", "resolution 不合法") };
+  }
+  return { ok: true, value: { target, resolution: normalizedResolution } };
 }
 
 /** 类型 → 目录/任务分类/标签（旧链路 role/scene/tool 语义）。 */
@@ -231,19 +259,9 @@ export async function generateAssetImage(
   if (!Number.isInteger(assetsId) || assetsId <= 0) {
     return { ok: false, failure: imageFailure("invalidRequest", "assetsId 不合法") };
   }
-  if (typeof input?.model !== "string" || !input.model.trim()) {
-    return { ok: false, failure: imageFailure("invalidRequest", "model 不合法") };
-  }
-  let target: { vendorId: string; modelId: string };
-  try {
-    target = parseVendorModelName(input.model);
-  } catch {
-    return { ok: false, failure: imageFailure("invalidRequest", "模型配置格式无效") };
-  }
-  const resolution = typeof input?.resolution === "string" ? input.resolution.trim() : "";
-  if (!resolution) {
-    return { ok: false, failure: imageFailure("invalidRequest", "resolution 不合法") };
-  }
+  const parsedTarget = parseImageGenerationTarget(input?.model, input?.resolution);
+  if (!parsedTarget.ok) return parsedTarget;
+  const { target, resolution } = parsedTarget.value;
 
   // 批量路径的预置占位：先加载并尊重取消状态，后续失败都会回写该记录
   let imageId: number | null = null;
@@ -327,7 +345,7 @@ export async function generateAssetImage(
         input: buildImageGenerationInput(entry, preparedMedia.value, resolution),
       });
     } catch (error) {
-      const reason = u.error(error).message;
+      const reason = normalizeError(error).message;
       await taskDone(-1, reason);
       await markImageFailed(dependencies, imageRecordId, reason);
       return { ok: false, failure: imageFailure("imageGenerationFailed", "图片生成调用失败") };
@@ -335,7 +353,7 @@ export async function generateAssetImage(
     await taskDone(1);
   } catch (error) {
     // 任务记录或状态回写失败：按旧链路语义整体失败
-    await markImageFailed(dependencies, imageRecordId, u.error(error).message);
+    await markImageFailed(dependencies, imageRecordId, normalizeError(error).message);
     return { ok: false, failure: imageFailure("imageGenerationFailed", "图片生成调用失败") };
   }
 
@@ -343,7 +361,7 @@ export async function generateAssetImage(
   try {
     await dependencies.writeGeneratedImage(imagePath, result);
   } catch (error) {
-    await markImageFailed(dependencies, imageRecordId, u.error(error).message);
+    await markImageFailed(dependencies, imageRecordId, normalizeError(error).message);
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "生成图片写入存储失败") };
   }
 
@@ -398,19 +416,9 @@ export async function prepareBatchAssetImages(
   if (!assetsIds) {
     return { ok: false, failure: imageFailure("invalidRequest", "assetsIds 不合法") };
   }
-  if (typeof input?.model !== "string" || !input.model.trim()) {
-    return { ok: false, failure: imageFailure("invalidRequest", "model 不合法") };
-  }
-  let target: { vendorId: string; modelId: string };
-  try {
-    target = parseVendorModelName(input.model);
-  } catch {
-    return { ok: false, failure: imageFailure("invalidRequest", "模型配置格式无效") };
-  }
-  const resolution = typeof input?.resolution === "string" ? input.resolution.trim() : "";
-  if (!resolution) {
-    return { ok: false, failure: imageFailure("invalidRequest", "resolution 不合法") };
-  }
+  const parsedTarget = parseImageGenerationTarget(input?.model, input?.resolution);
+  if (!parsedTarget.ok) return parsedTarget;
+  const { target, resolution } = parsedTarget.value;
 
   return dependencies.work(async (db) => {
     const project = await db("o_project").where("id", projectId).first();
@@ -447,7 +455,7 @@ export function createDefaultAssetImageGenerationDependencies(): AssetImageGener
   return {
     work: promptDependencies.work,
     resolveGenerationInputs: (input) => resolveAssetGenerationInputs(promptDependencies, input),
-    readReferenceMedia: (mediaPath) => u.oss.getFile(mediaPath),
+    readReferenceMedia: (mediaPath) => oss.getFile(mediaPath),
     generateImage: async (request) => {
       const vendor = getDefaultConfiguredVendor();
       // 旧供应商（声明版本 < 2.0）的 referenceList → imageBase64 兼容翻译保持在调用方边界
@@ -457,11 +465,11 @@ export function createDefaultAssetImageGenerationDependencies(): AssetImageGener
       return normalizeHttpResult(result);
     },
     recordGenerationTask: (input) =>
-      u.task(input.projectId, input.taskClass, input.modelId, {
+      taskRecord(input.projectId, input.taskClass, input.modelId, {
         describe: input.describe,
         content: input.content,
       }),
-    writeGeneratedImage: (imagePath, data) => u.oss.writeFile(imagePath, data),
-    getImageUrl: (imagePath) => u.oss.getSmallImageUrl(imagePath),
+    writeGeneratedImage: (imagePath, data) => oss.writeFile(imagePath, data),
+    getImageUrl: (imagePath) => oss.getSmallImageUrl(imagePath),
   };
 }
