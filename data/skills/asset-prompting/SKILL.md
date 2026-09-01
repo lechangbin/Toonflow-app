@@ -13,6 +13,7 @@ Build traceable visual identity before writing image-model prose.
 - For one validated Asset Brief, load exactly one type compiler: [character](prompts/compile_character_asset.md), [scene](prompts/compile_scene_asset.md), or [prop](prompts/compile_prop_asset.md).
 - When the Asset has references, also load [prompts/reference_contract.md](prompts/reference_contract.md). With zero references, omit this prompt and all reference wording.
 - Read [references/contract.md](references/contract.md) when changing the schema, precedence, invalidation, type routing, or Model Profile behavior.
+- After changing the contract or prompts, run `node scripts/validate-fixtures.mjs` to verify the cross-Asset regression fixtures.
 
 ## Invariants
 
