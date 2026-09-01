@@ -16,6 +16,10 @@ ADR-0005 is accepted and delivered by `src/vendor/`: one configured Vendor modul
 
 ADR-0004 is accepted and delivered by `src/database/`: one fixed readiness order — open local resources, ensure the current schema, apply known upgrades, reconcile required defaults, recover interrupted work, and validate the database and required runtime invariants — with ordinary work through shared leases and typed exclusive maintenance that replays the whole lifecycle. Every former `u.db(...)` call site now borrows a lease through `getDatabaseRuntime().work(...)`; the transitional bridge is deleted and `tests/staticContractGuards.test.ts` rejects new bypasses. SQLite remains the only storage adapter, so storage replacement is still not a justified seam.
 
+## Planned: Asset image prompt orchestration
+
+ADR-0006 separates persisted, Script-grounded Asset Briefs from final image-generation prompts. One shared orchestration boundary will analyze a selected Asset set, validate structured briefs, compile type-specific prompts, and apply Asset Reference contracts. Read `docs/agents/asset-prompt-generation.md` before implementing or reviewing this path.
+
 ## Worth exploring: Agent session runtime
 
 Script Agent and Production Agent duplicate authentication, abort handling, thinking state, stream consumption, memory writes, sub-Agent lifecycle, and output cleanup. They are two real adapters for a shared session seam, but migration risk is higher because behavior is largely untested.
@@ -32,4 +36,4 @@ Script Agent and Production Agent duplicate authentication, abort handling, thin
 
 ## Decision status
 
-ADR-0001 and ADR-0002 record the accepted Video decisions; ADR-0003 the container runtime-data lifecycle; ADR-0004 the explicit database readiness lifecycle; ADR-0005 configured Vendor execution. Agent session runtime remains an exploration candidate; record new hard-to-reverse decisions under `docs/adr/` before implementation.
+ADR-0001 and ADR-0002 record the accepted Video decisions; ADR-0003 the container runtime-data lifecycle; ADR-0004 the explicit database readiness lifecycle; ADR-0005 configured Vendor execution; ADR-0006 the two-stage Asset image prompt boundary. Agent session runtime remains an exploration candidate; record new hard-to-reverse decisions under `docs/adr/` before implementation.
