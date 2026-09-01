@@ -19106,7 +19106,7 @@ var require_view = __commonJS({
     "use strict";
     var debug = require_src()("express:view");
     var path34 = require("node:path");
-    var fs36 = require("node:fs");
+    var fs37 = require("node:fs");
     var dirname2 = path34.dirname;
     var basename = path34.basename;
     var extname = path34.extname;
@@ -19186,7 +19186,7 @@ var require_view = __commonJS({
     function tryStat(path35) {
       debug('stat "%s"', path35);
       try {
-        return fs36.statSync(path35);
+        return fs37.statSync(path35);
       } catch (e) {
         return void 0;
       }
@@ -22827,7 +22827,7 @@ var require_send = __commonJS({
     var escapeHtml = require_escape_html();
     var etag = require_etag();
     var fresh = require_fresh();
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var mime = require_mime_types();
     var ms = require_ms();
     var onFinished = require_on_finished();
@@ -23109,7 +23109,7 @@ var require_send = __commonJS({
       var i = 0;
       var self2 = this;
       debug('stat "%s"', path35);
-      fs36.stat(path35, function onstat(err, stat) {
+      fs37.stat(path35, function onstat(err, stat) {
         var pathEndsWithSep = path35[path35.length - 1] === sep;
         if (err && err.code === "ENOENT" && !extname(path35) && !pathEndsWithSep) {
           return next(err);
@@ -23126,7 +23126,7 @@ var require_send = __commonJS({
         }
         var p3 = path35 + "." + self2._extensions[i++];
         debug('stat "%s"', p3);
-        fs36.stat(p3, function(err2, stat) {
+        fs37.stat(p3, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self2.emit("file", p3, stat);
@@ -23144,7 +23144,7 @@ var require_send = __commonJS({
         }
         var p3 = join2(path35, self2._index[i]);
         debug('stat "%s"', p3);
-        fs36.stat(p3, function(err2, stat) {
+        fs37.stat(p3, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self2.emit("file", p3, stat);
@@ -23156,7 +23156,7 @@ var require_send = __commonJS({
     SendStream.prototype.stream = function stream4(path35, options) {
       var self2 = this;
       var res = this.res;
-      var stream5 = fs36.createReadStream(path35, options);
+      var stream5 = fs37.createReadStream(path35, options);
       this.emit("stream", stream5);
       stream5.pipe(res);
       function cleanup() {
@@ -37286,7 +37286,7 @@ var require_websocket2 = __commonJS({
     var http4 = require("http");
     var net = require("net");
     var tls = require("tls");
-    var { randomBytes, createHash } = require("crypto");
+    var { randomBytes, createHash: createHash2 } = require("crypto");
     var { Duplex, Readable: Readable2 } = require("stream");
     var { URL: URL2 } = require("url");
     var PerMessageDeflate = require_permessage_deflate();
@@ -37943,7 +37943,7 @@ var require_websocket2 = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash("sha1").update(key + GUID).digest("base64");
+        const digest = createHash2("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -38310,7 +38310,7 @@ var require_websocket_server = __commonJS({
     var EventEmitter3 = require("events");
     var http4 = require("http");
     var { Duplex } = require("stream");
-    var { createHash } = require("crypto");
+    var { createHash: createHash2 } = require("crypto");
     var extension = require_extension();
     var PerMessageDeflate = require_permessage_deflate();
     var subprotocol = require_subprotocol();
@@ -38607,7 +38607,7 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash("sha1").update(key + GUID).digest("base64");
+        const digest = createHash2("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -47436,7 +47436,7 @@ var require_websocket4 = __commonJS({
     var http4 = require("http");
     var net = require("net");
     var tls = require("tls");
-    var { randomBytes, createHash } = require("crypto");
+    var { randomBytes, createHash: createHash2 } = require("crypto");
     var { Readable: Readable2 } = require("stream");
     var { URL: URL2 } = require("url");
     var PerMessageDeflate = require_permessage_deflate2();
@@ -48010,7 +48010,7 @@ var require_websocket4 = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash("sha1").update(key + GUID).digest("base64");
+        const digest = createHash2("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -48318,7 +48318,7 @@ var require_websocket_server2 = __commonJS({
     var https2 = require("https");
     var net = require("net");
     var tls = require("tls");
-    var { createHash } = require("crypto");
+    var { createHash: createHash2 } = require("crypto");
     var PerMessageDeflate = require_permessage_deflate2();
     var WebSocket = require_websocket4();
     var { format, parse: parse4 } = require_extension2();
@@ -48539,7 +48539,7 @@ var require_websocket_server2 = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash("sha1").update(key + GUID).digest("base64");
+        const digest = createHash2("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -49337,8 +49337,8 @@ var require_node2 = __commonJS({
           }
           break;
         case "FILE":
-          var fs36 = require("fs");
-          stream5 = new fs36.SyncWriteStream(fd2, { autoClose: false });
+          var fs37 = require("fs");
+          stream5 = new fs37.SyncWriteStream(fd2, { autoClose: false });
           stream5._type = "fs";
           break;
         case "PIPE":
@@ -53410,8 +53410,8 @@ var require_utils6 = __commonJS({
     exports2.array = array4;
     var errno = require_errno();
     exports2.errno = errno;
-    var fs36 = require_fs();
-    exports2.fs = fs36;
+    var fs37 = require_fs();
+    exports2.fs = fs37;
     var path34 = require_path();
     exports2.path = path34;
     var pattern = require_pattern();
@@ -53595,12 +53595,12 @@ var require_fs2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.createFileSystemAdapter = exports2.FILE_SYSTEM_ADAPTER = void 0;
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     exports2.FILE_SYSTEM_ADAPTER = {
-      lstat: fs36.lstat,
-      stat: fs36.stat,
-      lstatSync: fs36.lstatSync,
-      statSync: fs36.statSync
+      lstat: fs37.lstat,
+      stat: fs37.stat,
+      lstatSync: fs37.lstatSync,
+      statSync: fs37.statSync
     };
     function createFileSystemAdapter(fsMethods) {
       if (fsMethods === void 0) {
@@ -53617,12 +53617,12 @@ var require_settings = __commonJS({
   "node_modules/@nodelib/fs.stat/out/settings.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var fs36 = require_fs2();
+    var fs37 = require_fs2();
     var Settings = class {
       constructor(_options = {}) {
         this._options = _options;
         this.followSymbolicLink = this._getValue(this._options.followSymbolicLink, true);
-        this.fs = fs36.createFileSystemAdapter(this._options.fs);
+        this.fs = fs37.createFileSystemAdapter(this._options.fs);
         this.markSymbolicLink = this._getValue(this._options.markSymbolicLink, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
       }
@@ -53779,8 +53779,8 @@ var require_utils7 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.fs = void 0;
-    var fs36 = require_fs3();
-    exports2.fs = fs36;
+    var fs37 = require_fs3();
+    exports2.fs = fs37;
   }
 });
 
@@ -53975,14 +53975,14 @@ var require_fs4 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.createFileSystemAdapter = exports2.FILE_SYSTEM_ADAPTER = void 0;
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     exports2.FILE_SYSTEM_ADAPTER = {
-      lstat: fs36.lstat,
-      stat: fs36.stat,
-      lstatSync: fs36.lstatSync,
-      statSync: fs36.statSync,
-      readdir: fs36.readdir,
-      readdirSync: fs36.readdirSync
+      lstat: fs37.lstat,
+      stat: fs37.stat,
+      lstatSync: fs37.lstatSync,
+      statSync: fs37.statSync,
+      readdir: fs37.readdir,
+      readdirSync: fs37.readdirSync
     };
     function createFileSystemAdapter(fsMethods) {
       if (fsMethods === void 0) {
@@ -54001,12 +54001,12 @@ var require_settings2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var path34 = require("path");
     var fsStat = require_out();
-    var fs36 = require_fs4();
+    var fs37 = require_fs4();
     var Settings = class {
       constructor(_options = {}) {
         this._options = _options;
         this.followSymbolicLinks = this._getValue(this._options.followSymbolicLinks, false);
-        this.fs = fs36.createFileSystemAdapter(this._options.fs);
+        this.fs = fs37.createFileSystemAdapter(this._options.fs);
         this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path34.sep);
         this.stats = this._getValue(this._options.stats, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
@@ -55387,16 +55387,16 @@ var require_settings4 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DEFAULT_FILE_SYSTEM_ADAPTER = void 0;
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var os = require("os");
     var CPU_COUNT = Math.max(os.cpus().length, 1);
     exports2.DEFAULT_FILE_SYSTEM_ADAPTER = {
-      lstat: fs36.lstat,
-      lstatSync: fs36.lstatSync,
-      stat: fs36.stat,
-      statSync: fs36.statSync,
-      readdir: fs36.readdir,
-      readdirSync: fs36.readdirSync
+      lstat: fs37.lstat,
+      lstatSync: fs37.lstatSync,
+      stat: fs37.stat,
+      statSync: fs37.statSync,
+      readdir: fs37.readdir,
+      readdirSync: fs37.readdirSync
     };
     var Settings = class {
       constructor(_options = {}) {
@@ -57150,6 +57150,35 @@ A medium tracking shot follows the woman from behind as she ascends and approach
             table.primary(["id"]);
             table.unique(["id"]);
             table.unique(["assetsId", "orderIndex"]);
+          },
+          initData: async (knex3) => {
+          }
+        },
+        //资产提示词记录表（Asset Prompt Record：批量提示词生成的版本与来源哈希）
+        {
+          name: "o_assetPromptRecord",
+          builder: (table) => {
+            table.integer("id").notNullable();
+            table.integer("projectId");
+            table.integer("assetsId").notNullable();
+            table.integer("scriptId");
+            table.text("skillVersion");
+            table.text("language");
+            table.text("templateHash");
+            table.text("contextHash");
+            table.text("referenceHash");
+            table.text("modelProfile");
+            table.text("assetBrief");
+            table.text("batchContext");
+            table.text("generationPrompt");
+            table.text("validationState");
+            table.text("repairNotes");
+            table.text("additionalRequirements");
+            table.integer("createTime");
+            table.integer("updateTime");
+            table.primary(["id"]);
+            table.unique(["id"]);
+            table.unique(["assetsId"]);
           },
           initData: async (knex3) => {
           }
@@ -63872,26 +63901,26 @@ var require_flatten = __commonJS({
 var require_fs5 = __commonJS({
   "node_modules/knex/lib/migrations/util/fs.js"(exports2, module2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var flatten = require_flatten();
     var os = require("os");
     var path34 = require("path");
     var { promisify } = require("util");
-    var stat = promisify(fs36.stat);
-    var readFile3 = promisify(fs36.readFile);
-    var writeFile3 = promisify(fs36.writeFile);
-    var readdir = promisify(fs36.readdir);
-    var mkdir = promisify(fs36.mkdir);
+    var stat = promisify(fs37.stat);
+    var readFile3 = promisify(fs37.readFile);
+    var writeFile3 = promisify(fs37.writeFile);
+    var readdir = promisify(fs37.readdir);
+    var mkdir = promisify(fs37.mkdir);
     function existsSync4(path35) {
       try {
-        fs36.accessSync(path35);
+        fs37.accessSync(path35);
         return true;
       } catch (e) {
         return false;
       }
     }
     function createTemp() {
-      return promisify(fs36.mkdtemp)(`${os.tmpdir()}${path34.sep}`);
+      return promisify(fs37.mkdtemp)(`${os.tmpdir()}${path34.sep}`);
     }
     function ensureDirectoryExists(dir) {
       return stat(dir).catch(() => mkdir(dir, { recursive: true }));
@@ -73990,15 +74019,15 @@ var require_pg_connection_string = __commonJS({
       if (config3.sslcert || config3.sslkey || config3.sslrootcert || config3.sslmode) {
         config3.ssl = {};
       }
-      const fs36 = config3.sslcert || config3.sslkey || config3.sslrootcert ? require("fs") : null;
+      const fs37 = config3.sslcert || config3.sslkey || config3.sslrootcert ? require("fs") : null;
       if (config3.sslcert) {
-        config3.ssl.cert = fs36.readFileSync(config3.sslcert).toString();
+        config3.ssl.cert = fs37.readFileSync(config3.sslcert).toString();
       }
       if (config3.sslkey) {
-        config3.ssl.key = fs36.readFileSync(config3.sslkey).toString();
+        config3.ssl.key = fs37.readFileSync(config3.sslkey).toString();
       }
       if (config3.sslrootcert) {
-        config3.ssl.ca = fs36.readFileSync(config3.sslrootcert).toString();
+        config3.ssl.ca = fs37.readFileSync(config3.sslrootcert).toString();
       }
       switch (config3.sslmode) {
         case "disable": {
@@ -116907,7 +116936,7 @@ var require_form_data = __commonJS({
     var http4 = require("http");
     var https2 = require("https");
     var parseUrl2 = require("url").parse;
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var Stream = require("stream").Stream;
     var crypto7 = require("crypto");
     var mime = require_mime_types3();
@@ -116974,7 +117003,7 @@ var require_form_data = __commonJS({
         if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
           callback(null, value.end + 1 - (value.start ? value.start : 0));
         } else {
-          fs36.stat(value.path, function(err, stat) {
+          fs37.stat(value.path, function(err, stat) {
             if (err) {
               callback(err);
               return;
@@ -189387,13 +189416,13 @@ var require_dist9 = __commonJS({
       };
     }
     var import_provider_utils210 = require_dist8();
-    var import_zod163 = require_zod();
-    var qwenErrorDataSchema = import_zod163.z.object({
-      object: import_zod163.z.literal("error"),
-      message: import_zod163.z.string(),
-      type: import_zod163.z.string(),
-      param: import_zod163.z.string().nullable(),
-      code: import_zod163.z.string().nullable()
+    var import_zod164 = require_zod();
+    var qwenErrorDataSchema = import_zod164.z.object({
+      object: import_zod164.z.literal("error"),
+      message: import_zod164.z.string(),
+      type: import_zod164.z.string(),
+      param: import_zod164.z.string().nullable(),
+      code: import_zod164.z.string().nullable()
     });
     var qwenFailedResponseHandler = (0, import_provider_utils210.createJsonErrorResponseHandler)({
       errorSchema: qwenErrorDataSchema,
@@ -226188,8 +226217,8 @@ var require_lib6 = __commonJS({
     handlebars.print = printer.print;
     module2.exports = handlebars;
     function extension(module3, filename) {
-      var fs36 = require("fs");
-      var templateString = fs36.readFileSync(filename, "utf8");
+      var fs37 = require("fs");
+      var templateString = fs37.readFileSync(filename, "utf8");
       module3.exports = handlebars.compile(templateString);
     }
     if (typeof require !== "undefined" && require.extensions) {
@@ -227311,7 +227340,7 @@ var require_auth_config = __commonJS({
       writeAuthConfig: () => writeAuthConfig
     });
     module2.exports = __toCommonJS2(auth_config_exports);
-    var fs36 = __toESM2(require("fs"));
+    var fs37 = __toESM2(require("fs"));
     var path34 = __toESM2(require("path"));
     var import_token_util = require_token_util();
     function getAuthConfigPath() {
@@ -227326,10 +227355,10 @@ var require_auth_config = __commonJS({
     function readAuthConfig() {
       try {
         const authPath = getAuthConfigPath();
-        if (!fs36.existsSync(authPath)) {
+        if (!fs37.existsSync(authPath)) {
           return null;
         }
-        const content = fs36.readFileSync(authPath, "utf8");
+        const content = fs37.readFileSync(authPath, "utf8");
         if (!content) {
           return null;
         }
@@ -227341,10 +227370,10 @@ var require_auth_config = __commonJS({
     function writeAuthConfig(config3) {
       const authPath = getAuthConfigPath();
       const authDir = path34.dirname(authPath);
-      if (!fs36.existsSync(authDir)) {
-        fs36.mkdirSync(authDir, { mode: 504, recursive: true });
+      if (!fs37.existsSync(authDir)) {
+        fs37.mkdirSync(authDir, { mode: 504, recursive: true });
       }
-      fs36.writeFileSync(authPath, JSON.stringify(config3, null, 2), { mode: 384 });
+      fs37.writeFileSync(authPath, JSON.stringify(config3, null, 2), { mode: 384 });
     }
     function isValidAccessToken(authConfig) {
       if (!authConfig.token)
@@ -227491,7 +227520,7 @@ var require_token_util = __commonJS({
     });
     module2.exports = __toCommonJS2(token_util_exports);
     var path34 = __toESM2(require("path"));
-    var fs36 = __toESM2(require("fs"));
+    var fs37 = __toESM2(require("fs"));
     var import_token_error = require_token_error();
     var import_token_io = require_token_io();
     var import_auth_config = require_auth_config();
@@ -227576,12 +227605,12 @@ var require_token_util = __commonJS({
         );
       }
       const prjPath = path34.join(dir, ".vercel", "project.json");
-      if (!fs36.existsSync(prjPath)) {
+      if (!fs37.existsSync(prjPath)) {
         throw new import_token_error.VercelOidcTokenError(
           "project.json not found, have you linked your project with `vc link?`"
         );
       }
-      const prj = JSON.parse(fs36.readFileSync(prjPath, "utf8"));
+      const prj = JSON.parse(fs37.readFileSync(prjPath, "utf8"));
       if (typeof prj.projectId !== "string" && typeof prj.orgId !== "string") {
         throw new TypeError(
           "Expected a string-valued projectId property. Try running `vc link` to re-link your project."
@@ -227598,9 +227627,9 @@ var require_token_util = __commonJS({
       }
       const tokenPath = path34.join(dir, "com.vercel.token", `${projectId}.json`);
       const tokenJson = JSON.stringify(token);
-      fs36.mkdirSync(path34.dirname(tokenPath), { mode: 504, recursive: true });
-      fs36.writeFileSync(tokenPath, tokenJson);
-      fs36.chmodSync(tokenPath, 432);
+      fs37.mkdirSync(path34.dirname(tokenPath), { mode: 504, recursive: true });
+      fs37.writeFileSync(tokenPath, tokenJson);
+      fs37.chmodSync(tokenPath, 432);
       return;
     }
     function loadToken(projectId) {
@@ -227611,10 +227640,10 @@ var require_token_util = __commonJS({
         );
       }
       const tokenPath = path34.join(dir, "com.vercel.token", `${projectId}.json`);
-      if (!fs36.existsSync(tokenPath)) {
+      if (!fs37.existsSync(tokenPath)) {
         return null;
       }
-      const token = JSON.parse(fs36.readFileSync(tokenPath, "utf8"));
+      const token = JSON.parse(fs37.readFileSync(tokenPath, "utf8"));
       assertVercelOidcTokenResponse(token);
       return token;
     }
@@ -238742,6 +238771,15 @@ function getArtPrompt(styleName, source, fileName) {
   return prefixContent ? `${prefixContent}
 ${fileContent}` : fileContent;
 }
+function getAllArtPrompts(styleName, source) {
+  const baseDir = getPath_default(["skills", source, styleName]);
+  if (!import_fs3.default.existsSync(baseDir)) {
+    return {};
+  }
+  const result = {};
+  collectMdFiles(baseDir, result);
+  return result;
+}
 function findFileRecursive(dir, targetName) {
   const entries = import_fs3.default.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
@@ -238755,6 +238793,19 @@ function findFileRecursive(dir, targetName) {
     }
   }
   return null;
+}
+function collectMdFiles(dir, result) {
+  const entries = import_fs3.default.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = import_path5.default.join(dir, entry.name);
+    if (entry.isFile() && entry.name.endsWith(".md")) {
+      const key = entry.name.replace(/\.md$/, "");
+      result[key] = import_fs3.default.readFileSync(fullPath, "utf-8");
+    }
+    if (entry.isDirectory()) {
+      collectMdFiles(fullPath, result);
+    }
+  }
 }
 var import_fs3, import_path5;
 var init_getArtPrompt = __esm({
@@ -239744,6 +239795,986 @@ var init_addAudioAssets = __esm({
   }
 });
 
+// src/assets/assetBriefContract.ts
+function assetPromptFailure(kind, message) {
+  return { kind, message };
+}
+function canonicalAssetBriefType(rawType) {
+  if (!rawType) return null;
+  return ASSET_TYPE_ALIASES[rawType.trim().toLowerCase()] ?? null;
+}
+function parseAnalysisOutput(raw) {
+  if (raw !== null && typeof raw === "object") return { ok: true, value: raw };
+  if (typeof raw !== "string") {
+    return { ok: false, failure: assetPromptFailure("malformedOutput", "\u6A21\u578B\u8F93\u51FA\u4E3A\u7A7A\u6216\u4E0D\u662F\u5BF9\u8C61") };
+  }
+  let text2 = raw.trim();
+  const fence = text2.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  if (fence) text2 = fence[1].trim();
+  const start = text2.indexOf("{");
+  const end = text2.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    return { ok: false, failure: assetPromptFailure("malformedOutput", "\u6A21\u578B\u8F93\u51FA\u4E2D\u4E0D\u5305\u542B JSON \u5BF9\u8C61") };
+  }
+  try {
+    return { ok: true, value: JSON.parse(text2.slice(start, end + 1)) };
+  } catch {
+    return { ok: false, failure: assetPromptFailure("malformedOutput", "\u6A21\u578B\u8F93\u51FA\u4E0D\u662F\u5408\u6CD5 JSON") };
+  }
+}
+function referenceBindingId(referenceId) {
+  return `ref-${referenceId}`;
+}
+function presentedReferenceLabel(reference) {
+  return reference.visualRole?.trim() ? reference.visualRole.trim() : `\u53C2\u8003\u56FE${reference.orderIndex + 1}`;
+}
+function parseReferenceRowId(referenceId) {
+  const match = referenceId.match(/^(?:ref-)?(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+function validateAssetBriefBatch(batchValue, expected) {
+  const parsed = assetBriefBatchSchema.safeParse(batchValue);
+  if (!parsed.success) {
+    const issue3 = parsed.error.issues[0];
+    const location = issue3?.path?.length ? `\uFF08${issue3.path.join(".")}\uFF09` : "";
+    return {
+      ok: false,
+      failure: assetPromptFailure("malformedOutput", `\u6A21\u578B\u8F93\u51FA\u4E0D\u7B26\u5408 Asset Brief Schema${location}: ${issue3?.message ?? "\u7ED3\u6784\u9519\u8BEF"}`)
+    };
+  }
+  const batch = parsed.data;
+  const expectedById = new Map(expected.map((item) => [item.assetsId, item]));
+  const repairs = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const brief of batch.assetBriefs) {
+    if (seen.has(brief.assetId)) {
+      return {
+        ok: false,
+        failure: assetPromptFailure("duplicateAssetResult", `\u6A21\u578B\u5BF9\u8D44\u4EA7 ${brief.assetId} \u8FD4\u56DE\u4E86\u91CD\u590D\u7684 Brief`)
+      };
+    }
+    seen.add(brief.assetId);
+  }
+  const unknownIds = [...seen].filter((id) => !expectedById.has(id));
+  if (unknownIds.length > 0) {
+    return {
+      ok: false,
+      failure: assetPromptFailure("unknownAssetResult", `\u6A21\u578B\u8FD4\u56DE\u4E86\u672A\u77E5\u8D44\u4EA7: ${unknownIds.join(", ")}`)
+    };
+  }
+  const missing = expected.filter((item) => !seen.has(item.assetsId)).map((item) => item.assetsId);
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      failure: assetPromptFailure("missingAssetResult", `\u6A21\u578B\u7F3A\u5931\u4E86\u8D44\u4EA7\u7ED3\u679C: ${missing.join(", ")}`)
+    };
+  }
+  const repairedBriefs = [];
+  for (const brief of batch.assetBriefs) {
+    const target = expectedById.get(brief.assetId);
+    if (brief.assetType !== target.briefType) {
+      return {
+        ok: false,
+        failure: assetPromptFailure(
+          "assetTypeMismatch",
+          `\u8D44\u4EA7 ${brief.assetId} \u7684\u7C7B\u578B\u5E94\u4E3A ${target.briefType}\uFF0C\u6A21\u578B\u8FD4\u56DE ${brief.assetType}`
+        )
+      };
+    }
+    if (brief.isDerived !== target.isDerived || brief.parentAssetId !== target.parentAssetId) {
+      return {
+        ok: false,
+        failure: assetPromptFailure(
+          "derivedMismatch",
+          `\u8D44\u4EA7 ${brief.assetId} \u7684\u884D\u751F\u8EAB\u4EFD\u4E0E\u6570\u636E\u5E93\u4E0D\u4E00\u81F4\uFF08\u671F\u671B isDerived=${target.isDerived}, parentAssetId=${target.parentAssetId}\uFF09`
+        )
+      };
+    }
+    const referencesById = new Map(target.references.map((ref) => [ref.id, ref]));
+    if (target.references.length === 0 && brief.referenceBindings.length > 0) {
+      return {
+        ok: false,
+        failure: assetPromptFailure("referenceBindingMismatch", `\u8D44\u4EA7 ${brief.assetId} \u6CA1\u6709\u4EBA\u5DE5\u53C2\u8003\u56FE\uFF0C\u6A21\u578B\u51ED\u7A7A\u8FD4\u56DE\u4E86\u53C2\u8003\u7ED1\u5B9A`)
+      };
+    }
+    const bindings = [];
+    const boundRowIds = /* @__PURE__ */ new Set();
+    for (const binding of brief.referenceBindings) {
+      const rowId = parseReferenceRowId(binding.referenceId);
+      const reference = rowId === null ? void 0 : referencesById.get(rowId);
+      if (!reference) {
+        repairs.push({ assetsId: brief.assetId, referenceId: binding.referenceId, kind: "unknownReferenceDropped" });
+        continue;
+      }
+      if (boundRowIds.has(reference.id)) {
+        return {
+          ok: false,
+          failure: assetPromptFailure(
+            "referenceBindingMismatch",
+            `\u8D44\u4EA7 ${brief.assetId} \u7684\u53C2\u8003\u56FE ${referenceBindingId(reference.id)} \u88AB\u91CD\u590D\u7ED1\u5B9A`
+          )
+        };
+      }
+      boundRowIds.add(reference.id);
+      const restored = { ...binding, referenceId: referenceBindingId(reference.id) };
+      if (restored.description !== reference.description) {
+        repairs.push({ assetsId: brief.assetId, referenceId: binding.referenceId, kind: "descriptionRestored" });
+        restored.description = reference.description;
+      }
+      const presentedLabel = presentedReferenceLabel(reference);
+      if (restored.label !== presentedLabel) {
+        repairs.push({ assetsId: brief.assetId, referenceId: binding.referenceId, kind: "labelRestored" });
+        restored.label = presentedLabel;
+      }
+      bindings.push(restored);
+    }
+    const missingReference = target.references.find((reference) => !boundRowIds.has(reference.id));
+    if (missingReference) {
+      return {
+        ok: false,
+        failure: assetPromptFailure(
+          "referenceBindingMismatch",
+          `\u8D44\u4EA7 ${brief.assetId} \u7684\u4EBA\u5DE5\u53C2\u8003\u56FE ${referenceBindingId(missingReference.id)} \u7F3A\u5C11\u5BF9\u5E94\u7ED1\u5B9A`
+        )
+      };
+    }
+    repairedBriefs.push({ ...brief, referenceBindings: bindings });
+  }
+  return { ok: true, value: { batch: { ...batch, assetBriefs: repairedBriefs }, repairs } };
+}
+var nonEmptyString, stringList, nullableId, evidenceSchema, differenceAnchorSchema, siblingContrastSchema, ASSET_BRIEF_PRIMARY_ROLES, assetReferenceBindingSchema, generationRequirementsSchema, briefCommonShape, characterDesignSchema, sceneDesignSchema, propDesignSchema, characterBriefSchema, sceneBriefSchema, propBriefSchema, assetBriefSchema, worldBibleSchema, contrastEntrySchema, assetBriefBatchSchema, ASSET_TYPE_ALIASES;
+var init_assetBriefContract = __esm({
+  "src/assets/assetBriefContract.ts"() {
+    "use strict";
+    init_zod();
+    nonEmptyString = external_exports.string().min(1);
+    stringList = external_exports.array(nonEmptyString);
+    nullableId = external_exports.number().int().min(1).nullable();
+    evidenceSchema = external_exports.object({
+      source: external_exports.enum(["reference", "script", "asset", "parent", "inference", "style-default"]),
+      fact: nonEmptyString,
+      locator: nonEmptyString,
+      confidence: external_exports.enum(["explicit", "strong-inference", "bounded-inference", "fallback"])
+    }).strict();
+    differenceAnchorSchema = external_exports.object({
+      dimension: nonEmptyString,
+      value: nonEmptyString,
+      reason: nonEmptyString
+    }).strict();
+    siblingContrastSchema = external_exports.object({
+      assetId: external_exports.number().int().min(1),
+      dimensions: stringList,
+      instruction: nonEmptyString
+    }).strict();
+    ASSET_BRIEF_PRIMARY_ROLES = [
+      "identity",
+      "structure",
+      "material",
+      "color",
+      "style",
+      "composition",
+      "state"
+    ];
+    assetReferenceBindingSchema = external_exports.object({
+      referenceId: nonEmptyString,
+      label: nonEmptyString,
+      description: nonEmptyString,
+      primaryRole: external_exports.enum(ASSET_BRIEF_PRIMARY_ROLES),
+      subjectSelector: external_exports.string().nullable(),
+      mustPreserve: stringList,
+      mustIgnore: stringList,
+      controlledDimensions: stringList,
+      priority: external_exports.number().int().min(1).max(6),
+      evidenceSource: external_exports.literal("manual")
+    }).strict();
+    generationRequirementsSchema = external_exports.object({
+      outputFormat: nonEmptyString,
+      composition: nonEmptyString,
+      background: nonEmptyString,
+      requiredElements: stringList,
+      prohibitedElements: stringList,
+      aspectRatio: external_exports.string().nullable()
+    }).strict();
+    briefCommonShape = {
+      assetId: external_exports.number().int().min(1),
+      isDerived: external_exports.boolean(),
+      parentAssetId: nullableId,
+      name: nonEmptyString,
+      narrativeFunction: nonEmptyString,
+      eraRegion: nonEmptyString,
+      evidence: external_exports.array(evidenceSchema).min(1),
+      immutable: stringList,
+      flexible: stringList,
+      storyChanging: stringList,
+      differenceAnchors: external_exports.array(differenceAnchorSchema).min(2),
+      forbiddenDefaults: stringList,
+      contrastAgainstSiblingAssets: external_exports.array(siblingContrastSchema),
+      referenceBindings: external_exports.array(assetReferenceBindingSchema).max(6),
+      generationRequirements: generationRequirementsSchema
+    };
+    characterDesignSchema = external_exports.object({
+      identitySummary: nonEmptyString,
+      socialRole: nonEmptyString,
+      profession: nonEmptyString,
+      agePresentation: nonEmptyString,
+      personalityContradiction: nonEmptyString,
+      silhouette: nonEmptyString,
+      faceTopology: nonEmptyString,
+      hairStructure: nonEmptyString,
+      bodyPosture: nonEmptyString,
+      wardrobeStructure: nonEmptyString,
+      materialsCraft: nonEmptyString,
+      wearHistory: nonEmptyString,
+      signatureMarks: stringList,
+      negativeIdentity: stringList
+    }).strict();
+    sceneDesignSchema = external_exports.object({
+      spatialStructure: nonEmptyString,
+      actionPlane: nonEmptyString,
+      accessPattern: nonEmptyString,
+      landmark: nonEmptyString,
+      scale: nonEmptyString,
+      architecture: nonEmptyString,
+      materialsCraft: nonEmptyString,
+      maintenanceState: nonEmptyString,
+      useTraces: nonEmptyString,
+      timeWeatherState: nonEmptyString,
+      negativeIdentity: stringList
+    }).strict();
+    propDesignSchema = external_exports.object({
+      propClass: external_exports.enum(["hero", "action", "evidence", "texture"]),
+      owner: nonEmptyString,
+      geometry: nonEmptyString,
+      relativeScale: nonEmptyString,
+      operation: nonEmptyString,
+      materialsCraft: nonEmptyString,
+      wearRepairHistory: nonEmptyString,
+      distinctiveMarks: stringList,
+      continuity: nonEmptyString,
+      negativeIdentity: stringList
+    }).strict();
+    characterBriefSchema = external_exports.object({ ...briefCommonShape, assetType: external_exports.literal("character"), design: characterDesignSchema }).strict();
+    sceneBriefSchema = external_exports.object({ ...briefCommonShape, assetType: external_exports.literal("scene"), design: sceneDesignSchema }).strict();
+    propBriefSchema = external_exports.object({ ...briefCommonShape, assetType: external_exports.literal("prop"), design: propDesignSchema }).strict();
+    assetBriefSchema = external_exports.discriminatedUnion("assetType", [
+      characterBriefSchema,
+      sceneBriefSchema,
+      propBriefSchema
+    ]);
+    worldBibleSchema = external_exports.object({
+      eraRegion: stringList,
+      socialOrder: stringList,
+      materialCulture: stringList,
+      shapeLanguage: stringList,
+      paletteLogic: stringList,
+      sharedProhibitions: stringList
+    }).strict();
+    contrastEntrySchema = external_exports.object({
+      dimension: nonEmptyString,
+      assignments: external_exports.array(
+        external_exports.object({
+          assetId: external_exports.number().int().min(1),
+          value: nonEmptyString
+        }).strict()
+      ).min(1),
+      collisionAssetIds: external_exports.array(external_exports.number().int().min(1)),
+      resolution: external_exports.string()
+    }).strict();
+    assetBriefBatchSchema = external_exports.object({
+      schemaVersion: external_exports.literal("1.0"),
+      language: external_exports.literal("zh-CN"),
+      worldBible: worldBibleSchema,
+      contrastMatrix: external_exports.array(contrastEntrySchema),
+      assetBriefs: external_exports.array(assetBriefSchema).min(1)
+    }).strict();
+    ASSET_TYPE_ALIASES = {
+      role: "character",
+      character: "character",
+      characters: "character",
+      scene: "scene",
+      scenes: "scene",
+      tool: "prop",
+      prop: "prop",
+      props: "prop"
+    };
+  }
+});
+
+// src/assets/assetPromptCompiler.ts
+function selectReferences(bindings, profile) {
+  if (profile.referenceMode === "none" || bindings.length === 0) {
+    return { clause: "", selected: [] };
+  }
+  const candidates = bindings.map((original, index) => ({ original, index }));
+  const winnerByDimension = /* @__PURE__ */ new Map();
+  for (const candidate of candidates) {
+    for (const dimension of candidate.original.controlledDimensions) {
+      const incumbent = winnerByDimension.get(dimension);
+      const challenger = {
+        index: candidate.index,
+        priority: candidate.original.priority,
+        coverage: candidate.original.controlledDimensions.length
+      };
+      if (!incumbent || challenger.priority < incumbent.priority || challenger.priority === incumbent.priority && challenger.coverage > incumbent.coverage) {
+        winnerByDimension.set(dimension, challenger);
+      }
+    }
+  }
+  const survived = candidates.map((candidate) => {
+    const controlledDimensions = candidate.original.controlledDimensions.filter(
+      (dimension) => winnerByDimension.get(dimension)?.index === candidate.index
+    );
+    return { ...candidate.original, controlledDimensions };
+  }).filter((bindingItem) => bindingItem.controlledDimensions.length > 0);
+  const limit = profile.referenceMode === "single" ? 1 : Math.max(0, profile.maxReferences);
+  const selected = survived.map((original, index) => ({ original, index })).sort((a, b) => {
+    if (a.original.priority !== b.original.priority) return a.original.priority - b.original.priority;
+    if (b.original.controlledDimensions.length !== a.original.controlledDimensions.length) {
+      return b.original.controlledDimensions.length - a.original.controlledDimensions.length;
+    }
+    return a.index - b.index;
+  }).slice(0, limit).sort((a, b) => a.index - b.index).map((entry) => entry.original);
+  const clause = selected.map(renderReferenceClause).join("");
+  return { clause, selected };
+}
+function renderReferenceClause(binding) {
+  const subject = binding.subjectSelector?.trim() ? binding.subjectSelector : "\u6574\u56FE\u6307\u5B9A\u4E3B\u4F53";
+  return `${binding.label}\uFF08\u4EBA\u5DE5\u63CF\u8FF0\uFF1A${binding.description}\uFF1B\u804C\u8D23\uFF1A${binding.primaryRole}\uFF1B\u4E3B\u4F53\uFF1A${subject}\uFF09\uFF1A\u5FC5\u987B\u7EE7\u627F${binding.mustPreserve.join("\u3001")}\uFF1B\u4EC5\u63A7\u5236${binding.controlledDimensions.join("\u3001")}\uFF1B\u5FC5\u987B\u5FFD\u7565${binding.mustIgnore.join("\u3001")}\u3002`;
+}
+function joinList(values, separator = "\u3001") {
+  return values.filter((value) => value && value.trim().length > 0).join(separator);
+}
+function renderNegativeIdentity(negativeIdentity, forbiddenDefaults) {
+  const parts = [];
+  if (negativeIdentity.length > 0) parts.push(joinList(negativeIdentity, "\uFF0C"));
+  if (forbiddenDefaults.length > 0) parts.push(`\u4E0D\u4F7F\u7528${joinList(forbiddenDefaults)}`);
+  return parts.length > 0 ? `${parts.join("\uFF0C")}\u3002` : "";
+}
+function renderDifferenceAnchors(brief) {
+  if (brief.differenceAnchors.length === 0) return "";
+  const anchors = brief.differenceAnchors.map((anchor) => `${anchor.dimension}\u2014\u2014${anchor.value}\uFF08${anchor.reason}\uFF09`);
+  return `\u5DEE\u5F02\u951A\u70B9\uFF1A${anchors.join("\uFF1B")}\u3002`;
+}
+function renderSiblingContrast(brief) {
+  if (brief.contrastAgainstSiblingAssets.length === 0) return "";
+  const contrasts = brief.contrastAgainstSiblingAssets.map((contrast) => contrast.instruction);
+  return `\u540C\u7C7B\u8D44\u4EA7\u5BF9\u6BD4\uFF1A${contrasts.join("\uFF1B")}\u3002`;
+}
+function renderDerivedState(brief, parentAsset) {
+  if (!brief.isDerived || !parentAsset) return "";
+  const sentences = [];
+  if (brief.immutable.length > 0) {
+    sentences.push(`\u57FA\u4E8E\u7236\u8D44\u4EA7${parentAsset.name}\u7684\u884D\u751F\u72B6\u6001\uFF0C\u4FDD\u6301${joinList(brief.immutable)}\u4E0D\u53D8`);
+  } else {
+    sentences.push(`\u57FA\u4E8E\u7236\u8D44\u4EA7${parentAsset.name}\u7684\u884D\u751F\u72B6\u6001`);
+  }
+  if (brief.storyChanging.length > 0) {
+    sentences.push(`\u4EC5\u5E94\u7528\u5267\u60C5\u72B6\u6001\u53D8\u5316\uFF1A${joinList(brief.storyChanging)}`);
+  }
+  return `${sentences.join("\uFF0C")}\uFF0C\u4E0D\u91CD\u505A\u6838\u5FC3\u9020\u578B\u3002`;
+}
+function renderStoryChanging(brief) {
+  if (brief.isDerived || brief.storyChanging.length === 0) return "";
+  return `\u5267\u60C5\u53EF\u53D8\u72B6\u6001\uFF1A${joinList(brief.storyChanging)}\u3002`;
+}
+function renderGenerationRequirements(brief) {
+  const requirements = brief.generationRequirements;
+  const parts = [requirements.outputFormat, requirements.composition];
+  const required3 = joinList(requirements.requiredElements);
+  if (required3) parts.push(required3);
+  parts.push(requirements.background);
+  const prohibited = joinList(requirements.prohibitedElements);
+  const tail = prohibited ? `\uFF0C\u65E0${joinList(requirements.prohibitedElements, "\u3001\u65E0")}` : "";
+  return `${parts.join("\uFF0C")}${tail}\u3002`;
+}
+function renderArtStylePrefix(prefix) {
+  const trimmed = (prefix ?? "").trim();
+  if (!trimmed) return "";
+  return trimmed.endsWith("\u3002") ? trimmed : `${trimmed}\u3002`;
+}
+function renderAdditionalRequirements(requirements) {
+  const trimmed = (requirements ?? "").trim();
+  return trimmed ? `\u989D\u5916\u8981\u6C42\uFF1A${trimmed}\u3002` : "";
+}
+function assembleBody(brief, identity2, physical, input, referenceClause, typeInvariant = "") {
+  const segments = [identity2, physical];
+  const anchors = renderDifferenceAnchors(brief);
+  if (anchors) segments.push(anchors);
+  const sibling = renderSiblingContrast(brief);
+  if (sibling) segments.push(sibling);
+  const negative = renderNegativeIdentity(
+    brief.design.negativeIdentity ?? [],
+    brief.forbiddenDefaults
+  );
+  if (negative) segments.push(negative);
+  if (typeInvariant) segments.push(typeInvariant);
+  const derived = renderDerivedState(brief, input.parentAsset);
+  if (derived) segments.push(derived);
+  const story = renderStoryChanging(brief);
+  if (story) segments.push(story);
+  if (referenceClause) segments.push(referenceClause);
+  const additional = renderAdditionalRequirements(input.additionalRequirements);
+  if (additional) segments.push(additional);
+  segments.push(renderGenerationRequirements(brief));
+  const prefix = renderArtStylePrefix(input.artStylePrefix);
+  if (prefix) segments.push(prefix);
+  return segments.filter((segment) => segment.length > 0).join("");
+}
+function renderCharacterBrief(brief, input, referenceClause) {
+  const design = brief.design;
+  const identity2 = `${brief.name}\uFF0C${brief.eraRegion}\u7684${design.identitySummary}\u3002\u793E\u4F1A\u8EAB\u4EFD${design.socialRole}\uFF0C\u804C\u4E1A${design.profession}\uFF0C\u5E74\u9F84\u5448\u73B0${design.agePresentation}\uFF0C\u627F\u62C5${brief.narrativeFunction}\uFF0C\u6027\u683C\u77DB\u76FE\uFF1A${design.personalityContradiction}\u3002`;
+  const physicalParts = [
+    `\u8F6E\u5ED3${design.silhouette}`,
+    `\u8138\u90E8\u62D3\u6251${design.faceTopology}`,
+    `\u53D1\u578B${design.hairStructure}`,
+    `\u4F53\u6001${design.bodyPosture}`,
+    `\u670D\u88C5\u5C42\u7EA7${design.wardrobeStructure}`,
+    `\u6750\u6599\u5DE5\u827A${design.materialsCraft}`,
+    `\u78E8\u635F\u5386\u53F2${design.wearHistory}`
+  ];
+  const signature = joinList(design.signatureMarks);
+  if (signature) physicalParts.push(`\u6807\u5FD7\u6027\u7EC6\u8282\uFF1A${signature}`);
+  return assembleBody(brief, identity2, `${physicalParts.join("\uFF1B")}\u3002`, input, referenceClause);
+}
+function renderSceneBrief(brief, input, referenceClause) {
+  const design = brief.design;
+  const identity2 = `${brief.name}\uFF0C${brief.eraRegion}\u4E2D${brief.narrativeFunction}\u7684\u7A7A\u95F4\u3002`;
+  const physicalParts = [
+    `\u7A7A\u95F4\u7ED3\u6784${design.spatialStructure}`,
+    `\u884C\u52A8\u5E73\u9762${design.actionPlane}`,
+    `\u51FA\u5165\u4E0E\u52A8\u7EBF${design.accessPattern}`,
+    `\u6838\u5FC3\u5730\u6807${design.landmark}`,
+    `\u5C3A\u5EA6${design.scale}`,
+    `\u5EFA\u9020\u65B9\u5F0F${design.architecture}`,
+    `\u6750\u6599\u5DE5\u827A${design.materialsCraft}`,
+    `\u7EF4\u62A4\u72B6\u6001${design.maintenanceState}`,
+    `\u4F7F\u7528\u75D5\u8FF9${design.useTraces}`,
+    `\u65F6\u6BB5\u4E0E\u5929\u6C14${design.timeWeatherState}`
+  ];
+  return assembleBody(
+    brief,
+    identity2,
+    `${physicalParts.join("\uFF1B")}\u3002`,
+    input,
+    referenceClause,
+    "\u573A\u666F\u4E3A\u7EAF\u7A7A\u95F4\u8BBE\u5B9A\uFF0C\u753B\u9762\u4E2D\u4E0D\u51FA\u73B0\u4EFB\u4F55\u4EBA\u7269\u3002"
+  );
+}
+function renderPropBrief(brief, input, referenceClause) {
+  const design = brief.design;
+  const identity2 = `${brief.name}\uFF0C${design.propClass} prop\uFF0C${brief.narrativeFunction}\uFF0C\u6240\u6709\u8005\uFF1A${design.owner}\u3002`;
+  const physicalParts = [
+    `\u51E0\u4F55\u8F6E\u5ED3${design.geometry}`,
+    `\u76F8\u5BF9\u5C3A\u5EA6${design.relativeScale}`,
+    `\u64CD\u4F5C\u7ED3\u6784${design.operation}`,
+    `\u6750\u6599\u5DE5\u827A${design.materialsCraft}`,
+    `\u78E8\u635F\u4E0E\u7EF4\u4FEE${design.wearRepairHistory}`,
+    `\u8FA8\u8BC6\u6807\u8BB0\uFF1A${joinList(design.distinctiveMarks)}`,
+    `\u8FDE\u7EED\u6027\uFF1A${design.continuity}`
+  ];
+  return assembleBody(
+    brief,
+    identity2,
+    `${physicalParts.join("\uFF1B")}\u3002`,
+    input,
+    referenceClause,
+    "\u7EAF\u9053\u5177\u5C55\u793A\uFF0C\u753B\u9762\u4E2D\u4E0D\u51FA\u73B0\u4EBA\u7269\u3001\u624B\u90E8\u6216\u6301\u63E1\u5173\u7CFB\u3002"
+  );
+}
+function renderZhAssetPrompt(brief, input, referenceClause) {
+  switch (brief.assetType) {
+    case "character":
+      return renderCharacterBrief(brief, input, referenceClause);
+    case "scene":
+      return renderSceneBrief(brief, input, referenceClause);
+    case "prop":
+      return renderPropBrief(brief, input, referenceClause);
+  }
+}
+function compileAssetGenerationPrompt(input) {
+  const renderer = LANGUAGE_RENDERERS[input.modelProfile.languageProfile];
+  if (!renderer) {
+    return {
+      ok: false,
+      failure: assetPromptFailure(
+        "languageProfileNotAvailable",
+        `\u8BED\u8A00 profile ${input.modelProfile.languageProfile} \u5C1A\u672A\u542F\u7528\uFF0C\u5F53\u524D\u4EC5\u652F\u6301 zh-CN`
+      )
+    };
+  }
+  const selection = selectReferences(input.brief.referenceBindings, input.modelProfile);
+  const generationPrompt = renderer(input.brief, input, selection.clause);
+  return {
+    ok: true,
+    value: {
+      generationPrompt,
+      referenceClause: selection.clause,
+      selectedBindings: selection.selected
+    }
+  };
+}
+var AGNES_IMAGE_2_1_FLASH_PROFILE, LANGUAGE_RENDERERS;
+var init_assetPromptCompiler = __esm({
+  "src/assets/assetPromptCompiler.ts"() {
+    "use strict";
+    init_assetBriefContract();
+    AGNES_IMAGE_2_1_FLASH_PROFILE = {
+      referenceMode: "multi",
+      maxReferences: 6,
+      languageProfile: "zh-CN"
+    };
+    LANGUAGE_RENDERERS = {
+      "zh-CN": renderZhAssetPrompt
+    };
+  }
+});
+
+// src/assets/assetPromptOrchestration.ts
+function assetPromptErrorEnvelope(failure2) {
+  const envelope = FAILURE_ENVELOPE[failure2.kind] ?? { status: 500, message: "\u8D44\u4EA7\u63D0\u793A\u8BCD\u751F\u6210\u5931\u8D25" };
+  return {
+    status: envelope.status,
+    body: {
+      code: envelope.status,
+      data: null,
+      message: envelope.message,
+      error: failure2.kind
+    }
+  };
+}
+function toTypedAssetRow(row) {
+  return { ...row, briefType: canonicalAssetBriefType(row.type) };
+}
+function sha256(value) {
+  return (0, import_node_crypto4.createHash)("sha256").update(value, "utf8").digest("hex");
+}
+function normalizeOtherTextPrompt(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+function parseAssetsIds(value) {
+  if (!Array.isArray(value)) return null;
+  const ids = [];
+  for (const item of value) {
+    const id = Number(item);
+    if (!Number.isInteger(id) || id <= 0) return null;
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+function normalizeBatchPromptRequest(body) {
+  const raw = body ?? {};
+  const projectId = Number(raw.projectId);
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    return { ok: false, failure: assetPromptFailure("invalidRequest", "projectId \u4E0D\u5408\u6CD5") };
+  }
+  const items = Array.isArray(raw.items) ? raw.items : [];
+  const assetsIds = [];
+  for (const item of items) {
+    const entry = item ?? {};
+    const id = Number(entry.assetsId);
+    if (!Number.isInteger(id) || id <= 0) {
+      return { ok: false, failure: assetPromptFailure("invalidRequest", "items[].assetsId \u4E0D\u5408\u6CD5") };
+    }
+    if (!assetsIds.includes(id)) assetsIds.push(id);
+  }
+  if (assetsIds.length === 0) {
+    return { ok: false, failure: assetPromptFailure("invalidRequest", "items \u4E0D\u80FD\u4E3A\u7A7A") };
+  }
+  return { ok: true, value: { projectId, assetsIds, otherTextPrompt: normalizeOtherTextPrompt(raw.otherTextPrompt) } };
+}
+async function loadGenerationContext(dependencies, projectId, assetsIds) {
+  const base = await dependencies.work(async (db) => {
+    const project = await db("o_project").where("id", projectId).first();
+    if (!project) return { ok: false, failure: assetPromptFailure("projectNotFound", "\u9879\u76EE\u4E0D\u5B58\u5728") };
+    const rows = await db("o_assets").whereIn("id", assetsIds).select("id", "name", "type", "describe", "assetsId", "scriptId", "projectId");
+    const expectedIds = new Set(assetsIds);
+    if (rows.length !== expectedIds.size) {
+      return { ok: false, failure: assetPromptFailure("assetNotFound", "\u90E8\u5206\u8D44\u4EA7\u4E0D\u5B58\u5728") };
+    }
+    for (const row of rows) {
+      if (row.projectId !== projectId) {
+        return {
+          ok: false,
+          failure: assetPromptFailure("assetProjectMismatch", `\u8D44\u4EA7 ${row.id} \u4E0D\u5C5E\u4E8E\u8BE5\u9879\u76EE`)
+        };
+      }
+    }
+    const assets = rows.map(toTypedAssetRow);
+    const unsupported = assets.find((row) => !row.briefType);
+    if (unsupported) {
+      return {
+        ok: false,
+        failure: assetPromptFailure("unsupportedAssetType", `\u8D44\u4EA7 ${unsupported.id} \u7684\u7C7B\u578B ${unsupported.type} \u4E0D\u53D7\u652F\u6301`)
+      };
+    }
+    const parentIds = [...new Set(assets.map((row) => row.assetsId).filter((id) => id != null))];
+    const parentRows = parentIds.length ? (await db("o_assets").whereIn("id", parentIds).select("id", "name", "type", "describe", "assetsId", "scriptId", "projectId")).map(toTypedAssetRow) : [];
+    if (parentRows.length !== parentIds.length) {
+      return { ok: false, failure: assetPromptFailure("assetNotFound", "\u884D\u751F\u8D44\u4EA7\u7684\u7236\u8D44\u4EA7\u4E0D\u5B58\u5728") };
+    }
+    const parentById = new Map(parentRows.map((row) => [row.id, { id: row.id, name: row.name ?? "", describe: row.describe }]));
+    const scriptIds = [...new Set(assets.map((row) => row.scriptId).filter((id) => id != null))];
+    const scripts = scriptIds.length ? await db("o_script").whereIn("id", scriptIds).select("id", "name", "content") : [];
+    if (scripts.length !== scriptIds.length) {
+      return { ok: false, failure: assetPromptFailure("scriptNotFound", "\u90E8\u5206\u8D44\u4EA7\u5173\u8054\u7684\u5267\u672C\u4E0D\u5B58\u5728") };
+    }
+    return { ok: true, value: { project, assets, parentRows, parentById, scripts } };
+  });
+  if (!base.ok) return base;
+  const referencesByAsset = /* @__PURE__ */ new Map();
+  for (const asset of base.value.assets) {
+    const listed = await listAssetReferences(dependencies.work, { projectId, assetsId: asset.id });
+    if (!listed.ok) return { ok: false, failure: assetPromptFailure("assetNotFound", "\u8D44\u4EA7\u53C2\u8003\u56FE\u52A0\u8F7D\u5931\u8D25") };
+    referencesByAsset.set(asset.id, listed.value);
+  }
+  return { ok: true, value: { ...base.value, referencesByAsset } };
+}
+function renderAnalysisUserInput(input) {
+  const project = input.project;
+  const sections = [];
+  sections.push(
+    [
+      "## PROJECT_CONTEXT",
+      `- \u9879\u76EE\u540D\u79F0\uFF1A${project.name ?? ""}`,
+      `- \u9879\u76EE\u7C7B\u578B\uFF1A${project.type ?? ""}`,
+      `- \u9879\u76EE\u7B80\u4ECB\uFF1A${project.intro ?? ""}`,
+      "- \u8BED\u8A00\uFF1Azh-CN",
+      `- \u7F8E\u672F\u98CE\u683C\u6807\u8BC6\uFF1A${project.artStyle ?? ""}`
+    ].join("\n")
+  );
+  if (input.visualManuals.size > 0) {
+    const manualText = [...input.visualManuals.entries()].map(([manualKey, content]) => `### ${manualKey}
+${content}`).join("\n\n");
+    sections.push(`## VISUAL_MANUAL
+${manualText}`);
+  }
+  const scriptText = input.scripts.length ? input.scripts.map((script) => `### \u5267\u672C ${script.id}\uFF1A${script.name ?? ""}
+${script.content ?? ""}`).join("\n\n") : "\uFF08\u672C\u6279\u8D44\u4EA7\u672A\u5173\u8054\u5267\u672C\uFF09";
+  sections.push(`## FULL_SCRIPT
+${scriptText}`);
+  const assetLines = input.assets.map(
+    (asset) => `- assetsId: ${asset.id} | type: ${asset.briefType} | name: ${asset.name ?? ""} | \u63CF\u8FF0: ${asset.describe ?? ""} | isDerived: ${asset.assetsId != null ? "true" : "false"} | parentAssetId: ${asset.assetsId ?? "null"}`
+  );
+  sections.push(`## SELECTED_ASSETS
+${assetLines.join("\n")}`);
+  const parentLines = input.parentRows.map(
+    (parent) => `- assetsId: ${parent.id} | type: ${parent.briefType} | name: ${parent.name ?? ""} | \u63CF\u8FF0: ${parent.describe ?? ""}`
+  );
+  sections.push(`## PARENT_ASSETS
+${parentLines.length ? parentLines.join("\n") : "\uFF08\u7A7A\u6570\u7EC4\uFF09"}`);
+  const referenceLines = [];
+  for (const asset of input.assets) {
+    for (const reference of input.referencesByAsset.get(asset.id) ?? []) {
+      referenceLines.push(
+        `- assetsId: ${asset.id} | referenceId: ${referenceBindingId(reference.id)} | \u6807\u7B7E: ${presentedReferenceLabel(reference)} | \u4EBA\u5DE5\u63CF\u8FF0: ${reference.description} | visualRole: ${reference.visualRole || "\u672A\u586B\u5199"} | requiredTransfers: ${JSON.stringify(reference.requiredTransfers)} | exclusions: ${JSON.stringify(reference.exclusions)}`
+      );
+    }
+  }
+  sections.push(`## ASSET_REFERENCES
+${referenceLines.length ? referenceLines.join("\n") : "\uFF08\u7A7A\u6570\u7EC4\uFF09"}`);
+  sections.push(`## OUTPUT_SCHEMA
+${input.outputSchema}`);
+  return sections.join("\n\n");
+}
+function isReusableRecord(record3, expectation) {
+  if (!record3) return false;
+  return record3.skillVersion === ASSET_PROMPTING_SKILL_VERSION && record3.templateHash === expectation.templateHash && record3.contextHash === expectation.contextHash && record3.referenceHash === expectation.referenceHash && record3.modelProfile === expectation.modelProfileJson && typeof record3.generationPrompt === "string" && record3.generationPrompt.length > 0;
+}
+async function markGenerationFailed(dependencies, projectId, assetsIds, failure2) {
+  if (assetsIds.length === 0) return;
+  await dependencies.work(
+    (db) => db("o_assets").where({ projectId }).whereIn("id", [...assetsIds]).update({
+      promptState: "\u751F\u6210\u5931\u8D25",
+      promptErrorReason: `${failure2.kind}: ${failure2.message}`
+    })
+  ).catch(() => void 0);
+}
+function visualManualKey(briefType, isDerived) {
+  return `art_${briefType}${isDerived ? "_derivative" : ""}`;
+}
+async function loadVisualManuals(dependencies, artStyle, assets) {
+  const manuals = /* @__PURE__ */ new Map();
+  const style = artStyle?.trim();
+  if (!style) return { ok: true, value: manuals };
+  const manualKeys = [...new Set(assets.map((asset) => visualManualKey(asset.briefType, asset.assetsId != null)))].sort();
+  for (const manualKey of manualKeys) {
+    const content = await dependencies.getVisualManual(style, manualKey);
+    if (!content || !content.trim()) {
+      return {
+        ok: false,
+        failure: assetPromptFailure("visualManualMissing", `\u7F8E\u672F\u98CE\u683C ${style} \u7684\u89C6\u89C9\u624B\u518C ${manualKey} \u672A\u5B9A\u4E49`)
+      };
+    }
+    manuals.set(manualKey, content);
+  }
+  return { ok: true, value: manuals };
+}
+async function removeAssetPromptRecordRows(db, assetIds) {
+  if (assetIds.length === 0) return;
+  await db("o_assetPromptRecord").whereIn("assetsId", [...assetIds]).delete();
+}
+function createAssetPromptOrchestration(dependencies) {
+  async function generateBatchAssetPrompts(inputValue) {
+    const projectId = Number(inputValue?.projectId);
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      return { ok: false, failure: assetPromptFailure("invalidRequest", "projectId \u4E0D\u5408\u6CD5") };
+    }
+    const assetsIds = parseAssetsIds(inputValue?.assetsIds);
+    if (!assetsIds || assetsIds.length === 0) {
+      return { ok: false, failure: assetPromptFailure("invalidRequest", "assetsIds \u4E0D\u5408\u6CD5") };
+    }
+    const otherTextPrompt = normalizeOtherTextPrompt(inputValue?.otherTextPrompt);
+    const failBatch = async (failure2) => {
+      await markGenerationFailed(dependencies, projectId, assetsIds, failure2);
+      return { ok: false, failure: failure2 };
+    };
+    const contextResult = await loadGenerationContext(dependencies, projectId, assetsIds);
+    if (!contextResult.ok) return failBatch(contextResult.failure);
+    const context2 = contextResult.value;
+    const analysisTemplate = await dependencies.loadSkillFile(ANALYSIS_TEMPLATE_PATH);
+    const outputSchema2 = await dependencies.loadSkillFile(OUTPUT_SCHEMA_PATH);
+    if (!analysisTemplate || !outputSchema2) {
+      return failBatch(
+        assetPromptFailure("skillContractMissing", "batch_asset_analysis.md \u6216 asset-brief.schema.json \u7F3A\u5931")
+      );
+    }
+    const visualManuals = await loadVisualManuals(dependencies, context2.project.artStyle, context2.assets);
+    if (!visualManuals.ok) return failBatch(visualManuals.failure);
+    const templateHash = sha256(analysisTemplate);
+    const contextHash = sha256(
+      JSON.stringify({
+        project: {
+          artStyle: context2.project.artStyle,
+          type: context2.project.type,
+          intro: context2.project.intro
+        },
+        scripts: context2.scripts.map((script) => ({ id: script.id, content: script.content })),
+        assets: context2.assets.map((asset) => ({
+          id: asset.id,
+          name: asset.name,
+          briefType: asset.briefType,
+          describe: asset.describe,
+          assetsId: asset.assetsId,
+          scriptId: asset.scriptId
+        })),
+        parents: context2.parentRows.map((parent) => ({ id: parent.id, name: parent.name, describe: parent.describe })),
+        additionalRequirements: otherTextPrompt,
+        visualManuals: [...visualManuals.value.entries()].map(([manualKey, content]) => ({ manualKey, content }))
+      })
+    );
+    const referenceHash = sha256(
+      JSON.stringify(
+        context2.assets.map((asset) => ({
+          assetsId: asset.id,
+          references: (context2.referencesByAsset.get(asset.id) ?? []).map((reference) => ({
+            id: reference.id,
+            orderIndex: reference.orderIndex,
+            description: reference.description,
+            visualRole: reference.visualRole,
+            requiredTransfers: reference.requiredTransfers,
+            exclusions: reference.exclusions
+          }))
+        }))
+      )
+    );
+    const modelProfileJson = JSON.stringify(DEFAULT_MODEL_PROFILE);
+    const expectation = { templateHash, contextHash, referenceHash, modelProfileJson };
+    const records = await dependencies.work((db) => db("o_assetPromptRecord").whereIn("assetsId", assetsIds).select());
+    const recordByAsset = new Map(records.map((record3) => [record3.assetsId, record3]));
+    const reusedEntries = [];
+    const pendingIds = [];
+    for (const assetsId of assetsIds) {
+      const record3 = recordByAsset.get(assetsId);
+      if (isReusableRecord(record3, expectation)) {
+        reusedEntries.push({
+          assetsId,
+          generationPrompt: record3.generationPrompt,
+          reused: true,
+          validationState: record3.validationState ?? "validated"
+        });
+      } else {
+        pendingIds.push(assetsId);
+      }
+    }
+    if (pendingIds.length === 0) {
+      return { ok: true, value: { entries: reusedEntries, modelCalls: 0 } };
+    }
+    const pendingAssets = context2.assets.filter((asset) => pendingIds.includes(asset.id));
+    const expected = pendingAssets.map((asset) => ({
+      assetsId: asset.id,
+      briefType: asset.briefType,
+      isDerived: asset.assetsId != null,
+      parentAssetId: asset.assetsId ?? null,
+      references: context2.referencesByAsset.get(asset.id) ?? []
+    }));
+    await dependencies.work(
+      (db) => db("o_assets").whereIn("id", pendingIds).update({ promptState: "\u751F\u6210\u4E2D", promptErrorReason: null })
+    );
+    const failPending = async (failure2, excludeIds = []) => {
+      const targets = pendingIds.filter((id) => !excludeIds.includes(id));
+      await markGenerationFailed(dependencies, projectId, targets, failure2);
+    };
+    const user = renderAnalysisUserInput({
+      project: context2.project,
+      scripts: context2.scripts,
+      assets: pendingAssets,
+      parentRows: context2.parentRows,
+      referencesByAsset: context2.referencesByAsset,
+      outputSchema: outputSchema2,
+      visualManuals: visualManuals.value
+    });
+    let rawOutput;
+    try {
+      rawOutput = await dependencies.analyze({ system: analysisTemplate, user });
+    } catch {
+      await failPending(assetPromptFailure("analysisFailed", "\u6279\u91CF\u8D44\u4EA7\u5206\u6790\u8C03\u7528\u5931\u8D25"));
+      return { ok: false, failure: assetPromptFailure("analysisFailed", "\u6279\u91CF\u8D44\u4EA7\u5206\u6790\u8C03\u7528\u5931\u8D25") };
+    }
+    const parsedOutput = parseAnalysisOutput(rawOutput);
+    if (!parsedOutput.ok) {
+      await failPending(parsedOutput.failure);
+      return parsedOutput;
+    }
+    const validated = validateAssetBriefBatch(parsedOutput.value, expected);
+    if (!validated.ok) {
+      await failPending(validated.failure);
+      return validated;
+    }
+    const artStylePrefix = await dependencies.getArtStylePrefix(context2.project.artStyle);
+    const now2 = dependencies.now();
+    const entries = [...reusedEntries];
+    const completedIds = [];
+    for (const brief of validated.value.batch.assetBriefs) {
+      const compile = compileAssetGenerationPrompt({
+        brief,
+        parentAsset: brief.parentAssetId != null ? context2.parentById.get(brief.parentAssetId) ?? null : null,
+        artStylePrefix,
+        modelProfile: DEFAULT_MODEL_PROFILE,
+        additionalRequirements: otherTextPrompt
+      });
+      if (!compile.ok) {
+        await failPending(compile.failure, completedIds);
+        return compile;
+      }
+      const assetRow = context2.assets.find((asset) => asset.id === brief.assetId);
+      const assetRepairs = validated.value.repairs.filter((repair) => repair.assetsId === brief.assetId);
+      const validationState = assetRepairs.length > 0 ? "repaired" : "validated";
+      const batchContext = {
+        worldBible: validated.value.batch.worldBible,
+        contrastMatrix: validated.value.batch.contrastMatrix
+      };
+      await dependencies.work(
+        (db) => db.transaction(async (tx) => {
+          await tx("o_assetPromptRecord").where("assetsId", brief.assetId).delete();
+          await tx("o_assetPromptRecord").insert({
+            projectId,
+            assetsId: brief.assetId,
+            scriptId: assetRow.scriptId ?? null,
+            skillVersion: ASSET_PROMPTING_SKILL_VERSION,
+            language: validated.value.batch.language,
+            templateHash,
+            contextHash,
+            referenceHash,
+            modelProfile: modelProfileJson,
+            assetBrief: JSON.stringify(brief),
+            batchContext: JSON.stringify(batchContext),
+            generationPrompt: compile.value.generationPrompt,
+            validationState,
+            repairNotes: JSON.stringify(assetRepairs),
+            additionalRequirements: otherTextPrompt,
+            createTime: now2,
+            updateTime: now2
+          });
+          await tx("o_assets").where("id", brief.assetId).update({
+            prompt: compile.value.generationPrompt,
+            promptState: "\u5DF2\u5B8C\u6210",
+            promptErrorReason: null
+          });
+        })
+      );
+      completedIds.push(brief.assetId);
+      entries.push({
+        assetsId: brief.assetId,
+        generationPrompt: compile.value.generationPrompt,
+        reused: false,
+        validationState
+      });
+    }
+    return { ok: true, value: { entries, modelCalls: 1 } };
+  }
+  return { generateBatchAssetPrompts };
+}
+function createDefaultAssetPromptDependencies() {
+  return {
+    work: (operation) => getDatabaseRuntime().work(operation),
+    analyze: async ({ system, user }) => {
+      const result = await getDefaultConfiguredVendor().invokeText({
+        target: { kind: "logical", key: "universalAi" },
+        input: { system, messages: [{ role: "user", content: user }] }
+      });
+      return result?._output ?? result?.text ?? null;
+    },
+    loadSkillFile: async (relativePath) => {
+      const filePath = getPath_default(["skills", "asset-prompting", ...relativePath.split("/")]);
+      try {
+        return import_node_fs6.default.readFileSync(filePath, "utf-8");
+      } catch {
+        return null;
+      }
+    },
+    getArtStylePrefix: async (artStyle) => {
+      if (!artStyle) return null;
+      const prefix = getAllArtPrompts(artStyle, "art_skills").prefix;
+      return prefix && prefix.trim() ? prefix : null;
+    },
+    getVisualManual: async (artStyle, manualKey) => {
+      const content = getArtPrompt(artStyle, "art_skills", manualKey);
+      return content && content.trim() ? content : null;
+    },
+    now: () => Date.now()
+  };
+}
+var import_node_crypto4, import_node_fs6, ASSET_PROMPTING_SKILL_VERSION, ANALYSIS_TEMPLATE_PATH, OUTPUT_SCHEMA_PATH, DEFAULT_MODEL_PROFILE, FAILURE_ENVELOPE;
+var init_assetPromptOrchestration = __esm({
+  "src/assets/assetPromptOrchestration.ts"() {
+    "use strict";
+    import_node_crypto4 = require("node:crypto");
+    import_node_fs6 = __toESM(require("node:fs"));
+    init_database();
+    init_vendor2();
+    init_getPath();
+    init_getArtPrompt();
+    init_assetReferences();
+    init_assetBriefContract();
+    init_assetPromptCompiler();
+    ASSET_PROMPTING_SKILL_VERSION = "asset-prompting@1.0";
+    ANALYSIS_TEMPLATE_PATH = "prompts/batch_asset_analysis.md";
+    OUTPUT_SCHEMA_PATH = "references/asset-brief.schema.json";
+    DEFAULT_MODEL_PROFILE = AGNES_IMAGE_2_1_FLASH_PROFILE;
+    FAILURE_ENVELOPE = {
+      invalidRequest: { status: 400, message: "\u8BF7\u6C42\u53C2\u6570\u4E0D\u5408\u6CD5" },
+      projectNotFound: { status: 404, message: "\u9879\u76EE\u4E0D\u5B58\u5728" },
+      assetNotFound: { status: 404, message: "\u8D44\u4EA7\u4E0D\u5B58\u5728" },
+      assetProjectMismatch: { status: 403, message: "\u8D44\u4EA7\u4E0D\u5C5E\u4E8E\u8BE5\u9879\u76EE" },
+      unsupportedAssetType: { status: 400, message: "\u8D44\u4EA7\u7C7B\u578B\u4E0D\u53D7\u652F\u6301" },
+      scriptNotFound: { status: 404, message: "\u5267\u672C\u4E0D\u5B58\u5728" },
+      visualManualMissing: { status: 500, message: "\u89C6\u89C9\u624B\u518C\u672A\u5B9A\u4E49" },
+      skillContractMissing: { status: 500, message: "\u8D44\u4EA7\u63D0\u793A\u8BCD\u6280\u80FD\u5951\u7EA6\u7F3A\u5931" },
+      malformedOutput: { status: 502, message: "\u6A21\u578B\u8F93\u51FA\u4E0D\u7B26\u5408 Asset Brief Schema" },
+      missingAssetResult: { status: 502, message: "\u6A21\u578B\u8F93\u51FA\u7F3A\u5931\u4E86\u90E8\u5206\u8D44\u4EA7" },
+      duplicateAssetResult: { status: 502, message: "\u6A21\u578B\u8F93\u51FA\u5305\u542B\u91CD\u590D\u8D44\u4EA7" },
+      unknownAssetResult: { status: 502, message: "\u6A21\u578B\u8F93\u51FA\u5305\u542B\u672A\u77E5\u8D44\u4EA7" },
+      assetTypeMismatch: { status: 502, message: "\u6A21\u578B\u8F93\u51FA\u7684\u8D44\u4EA7\u7C7B\u578B\u4E0E\u6570\u636E\u5E93\u4E0D\u4E00\u81F4" },
+      derivedMismatch: { status: 502, message: "\u6A21\u578B\u8F93\u51FA\u7684\u884D\u751F\u8EAB\u4EFD\u4E0E\u6570\u636E\u5E93\u4E0D\u4E00\u81F4" },
+      referenceBindingMismatch: { status: 502, message: "\u6A21\u578B\u8F93\u51FA\u7684\u53C2\u8003\u56FE\u7ED1\u5B9A\u4E0E\u4EBA\u5DE5\u5951\u7EA6\u4E0D\u4E00\u81F4" },
+      analysisFailed: { status: 502, message: "\u6279\u91CF\u8D44\u4EA7\u5206\u6790\u8C03\u7528\u5931\u8D25" },
+      languageProfileNotAvailable: { status: 400, message: "\u8BF7\u6C42\u7684\u8BED\u8A00 profile \u5C1A\u672A\u542F\u7528" }
+    };
+  }
+});
+
 // src/routes/assets/batchDelete.ts
 var import_express15, router14, batchDelete_default;
 var init_batchDelete = __esm({
@@ -239755,6 +240786,7 @@ var init_batchDelete = __esm({
     init_responseFormat();
     init_middleware();
     init_assetReferences();
+    init_assetPromptOrchestration();
     init_assetReferenceMedia();
     router14 = import_express15.default.Router();
     batchDelete_default = router14.post(
@@ -239767,6 +240799,7 @@ var init_batchDelete = __esm({
         const referenceMediaPaths = await getDatabaseRuntime().work(
           async (db) => db.transaction(async (tx) => {
             const paths = await removeAssetReferenceRows(tx, id);
+            await removeAssetPromptRecordRows(tx, id);
             await tx("o_assets").whereIn("id", id).delete();
             return paths;
           })
@@ -239831,6 +240864,7 @@ var init_delAssets = __esm({
     init_responseFormat();
     init_middleware();
     init_assetReferences();
+    init_assetPromptOrchestration();
     init_assetReferenceMedia();
     router16 = import_express17.default.Router();
     delAssets_default = router16.post(
@@ -239851,6 +240885,7 @@ var init_delAssets = __esm({
         const referenceMediaPaths = await getDatabaseRuntime().work(
           async (db) => db.transaction(async (tx) => {
             const paths = await removeAssetReferenceRows(tx, [id, ...childIds]);
+            await removeAssetPromptRecordRows(tx, [id, ...childIds]);
             if (imageIds.length > 0) {
               await tx("o_assets").whereIn("imageId", imageIds).update({ imageId: null });
             }
@@ -240779,13 +241814,10 @@ var init_batchPolishAssetsPrompt = __esm({
   "src/routes/assetsGenerate/batchPolishAssetsPrompt.ts"() {
     "use strict";
     import_express29 = __toESM(require_express2());
-    init_utils3();
-    init_database();
-    init_vendor2();
-    init_p_limit();
     init_zod();
     init_responseFormat();
     init_middleware();
+    init_assetPromptOrchestration();
     router28 = import_express29.default.Router();
     batchPolishAssetsPrompt_default = router28.post(
       "/",
@@ -240800,99 +241832,18 @@ var init_batchPolishAssetsPrompt = __esm({
         ),
         projectId: number2(),
         concurrentCount: number2().int().min(1).optional(),
-        otherTextPrompt: string2()
+        // 修复 Issue #33：otherTextPrompt 原被错误设为必填，现改为可选补充要求
+        otherTextPrompt: string2().optional().nullable()
       }),
       async (req, res) => {
-        const { projectId, items, concurrentCount, otherTextPrompt } = req.body;
-        const project = await getDatabaseRuntime().work(async (db) => {
-          return await db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
-        });
-        if (!project) return res.status(500).send(success3({ message: "\u9879\u76EE\u4E3A\u7A7A" }));
-        const assetsIds = items.map((item) => item.assetsId);
-        const assetsDataList = await getDatabaseRuntime().work(async (db) => {
-          return await db("o_assets").whereIn("id", assetsIds).select("id", "assetsId");
-        });
-        if (!assetsDataList || assetsDataList.length === 0) return res.status(500).send(error50("\u8D44\u4EA7\u4E0D\u5B58\u5728"));
-        const assetsDataMap = new Map(assetsDataList.map((a) => [a.id, a]));
-        await getDatabaseRuntime().work(async (db) => {
-          await db("o_assets").whereIn("id", assetsIds).update({ promptState: "\u751F\u6210\u4E2D" });
-        });
-        const getTypeConfig = (isDerivative) => ({
-          role: {
-            promptKey: "role-polish",
-            itemType: "characters",
-            label: "\u89D2\u8272\u6807\u51C6\u56DB\u89C6\u56FE",
-            nameLabel: "\u89D2\u8272",
-            visualManual: isDerivative ? "art_character_derivative" : "art_character"
-          },
-          scene: {
-            promptKey: "scene-polish",
-            itemType: "scenes",
-            label: "\u573A\u666F\u56FE",
-            nameLabel: "\u573A\u666F",
-            visualManual: isDerivative ? "art_scene_derivative" : "art_scene"
-          },
-          tool: {
-            promptKey: "tool-polish",
-            itemType: "props",
-            label: "\u9053\u5177\u56FE",
-            nameLabel: "\u9053\u5177",
-            visualManual: isDerivative ? "art_prop_derivative" : "art_prop"
-          }
-        });
-        const limit = pLimit(concurrentCount ?? 1);
-        const tasks = items.map(
-          (item) => limit(async () => {
-            const assetData = assetsDataMap.get(item.assetsId);
-            if (!assetData) return;
-            const typeConfig = getTypeConfig(!!assetData.assetsId);
-            const config3 = typeConfig[item.type];
-            if (!config3) return;
-            const visualManual = await utils_default2.getArtPrompt(project.artStyle, "art_skills", config3.visualManual);
-            if (!visualManual) {
-              await getDatabaseRuntime().work(async (db) => {
-                await db("o_assets").where("id", item.assetsId).update({ promptState: "\u751F\u6210\u5931\u8D25", promptErrorReason: "\u89C6\u89C9\u624B\u518C\u672A\u5B9A\u4E49" });
-              });
-              return;
-            }
-            const systemPrompt = visualManual;
-            try {
-              const { _output } = await getDefaultConfiguredVendor().invokeText({
-                target: { kind: "logical", key: "universalAi" },
-                input: {
-                  system: systemPrompt + "\n" + otherTextPrompt,
-                  messages: [
-                    {
-                      role: "user",
-                      content: `
-                    **\u57FA\u7840\u53C2\u6570\uFF1A**
-      **${config3.nameLabel}\u8BBE\u5B9A\uFF1A**
-      - ${config3.nameLabel}\u540D\u79F0:${item.name},
-      - ${config3.nameLabel}\u63CF\u8FF0:${item.describe},`
-                    }
-                  ]
-                }
-              });
-              if (!_output) {
-                await getDatabaseRuntime().work(async (db) => {
-                  await db("o_assets").where("id", item.assetsId).update({ promptState: "\u751F\u6210\u5931\u8D25" });
-                });
-                return;
-              }
-              await getDatabaseRuntime().work(async (db) => {
-                await db("o_assets").where("id", item.assetsId).update({ prompt: _output, promptState: "\u5DF2\u5B8C\u6210" });
-              });
-            } catch (e) {
-              await getDatabaseRuntime().work(async (db) => {
-                await db("o_assets").where("id", item.assetsId).update({ promptState: "\u5931\u8D25", promptErrorReason: utils_default2.error(e).message });
-              });
-            }
-          })
-        );
-        Promise.all(tasks).catch((err) => {
-          res.status(500).send(error50(err));
-        });
-        return res.status(200).send(success3({ total: items.length }));
+        const normalized = normalizeBatchPromptRequest(req.body);
+        if (!normalized.ok) {
+          const envelope = assetPromptErrorEnvelope(normalized.failure);
+          return res.status(envelope.status).send(envelope.body);
+        }
+        const orchestration = createAssetPromptOrchestration(createDefaultAssetPromptDependencies());
+        orchestration.generateBatchAssetPrompts(normalized.value).catch(() => void 0);
+        return res.status(200).send(success3({ total: normalized.value.assetsIds.length }));
       }
     );
   }
@@ -241072,12 +242023,10 @@ var init_polishAssetsPrompt = __esm({
   "src/routes/assetsGenerate/polishAssetsPrompt.ts"() {
     "use strict";
     import_express32 = __toESM(require_express2());
-    init_utils3();
-    init_database();
-    init_vendor2();
     init_zod();
     init_responseFormat();
     init_middleware();
+    init_assetPromptOrchestration();
     router31 = import_express32.default.Router();
     polishAssetsPrompt_default = router31.post(
       "/",
@@ -241089,74 +242038,15 @@ var init_polishAssetsPrompt = __esm({
         describe: string2()
       }),
       async (req, res) => {
-        const { assetsId, projectId, type, name: name28, describe: describe4 } = req.body;
-        const project = await getDatabaseRuntime().work(async (db) => {
-          return await db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
-        });
-        if (!project) return res.status(500).send(success3({ message: "\u9879\u76EE\u4E3A\u7A7A" }));
-        await getDatabaseRuntime().work(async (db) => {
-          await db("o_assets").where("id", assetsId).update({ promptState: "\u751F\u6210\u4E2D" });
-        });
-        const assetsData = await getDatabaseRuntime().work(async (db) => {
-          return await db("o_assets").where("id", assetsId).select("assetsId").first();
-        });
-        if (!assetsData) return { code: 500, message: "\u8D44\u4EA7\u4E0D\u5B58\u5728" };
-        const typeConfig = {
-          role: {
-            promptKey: "role-polish",
-            itemType: "characters",
-            label: "\u89D2\u8272\u6807\u51C6\u56DB\u89C6\u56FE",
-            nameLabel: "\u89D2\u8272",
-            visualManual: assetsData.assetsId ? "art_character_derivative" : "art_character"
-          },
-          scene: {
-            promptKey: "scene-polish",
-            itemType: "scenes",
-            label: "\u573A\u666F\u56FE",
-            nameLabel: "\u573A\u666F",
-            visualManual: assetsData.assetsId ? "art_scene_derivative" : "art_scene"
-          },
-          tool: {
-            promptKey: "tool-polish",
-            itemType: "props",
-            label: "\u9053\u5177\u56FE",
-            nameLabel: "\u9053\u5177",
-            visualManual: assetsData.assetsId ? "art_prop_derivative" : "art_prop"
-          }
-        };
-        const config3 = typeConfig[type];
-        if (!config3) return res.status(500).send(error50("\u4E0D\u652F\u6301\u7684\u7C7B\u578B"));
-        if (!config3.visualManual) return res.status(500).send(error50("\u89C6\u89C9\u624B\u518C\u672A\u5B9A\u4E49"));
-        const visualManual = await utils_default2.getArtPrompt(project.artStyle, "art_skills", config3.visualManual);
-        if (!visualManual) return res.status(500).send(error50("\u89C6\u89C9\u624B\u518C\u672A\u5B9A\u4E49"));
-        const systemPrompt = visualManual;
-        try {
-          const { _output } = await getDefaultConfiguredVendor().invokeText({
-            target: { kind: "logical", key: "universalAi" },
-            input: {
-              system: systemPrompt,
-              messages: [
-                {
-                  role: "user",
-                  content: `**\u57FA\u7840\u53C2\u6570\uFF1A**
-      **${config3.nameLabel}\u8BBE\u5B9A\uFF1A**
-      - ${config3.nameLabel}\u540D\u79F0:${name28},
-      - ${config3.nameLabel}\u63CF\u8FF0:${describe4},`
-                }
-              ]
-            }
-          });
-          if (!_output) return res.status(500).send("\u5931\u8D25");
-          await getDatabaseRuntime().work(async (db) => {
-            await db("o_assets").where("id", assetsId).update({ prompt: _output, promptState: "\u5DF2\u5B8C\u6210" });
-          });
-          res.status(200).send(success3({ prompt: _output, assetsId }));
-        } catch (e) {
-          await getDatabaseRuntime().work(async (db) => {
-            await db("o_assets").where("id", assetsId).update({ promptState: "\u5931\u8D25", promptErrorReason: utils_default2.error(e).message });
-          });
-          return res.status(500).send(error50(e?.data?.error?.message ?? e?.message ?? "\u751F\u6210\u5931\u8D25"));
+        const { assetsId, projectId } = req.body;
+        const orchestration = createAssetPromptOrchestration(createDefaultAssetPromptDependencies());
+        const result = await orchestration.generateBatchAssetPrompts({ projectId, assetsIds: [assetsId] });
+        if (!result.ok) {
+          const envelope = assetPromptErrorEnvelope(result.failure);
+          return res.status(envelope.status).send(envelope.body);
         }
+        const entry = result.value.entries[0];
+        return res.status(200).send(success3({ prompt: entry.generationPrompt, assetsId }));
       }
     );
   }
@@ -244218,7 +245108,7 @@ function buildCommand(item, prompt, images) {
 function commandSnapshot(command, references) {
   const redactImage = (image, role) => image ? {
     mediaType: image.mediaType,
-    sha256: import_node_crypto4.default.createHash("sha256").update(image.base64).digest("hex"),
+    sha256: import_node_crypto5.default.createHash("sha256").update(image.base64).digest("hex"),
     source: references.find((reference) => reference.role === role)
   } : void 0;
   const snapshot = { ...command };
@@ -244435,11 +245325,11 @@ function createDefaultVideoProduction() {
 function startVideoGenerationBatch(inputValue) {
   return createDefaultVideoProduction().startVideoGenerationBatch(inputValue);
 }
-var import_node_crypto4;
+var import_node_crypto5;
 var init_production = __esm({
   "src/video/production.ts"() {
     "use strict";
-    import_node_crypto4 = __toESM(require("node:crypto"));
+    import_node_crypto5 = __toESM(require("node:crypto"));
     init_axios2();
     init_dist_node();
     init_database();
@@ -246499,7 +247389,7 @@ var init_delScript = __esm({
 var require_utils13 = __commonJS({
   "node_modules/compressing/lib/utils.js"(exports2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var path34 = require("path");
     var { pipeline: pump } = require("stream");
     function isPathWithinParent(childPath, parentPath) {
@@ -246549,14 +247439,14 @@ var require_utils13 = __commonJS({
       return (source, dest, opts) => {
         opts = opts || {};
         opts.source = source;
-        const destStream = destType(dest) === "path" ? fs36.createWriteStream(dest) : dest;
+        const destStream = destType(dest) === "path" ? fs37.createWriteStream(dest) : dest;
         const compressStream = new StreamClass(opts);
         return safePipe([compressStream, destStream]);
       };
     };
     exports2.makeCompressDirFn = (StreamClass) => {
       return (dir, dest, opts) => {
-        const destStream = destType(dest) === "path" ? fs36.createWriteStream(dest) : dest;
+        const destStream = destType(dest) === "path" ? fs37.createWriteStream(dest) : dest;
         const compressStream = new StreamClass();
         compressStream.addEntry(dir, opts);
         return safePipe([compressStream, destStream]);
@@ -246579,7 +247469,7 @@ var require_utils13 = __commonJS({
         const strip = opts.strip ? Number(opts.strip) : 0;
         delete opts.strip;
         return new Promise((resolve3, reject) => {
-          fs36.mkdir(destDir, { recursive: true }, (err) => {
+          fs37.mkdir(destDir, { recursive: true }, (err) => {
             if (err) return reject(err);
             const resolvedDestDir = path34.resolve(destDir);
             let entryCount = 0;
@@ -246602,10 +247492,10 @@ var require_utils13 = __commonJS({
               }
               if (header.type === "file") {
                 const dir = path34.dirname(destFilePath);
-                fs36.mkdir(dir, { recursive: true }, (err2) => {
+                fs37.mkdir(dir, { recursive: true }, (err2) => {
                   if (err2) return reject(err2);
                   entryCount++;
-                  pump(stream4, fs36.createWriteStream(destFilePath, { mode: opts.mode || header.mode }), (err3) => {
+                  pump(stream4, fs37.createWriteStream(destFilePath, { mode: opts.mode || header.mode }), (err3) => {
                     if (err3) return reject(err3);
                     successCount++;
                     done();
@@ -246620,17 +247510,17 @@ var require_utils13 = __commonJS({
                   return;
                 }
                 entryCount++;
-                fs36.mkdir(dir, { recursive: true }, (err2) => {
+                fs37.mkdir(dir, { recursive: true }, (err2) => {
                   if (err2) return reject(err2);
                   const relativeTarget = path34.relative(dir, target);
-                  fs36.symlink(relativeTarget, destFilePath, (err3) => {
+                  fs37.symlink(relativeTarget, destFilePath, (err3) => {
                     if (err3) return reject(err3);
                     successCount++;
                     stream4.resume();
                   });
                 });
               } else {
-                fs36.mkdir(destFilePath, { recursive: true }, (err2) => {
+                fs37.mkdir(destFilePath, { recursive: true }, (err2) => {
                   if (err2) return reject(err2);
                   stream4.resume();
                 });
@@ -246997,7 +247887,7 @@ var require_buffer_crc32 = __commonJS({
 var require_yazl = __commonJS({
   "node_modules/yazl/index.js"(exports2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var Transform = require("stream").Transform;
     var PassThrough = require("stream").PassThrough;
     var zlib2 = require("zlib");
@@ -247021,14 +247911,14 @@ var require_yazl = __commonJS({
       if (options == null) options = {};
       var entry = new Entry(metadataPath, false, options);
       self2.entries.push(entry);
-      fs36.stat(realPath, function(err, stats) {
+      fs37.stat(realPath, function(err, stats) {
         if (err) return self2.emit("error", err);
         if (!stats.isFile()) return self2.emit("error", new Error("not a file: " + realPath));
         entry.uncompressedSize = stats.size;
         if (options.mtime == null) entry.setLastModDate(stats.mtime);
         if (options.mode == null) entry.setFileAttributesMode(stats.mode);
         entry.setFileDataPumpFunction(function() {
-          var readStream2 = fs36.createReadStream(realPath);
+          var readStream2 = fs37.createReadStream(realPath);
           entry.state = Entry.FILE_DATA_IN_PROGRESS;
           readStream2.on("error", function(err2) {
             self2.emit("error", err2);
@@ -251351,7 +252241,7 @@ var require_base_stream = __commonJS({
 var require_stream9 = __commonJS({
   "node_modules/compressing/lib/tar/stream.js"(exports2, module2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var path34 = require("path");
     var stream4 = require("stream");
     var tar = require_tar_stream();
@@ -251387,7 +252277,7 @@ var require_stream9 = __commonJS({
         }
       }
       _addFileOrDirEntry(entry, opts) {
-        fs36.stat(entry, (err, stat) => {
+        fs37.stat(entry, (err, stat) => {
           if (err) return this.emit("error", err);
           if (stat.isDirectory()) return this._addDirEntry(entry, opts);
           if (stat.isFile()) return this._addFileEntry(entry, opts);
@@ -251397,16 +252287,16 @@ var require_stream9 = __commonJS({
         });
       }
       _addFileEntry(entry, opts) {
-        fs36.stat(entry, (err, stat) => {
+        fs37.stat(entry, (err, stat) => {
           if (err) return this.emit("error", err);
           const entryStream = this._pack.entry({ name: opts.relativePath || path34.basename(entry), size: stat.size, mode: stat.mode & 511 }, this._onEntryFinish.bind(this));
-          const stream5 = fs36.createReadStream(entry, opts.fs);
+          const stream5 = fs37.createReadStream(entry, opts.fs);
           stream5.on("error", (err2) => this.emit("error", err2));
           stream5.pipe(entryStream);
         });
       }
       _addDirEntry(entry, opts) {
-        fs36.readdir(entry, (err, files) => {
+        fs37.readdir(entry, (err, files) => {
           if (err) return this.emit("error", err);
           const relativePath = opts.relativePath || "";
           files.forEach((fileOrDir) => {
@@ -251653,7 +252543,7 @@ var require_pend = __commonJS({
 var require_fd_slicer2 = __commonJS({
   "node_modules/fd-slicer2/index.js"(exports2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var { Readable: Readable2, Writable, PassThrough } = require("stream");
     var Pend = require_pend();
     var { EventEmitter: EventEmitter3 } = require("events");
@@ -251668,7 +252558,7 @@ var require_fd_slicer2 = __commonJS({
       }
       read(buffer, offset, length, position, callback) {
         this.pend.go((cb) => {
-          fs36.read(this.fd, buffer, offset, length, position, (err, bytesRead, buffer2) => {
+          fs37.read(this.fd, buffer, offset, length, position, (err, bytesRead, buffer2) => {
             cb();
             callback(err, bytesRead, buffer2);
           });
@@ -251676,7 +252566,7 @@ var require_fd_slicer2 = __commonJS({
       }
       write(buffer, offset, length, position, callback) {
         this.pend.go((cb) => {
-          fs36.write(this.fd, buffer, offset, length, position, (err, written, buffer2) => {
+          fs37.write(this.fd, buffer, offset, length, position, (err, written, buffer2) => {
             cb();
             callback(err, written, buffer2);
           });
@@ -251696,7 +252586,7 @@ var require_fd_slicer2 = __commonJS({
         if (this.refCount > 0) return;
         if (this.refCount < 0) throw new Error("invalid unref");
         if (this.autoClose) {
-          fs36.close(this.fd, (err) => {
+          fs37.close(this.fd, (err) => {
             if (err) {
               this.emit("error", err);
             } else {
@@ -251731,7 +252621,7 @@ var require_fd_slicer2 = __commonJS({
         this.context.pend.go((cb) => {
           if (this.destroyed) return cb();
           const buffer = Buffer.alloc(toRead);
-          fs36.read(this.context.fd, buffer, 0, toRead, this.pos, (err, bytesRead) => {
+          fs37.read(this.context.fd, buffer, 0, toRead, this.pos, (err, bytesRead) => {
             if (err) {
               this.destroy(err);
             } else if (bytesRead === 0) {
@@ -251777,7 +252667,7 @@ var require_fd_slicer2 = __commonJS({
         }
         this.context.pend.go((cb) => {
           if (this.destroyed) return cb();
-          fs36.write(this.context.fd, buffer, 0, buffer.length, this.pos, (err, bytes) => {
+          fs37.write(this.context.fd, buffer, 0, buffer.length, this.pos, (err, bytes) => {
             if (err) {
               this.destroy();
               cb();
@@ -251904,7 +252794,7 @@ var require_fd_slicer2 = __commonJS({
 var require_yauzl = __commonJS({
   "node_modules/@eggjs/yauzl/index.js"(exports2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var zlib2 = require("zlib");
     var fd_slicer = require_fd_slicer2();
     var crc32 = require_buffer_crc32();
@@ -251934,10 +252824,10 @@ var require_yauzl = __commonJS({
       if (options.validateEntrySizes == null) options.validateEntrySizes = true;
       if (options.strictFileNames == null) options.strictFileNames = false;
       if (callback == null) callback = defaultCallback;
-      fs36.open(path34, "r", function(err, fd) {
+      fs37.open(path34, "r", function(err, fd) {
         if (err) return callback(err);
         fromFd(fd, options, function(err2, zipfile) {
-          if (err2) fs36.close(fd, defaultCallback);
+          if (err2) fs37.close(fd, defaultCallback);
           callback(err2, zipfile);
         });
       });
@@ -251954,7 +252844,7 @@ var require_yauzl = __commonJS({
       if (options.validateEntrySizes == null) options.validateEntrySizes = true;
       if (options.strictFileNames == null) options.strictFileNames = false;
       if (callback == null) callback = defaultCallback;
-      fs36.fstat(fd, function(err, stats) {
+      fs37.fstat(fd, function(err, stats) {
         if (err) return callback(err);
         var reader = fd_slicer.createFromFd(fd, { autoClose: true });
         fromRandomAccessReader(reader, stats.size, options, callback);
@@ -256274,7 +257164,7 @@ var require_lib8 = __commonJS({
 var require_file_stream2 = __commonJS({
   "node_modules/compressing/lib/gzip/file_stream.js"(exports2, module2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var zlib2 = require("zlib");
     var utils = require_utils13();
     var streamifier = require_lib8();
@@ -256284,7 +257174,7 @@ var require_file_stream2 = __commonJS({
         super(opts.zlib);
         const sourceType = utils.sourceType(opts.source);
         if (sourceType === "file") {
-          const stream4 = fs36.createReadStream(opts.source, opts.fs);
+          const stream4 = fs37.createReadStream(opts.source, opts.fs);
           stream4.on("error", (err) => this.emit("error", err));
           stream4.pipe(this);
           return;
@@ -256309,7 +257199,7 @@ var require_file_stream2 = __commonJS({
 var require_uncompress_stream2 = __commonJS({
   "node_modules/compressing/lib/gzip/uncompress_stream.js"(exports2, module2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var zlib2 = require("zlib");
     var utils = require_utils13();
     var streamifier = require_lib8();
@@ -256319,7 +257209,7 @@ var require_uncompress_stream2 = __commonJS({
         super(opts.zlib);
         const sourceType = utils.sourceType(opts.source);
         if (sourceType === "file") {
-          const stream4 = fs36.createReadStream(opts.source, opts.fs);
+          const stream4 = fs37.createReadStream(opts.source, opts.fs);
           stream4.on("error", (err) => this.emit("error", err));
           stream4.pipe(this);
           return;
@@ -256359,7 +257249,7 @@ var require_gzip = __commonJS({
 var require_file_stream3 = __commonJS({
   "node_modules/compressing/lib/tar/file_stream.js"(exports2, module2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var path34 = require("path");
     var stream4 = require("stream");
     var tar = require_tar_stream();
@@ -256373,13 +257263,13 @@ var require_file_stream3 = __commonJS({
         pack.on("end", () => this.ready(true));
         const sourceType = utils.sourceType(opts.source);
         if (sourceType === "file") {
-          fs36.stat(opts.source, (err, stat) => {
+          fs37.stat(opts.source, (err, stat) => {
             if (err) return this.emit("error", err);
             this.entry = pack.entry({ name: opts.relativePath || path34.basename(opts.source), size: stat.size, mode: stat.mode & 511 }, (err2) => {
               if (err2) return this.emit("error", err2);
               pack.finalize();
             });
-            const stream5 = fs36.createReadStream(opts.source, opts.fs);
+            const stream5 = fs37.createReadStream(opts.source, opts.fs);
             stream5.on("error", (err2) => this.emit("error", err2));
             stream5.pipe(this);
           });
@@ -256438,7 +257328,7 @@ var require_file_stream3 = __commonJS({
 var require_uncompress_stream3 = __commonJS({
   "node_modules/compressing/lib/tar/uncompress_stream.js"(exports2, module2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var tar = require_tar_stream();
     var utils = require_utils13();
     var streamifier = require_lib8();
@@ -256448,7 +257338,7 @@ var require_uncompress_stream3 = __commonJS({
         super(opts);
         const sourceType = utils.sourceType(opts.source);
         if (sourceType === "file") {
-          const stream4 = fs36.createReadStream(opts.source, opts.fs);
+          const stream4 = fs37.createReadStream(opts.source, opts.fs);
           stream4.on("error", (err) => this.emit("error", err));
           stream4.pipe(this);
           return;
@@ -256590,7 +257480,7 @@ var require_FlushWritable = __commonJS({
 var require_uncompress_stream4 = __commonJS({
   "node_modules/compressing/lib/tgz/uncompress_stream.js"(exports2, module2) {
     "use strict";
-    var fs36 = require("fs");
+    var fs37 = require("fs");
     var utils = require_utils13();
     var ready = require_get_ready();
     var streamifier = require_lib8();
@@ -256608,7 +257498,7 @@ var require_uncompress_stream4 = __commonJS({
         this._gzipStream.pipe(tarStream);
         const sourceType = utils.sourceType(opts.source);
         if (sourceType === "file") {
-          const stream4 = fs36.createReadStream(opts.source, opts.fs);
+          const stream4 = fs37.createReadStream(opts.source, opts.fs);
           stream4.on("error", (err) => this.emit("error", err));
           stream4.pipe(this);
           return;
@@ -258489,7 +259379,7 @@ var init_updatePrompt2 = __esm({
 });
 
 // src/routes/setting/skillManagement/getSkillContent.ts
-var import_express160, import_path22, fs32, router157, getSkillContent_default;
+var import_express160, import_path22, fs33, router157, getSkillContent_default;
 var init_getSkillContent = __esm({
   "src/routes/setting/skillManagement/getSkillContent.ts"() {
     "use strict";
@@ -258500,7 +259390,7 @@ var init_getSkillContent = __esm({
     init_is_path_inside();
     init_utils3();
     import_path22 = __toESM(require("path"));
-    fs32 = __toESM(require("fs"));
+    fs33 = __toESM(require("fs"));
     router157 = import_express160.default.Router();
     getSkillContent_default = router157.post(
       "/",
@@ -258514,7 +259404,7 @@ var init_getSkillContent = __esm({
         if (!isPathInside(filePath, skillsRoot)) {
           return res.status(400).send(error50("\u65E0\u6548\u7684\u8DEF\u5F84"));
         }
-        const raw = await fs32.promises.readFile(filePath, "utf-8");
+        const raw = await fs33.promises.readFile(filePath, "utf-8");
         res.status(200).send(success3(raw));
       }
     );
@@ -258543,7 +259433,7 @@ var init_getSkillList = __esm({
 });
 
 // src/routes/setting/skillManagement/saveSkillContent.ts
-var import_express162, import_path23, fs33, router159, saveSkillContent_default;
+var import_express162, import_path23, fs34, router159, saveSkillContent_default;
 var init_saveSkillContent = __esm({
   "src/routes/setting/skillManagement/saveSkillContent.ts"() {
     "use strict";
@@ -258554,7 +259444,7 @@ var init_saveSkillContent = __esm({
     init_is_path_inside();
     init_utils3();
     import_path23 = __toESM(require("path"));
-    fs33 = __toESM(require("fs"));
+    fs34 = __toESM(require("fs"));
     router159 = import_express162.default.Router();
     saveSkillContent_default = router159.post(
       "/",
@@ -258569,10 +259459,10 @@ var init_saveSkillContent = __esm({
         if (!isPathInside(filePath, skillsRoot)) {
           return res.status(400).send(error50("\u65E0\u6548\u7684\u8DEF\u5F84"));
         }
-        if (!fs33.existsSync(filePath)) {
+        if (!fs34.existsSync(filePath)) {
           return res.status(400).send(error50("\u6587\u4EF6\u4E0D\u5B58\u5728"));
         }
-        const raw = await fs33.promises.writeFile(filePath, content, "utf-8");
+        const raw = await fs34.promises.writeFile(filePath, content, "utf-8");
         res.status(200).send(success3(raw));
       }
     );
