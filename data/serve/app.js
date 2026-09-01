@@ -241789,6 +241789,22 @@ function assetImageGenerationErrorEnvelope(failure2) {
 function imageFailure(kind, message) {
   return { kind, message };
 }
+function parseImageGenerationTarget(model, resolution) {
+  if (typeof model !== "string" || !model.trim()) {
+    return { ok: false, failure: imageFailure("invalidRequest", "model \u4E0D\u5408\u6CD5") };
+  }
+  let target;
+  try {
+    target = parseVendorModelName(model);
+  } catch {
+    return { ok: false, failure: imageFailure("invalidRequest", "\u6A21\u578B\u914D\u7F6E\u683C\u5F0F\u65E0\u6548") };
+  }
+  const normalizedResolution = typeof resolution === "string" ? resolution.trim() : "";
+  if (!normalizedResolution) {
+    return { ok: false, failure: imageFailure("invalidRequest", "resolution \u4E0D\u5408\u6CD5") };
+  }
+  return { ok: true, value: { target, resolution: normalizedResolution } };
+}
 function parseBatchAssetsIds(value) {
   if (!Array.isArray(value) || value.length === 0) return null;
   const ids = [];
@@ -241852,19 +241868,9 @@ async function generateAssetImage(dependencies, input) {
   if (!Number.isInteger(assetsId) || assetsId <= 0) {
     return { ok: false, failure: imageFailure("invalidRequest", "assetsId \u4E0D\u5408\u6CD5") };
   }
-  if (typeof input?.model !== "string" || !input.model.trim()) {
-    return { ok: false, failure: imageFailure("invalidRequest", "model \u4E0D\u5408\u6CD5") };
-  }
-  let target;
-  try {
-    target = parseVendorModelName(input.model);
-  } catch {
-    return { ok: false, failure: imageFailure("invalidRequest", "\u6A21\u578B\u914D\u7F6E\u683C\u5F0F\u65E0\u6548") };
-  }
-  const resolution = typeof input?.resolution === "string" ? input.resolution.trim() : "";
-  if (!resolution) {
-    return { ok: false, failure: imageFailure("invalidRequest", "resolution \u4E0D\u5408\u6CD5") };
-  }
+  const parsedTarget = parseImageGenerationTarget(input?.model, input?.resolution);
+  if (!parsedTarget.ok) return parsedTarget;
+  const { target, resolution } = parsedTarget.value;
   let imageId = null;
   if (input.imageId != null) {
     if (!Number.isInteger(input.imageId) || input.imageId <= 0) {
@@ -241937,21 +241943,21 @@ async function generateAssetImage(dependencies, input) {
         input: buildImageGenerationInput(entry, preparedMedia.value, resolution)
       });
     } catch (error67) {
-      const reason = utils_default2.error(error67).message;
+      const reason = error_default(error67).message;
       await taskDone(-1, reason);
       await markImageFailed(dependencies, imageRecordId, reason);
       return { ok: false, failure: imageFailure("imageGenerationFailed", "\u56FE\u7247\u751F\u6210\u8C03\u7528\u5931\u8D25") };
     }
     await taskDone(1);
   } catch (error67) {
-    await markImageFailed(dependencies, imageRecordId, utils_default2.error(error67).message);
+    await markImageFailed(dependencies, imageRecordId, error_default(error67).message);
     return { ok: false, failure: imageFailure("imageGenerationFailed", "\u56FE\u7247\u751F\u6210\u8C03\u7528\u5931\u8D25") };
   }
   const imagePath = `/${projectId}/${typeConfig.dir}/${v4_default()}.jpg`;
   try {
     await dependencies.writeGeneratedImage(imagePath, result);
   } catch (error67) {
-    await markImageFailed(dependencies, imageRecordId, utils_default2.error(error67).message);
+    await markImageFailed(dependencies, imageRecordId, error_default(error67).message);
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "\u751F\u6210\u56FE\u7247\u5199\u5165\u5B58\u50A8\u5931\u8D25") };
   }
   const imageRow = await dependencies.work((db) => db("o_image").where("id", imageRecordId).first());
@@ -241981,19 +241987,9 @@ async function prepareBatchAssetImages(dependencies, input) {
   if (!assetsIds) {
     return { ok: false, failure: imageFailure("invalidRequest", "assetsIds \u4E0D\u5408\u6CD5") };
   }
-  if (typeof input?.model !== "string" || !input.model.trim()) {
-    return { ok: false, failure: imageFailure("invalidRequest", "model \u4E0D\u5408\u6CD5") };
-  }
-  let target;
-  try {
-    target = parseVendorModelName(input.model);
-  } catch {
-    return { ok: false, failure: imageFailure("invalidRequest", "\u6A21\u578B\u914D\u7F6E\u683C\u5F0F\u65E0\u6548") };
-  }
-  const resolution = typeof input?.resolution === "string" ? input.resolution.trim() : "";
-  if (!resolution) {
-    return { ok: false, failure: imageFailure("invalidRequest", "resolution \u4E0D\u5408\u6CD5") };
-  }
+  const parsedTarget = parseImageGenerationTarget(input?.model, input?.resolution);
+  if (!parsedTarget.ok) return parsedTarget;
+  const { target, resolution } = parsedTarget.value;
   return dependencies.work(async (db) => {
     const project = await db("o_project").where("id", projectId).first();
     if (!project) return { ok: false, failure: imageFailure("projectNotFound", "\u9879\u76EE\u4E0D\u5B58\u5728") };
@@ -242027,7 +242023,7 @@ function createDefaultAssetImageGenerationDependencies() {
   return {
     work: promptDependencies.work,
     resolveGenerationInputs: (input) => resolveAssetGenerationInputs(promptDependencies, input),
-    readReferenceMedia: (mediaPath) => utils_default2.oss.getFile(mediaPath),
+    readReferenceMedia: (mediaPath) => oss_default.getFile(mediaPath),
     generateImage: async (request) => {
       const vendor = getDefaultConfiguredVendor();
       const { version: version3 } = await vendor.inspectVendor(request.target.vendorId);
@@ -242035,12 +242031,12 @@ function createDefaultAssetImageGenerationDependencies() {
       const result = await vendor.generateImage({ target: request.target, input });
       return normalizeHttpResult(result);
     },
-    recordGenerationTask: (input) => utils_default2.task(input.projectId, input.taskClass, input.modelId, {
+    recordGenerationTask: (input) => taskRecord(input.projectId, input.taskClass, input.modelId, {
       describe: input.describe,
       content: input.content
     }),
-    writeGeneratedImage: (imagePath, data) => utils_default2.oss.writeFile(imagePath, data),
-    getImageUrl: (imagePath) => utils_default2.oss.getSmallImageUrl(imagePath)
+    writeGeneratedImage: (imagePath, data) => oss_default.writeFile(imagePath, data),
+    getImageUrl: (imagePath) => oss_default.getSmallImageUrl(imagePath)
   };
 }
 var FAILURE_ENVELOPE, IMAGE_TYPE_CONFIG;
@@ -242049,7 +242045,9 @@ var init_assetImageGeneration = __esm({
     "use strict";
     init_dist_node();
     init_vendor2();
-    init_utils3();
+    init_oss();
+    init_taskRecord();
+    init_error();
     init_imageGeneration();
     init_assetReferenceMedia();
     init_assetPromptOrchestration();

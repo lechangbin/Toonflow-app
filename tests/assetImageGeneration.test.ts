@@ -806,6 +806,45 @@ test("批量路径下提示词过期会回写占位记录", async () => {
   }
 });
 
+test("批量路径下参考图媒体缺失也回写占位记录", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-batchmedia-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    const harness = imageHarness(knex);
+    await seedReferences(harness, knex, 1);
+    await generatePromptRecord(knex, [101], 1);
+
+    const prepared = await prepareBatchAssetImages(harness.deps, {
+      projectId: 1,
+      assetsIds: [101],
+      model: MODEL,
+      resolution: "1K",
+    });
+    if (!prepared.ok) throw new Error("预置失败");
+    harness.media.clear();
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 101,
+      model: MODEL,
+      resolution: "1K",
+      imageId: prepared.value[0].imageId,
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failure.kind, "referenceMediaUnreadable");
+    assert.equal(harness.vendorRequests.length, 0, "必须在外部提交前失败");
+    assert.equal(harness.taskSnapshots.length, 0);
+    const image = await knex("o_image").first();
+    assert.equal(image.state, "生成失败", "媒体失败同样必须回写占位记录");
+    assert.ok(String(image.errorReason).includes("referenceMediaUnreadable"));
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 test("批量预置拒绝无权限资产且不留占位", async () => {
   const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-batchauth-");
   try {
