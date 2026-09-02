@@ -348,7 +348,8 @@ function imageHarness(
     },
     recordGenerationTask: async (input) => {
       taskSnapshots.push({ describe: input.describe, content: input.content });
-      return async (state, reason) => {
+      return async (state, reason, updatedContent) => {
+        if (updatedContent !== undefined) taskSnapshots[taskSnapshots.length - 1].content = updatedContent;
         taskStates.push({ state, reason });
       };
     },
@@ -705,9 +706,13 @@ test("供应商失败时任务快照与占位记录保留诊断信息", async ()
     assert.ok(!JSON.stringify(envelope).includes("上游超时"), "稳定信封不得泄露供应商原始异常");
     const image = await knex("o_image").first();
     assert.equal(image.state, "生成失败");
-    assert.ok(String(image.errorReason).includes("上游超时"), "占位记录保留原始原因供诊断");
-    assert.deepEqual(harness.taskStates, [{ state: -1, reason: "Agnes 图片生成失败（HTTP 500）：上游超时" }]);
+    assert.match(String(image.errorReason), /^imageGenerationFailed:[a-f0-9]{64}$/u, "占位记录只保留脱敏失败指纹");
+    assert.match(harness.taskStates[0].reason ?? "", /^imageGenerationFailed:[a-f0-9]{64}$/u);
     assert.equal(harness.taskSnapshots.length, 1, "失败也必须落快照（可重试诊断）");
+    const snapshot = JSON.parse(harness.taskSnapshots[0].content);
+    assert.equal(snapshot.failureEvidence.kind, "imageGenerationFailed");
+    assert.match(snapshot.failureEvidence.failureReasonHash, /^[a-f0-9]{64}$/u);
+    assert.ok(!harness.taskSnapshots[0].content.includes("上游超时"), "失败快照不得持久化原始异常");
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });

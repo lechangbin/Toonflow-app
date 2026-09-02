@@ -238751,11 +238751,12 @@ async function taskRecord(projectId, taskClass, modelName, opts = {}) {
       startTime: Date.now()
     })
   );
-  return async function done(state, reason) {
+  return async function done(state, reason, updatedContent) {
     await getDatabaseRuntime().work(
       (db) => db("o_tasks").where("id", id).update({
         state: taskStateMap[state],
-        reason: state === -1 ? reason ?? "" : null
+        reason: state === -1 ? reason ?? "" : null,
+        ...updatedContent === void 0 ? {} : { relatedObjects: updatedContent }
       })
     );
   };
@@ -239168,12 +239169,20 @@ async function renumberReferences(tx, input) {
 async function listAssetReferences(work, input) {
   return work(
     (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
       const rows = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").orderBy("id", "asc").select();
       return { ok: true, value: rows.map(toRecord2) };
     })
   );
+}
+async function hasPersistedAssetReferences(work, input) {
+  return work(async (db) => {
+    const ownership = await ownedAssetFailure(db, input.projectId, input.assetsId);
+    if (ownership) return { ok: false, failure: ownership };
+    const row = await db("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).select("id").first();
+    return { ok: true, value: Boolean(row) };
+  });
 }
 async function createAssetReference(work, input, store) {
   const admission = await work(
@@ -240264,6 +240273,21 @@ async function loadGenerationContext(dependencies, projectId, assetsIds) {
   if (!base.ok) return base;
   const referencesByAsset = /* @__PURE__ */ new Map();
   for (const asset of base.value.assets) {
+    if (asset.assetsId != null) {
+      const persisted = await hasPersistedAssetReferences(dependencies.work, { projectId, assetsId: asset.id });
+      if (!persisted.ok) return { ok: false, failure: assetPromptFailure("assetNotFound", "\u8D44\u4EA7\u53C2\u8003\u56FE\u68C0\u67E5\u5931\u8D25") };
+      if (persisted.value) {
+        return {
+          ok: false,
+          failure: assetPromptFailure(
+            "derivedAssetReferenceForbidden",
+            `\u884D\u751F\u8D44\u4EA7 ${asset.id} \u4ECD\u9644\u6709\u4EBA\u5DE5\u53C2\u8003\u56FE\uFF0C\u8BF7\u5148\u6E05\u7406\u9057\u7559\u6570\u636E`
+          )
+        };
+      }
+      referencesByAsset.set(asset.id, []);
+      continue;
+    }
     const listed = await listAssetReferences(dependencies.work, { projectId, assetsId: asset.id });
     if (!listed.ok) return { ok: false, failure: assetPromptFailure("assetNotFound", "\u8D44\u4EA7\u53C2\u8003\u56FE\u52A0\u8F7D\u5931\u8D25") };
     referencesByAsset.set(asset.id, listed.value);
@@ -242307,6 +242331,11 @@ function parseBatchAssetsIds(value) {
 async function markImageFailed(dependencies, imageId, reason) {
   await dependencies.work((db) => db("o_image").where("id", imageId).update({ state: "\u751F\u6210\u5931\u8D25", errorReason: reason })).catch(() => void 0);
 }
+function failureHashFromStoredReason(reason) {
+  const value = String(reason ?? "");
+  const match = /^imageGenerationFailed:([a-f0-9]{64})$/u.exec(value);
+  return match?.[1] ?? sha256(value);
+}
 async function loadGenerationAttemptEvidence(dependencies, assetsId, currentImageId) {
   const previous = await dependencies.work((db) => {
     const query = db("o_image").where("assetsId", assetsId);
@@ -242316,7 +242345,7 @@ async function loadGenerationAttemptEvidence(dependencies, assetsId, currentImag
   const latest = previous[0];
   const retryEvidence = latest?.state === "\u751F\u6210\u5931\u8D25" ? {
     retryOfImageId: Number(latest.id),
-    failureReasonHash: sha256(String(latest.errorReason ?? ""))
+    failureReasonHash: failureHashFromStoredReason(latest.errorReason)
   } : null;
   return { attempt: previous.length + 1, retryEvidence };
 }
@@ -242454,11 +242483,12 @@ async function generateAssetImage(dependencies, input) {
     imageRecordId = imageId;
     await dependencies.work((db) => db("o_assets").where("id", assetsId).update({ imageId: imageRecordId }));
   }
-  const snapshotContent = JSON.stringify({
+  const snapshot = {
     id: assetsId,
     projectId,
     type: typeConfig.label,
     ...attemptEvidence,
+    failureEvidence: null,
     promptRevision: entry.promptRevision,
     ...entry.derived ? {
       derived: {
@@ -242474,7 +242504,8 @@ async function generateAssetImage(dependencies, input) {
       orderIndex: item.reference.orderIndex,
       mediaMime: item.reference.mediaMime
     }))
-  });
+  };
+  const snapshotContent = JSON.stringify(snapshot);
   const describe4 = entry.derived ? `\u751F\u6210${typeConfig.label}\u884D\u751F\u56FE\uFF0C\u540D\u79F0\uFF1A${entry.name}\uFF0C\u7236\u8D44\u4EA7\u951A\u70B9 1 \u5F20` : `\u751F\u6210${typeConfig.label}\u56FE\uFF0C\u540D\u79F0\uFF1A${entry.name}\uFF0C\u53C2\u8003\u56FE ${preparedMedia.value.length} \u5F20`;
   let result;
   let taskDone;
@@ -242493,8 +242524,13 @@ async function generateAssetImage(dependencies, input) {
       });
     } catch (error67) {
       const reason = error_default(error67).message;
-      await taskDone(-1, reason);
-      await markImageFailed(dependencies, imageRecordId, reason);
+      const failureEvidence = {
+        kind: "imageGenerationFailed",
+        failureReasonHash: sha256(reason)
+      };
+      const sanitizedReason = `${failureEvidence.kind}:${failureEvidence.failureReasonHash}`;
+      await taskDone(-1, sanitizedReason, JSON.stringify({ ...snapshot, failureEvidence }));
+      await markImageFailed(dependencies, imageRecordId, sanitizedReason);
       return { ok: false, failure: imageFailure("imageGenerationFailed", "\u56FE\u7247\u751F\u6210\u8C03\u7528\u5931\u8D25") };
     }
     await taskDone(1);
@@ -261959,18 +261995,19 @@ var tools_default = (toolCpnfig) => {
         if (!briefType) {
           return `\u5173\u8054\u8D44\u4EA7\u7C7B\u578B\u4E0D\u53D7\u652F\u6301\uFF08${parentAssets.type ?? "\u672A\u8BBE\u7F6E"}\uFF09\uFF0C\u65E0\u6CD5\u5199\u5165\u884D\u751F\u8D44\u4EA7`;
         }
-        if (briefType === "prop") {
-          const existingDerivedProp = deriveAsset.id === null ? null : await getDatabaseRuntime().work(
-            (db) => db("o_assets").where({
-              id: deriveAsset.id,
-              projectId,
-              assetsId: deriveAsset.assetsId,
-              type: parentAssets.type
-            }).select("id").first()
-          );
-          if (!existingDerivedProp) {
-            return "\u9053\u5177\u8D44\u4EA7\u672C\u9636\u6BB5\u4E0D\u4E3B\u52A8\u884D\u751F\uFF1B\u4EC5\u53EF\u66F4\u65B0\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u4E14\u6302\u5728\u6307\u5B9A\u7236\u8D44\u4EA7\u4E0B\u7684\u65E2\u6709\u884D\u751F\u9053\u5177\uFF08legacy_prop_state\uFF09";
-          }
+        const existingDerivedAsset = deriveAsset.id === null ? null : await getDatabaseRuntime().work(
+          (db) => db("o_assets").where({
+            id: deriveAsset.id,
+            projectId,
+            assetsId: deriveAsset.assetsId,
+            type: parentAssets.type
+          }).select("id").first()
+        );
+        if (briefType === "prop" && !existingDerivedAsset) {
+          return "\u9053\u5177\u8D44\u4EA7\u672C\u9636\u6BB5\u4E0D\u4E3B\u52A8\u884D\u751F\uFF1B\u4EC5\u53EF\u66F4\u65B0\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u4E14\u6302\u5728\u6307\u5B9A\u7236\u8D44\u4EA7\u4E0B\u7684\u65E2\u6709\u884D\u751F\u9053\u5177\uFF08legacy_prop_state\uFF09";
+        }
+        if (deriveAsset.id !== null && !existingDerivedAsset) {
+          return "\u4EC5\u53EF\u66F4\u65B0\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u4E14\u6302\u5728\u6307\u5B9A\u7236\u8D44\u4EA7\u4E0B\u7684\u65E2\u6709\u884D\u751F\u8D44\u4EA7";
         }
         const parsedInstruction = derivedChangeInstructionSchema.safeParse(deriveAsset.changeInstruction);
         if (!parsedInstruction.success) {
@@ -261992,7 +262029,13 @@ var tools_default = (toolCpnfig) => {
         const contract = await getDatabaseRuntime().work(
           (db) => db.transaction(async (tx) => {
             if (deriveAsset.id !== null) {
-              await tx("o_assets").where("id", deriveAsset.id).update(data);
+              const updated = await tx("o_assets").where({
+                id: deriveAsset.id,
+                projectId,
+                assetsId: deriveAsset.assetsId,
+                type: parentAssets.type
+              }).update(data);
+              if (!updated) throw new ChangeInstructionWriteError("\u76EE\u6807\u884D\u751F\u8D44\u4EA7\u5DF2\u53D8\u5316\uFF0C\u8BF7\u5237\u65B0\u540E\u91CD\u8BD5");
               thinking.appendText(`\u5DF2\u66F4\u65B0\u884D\u751F\u8D44\u4EA7\uFF0CID: ${deriveAsset.id}
 `);
             } else {

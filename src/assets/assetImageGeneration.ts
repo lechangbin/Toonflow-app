@@ -125,7 +125,7 @@ export interface AssetImageTaskSnapshotInput {
   content: string;
 }
 
-export type AssetImageTaskHandle = (state: 1 | -1, reason?: string) => Promise<void>;
+export type AssetImageTaskHandle = (state: 1 | -1, reason?: string, updatedContent?: string) => Promise<void>;
 
 export interface AssetImageGenerationDependencies {
   work: DatabaseWork;
@@ -194,6 +194,17 @@ interface GenerationAttemptEvidence {
   retryEvidence: { retryOfImageId: number; failureReasonHash: string } | null;
 }
 
+interface GenerationFailureEvidence {
+  kind: "imageGenerationFailed";
+  failureReasonHash: string;
+}
+
+function failureHashFromStoredReason(reason: unknown): string {
+  const value = String(reason ?? "");
+  const match = /^imageGenerationFailed:([a-f0-9]{64})$/u.exec(value);
+  return match?.[1] ?? sha256(value);
+}
+
 /** 只记录上一失败尝试的标识与原因指纹，不把供应商错误原文写入 command snapshot。 */
 async function loadGenerationAttemptEvidence(
   dependencies: AssetImageGenerationDependencies,
@@ -210,7 +221,7 @@ async function loadGenerationAttemptEvidence(
     latest?.state === "生成失败"
       ? {
           retryOfImageId: Number(latest.id),
-          failureReasonHash: sha256(String(latest.errorReason ?? "")),
+          failureReasonHash: failureHashFromStoredReason(latest.errorReason),
         }
       : null;
   return { attempt: previous.length + 1, retryEvidence };
@@ -397,11 +408,12 @@ export async function generateAssetImage(
   // 脱敏 command snapshot：参考图身份（id/顺序/媒体类型）+ 提示词版本；衍生资产附父
   // 资产 ID、父图 ID、变化契约 revision 与契约来源（generationPrompt revision 即 promptRevision）；
   // 不含 base64、凭证或媒体路径
-  const snapshotContent = JSON.stringify({
+  const snapshot = {
     id: assetsId,
     projectId,
     type: typeConfig.label,
     ...attemptEvidence,
+    failureEvidence: null as GenerationFailureEvidence | null,
     promptRevision: entry.promptRevision,
     ...(entry.derived
       ? {
@@ -419,7 +431,8 @@ export async function generateAssetImage(
       orderIndex: item.reference.orderIndex,
       mediaMime: item.reference.mediaMime,
     })),
-  });
+  };
+  const snapshotContent = JSON.stringify(snapshot);
   const describe = entry.derived
     ? `生成${typeConfig.label}衍生图，名称：${entry.name}，父资产锚点 1 张`
     : `生成${typeConfig.label}图，名称：${entry.name}，参考图 ${preparedMedia.value.length} 张`;
@@ -441,8 +454,13 @@ export async function generateAssetImage(
       });
     } catch (error) {
       const reason = normalizeError(error).message;
-      await taskDone(-1, reason);
-      await markImageFailed(dependencies, imageRecordId, reason);
+      const failureEvidence: GenerationFailureEvidence = {
+        kind: "imageGenerationFailed",
+        failureReasonHash: sha256(reason),
+      };
+      const sanitizedReason = `${failureEvidence.kind}:${failureEvidence.failureReasonHash}`;
+      await taskDone(-1, sanitizedReason, JSON.stringify({ ...snapshot, failureEvidence }));
+      await markImageFailed(dependencies, imageRecordId, sanitizedReason);
       return { ok: false, failure: imageFailure("imageGenerationFailed", "图片生成调用失败") };
     }
     await taskDone(1);

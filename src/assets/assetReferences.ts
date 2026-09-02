@@ -227,7 +227,7 @@ export async function listAssetReferences(
 ): Promise<AssetReferenceResult<AssetReferenceRecord[]>> {
   return work((db) =>
     db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
       const rows = await tx("o_assetReference")
         .where({ assetsId: input.assetsId, projectId: input.projectId })
@@ -237,6 +237,25 @@ export async function listAssetReferences(
       return { ok: true as const, value: rows.map(toRecord) };
     }),
   );
+}
+
+/**
+ * 生成编排专用的遗留数据探针：只回答是否存在，不暴露 Derived Asset 的人工
+ * 参考图内容。调用方据此返回 derivedAssetReferenceForbidden。
+ */
+export async function hasPersistedAssetReferences(
+  work: DatabaseWork,
+  input: { projectId: number; assetsId: number },
+): Promise<AssetReferenceResult<boolean>> {
+  return work(async (db) => {
+    const ownership = await ownedAssetFailure(db, input.projectId, input.assetsId);
+    if (ownership) return { ok: false, failure: ownership };
+    const row = await db("o_assetReference")
+      .where({ assetsId: input.assetsId, projectId: input.projectId })
+      .select("id")
+      .first();
+    return { ok: true as const, value: Boolean(row) };
+  });
 }
 
 /**
