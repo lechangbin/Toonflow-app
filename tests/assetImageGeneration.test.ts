@@ -514,7 +514,15 @@ test("重试复用可诊断的稳定输入", async () => {
     assert.equal(second.ok, true);
     assert.equal(harness.vendorRequests.length, 2);
     assert.deepEqual(harness.vendorRequests[0].input, harness.vendorRequests[1].input, "重试必须提交完全相同的稳定输入");
-    assert.equal(harness.taskSnapshots[0].content, harness.taskSnapshots[1].content, "重试快照必须一致（可诊断）");
+    const firstSnapshot = JSON.parse(harness.taskSnapshots[0].content);
+    const secondSnapshot = JSON.parse(harness.taskSnapshots[1].content);
+    assert.equal(firstSnapshot.attempt, 1);
+    assert.equal(secondSnapshot.attempt, 2);
+    assert.equal(firstSnapshot.retryEvidence, null);
+    assert.equal(secondSnapshot.retryEvidence, null, "上一次成功时不应伪造失败重试证据");
+    const { attempt: firstAttempt, retryEvidence: firstRetryEvidence, ...firstStableInput } = firstSnapshot;
+    const { attempt: secondAttempt, retryEvidence: secondRetryEvidence, ...secondStableInput } = secondSnapshot;
+    assert.deepEqual(firstStableInput, secondStableInput, "重试的稳定生成输入快照必须一致");
     const images = await knex("o_image").select();
     assert.equal(images.length, 2, "重试生成新的 o_image 记录");
     assert.ok(images.every((image) => image.state === "已完成"));

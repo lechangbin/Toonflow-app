@@ -153,14 +153,32 @@ export default (toolCpnfig: ToolConfig) => {
         const thinking = msg.thinking("正在操作资产...");
         const { projectId, scriptId } = resTool.data;
         const startTime = Date.now();
-        const parentAssets = await getDatabaseRuntime().work((db) => db("o_assets").where("id", deriveAsset.assetsId).select("id", "type").first());
+        const parentAssets = await getDatabaseRuntime().work((db) =>
+          db("o_assets").where({ id: deriveAsset.assetsId, projectId }).select("id", "type").first(),
+        );
         if (!parentAssets) return "关联的资产不存在";
         const briefType = canonicalAssetBriefType(parentAssets.type);
         if (!briefType) {
           return `关联资产类型不受支持（${parentAssets.type ?? "未设置"}），无法写入衍生资产`;
         }
-        if (briefType === "prop" && !deriveAsset.id) {
-          return "道具资产本阶段不主动衍生；仅可通过更新既有衍生道具（legacy_prop_state）维护";
+        if (briefType === "prop") {
+          const existingDerivedProp =
+            deriveAsset.id === null
+              ? null
+              : await getDatabaseRuntime().work((db) =>
+                  db("o_assets")
+                    .where({
+                      id: deriveAsset.id,
+                      projectId,
+                      assetsId: deriveAsset.assetsId,
+                      type: parentAssets.type,
+                    })
+                    .select("id")
+                    .first(),
+                );
+          if (!existingDerivedProp) {
+            return "道具资产本阶段不主动衍生；仅可更新属于当前项目且挂在指定父资产下的既有衍生道具（legacy_prop_state）";
+          }
         }
 
         // 变化契约在外部写入前校验：name/desc 只是展示字段，不构成可执行契约
@@ -186,7 +204,7 @@ export default (toolCpnfig: ToolConfig) => {
         const contract = await getDatabaseRuntime()
           .work((db) =>
             db.transaction(async (tx) => {
-            if (deriveAsset.id) {
+            if (deriveAsset.id !== null) {
               await tx("o_assets").where("id", deriveAsset.id).update(data);
               thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
             } else {

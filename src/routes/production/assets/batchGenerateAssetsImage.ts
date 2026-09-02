@@ -71,6 +71,7 @@ export function createBatchGenerateAssetsImageRouter(
             model: project.imageModel,
             resolution: project.imageQuality,
             imageId: record.imageId,
+            generationInput: record.generationInput,
           }),
         ),
       );

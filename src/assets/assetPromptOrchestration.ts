@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { Knex } from "knex";
 
@@ -9,6 +8,7 @@ import getPath from "@/utils/getPath";
 import { getAllArtPrompts, getArtPrompt } from "@/utils/getArtPrompt";
 
 import { ASSET_REFERENCE_LIMIT, listAssetReferences, type AssetReferenceRecord } from "./assetReferences";
+import { sha256 } from "./contentHash";
 import {
   assetPromptFailure,
   canonicalAssetBriefType,
@@ -170,10 +170,6 @@ function toTypedAssetRow(row: {
   imageId?: number | null;
 }): TypedAssetRow {
   return { ...row, briefType: canonicalAssetBriefType(row.type) as AssetBriefType };
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 /** 单资产类型涉及的视觉手册键（衍生资产附加 _derivative）。 */
@@ -755,11 +751,15 @@ export async function resolveAssetGenerationInputs(
     }
   }
 
-  const analysisTemplate = await dependencies.loadSkillFile(ANALYSIS_TEMPLATE_PATH);
-  if (!analysisTemplate) {
-    return { ok: false, failure: assetPromptFailure("skillContractMissing", "batch_asset_analysis.md 缺失") };
+  const hasBaseAssets = context.assets.some((asset) => asset.assetsId == null);
+  let templateHash = "";
+  if (hasBaseAssets) {
+    const analysisTemplate = await dependencies.loadSkillFile(ANALYSIS_TEMPLATE_PATH);
+    if (!analysisTemplate) {
+      return { ok: false, failure: assetPromptFailure("skillContractMissing", "batch_asset_analysis.md 缺失") };
+    }
+    templateHash = sha256(analysisTemplate);
   }
-  const templateHash = sha256(analysisTemplate);
 
   const visualManuals = await loadVisualManuals(dependencies, context.project.artStyle, context.assets);
   if (!visualManuals.ok) return { ok: false, failure: visualManuals.failure };

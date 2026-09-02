@@ -29,6 +29,7 @@ export type AssetReferenceFailureKind =
   | "assetProjectMismatch"
   | "referenceNotFound"
   | "referenceLimitExceeded"
+  | "derivedAssetReferenceForbidden"
   | "descriptionRequired"
   | "invalidMedia"
   | "orderMismatch";
@@ -98,6 +99,7 @@ const FAILURE_STATUS: Record<AssetReferenceFailureKind, number> = {
   referenceNotFound: 404,
   assetProjectMismatch: 403,
   referenceLimitExceeded: 400,
+  derivedAssetReferenceForbidden: 400,
   descriptionRequired: 400,
   invalidMedia: 400,
   orderMismatch: 400,
@@ -109,6 +111,7 @@ const FAILURE_MESSAGE: Record<AssetReferenceFailureKind, string> = {
   assetProjectMismatch: "资产不属于该项目",
   referenceNotFound: "参考图不存在或不属于该资产",
   referenceLimitExceeded: `单个资产最多支持 ${ASSET_REFERENCE_LIMIT} 张参考图`,
+  derivedAssetReferenceForbidden: "衍生资产不支持人工参考图",
   descriptionRequired: "参考图描述为必填项，本版本必须由人工撰写",
   invalidMedia: "参考图内容不是受支持的图片（PNG/JPEG/WebP/GIF）",
   orderMismatch: "排序列表与资产现有参考图不一致",
@@ -140,12 +143,14 @@ async function ownedAssetFailure(
   db: Knex,
   projectId: number,
   assetsId: number,
+  options: { rejectDerived?: boolean } = {},
 ): Promise<AssetReferenceFailure | null> {
   const project = await db("o_project").where("id", projectId).first();
   if (!project) return failure("projectNotFound");
   const asset = await db("o_assets").where("id", assetsId).first();
   if (!asset) return failure("assetNotFound");
   if (asset.projectId !== projectId) return failure("assetProjectMismatch");
+  if (options.rejectDerived && asset.assetsId != null) return failure("derivedAssetReferenceForbidden");
   return null;
 }
 
@@ -245,12 +250,9 @@ export async function createAssetReference(
   input: CreateAssetReferenceInput,
   store: AssetReferenceMediaStore,
 ): Promise<AssetReferenceResult<AssetReferenceRecord>> {
-  const description = normalizeDescription(input.description ?? "");
-  if (!description) return { ok: false, failure: failure("descriptionRequired") };
-
   const admission = await work((db) =>
     db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false as const, failure: ownership };
       const existing = await tx("o_assetReference")
         .where({ assetsId: input.assetsId, projectId: input.projectId })
@@ -264,6 +266,9 @@ export async function createAssetReference(
     }),
   );
   if (!admission.ok) return { ok: false, failure: admission.failure };
+
+  const description = normalizeDescription(input.description ?? "");
+  if (!description) return { ok: false, failure: failure("descriptionRequired") };
 
   const media = await store.write({
     projectId: input.projectId,
@@ -309,24 +314,25 @@ export async function updateAssetReference(
   work: DatabaseWork,
   input: UpdateAssetReferenceInput,
 ): Promise<AssetReferenceResult<AssetReferenceRecord>> {
-  const patch: Record<string, unknown> = { updateTime: Date.now() };
-  if (input.description !== undefined) {
-    const description = normalizeDescription(input.description);
-    if (!description) return { ok: false, failure: failure("descriptionRequired") };
-    patch.description = description;
-  }
-  if (input.visualRole !== undefined) patch.visualRole = input.visualRole.trim();
-  if (input.requiredTransfers !== undefined) {
-    patch.requiredTransfers = JSON.stringify(normalizeTransfers(input.requiredTransfers));
-  }
-  if (input.exclusions !== undefined) {
-    patch.exclusions = JSON.stringify(normalizeTransfers(input.exclusions));
-  }
-
   return work((db) =>
     db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
+
+      const patch: Record<string, unknown> = { updateTime: Date.now() };
+      if (input.description !== undefined) {
+        const description = normalizeDescription(input.description);
+        if (!description) return { ok: false, failure: failure("descriptionRequired") };
+        patch.description = description;
+      }
+      if (input.visualRole !== undefined) patch.visualRole = input.visualRole.trim();
+      if (input.requiredTransfers !== undefined) {
+        patch.requiredTransfers = JSON.stringify(normalizeTransfers(input.requiredTransfers));
+      }
+      if (input.exclusions !== undefined) {
+        patch.exclusions = JSON.stringify(normalizeTransfers(input.exclusions));
+      }
+
       const updated = await tx("o_assetReference")
         .where({ id: input.id, assetsId: input.assetsId, projectId: input.projectId })
         .update(patch);
@@ -344,7 +350,7 @@ export async function reorderAssetReferences(
 ): Promise<AssetReferenceResult<AssetReferenceRecord[]>> {
   return work((db) =>
     db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
       const rows = await tx("o_assetReference")
         .where({ assetsId: input.assetsId, projectId: input.projectId })
@@ -381,7 +387,7 @@ export async function deleteAssetReference(
 ): Promise<AssetReferenceResult<{ mediaPath: string }>> {
   return work((db) =>
     db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
       const removed = await tx("o_assetReference")
         .where({ id: input.id, assetsId: input.assetsId, projectId: input.projectId })
