@@ -161,24 +161,25 @@ export default (toolCpnfig: ToolConfig) => {
         if (!briefType) {
           return `关联资产类型不受支持（${parentAssets.type ?? "未设置"}），无法写入衍生资产`;
         }
-        if (briefType === "prop") {
-          const existingDerivedProp =
-            deriveAsset.id === null
-              ? null
-              : await getDatabaseRuntime().work((db) =>
-                  db("o_assets")
-                    .where({
-                      id: deriveAsset.id,
-                      projectId,
-                      assetsId: deriveAsset.assetsId,
-                      type: parentAssets.type,
-                    })
-                    .select("id")
-                    .first(),
-                );
-          if (!existingDerivedProp) {
-            return "道具资产本阶段不主动衍生；仅可更新属于当前项目且挂在指定父资产下的既有衍生道具（legacy_prop_state）";
-          }
+        const existingDerivedAsset =
+          deriveAsset.id === null
+            ? null
+            : await getDatabaseRuntime().work((db) =>
+                db("o_assets")
+                  .where({
+                    id: deriveAsset.id,
+                    projectId,
+                    assetsId: deriveAsset.assetsId,
+                    type: parentAssets.type,
+                  })
+                  .select("id")
+                  .first(),
+              );
+        if (briefType === "prop" && !existingDerivedAsset) {
+          return "道具资产本阶段不主动衍生；仅可更新属于当前项目且挂在指定父资产下的既有衍生道具（legacy_prop_state）";
+        }
+        if (deriveAsset.id !== null && !existingDerivedAsset) {
+          return "仅可更新属于当前项目且挂在指定父资产下的既有衍生资产";
         }
 
         // 变化契约在外部写入前校验：name/desc 只是展示字段，不构成可执行契约
@@ -204,26 +205,34 @@ export default (toolCpnfig: ToolConfig) => {
         const contract = await getDatabaseRuntime()
           .work((db) =>
             db.transaction(async (tx) => {
-            if (deriveAsset.id !== null) {
-              await tx("o_assets").where("id", deriveAsset.id).update(data);
-              thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
-            } else {
-              const [insertedId] = await tx("o_assets").insert(data);
-              data.id = insertedId;
-              await tx("o_scriptAssets").insert({ scriptId, assetId: insertedId });
-              thinking.appendText(`已新增衍生资产，ID: ${insertedId}\n`);
-            }
-            // 变化契约与衍生资产一起落库（agent 来源、带版本），图片生成阶段确定性编译
-            const saved = await saveDerivedChangeInstruction(async (operation) => operation(tx), {
-              projectId,
-              assetsId: data.id!,
-              instruction: parsedInstruction.data,
-              source: "agent",
-              expectedBriefType: briefType,
-            });
-            if (!saved.ok) throw new ChangeInstructionWriteError(saved.message);
-            return saved;
-          }),
+              if (deriveAsset.id !== null) {
+                const updated = await tx("o_assets")
+                  .where({
+                    id: deriveAsset.id,
+                    projectId,
+                    assetsId: deriveAsset.assetsId,
+                    type: parentAssets.type,
+                  })
+                  .update(data);
+                if (!updated) throw new ChangeInstructionWriteError("目标衍生资产已变化，请刷新后重试");
+                thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
+              } else {
+                const [insertedId] = await tx("o_assets").insert(data);
+                data.id = insertedId;
+                await tx("o_scriptAssets").insert({ scriptId, assetId: insertedId });
+                thinking.appendText(`已新增衍生资产，ID: ${insertedId}\n`);
+              }
+              // 变化契约与衍生资产一起落库（agent 来源、带版本），图片生成阶段确定性编译
+              const saved = await saveDerivedChangeInstruction(async (operation) => operation(tx), {
+                projectId,
+                assetsId: data.id!,
+                instruction: parsedInstruction.data,
+                source: "agent",
+                expectedBriefType: briefType,
+              });
+              if (!saved.ok) throw new ChangeInstructionWriteError(saved.message);
+              return saved;
+            }),
         )
           .catch((error: unknown) => {
             if (error instanceof ChangeInstructionWriteError) {

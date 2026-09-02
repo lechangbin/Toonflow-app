@@ -719,7 +719,8 @@ function derivedImageHarness(
     },
     recordGenerationTask: async (input) => {
       taskSnapshots.push({ describe: input.describe, content: input.content });
-      return async (state, reason) => {
+      return async (state, reason, updatedContent) => {
+        if (updatedContent !== undefined) taskSnapshots[taskSnapshots.length - 1].content = updatedContent;
         taskStates.push({ state, reason });
       };
     },
@@ -1012,7 +1013,7 @@ test("衍生生成失败可重试且复用稳定输入，快照记录失败信�
     const harness = derivedImageHarness(knex, {
       generateImage: async () => {
         calls += 1;
-        if (calls === 1) throw new Error("vendor down");
+        if (calls === 1) throw new Error("vendor down apiKey=secret-token data:image/png;base64,SECRETBASE64");
         return GENERATED_BASE64;
       },
     });
@@ -1029,15 +1030,17 @@ test("衍生生成失败可重试且复用稳定输入，快照记录失败信�
     assert.equal(first.failure.kind, "imageGenerationFailed");
     const failedRow = await knex("o_image").where("assetsId", 111).first();
     assert.equal(failedRow.state, "生成失败");
-    assert.ok(String(failedRow.errorReason).includes("vendor down"), "失败原因必须回写占位记录供诊断");
-    assert.deepEqual(
-      harness.taskStates[0],
-      { state: -1, reason: "vendor down" },
-      "任务快照必须记录失败状态与原因",
-    );
+    assert.match(String(failedRow.errorReason), /^imageGenerationFailed:[a-f0-9]{64}$/u, "失败记录只持久化稳定指纹");
+    assert.match(harness.taskStates[0].reason ?? "", /^imageGenerationFailed:[a-f0-9]{64}$/u);
+    assert.ok(!JSON.stringify(harness.taskStates[0]).includes("secret-token"), "任务状态不得持久化凭证");
+    assert.ok(!JSON.stringify(harness.taskStates[0]).includes("SECRETBASE64"), "任务状态不得持久化 Base64");
     const firstSnapshot = JSON.parse(harness.taskSnapshots[0].content);
     assert.equal(firstSnapshot.attempt, 1);
     assert.equal(firstSnapshot.retryEvidence, null);
+    assert.match(firstSnapshot.failureEvidence.failureReasonHash, /^[a-f0-9]{64}$/u);
+    assert.equal(firstSnapshot.failureEvidence.failureReasonHash, String(failedRow.errorReason).split(":")[1]);
+    assert.ok(!harness.taskSnapshots[0].content.includes("secret-token"), "首个失败快照不得记录凭证");
+    assert.ok(!harness.taskSnapshots[0].content.includes("SECRETBASE64"), "首个失败快照不得记录 Base64");
 
     const second = await generateAssetImage(harness.deps, {
       projectId: 1,
@@ -1053,9 +1056,11 @@ test("衍生生成失败可重试且复用稳定输入，快照记录失败信�
     assert.equal(secondSnapshot.attempt, 2, "快照必须记录重试序号");
     assert.equal(secondSnapshot.retryEvidence.retryOfImageId, failedRow.id, "快照必须关联上一失败图片记录");
     assert.match(secondSnapshot.retryEvidence.failureReasonHash, /^[a-f0-9]{64}$/u, "失败证据只记录脱敏指纹");
-    assert.ok(!harness.taskSnapshots[1].content.includes("vendor down"), "快照不得记录原始供应商错误文本");
-    const { attempt: firstAttempt, retryEvidence: firstRetry, ...firstStable } = firstSnapshot;
-    const { attempt: secondAttempt, retryEvidence: secondRetry, ...secondStable } = secondSnapshot;
+    assert.equal(secondSnapshot.retryEvidence.failureReasonHash, firstSnapshot.failureEvidence.failureReasonHash);
+    assert.equal(secondSnapshot.failureEvidence, null);
+    assert.ok(!harness.taskSnapshots[1].content.includes("secret-token"), "快照不得记录原始供应商错误文本");
+    const { attempt: firstAttempt, retryEvidence: firstRetry, failureEvidence: firstFailure, ...firstStable } = firstSnapshot;
+    const { attempt: secondAttempt, retryEvidence: secondRetry, failureEvidence: secondFailure, ...secondStable } = secondSnapshot;
     assert.deepEqual(firstStable, secondStable, "重试必须保留稳定生成命令，只改变尝试证据");
     const promptRecords = await knex("o_assetPromptRecord").where("assetsId", 111).select();
     assert.equal(promptRecords.length, 1, "重试复用同一条提示词记录");

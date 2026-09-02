@@ -51,13 +51,14 @@ export default async function taskRecord(
   );
 
   /** 任务成功时调用 done(1)，失败时调用 done(-1, '原因') */
-  return async function done(state: 1 | -1, reason?: string) {
+  return async function done(state: 1 | -1, reason?: string, updatedContent?: string) {
     await getDatabaseRuntime().work((db) =>
       db("o_tasks")
         .where("id", id)
         .update({
           state: taskStateMap[state],
           reason: state === -1 ? (reason ?? "") : null,
+          ...(updatedContent === undefined ? {} : { relatedObjects: updatedContent }),
         }),
     );
   };

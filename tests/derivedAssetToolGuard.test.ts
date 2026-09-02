@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { getDatabaseRuntime, openDatabase } from "../src/database";
 import useProductionAgentTools from "../src/agents/productionAgent/tools";
+import type { DerivedChangeInstruction } from "../src/assets/derivedChangeInstruction";
 import { withDataRoot } from "./databaseTestSupport";
 
 const LEGACY_PROP_INSTRUCTION = {
@@ -18,7 +19,7 @@ interface AddDerivedAssetInput {
   id: number | null;
   name: string;
   desc: string;
-  changeInstruction: typeof LEGACY_PROP_INSTRUCTION;
+  changeInstruction: DerivedChangeInstruction;
 }
 
 function createAddDerivedAssetTool(projectId: number) {
@@ -61,8 +62,31 @@ async function seedPropAssets(): Promise<void> {
       { id: 111, projectId: 1, assetsId: 101, name: "浸湿名册", type: "tool", describe: "被暴雨浸湿" },
       { id: 112, projectId: 1, assetsId: 102, name: "破损玉玺", type: "tool", describe: "边角破损" },
       { id: 211, projectId: 2, assetsId: 101, name: "外部项目名册", type: "tool", describe: "不属于项目一" },
+      { id: 301, projectId: 1, name: "将军", type: "role", describe: "父角色" },
+      { id: 302, projectId: 1, name: "谋士", type: "role", describe: "另一父角色" },
+      { id: 311, projectId: 1, assetsId: 301, name: "披甲将军", type: "role", describe: "换甲" },
+      { id: 312, projectId: 1, assetsId: 302, name: "披甲谋士", type: "role", describe: "换甲" },
+      { id: 411, projectId: 2, assetsId: 301, name: "外部项目将军", type: "role", describe: "不属于项目一" },
     ]);
   });
+}
+
+const ROLE_INSTRUCTION: DerivedChangeInstruction = {
+  changeKind: "character_wardrobe",
+  evidence: ["第三幕：将军换上战甲。"],
+  preserve: ["人物身份", "面部特征", "体型"],
+  change: ["换上战甲"],
+  exclude: ["身份改变"],
+};
+
+function roleUpdate(id: number): AddDerivedAssetInput {
+  return {
+    assetsId: 301,
+    id,
+    name: "披甲将军",
+    desc: "换上战甲",
+    changeInstruction: ROLE_INSTRUCTION,
+  };
 }
 
 function propUpdate(id: number): AddDerivedAssetInput {
@@ -102,6 +126,24 @@ test("Production Agent 只更新当前项目且挂在指定父 Asset 下的既�
     assert.deepEqual(harness.socketEvents, [], "越权或错父级目标不得触发前端资产 mutation");
 
     const accepted = await harness.execute(propUpdate(111));
+    assert.equal(accepted, "socket mutation accepted");
+    assert.deepEqual(harness.socketEvents, ["addDeriveAsset"]);
+  });
+});
+
+test("Production Agent 对角色更新同样拒绝伪造、基础、错父与跨项目目标", async () => {
+  await withDataRoot("toonflow-derived-role-owner-", async (dataRoot) => {
+    await openDatabase({ dataRoot });
+    await seedPropAssets();
+    const harness = createAddDerivedAssetTool(1);
+
+    for (const id of [999, 301, 312, 411]) {
+      const rejected = await harness.execute(roleUpdate(id));
+      assert.match(String(rejected), /仅可更新.*既有衍生资产/);
+    }
+    assert.deepEqual(harness.socketEvents, [], "非法角色更新不得触发前端 mutation");
+
+    const accepted = await harness.execute(roleUpdate(311));
     assert.equal(accepted, "socket mutation accepted");
     assert.deepEqual(harness.socketEvents, ["addDeriveAsset"]);
   });

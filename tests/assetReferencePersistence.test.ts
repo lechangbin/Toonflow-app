@@ -406,6 +406,24 @@ test("a Derived Asset rejects updating a human Asset Reference", async () => {
   }
 });
 
+test("a Derived Asset rejects reading legacy human Asset References", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-list-");
+  try {
+    await prepareSchema(knex);
+    await seedProjectAndAssets(knex);
+    await seedDerivedAsset(knex);
+    await seedLegacyDerivedReference(knex);
+
+    const result = await listAssetReferences(workOf(knex), { projectId: 1, assetsId: 3 });
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.failure.kind, "derivedAssetReferenceForbidden");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("the Derived Asset boundary takes priority over update payload validation", async () => {
   const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-update-priority-");
   try {

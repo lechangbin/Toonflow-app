@@ -7,7 +7,12 @@ import { getDefaultConfiguredVendor } from "@/vendor";
 import getPath from "@/utils/getPath";
 import { getAllArtPrompts, getArtPrompt } from "@/utils/getArtPrompt";
 
-import { ASSET_REFERENCE_LIMIT, listAssetReferences, type AssetReferenceRecord } from "./assetReferences";
+import {
+  ASSET_REFERENCE_LIMIT,
+  hasPersistedAssetReferences,
+  listAssetReferences,
+  type AssetReferenceRecord,
+} from "./assetReferences";
 import { sha256 } from "./contentHash";
 import {
   assetPromptFailure,
@@ -348,6 +353,21 @@ async function loadGenerationContext(
 
   const referencesByAsset = new Map<number, AssetReferenceRecord[]>();
   for (const asset of base.value.assets) {
+    if (asset.assetsId != null) {
+      const persisted = await hasPersistedAssetReferences(dependencies.work, { projectId, assetsId: asset.id });
+      if (!persisted.ok) return { ok: false, failure: assetPromptFailure("assetNotFound", "资产参考图检查失败") };
+      if (persisted.value) {
+        return {
+          ok: false,
+          failure: assetPromptFailure(
+            "derivedAssetReferenceForbidden",
+            `衍生资产 ${asset.id} 仍附有人工参考图，请先清理遗留数据`,
+          ),
+        };
+      }
+      referencesByAsset.set(asset.id, []);
+      continue;
+    }
     const listed = await listAssetReferences(dependencies.work, { projectId, assetsId: asset.id });
     if (!listed.ok) return { ok: false, failure: assetPromptFailure("assetNotFound", "资产参考图加载失败") };
     referencesByAsset.set(asset.id, listed.value);
