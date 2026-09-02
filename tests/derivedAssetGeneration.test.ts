@@ -536,6 +536,30 @@ test("持久化契约非法时稳定失败 derivedChangeInstructionInvalid（不
   }
 });
 
+test("持久化变化契约的来源与 revision 异常时拒绝伪造追溯信息", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-trace-invalid-");
+  try {
+    await prepareSchema(knex);
+    await knex("o_derivedChangeInstruction").insert({
+      id: 1,
+      projectId: 1,
+      assetsId: 111,
+      source: "unknown_source",
+      revision: 0,
+      instruction: JSON.stringify(WARDROBE_INSTRUCTION),
+      createTime: 1,
+      updateTime: 1,
+    });
+
+    const loaded = await loadDerivedChangeInstruction(workOf(knex), { projectId: 1, assetsId: 111 });
+    assert.equal(loaded.ok, false);
+    if (!loaded.ok) assert.equal(loaded.kind, "derivedChangeInstructionInvalid");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("旧非空 desc 确定性转换且不调用模型，转换结果可追溯 legacy_description", async () => {
   const { directory, knex } = createTemporaryDatabase("toonflow-derived-legacy-");
   try {

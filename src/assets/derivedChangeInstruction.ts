@@ -150,18 +150,39 @@ function toRecord(row: {
   if (!parsed.success) {
     return { ok: false, kind: "derivedChangeInstructionInvalid", message: "持久化的变化契约不是合法 JSON 或不符合 Schema" };
   }
-  const source = row.source === "legacy_description" ? "legacy_description" : "agent";
+  const source = row.source;
+  if (
+    !Number.isInteger(row.id) ||
+    row.id <= 0 ||
+    typeof row.projectId !== "number" ||
+    !Number.isInteger(row.projectId) ||
+    row.projectId <= 0 ||
+    !Number.isInteger(row.assetsId) ||
+    row.assetsId <= 0 ||
+    (source !== "agent" && source !== "legacy_description") ||
+    typeof row.revision !== "number" ||
+    !Number.isInteger(row.revision) ||
+    row.revision < 1 ||
+    typeof row.createTime !== "number" ||
+    !Number.isInteger(row.createTime) ||
+    row.createTime < 0 ||
+    typeof row.updateTime !== "number" ||
+    !Number.isInteger(row.updateTime) ||
+    row.updateTime < 0
+  ) {
+    return { ok: false, kind: "derivedChangeInstructionInvalid", message: "持久化的变化契约缺少合法的来源、版本或归属信息" };
+  }
   return {
     ok: true,
     value: {
       id: row.id,
-      projectId: row.projectId ?? 0,
+      projectId: row.projectId,
       assetsId: row.assetsId,
       source,
-      revision: row.revision ?? 1,
+      revision: row.revision,
       instruction: parsed.data,
-      createTime: row.createTime ?? 0,
-      updateTime: row.updateTime ?? 0,
+      createTime: row.createTime,
+      updateTime: row.updateTime,
     },
   };
 }

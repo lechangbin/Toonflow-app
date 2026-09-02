@@ -195,13 +195,13 @@ interface GenerationAttemptEvidence {
 }
 
 interface GenerationFailureEvidence {
-  kind: "imageGenerationFailed";
+  kind: AssetImageGenerationFailureKind;
   failureReasonHash: string;
 }
 
 function failureHashFromStoredReason(reason: unknown): string {
   const value = String(reason ?? "");
-  const match = /^imageGenerationFailed:([a-f0-9]{64})$/u.exec(value);
+  const match = /^[a-zA-Z]+:([a-f0-9]{64})$/u.exec(value);
   return match?.[1] ?? sha256(value);
 }
 
@@ -463,41 +463,58 @@ export async function generateAssetImage(
       await markImageFailed(dependencies, imageRecordId, sanitizedReason);
       return { ok: false, failure: imageFailure("imageGenerationFailed", "图片生成调用失败") };
     }
-    await taskDone(1);
   } catch (error) {
     // 任务记录或状态回写失败：按旧链路语义整体失败
     await markImageFailed(dependencies, imageRecordId, normalizeError(error).message);
     return { ok: false, failure: imageFailure("imageGenerationFailed", "图片生成调用失败") };
   }
 
+  const failRecordedTask = async (kind: AssetImageGenerationFailureKind, reason: string): Promise<string> => {
+    const failureEvidence: GenerationFailureEvidence = { kind, failureReasonHash: sha256(reason) };
+    const sanitizedReason = `${failureEvidence.kind}:${failureEvidence.failureReasonHash}`;
+    await taskDone(-1, sanitizedReason, JSON.stringify({ ...snapshot, failureEvidence })).catch(() => undefined);
+    await markImageFailed(dependencies, imageRecordId, sanitizedReason);
+    return sanitizedReason;
+  };
+
   const imagePath = `/${projectId}/${typeConfig.dir}/${uuidv4()}.jpg`;
   try {
     await dependencies.writeGeneratedImage(imagePath, result);
   } catch (error) {
-    await markImageFailed(dependencies, imageRecordId, normalizeError(error).message);
+    await failRecordedTask("imagePersistenceFailed", normalizeError(error).message);
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "生成图片写入存储失败") };
   }
 
   // 生成期间资产可能被删除（o_image 随资产清理）或被取消
   const imageRow = await dependencies.work((db) => db("o_image").where("id", imageRecordId).first());
-  if (!imageRow) return { ok: false, failure: imageFailure("assetNotFound", "资产已被删除") };
-  if (imageRow.state === "生成失败") return { ok: false, failure: imageFailure("cancelled", "生成已取消") };
+  if (!imageRow) {
+    await failRecordedTask("assetNotFound", "资产在图片生成期间被删除");
+    return { ok: false, failure: imageFailure("assetNotFound", "资产已被删除") };
+  }
+  if (imageRow.state === "生成失败") {
+    await failRecordedTask("cancelled", "图片生成已取消");
+    return { ok: false, failure: imageFailure("cancelled", "生成已取消") };
+  }
 
-  await dependencies.work((db) =>
-    db("o_image").where("id", imageRecordId).update({
-      state: "已完成",
-      filePath: imagePath,
-      type: entry.assetRawType,
-      model: target.modelId,
-      resolution,
-    }),
-  );
-  await dependencies.work((db) => db("o_assets").where("id", assetsId).update({ imageId: imageRecordId }));
-
-  return {
-    ok: true,
-    value: { assetsId, imageId: imageRecordId, imagePath, imageUrl: await dependencies.getImageUrl(imagePath) },
-  };
+  let imageUrl: string;
+  try {
+    await dependencies.work((db) =>
+      db("o_image").where("id", imageRecordId).update({
+        state: "已完成",
+        filePath: imagePath,
+        type: entry.assetRawType,
+        model: target.modelId,
+        resolution,
+      }),
+    );
+    await dependencies.work((db) => db("o_assets").where("id", assetsId).update({ imageId: imageRecordId }));
+    imageUrl = await dependencies.getImageUrl(imagePath);
+  } catch (error) {
+    await failRecordedTask("imagePersistenceFailed", normalizeError(error).message);
+    return { ok: false, failure: imageFailure("imagePersistenceFailed", "生成图片写入存储失败") };
+  }
+  await taskDone(1);
+  return { ok: true, value: { assetsId, imageId: imageRecordId, imagePath, imageUrl } };
 }
 
 export interface PrepareBatchAssetImagesInput {
