@@ -1,4 +1,4 @@
-// @db-hash 188c364030110c7746bcbc188a7a9852
+// @db-hash b28b366704f66c6908e01789c9aa6bfd
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -23,6 +23,7 @@ export interface o_agentDeploy {
   'modelName'?: string | null;
   'name'?: string | null;
   'temperature'?: number | null;
+  'type'?: string | null;
   'vendorId'?: string | null;
 }
 export interface o_agentWorkData {
@@ -251,7 +252,16 @@ export interface o_skillAttribution {
   'skillId'?: string;
 }
 export interface o_skillList {
-  'id'?: string | null;
+  'createTime': number;
+  'description': string;
+  'embedding'?: string | null;
+  'id'?: string;
+  'md5': string;
+  'name': string;
+  'path': string;
+  'state': number;
+  'type': string;
+  'updateTime': number;
 }
 export interface o_storyboard {
   'createTime'?: number | null;

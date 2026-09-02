@@ -162,7 +162,10 @@ import { DERIVED_ANCHOR_SKILL_VERSION } from "../src/assets/derivedAssetPrompt";
 const SKILL_ROOT = path.resolve(process.cwd(), "data", "skills", "asset-prompting");
 
 /** 衍生解析依赖：analyze 记录调用并抛错——衍生链路不得调用 Text Model。 */
-function derivedHarness(knex: Knex): { dependencies: AssetPromptOrchestrationDependencies; textCalls: unknown[] } {
+function derivedHarness(
+  knex: Knex,
+  options: { manual?: () => string } = {},
+): { dependencies: AssetPromptOrchestrationDependencies; textCalls: unknown[] } {
   const textCalls: unknown[] = [];
   const dependencies: AssetPromptOrchestrationDependencies = {
     work: workOf(knex),
@@ -178,7 +181,7 @@ function derivedHarness(knex: Knex): { dependencies: AssetPromptOrchestrationDep
       }
     },
     getArtStylePrefix: async () => "国风3D渲染",
-    getVisualManual: async () => "衍生视觉手册：继承父资产基准外观，仅应用声明变化。",
+    getVisualManual: async () => (options.manual ? options.manual() : "衍生视觉手册：继承父资产基准外观，仅应用声明变化。"),
     now: () => 1700000000000,
   };
   return { dependencies, textCalls };
@@ -567,7 +570,8 @@ test("父图或契约变化后哈希失效并确定性重编译", async () => {
       instruction: WARDROBE_INSTRUCTION,
       source: "agent",
     });
-    const { dependencies } = derivedHarness(knex);
+    let manualContent = "衍生视觉手册：继承父资产基准外观，仅应用声明变化。";
+    const { dependencies } = derivedHarness(knex, { manual: () => manualContent });
 
     const first = await resolveAssetGenerationInputs(dependencies, { projectId: 1, assetsIds: [111] });
     assert.equal(first.ok, true);
@@ -605,6 +609,23 @@ test("父图或契约变化后哈希失效并确定性重编译", async () => {
     assert.equal(third.value[0].derived.parentImageId, 502, "锚点必须跟随父资产当前选定图像");
     const thirdRecord = await knex("o_assetPromptRecord").where("assetsId", 111).first();
     assert.notEqual(thirdRecord.referenceHash, secondRecord.referenceHash);
+
+    // 视觉手册内容变化：contextHash 失效并确定性重编译
+    manualContent = "衍生视觉手册（修订）：严格保持父资产面部与轮廓。";
+    const forth = await resolveAssetGenerationInputs(dependencies, { projectId: 1, assetsIds: [111] });
+    assert.equal(forth.ok, true);
+    if (!forth.ok) return;
+    assert.ok(forth.value[0]!.generationPrompt.includes("严格保持父资产面部与轮廓"), "手册变化必须进入重编译提示词");
+    const forthRecord = await knex("o_assetPromptRecord").where("assetsId", 111).first();
+    assert.notEqual(forthRecord.contextHash, thirdRecord.contextHash, "手册变化必须使 contextHash 失效");
+
+    // 项目风格变化：同样确定性失效重编译
+    await knex("o_project").where("id", 1).update({ artStyle: "anime_2d" });
+    const fifth = await resolveAssetGenerationInputs(dependencies, { projectId: 1, assetsIds: [111] });
+    assert.equal(fifth.ok, true);
+    if (!fifth.ok) return;
+    const fifthRecord = await knex("o_assetPromptRecord").where("assetsId", 111).first();
+    assert.notEqual(fifthRecord.contextHash, forthRecord.contextHash, "项目风格变化必须使 contextHash 失效");
     const records = await knex("o_assetPromptRecord").where("assetsId", 111).select();
     assert.equal(records.length, 1, "重编译替换而不是追加记录");
   } finally {
@@ -941,4 +962,89 @@ test("Production Agent 批量路由是薄适配器（静态迁移守卫）", () 
   assert.ok(!source.includes('toString("base64")'), "路由不得手工编码 Base64");
   assert.ok(!source.includes("generationPrompt"), "路由不得拼接提示词");
   assert.ok(source.includes('from "@/assets/assetImageGeneration"'), "路由必须委托领域模块");
+});
+
+// ─── Slice 4：Production Agent 批量路由（注入依赖的行为级测试） ────────────────
+
+import express from "express";
+import { once } from "node:events";
+import { createBatchGenerateAssetsImageRouter } from "../src/routes/production/assets/batchGenerateAssetsImage";
+
+async function withDerivedTestServer(router: express.Router, handler: (url: string) => Promise<void>): Promise<void> {
+  const app = express();
+  app.use(express.json());
+  app.use(router);
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await once(server, "listening");
+    const address = server.address();
+    assert(address && typeof address === "object");
+    await handler("http://127.0.0.1:" + address.port);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+}
+
+async function waitForDerivedImages(knex: Knex, count: number): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const rows = await knex("o_image").where("assetsId", 111).select();
+    if (rows.length === count && rows.every((row) => row.state !== "生成中")) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error("等待衍生图片状态回写超时");
+}
+
+test("Production Agent 批量路由注入依赖完成衍生生成并稳定返回项目错误", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-route-");
+  try {
+    await prepareSchema(knex);
+    await seedDerivedSetup(knex);
+    await knex("o_project").where("id", 1).update({ imageModel: MODEL, imageQuality: "1K" });
+    await saveDerivedChangeInstruction(workOf(knex), {
+      projectId: 1,
+      assetsId: 111,
+      instruction: WARDROBE_INSTRUCTION,
+      source: "agent",
+    });
+    const harness = derivedImageHarness(knex);
+    harness.media.set(ANCHOR_PATH, pngBuffer("PARENT-ANCHOR"));
+
+    await withDerivedTestServer(createBatchGenerateAssetsImageRouter(() => harness.deps), async (url) => {
+      const response = await fetch(url + "/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetIds: [111], projectId: 1, scriptId: 1 }),
+      });
+      assert.equal(response.status, 200);
+      const body = (await response.json()) as { code: number; data: string };
+      assert.equal(body.code, 200);
+    });
+
+    await waitForDerivedImages(knex, 1);
+    assert.equal(harness.vendorRequests.length, 1, "路由必须经领域模块提交 fake Vendor");
+    assert.deepEqual(
+      harness.vendorRequests[0].input.referenceList,
+      [{ type: "image", base64: pngBuffer("PARENT-ANCHOR").toString("base64") }],
+      "路由路径必须提交恰好一个父资产锚点",
+    );
+    assert.equal(harness.textCalls.length, 0, "路由路径 Text Model 调用次数必须为 0");
+
+    // 项目图片模型未配置：稳定错误信封，不进入生成
+    await knex("o_project").where("id", 1).update({ imageModel: null });
+    await withDerivedTestServer(createBatchGenerateAssetsImageRouter(() => harness.deps), async (url) => {
+      const response = await fetch(url + "/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetIds: [111], projectId: 1 }),
+      });
+      assert.equal(response.status, 400);
+      const body = (await response.json()) as { error: string };
+      assert.equal(body.error, "invalidRequest");
+    });
+    assert.equal(harness.vendorRequests.length, 1, "错误路径不得追加 Vendor 调用");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });

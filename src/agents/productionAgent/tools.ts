@@ -6,13 +6,17 @@ import u from "@/utils";
 
 import { getDatabaseRuntime } from "@/database";
 import {
-  DERIVED_CHANGE_KINDS,
   derivedChangeInstructionSchema,
   isChangeKindCompatibleWithBriefType,
   removeDerivedChangeInstructionRows,
   saveDerivedChangeInstruction,
+  type DerivedChangeInstruction,
 } from "@/assets/derivedChangeInstruction";
+import { removeAssetPromptRecordRows } from "@/assets/assetPromptOrchestration";
 import { canonicalAssetBriefType } from "@/assets/assetBriefContract";
+
+/** 变化契约写入失败时抛出以中断事务并回滚资产写入（有资产必有契约）。 */
+class ChangeInstructionWriteError extends Error {}
 const deriveAssetSchema = z.object({
   id: z.number().describe("衍生资产ID,如果新增则为空"),
   assetsId: z.number().describe("关联的资产ID"),
@@ -126,13 +130,7 @@ export default (toolCpnfig: ToolConfig) => {
         id: number | null;
         name: string;
         desc: string;
-        changeInstruction: {
-          changeKind: (typeof DERIVED_CHANGE_KINDS)[number];
-          evidence: string[];
-          preserve: string[];
-          change: string[];
-          exclude: string[];
-        };
+        changeInstruction: DerivedChangeInstruction;
       }>(
         z
           .object({
@@ -161,6 +159,9 @@ export default (toolCpnfig: ToolConfig) => {
         if (!briefType) {
           return `关联资产类型不受支持（${parentAssets.type ?? "未设置"}），无法写入衍生资产`;
         }
+        if (briefType === "prop" && !deriveAsset.id) {
+          return "道具资产本阶段不主动衍生；仅可通过更新既有衍生道具（legacy_prop_state）维护";
+        }
 
         // 变化契约在外部写入前校验：name/desc 只是展示字段，不构成可执行契约
         const parsedInstruction = derivedChangeInstructionSchema.safeParse(deriveAsset.changeInstruction);
@@ -181,9 +182,10 @@ export default (toolCpnfig: ToolConfig) => {
           describe: deriveAsset.desc,
           startTime,
         };
-        // 资产与变化契约同事务写入：契约失败时回滚，不留下“有资产无契约”的部分成功状态
-        const contract = await getDatabaseRuntime().work((db) =>
-          db.transaction(async (tx) => {
+        // 资产与变化契约同事务写入：契约失败时抛错回滚，不留下“有资产无契约”的部分成功状态
+        const contract = await getDatabaseRuntime()
+          .work((db) =>
+            db.transaction(async (tx) => {
             if (deriveAsset.id) {
               await tx("o_assets").where("id", deriveAsset.id).update(data);
               thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
@@ -194,15 +196,23 @@ export default (toolCpnfig: ToolConfig) => {
               thinking.appendText(`已新增衍生资产，ID: ${insertedId}\n`);
             }
             // 变化契约与衍生资产一起落库（agent 来源、带版本），图片生成阶段确定性编译
-            return saveDerivedChangeInstruction(async (operation) => operation(tx), {
+            const saved = await saveDerivedChangeInstruction(async (operation) => operation(tx), {
               projectId,
               assetsId: data.id!,
               instruction: parsedInstruction.data,
               source: "agent",
               expectedBriefType: briefType,
             });
+            if (!saved.ok) throw new ChangeInstructionWriteError(saved.message);
+            return saved;
           }),
-        );
+        )
+          .catch((error: unknown) => {
+            if (error instanceof ChangeInstructionWriteError) {
+              return { ok: false as const, kind: "derivedChangeInstructionInvalid" as const, message: error.message };
+            }
+            throw error;
+          });
         if (!contract.ok) {
           thinking.appendText(`变化契约写入失败：${contract.message}\n`);
           thinking.updateTitle("变化契约写入失败");
@@ -230,11 +240,15 @@ export default (toolCpnfig: ToolConfig) => {
       execute: async ({ assetsId, id }) => {
         const thinking = msg.thinking("正在操作资产...");
         const { scriptId } = resTool.data;
+        // 单一事务：契约行、提示词记录、关联行与资产行要么一起删除，要么都不删除
         await getDatabaseRuntime().work(async (db) => {
-          await removeDerivedChangeInstructionRows(db, [id]);
-          await db("o_assets").where("id", id).del();
+          await db.transaction(async (tx) => {
+            await removeDerivedChangeInstructionRows(tx, [id]);
+            await removeAssetPromptRecordRows(tx, [id]);
+            await tx("o_scriptAssets").where({ scriptId, assetId: id }).del();
+            await tx("o_assets").where("id", id).del();
+          });
         });
-        await getDatabaseRuntime().work((db) => db("o_scriptAssets").where({ scriptId, assetId: id }).del());
         thinking.appendText(`已删除衍生资产，ID: ${id}\n`);
         const res = await new Promise((resolve) => socket.emit("delDeriveAsset", { assetsId, id }, (res: any) => resolve(res)));
         thinking.updateTitle("资产操作完成");
