@@ -156,7 +156,15 @@ interface GenerationContext {
   assets: TypedAssetRow[];
   parentById: Map<
     number,
-    { id: number; name: string; describe: string | null; imageId: number | null; projectId: number; assetsId: number | null }
+    {
+      id: number;
+      name: string;
+      describe: string | null;
+      imageId: number | null;
+      projectId: number;
+      assetsId: number | null;
+      briefType: AssetBriefType;
+    }
   >;
   parentRows: TypedAssetRow[];
   scripts: { id: number; name: string | null; content: string | null }[];
@@ -335,6 +343,7 @@ async function loadGenerationContext(
           imageId: row.imageId ?? null,
           projectId: row.projectId,
           assetsId: row.assetsId ?? null,
+          briefType: row.briefType,
         },
       ]),
     );

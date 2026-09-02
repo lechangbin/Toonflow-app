@@ -8,12 +8,11 @@ import { getDatabaseRuntime } from "@/database";
 import {
   derivedChangeInstructionSchema,
   isChangeKindCompatibleWithBriefType,
-  removeDerivedChangeInstructionRows,
   saveDerivedChangeInstruction,
   type DerivedChangeInstruction,
 } from "@/assets/derivedChangeInstruction";
-import { removeAssetPromptRecordRows } from "@/assets/assetPromptOrchestration";
 import { canonicalAssetBriefType } from "@/assets/assetBriefContract";
+import { deleteDerivedAssetRecord } from "@/assets/derivedAssetDeletion";
 
 /** 变化契约写入失败时抛出以中断事务并回滚资产写入（有资产必有契约）。 */
 class ChangeInstructionWriteError extends Error {}
@@ -266,16 +265,13 @@ export default (toolCpnfig: ToolConfig) => {
       ),
       execute: async ({ assetsId, id }) => {
         const thinking = msg.thinking("正在操作资产...");
-        const { scriptId } = resTool.data;
-        // 单一事务：契约行、提示词记录、关联行与资产行要么一起删除，要么都不删除
-        await getDatabaseRuntime().work(async (db) => {
-          await db.transaction(async (tx) => {
-            await removeDerivedChangeInstructionRows(tx, [id]);
-            await removeAssetPromptRecordRows(tx, [id]);
-            await tx("o_scriptAssets").where({ scriptId, assetId: id }).del();
-            await tx("o_assets").where("id", id).del();
-          });
+        const { projectId } = resTool.data;
+        const deleted = await deleteDerivedAssetRecord(getDatabaseRuntime().work, {
+          projectId,
+          id,
+          expectedParentAssetId: assetsId,
         });
+        if (!deleted.ok) return deleted.message;
         thinking.appendText(`已删除衍生资产，ID: ${id}\n`);
         const res = await new Promise((resolve) => socket.emit("delDeriveAsset", { assetsId, id }, (res: any) => resolve(res)));
         thinking.updateTitle("资产操作完成");

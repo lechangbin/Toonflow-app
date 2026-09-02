@@ -50,6 +50,34 @@ function createAddDerivedAssetTool(projectId: number) {
   return { execute: addDerivedAsset.execute, socketEvents };
 }
 
+function createDeleteDerivedAssetTool(projectId: number) {
+  const socketEvents: string[] = [];
+  const thinking = {
+    appendText: () => thinking,
+    updateTitle: () => thinking,
+    complete: () => thinking,
+  };
+  const resTool = {
+    data: { projectId, scriptId: 10 },
+    socket: {
+      emit(event: string, ...args: unknown[]) {
+        socketEvents.push(event);
+        const callback = args.at(-1);
+        if (typeof callback === "function") callback("socket mutation accepted");
+      },
+    },
+  };
+  const tools = useProductionAgentTools({
+    resTool,
+    msg: { thinking: () => thinking },
+    toolsNames: ["del_deriveAsset"],
+  } as never);
+  const deleteDerivedAsset = tools.del_deriveAsset as unknown as {
+    execute: (input: { assetsId: number; id: number }) => Promise<unknown>;
+  };
+  return { execute: deleteDerivedAsset.execute, socketEvents };
+}
+
 async function seedPropAssets(): Promise<void> {
   await getDatabaseRuntime().work(async (db) => {
     await db("o_project").insert([
@@ -146,5 +174,29 @@ test("Production Agent 对角色更新同样拒绝伪造、基础、错父与跨
     const accepted = await harness.execute(roleUpdate(311));
     assert.equal(accepted, "socket mutation accepted");
     assert.deepEqual(harness.socketEvents, ["addDeriveAsset"]);
+  });
+});
+
+test("Production Agent 删除只允许当前项目指定父资产下的 Derived Asset", async () => {
+  await withDataRoot("toonflow-derived-delete-owner-", async (dataRoot) => {
+    await openDatabase({ dataRoot });
+    await seedPropAssets();
+    const harness = createDeleteDerivedAssetTool(1);
+
+    for (const target of [
+      { assetsId: 301, id: 411 },
+      { assetsId: 301, id: 312 },
+      { assetsId: 301, id: 301 },
+    ]) {
+      const rejected = await harness.execute(target);
+      assert.match(String(rejected), /衍生资产不存在|不属于当前项目|父资产不匹配/);
+    }
+    assert.deepEqual(harness.socketEvents, [], "非法删除不得触发前端 mutation");
+    assert.equal((await getDatabaseRuntime().work((db) => db("o_assets").whereIn("id", [301, 312, 411]).select())).length, 3);
+
+    const accepted = await harness.execute({ assetsId: 301, id: 311 });
+    assert.equal(accepted, "socket mutation accepted");
+    assert.equal(await getDatabaseRuntime().work((db) => db("o_assets").where("id", 311).first()), undefined);
+    assert.deepEqual(harness.socketEvents, ["delDeriveAsset"]);
   });
 });
