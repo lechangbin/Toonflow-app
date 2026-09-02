@@ -519,6 +519,24 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       },
       initData: async (knex) => {},
     },
+    //衍生资产变化契约表（Derived Change Instruction：Production Agent 写入的带版本变化契约）
+    {
+      name: "o_derivedChangeInstruction",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("projectId");
+        table.integer("assetsId").notNullable();
+        table.text("source");
+        table.integer("revision");
+        table.text("instruction");
+        table.integer("createTime");
+        table.integer("updateTime");
+        table.primary(["id"]);
+        table.unique(["id"]);
+        table.unique(["assetsId"]);
+      },
+      initData: async (knex) => {},
+    },
     //生成图片表
     {
       name: "o_image",

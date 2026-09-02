@@ -33,7 +33,15 @@ export type AssetPromptFailureKind =
   | "languageProfileNotAvailable"
   | "promptNotGenerated"
   | "stalePromptRecord"
-  | "referenceLimitExceeded";
+  | "referenceLimitExceeded"
+  | "derivedAssetReferenceForbidden"
+  | "parentAssetMissing"
+  | "parentAssetAnchorMissing"
+  | "parentAssetAnchorUnauthorized"
+  | "parentAssetAnchorUnreadable"
+  | "derivedChangeInstructionMissing"
+  | "derivedChangeInstructionInvalid"
+  | "derivedPromptCompilationFailed";
 
 export interface AssetPromptFailure {
   kind: AssetPromptFailureKind;

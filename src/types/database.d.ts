@@ -1,4 +1,4 @@
-// @db-hash 381ac768f443dd0315b164723d3d6647
+// @db-hash b28b366704f66c6908e01789c9aa6bfd
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -52,6 +52,26 @@ export interface o_artStyle {
   'name'?: string | null;
   'prompt'?: string | null;
 }
+export interface o_assetPromptRecord {
+  'additionalRequirements'?: string | null;
+  'assetBrief'?: string | null;
+  'assetsId': number;
+  'batchContext'?: string | null;
+  'contextHash'?: string | null;
+  'createTime'?: number | null;
+  'generationPrompt'?: string | null;
+  'id'?: number;
+  'language'?: string | null;
+  'modelProfile'?: string | null;
+  'projectId'?: number | null;
+  'referenceHash'?: string | null;
+  'repairNotes'?: string | null;
+  'scriptId'?: number | null;
+  'skillVersion'?: string | null;
+  'templateHash'?: string | null;
+  'updateTime'?: number | null;
+  'validationState'?: string | null;
+}
 export interface o_assetReference {
   'analysisState'?: string | null;
   'assetsId'?: number | null;
@@ -92,6 +112,16 @@ export interface o_assets2Storyboard {
 export interface o_assetsRole2Audio {
   'assetsAudioId'?: number;
   'assetsRoleId'?: number;
+}
+export interface o_derivedChangeInstruction {
+  'assetsId': number;
+  'createTime'?: number | null;
+  'id'?: number;
+  'instruction'?: string | null;
+  'projectId'?: number | null;
+  'revision'?: number | null;
+  'source'?: string | null;
+  'updateTime'?: number | null;
 }
 export interface o_event {
   'createTime'?: number | null;
@@ -308,10 +338,12 @@ export interface DB {
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;
   "o_artStyle": o_artStyle;
+  "o_assetPromptRecord": o_assetPromptRecord;
   "o_assetReference": o_assetReference;
   "o_assets": o_assets;
   "o_assets2Storyboard": o_assets2Storyboard;
   "o_assetsRole2Audio": o_assetsRole2Audio;
+  "o_derivedChangeInstruction": o_derivedChangeInstruction;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_generationTask": o_generationTask;

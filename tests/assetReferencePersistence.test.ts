@@ -55,6 +55,36 @@ async function seedProjectAndAssets(knex: Knex): Promise<void> {
   ]);
 }
 
+async function seedDerivedAsset(knex: Knex): Promise<void> {
+  await knex("o_assets").insert({
+    id: 3,
+    name: "角色A·祭服",
+    type: "role",
+    projectId: 1,
+    assetsId: 1,
+  });
+}
+
+async function seedLegacyDerivedReference(knex: Knex): Promise<number> {
+  const now = Date.now();
+  const [id] = await knex("o_assetReference").insert({
+    projectId: 1,
+    assetsId: 3,
+    mediaPath: "/1/assetReferences/legacy-derived.png",
+    mediaMime: "image/png",
+    orderIndex: 0,
+    description: "旧数据中的衍生资产人工参考图",
+    descriptionSource: "manual",
+    analysisState: "not_requested",
+    visualRole: "旧参考",
+    requiredTransfers: "[]",
+    exclusions: "[]",
+    createTime: now,
+    updateTime: now,
+  });
+  return id;
+}
+
 function fakeMediaStore(
   overrides: Partial<AssetReferenceMediaStore> = {},
 ): AssetReferenceMediaStore & { removedPaths: string[] } {
@@ -283,6 +313,178 @@ test("every operation validates Project and Asset ownership with stable error en
     assert.equal(forbiddenEnvelope.status, 403);
     const invalidMediaEnvelope = assetReferenceErrorEnvelope({ kind: "invalidMedia", message: "" });
     assert.equal(invalidMediaEnvelope.status, 400);
+    const derivedForbiddenEnvelope = assetReferenceErrorEnvelope({
+      kind: "derivedAssetReferenceForbidden",
+      message: "",
+    });
+    assert.deepEqual(derivedForbiddenEnvelope, {
+      status: 400,
+      body: {
+        code: 400,
+        data: null,
+        message: "衍生资产不支持人工参考图",
+        error: "derivedAssetReferenceForbidden",
+      },
+    });
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a Derived Asset rejects creating a human Asset Reference", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-create-");
+  try {
+    await prepareSchema(knex);
+    await seedProjectAndAssets(knex);
+    await seedDerivedAsset(knex);
+
+    let mediaWrites = 0;
+    const store = fakeMediaStore({
+      async write() {
+        mediaWrites += 1;
+        return { mediaPath: "/should-not-be-written.png", mediaMime: "image/png" };
+      },
+    });
+    const result = await createAssetReference(
+      workOf(knex),
+      referenceInput({ assetsId: 3 }),
+      store,
+    );
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.failure.kind, "derivedAssetReferenceForbidden");
+    assert.equal(mediaWrites, 0);
+    assert.deepEqual(store.removedPaths, []);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("the Derived Asset boundary takes priority over create payload validation", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-create-priority-");
+  try {
+    await prepareSchema(knex);
+    await seedProjectAndAssets(knex);
+    await seedDerivedAsset(knex);
+
+    const result = await createAssetReference(
+      workOf(knex),
+      referenceInput({ assetsId: 3, description: "   " }),
+      fakeMediaStore(),
+    );
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.failure.kind, "derivedAssetReferenceForbidden");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a Derived Asset rejects updating a human Asset Reference", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-update-");
+  try {
+    await prepareSchema(knex);
+    await seedProjectAndAssets(knex);
+    await seedDerivedAsset(knex);
+    const referenceId = await seedLegacyDerivedReference(knex);
+
+    const result = await updateAssetReference(workOf(knex), {
+      projectId: 1,
+      assetsId: 3,
+      id: referenceId,
+      description: "不应写入的新描述",
+    });
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.failure.kind, "derivedAssetReferenceForbidden");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a Derived Asset rejects reading legacy human Asset References", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-list-");
+  try {
+    await prepareSchema(knex);
+    await seedProjectAndAssets(knex);
+    await seedDerivedAsset(knex);
+    await seedLegacyDerivedReference(knex);
+
+    const result = await listAssetReferences(workOf(knex), { projectId: 1, assetsId: 3 });
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.failure.kind, "derivedAssetReferenceForbidden");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("the Derived Asset boundary takes priority over update payload validation", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-update-priority-");
+  try {
+    await prepareSchema(knex);
+    await seedProjectAndAssets(knex);
+    await seedDerivedAsset(knex);
+    const referenceId = await seedLegacyDerivedReference(knex);
+
+    const result = await updateAssetReference(workOf(knex), {
+      projectId: 1,
+      assetsId: 3,
+      id: referenceId,
+      description: "   ",
+    });
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.failure.kind, "derivedAssetReferenceForbidden");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a Derived Asset rejects reordering human Asset References", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-reorder-");
+  try {
+    await prepareSchema(knex);
+    await seedProjectAndAssets(knex);
+    await seedDerivedAsset(knex);
+    const referenceId = await seedLegacyDerivedReference(knex);
+
+    const result = await reorderAssetReferences(workOf(knex), {
+      projectId: 1,
+      assetsId: 3,
+      orderedIds: [referenceId],
+    });
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.failure.kind, "derivedAssetReferenceForbidden");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a Derived Asset rejects deleting a human Asset Reference", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-asset-ref-delete-");
+  try {
+    await prepareSchema(knex);
+    await seedProjectAndAssets(knex);
+    await seedDerivedAsset(knex);
+    const referenceId = await seedLegacyDerivedReference(knex);
+
+    const result = await deleteAssetReference(workOf(knex), {
+      projectId: 1,
+      assetsId: 3,
+      id: referenceId,
+    });
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.failure.kind, "derivedAssetReferenceForbidden");
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });
