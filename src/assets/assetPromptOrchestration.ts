@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { Knex } from "knex";
 
@@ -8,7 +7,13 @@ import { getDefaultConfiguredVendor } from "@/vendor";
 import getPath from "@/utils/getPath";
 import { getAllArtPrompts, getArtPrompt } from "@/utils/getArtPrompt";
 
-import { ASSET_REFERENCE_LIMIT, listAssetReferences, type AssetReferenceRecord } from "./assetReferences";
+import {
+  ASSET_REFERENCE_LIMIT,
+  hasPersistedAssetReferences,
+  listAssetReferences,
+  type AssetReferenceRecord,
+} from "./assetReferences";
+import { sha256 } from "./contentHash";
 import {
   assetPromptFailure,
   canonicalAssetBriefType,
@@ -30,6 +35,7 @@ import {
   compileAssetGenerationPrompt,
   type AssetPromptModelProfile,
 } from "./assetPromptCompiler";
+import { resolveDerivedAssetGenerationEntry, type DerivedParentAnchor } from "./derivedAssetPrompt";
 
 /**
  * Asset prompt orchestration 深模块（Issue #33）。
@@ -75,6 +81,14 @@ export const ASSET_PROMPT_FAILURE_ENVELOPE: Record<AssetPromptFailureKind, { sta
   promptNotGenerated: { status: 409, message: "资产尚未生成提示词，请先生成提示词" },
   stalePromptRecord: { status: 409, message: "资产提示词已过期，请重新生成提示词" },
   referenceLimitExceeded: { status: 400, message: `单个资产最多支持 ${ASSET_REFERENCE_LIMIT} 张参考图` },
+  derivedAssetReferenceForbidden: { status: 400, message: "衍生资产不支持人工参考图" },
+  parentAssetMissing: { status: 404, message: "父资产不存在" },
+  parentAssetAnchorMissing: { status: 409, message: "父资产缺少已接受的图像锚点" },
+  parentAssetAnchorUnauthorized: { status: 403, message: "父资产不属于当前项目" },
+  parentAssetAnchorUnreadable: { status: 500, message: "父资产锚点图片缺失或无法读取" },
+  derivedChangeInstructionMissing: { status: 409, message: "衍生资产缺少变化契约，请重新执行衍生分析" },
+  derivedChangeInstructionInvalid: { status: 500, message: "衍生资产变化契约非法" },
+  derivedPromptCompilationFailed: { status: 500, message: "衍生资产提示词编译失败" },
 };
 
 export function assetPromptErrorEnvelope(failure: AssetPromptFailure): {
@@ -132,13 +146,26 @@ interface TypedAssetRow {
   assetsId: number | null;
   scriptId: number | null;
   projectId: number;
+  /** 父资产行携带当前选定的图像锚点；基础资产行可不加载。 */
+  imageId?: number | null;
   briefType: AssetBriefType;
 }
 
 interface GenerationContext {
   project: { id: number; name: string | null; type: string | null; intro: string | null; artStyle: string | null };
   assets: TypedAssetRow[];
-  parentById: Map<number, { id: number; name: string; describe: string | null }>;
+  parentById: Map<
+    number,
+    {
+      id: number;
+      name: string;
+      describe: string | null;
+      imageId: number | null;
+      projectId: number;
+      assetsId: number | null;
+      briefType: AssetBriefType;
+    }
+  >;
   parentRows: TypedAssetRow[];
   scripts: { id: number; name: string | null; content: string | null }[];
   referencesByAsset: Map<number, AssetReferenceRecord[]>;
@@ -153,12 +180,9 @@ function toTypedAssetRow(row: {
   assetsId: number | null;
   scriptId: number | null;
   projectId: number;
+  imageId?: number | null;
 }): TypedAssetRow {
   return { ...row, briefType: canonicalAssetBriefType(row.type) as AssetBriefType };
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 /** 单资产类型涉及的视觉手册键（衍生资产附加 _derivative）。 */
@@ -300,12 +324,29 @@ async function loadGenerationContext(
 
     const parentIds = [...new Set(assets.map((row) => row.assetsId).filter((id): id is number => id != null))];
     const parentRows: TypedAssetRow[] = parentIds.length
-      ? (await db("o_assets").whereIn("id", parentIds).select("id", "name", "type", "describe", "assetsId", "scriptId", "projectId")).map(toTypedAssetRow)
+      ? (
+          await db("o_assets")
+            .whereIn("id", parentIds)
+            .select("id", "name", "type", "describe", "assetsId", "scriptId", "projectId", "imageId")
+        ).map(toTypedAssetRow)
       : [];
     if (parentRows.length !== parentIds.length) {
-      return { ok: false as const, failure: assetPromptFailure("assetNotFound", "衍生资产的父资产不存在") };
+      return { ok: false as const, failure: assetPromptFailure("parentAssetMissing", "衍生资产的父资产不存在") };
     }
-    const parentById = new Map(parentRows.map((row) => [row.id, { id: row.id, name: row.name ?? "", describe: row.describe }]));
+    const parentById = new Map(
+      parentRows.map((row) => [
+        row.id,
+        {
+          id: row.id,
+          name: row.name ?? "",
+          describe: row.describe,
+          imageId: row.imageId ?? null,
+          projectId: row.projectId,
+          assetsId: row.assetsId ?? null,
+          briefType: row.briefType,
+        },
+      ]),
+    );
 
     const scriptIds = [...new Set(assets.map((row) => row.scriptId).filter((id): id is number => id != null))];
     const scripts: { id: number; name: string | null; content: string | null }[] = scriptIds.length
@@ -321,6 +362,21 @@ async function loadGenerationContext(
 
   const referencesByAsset = new Map<number, AssetReferenceRecord[]>();
   for (const asset of base.value.assets) {
+    if (asset.assetsId != null) {
+      const persisted = await hasPersistedAssetReferences(dependencies.work, { projectId, assetsId: asset.id });
+      if (!persisted.ok) return { ok: false, failure: assetPromptFailure("assetNotFound", "资产参考图检查失败") };
+      if (persisted.value) {
+        return {
+          ok: false,
+          failure: assetPromptFailure(
+            "derivedAssetReferenceForbidden",
+            `衍生资产 ${asset.id} 仍附有人工参考图，请先清理遗留数据`,
+          ),
+        };
+      }
+      referencesByAsset.set(asset.id, []);
+      continue;
+    }
     const listed = await listAssetReferences(dependencies.work, { projectId, assetsId: asset.id });
     if (!listed.ok) return { ok: false, failure: assetPromptFailure("assetNotFound", "资产参考图加载失败") };
     referencesByAsset.set(asset.id, listed.value);
@@ -680,6 +736,8 @@ export interface ResolvedAssetGenerationInput {
   references: AssetReferenceRecord[];
   /** 参与本次生成的参考图 id（编译器确定性选择，orderIndex 升序）。 */
   selectedReferenceIds: number[];
+  /** 衍生资产的父资产锚点（基础资产不携带）。 */
+  derived?: DerivedParentAnchor;
 }
 
 /**
@@ -709,6 +767,7 @@ export async function resolveAssetGenerationInputs(
 
   // 参考图超过能力上限：在外部调用前稳定拒绝（第 7 张一律 referenceLimitExceeded）
   for (const asset of context.assets) {
+    if (asset.assetsId != null) continue; // 衍生资产整体拒绝人工参考图，由衍生分支判定
     const references = context.referencesByAsset.get(asset.id) ?? [];
     if (references.length > ASSET_REFERENCE_LIMIT) {
       return {
@@ -721,11 +780,15 @@ export async function resolveAssetGenerationInputs(
     }
   }
 
-  const analysisTemplate = await dependencies.loadSkillFile(ANALYSIS_TEMPLATE_PATH);
-  if (!analysisTemplate) {
-    return { ok: false, failure: assetPromptFailure("skillContractMissing", "batch_asset_analysis.md 缺失") };
+  const hasBaseAssets = context.assets.some((asset) => asset.assetsId == null);
+  let templateHash = "";
+  if (hasBaseAssets) {
+    const analysisTemplate = await dependencies.loadSkillFile(ANALYSIS_TEMPLATE_PATH);
+    if (!analysisTemplate) {
+      return { ok: false, failure: assetPromptFailure("skillContractMissing", "batch_asset_analysis.md 缺失") };
+    }
+    templateHash = sha256(analysisTemplate);
   }
-  const templateHash = sha256(analysisTemplate);
 
   const visualManuals = await loadVisualManuals(dependencies, context.project.artStyle, context.assets);
   if (!visualManuals.ok) return { ok: false, failure: visualManuals.failure };
@@ -740,6 +803,28 @@ export async function resolveAssetGenerationInputs(
   const entries: ResolvedAssetGenerationInput[] = [];
   for (const assetsId of assetsIds) {
     const asset = assetById.get(assetsId)!;
+    // 衍生资产：Parent Asset Anchor + Derived Change Instruction 确定性编译（Issue #37）
+    if (asset.assetsId != null) {
+      const derivedEntry = await resolveDerivedAssetGenerationEntry(dependencies, {
+        projectId,
+        asset: {
+          id: asset.id,
+          name: asset.name,
+          type: asset.type,
+          describe: asset.describe,
+          assetsId: asset.assetsId,
+          briefType: asset.briefType,
+        },
+        parent: context.parentById.get(asset.assetsId) ?? null,
+        references: context.referencesByAsset.get(asset.id) ?? [],
+        artStyle: context.project.artStyle,
+        manualContent: visualManuals.value.get(visualManualKey(asset.briefType, true)) ?? null,
+        artStylePrefix,
+      });
+      if (!derivedEntry.ok) return { ok: false, failure: derivedEntry.failure };
+      entries.push(derivedEntry.value);
+      continue;
+    }
     const record = recordByAsset.get(assetsId);
     if (!record) {
       return {

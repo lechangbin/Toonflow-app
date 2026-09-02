@@ -24,7 +24,8 @@ const migratedTextCallers = [
   "utils/cleanNovel.ts",
   "routes/artStyle/extractStylePrompt.ts",
   "routes/cornerScape/batchBindAudio.ts",
-  "routes/production/assets/batchGenerateAssetsImage.ts",
+  // routes/production/assets/batchGenerateAssetsImage.ts 已在 #37 迁移为纯薄适配器，
+  // 不再接触 Text/Vendor，由 tests/derivedAssetGeneration.test.ts 的静态守卫覆盖。
   "routes/setting/agentDeploy/agentSetKey.ts",
   "routes/setting/vendorConfig/modelTest/textTest.ts",
   "routes/setting/vendorConfig/modelTest.ts",
