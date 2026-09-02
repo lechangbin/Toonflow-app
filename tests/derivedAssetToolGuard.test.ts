@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
 import { getDatabaseRuntime, openDatabase } from "../src/database";
@@ -126,6 +128,15 @@ function propUpdate(id: number): AddDerivedAssetInput {
     changeInstruction: LEGACY_PROP_INSTRUCTION,
   };
 }
+
+test("Derived Asset Skill 只指导 Agent 提交工具实际接受的字段", () => {
+  const skill = fs.readFileSync(path.resolve("data/skills/production_execution_derive_assets.md"), "utf8");
+  const callContract = skill.match(/add_deriveAsset\(\{([\s\S]*?)\n\}\)/u)?.[1] ?? "";
+
+  assert.ok(callContract, "Skill 必须包含 add_deriveAsset 调用契约");
+  assert.doesNotMatch(callContract, /^\s*type\s*:/mu, "资产类型由父 Asset 决定，不得指导 Agent 发送 Schema 未接受的 type");
+  assert.match(skill, /类型由父 Asset 自动继承/u);
+});
 
 test("Production Agent 拒绝用伪造的非空 ID 新建 Derived Prop", async () => {
   await withDataRoot("toonflow-derived-tool-guard-", async (dataRoot) => {
