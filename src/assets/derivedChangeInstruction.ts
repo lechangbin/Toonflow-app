@@ -222,20 +222,31 @@ export async function saveDerivedChangeInstruction(
     };
   }
   const now = (input.now ?? Date.now)();
-  const record = await work(async (db) =>
+  const saved = await work(async (db) =>
     db.transaction(async (tx) => {
       const existing = await tx("o_derivedChangeInstruction")
         .where({ assetsId: input.assetsId, projectId: input.projectId })
         .first();
       if (existing) {
-        const revision = (existing.revision ?? 1) + 1;
+        const parsedExisting = toRecord(existing);
+        if (!parsedExisting.ok) return parsedExisting;
+        const revision = parsedExisting.value.revision + 1;
         await tx("o_derivedChangeInstruction").where("id", existing.id).update({
           source: input.source,
           revision,
           instruction: JSON.stringify(instruction),
           updateTime: now,
         });
-        return { id: existing.id, revision };
+        return {
+          ok: true as const,
+          value: {
+            ...parsedExisting.value,
+            source: input.source,
+            revision,
+            instruction,
+            updateTime: now,
+          },
+        };
       }
       const [id] = await tx("o_derivedChangeInstruction").insert({
         projectId: input.projectId,
@@ -246,22 +257,22 @@ export async function saveDerivedChangeInstruction(
         createTime: now,
         updateTime: now,
       });
-      return { id, revision: 1 };
+      return {
+        ok: true as const,
+        value: {
+          id,
+          projectId: input.projectId,
+          assetsId: input.assetsId,
+          source: input.source,
+          revision: 1,
+          instruction,
+          createTime: now,
+          updateTime: now,
+        },
+      };
     }),
   );
-  return {
-    ok: true,
-    value: {
-      id: record.id,
-      projectId: input.projectId,
-      assetsId: input.assetsId,
-      source: input.source,
-      revision: record.revision,
-      instruction,
-      createTime: now,
-      updateTime: now,
-    },
-  };
+  return saved;
 }
 
 /**

@@ -98,6 +98,39 @@ test("变化契约持久化为带版本记录并在更新时递增 revision", as
   }
 });
 
+test("更新已有变化契约时拒绝损坏的 revision，不伪造新版本", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-contract-corrupt-revision-");
+  try {
+    await prepareSchema(knex);
+    await knex("o_derivedChangeInstruction").insert({
+      id: 1,
+      projectId: 1,
+      assetsId: 111,
+      source: "agent",
+      revision: 0,
+      instruction: JSON.stringify(WARDROBE_INSTRUCTION),
+      createTime: 1,
+      updateTime: 1,
+    });
+
+    const updated = await saveDerivedChangeInstruction(workOf(knex), {
+      projectId: 1,
+      assetsId: 111,
+      instruction: { ...WARDROBE_INSTRUCTION, change: ["服装替换为甲胄"] },
+      source: "agent",
+    });
+
+    assert.equal(updated.ok, false);
+    if (!updated.ok) assert.equal(updated.kind, "derivedChangeInstructionInvalid");
+    const row = await knex("o_derivedChangeInstruction").where("id", 1).first();
+    assert.equal(row.revision, 0, "拒绝损坏记录时不得静默改写 revision");
+    assert.deepEqual(JSON.parse(row.instruction), WARDROBE_INSTRUCTION);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("loadDerivedChangeInstruction 校验 projectId 归属避免跨项目读取", async () => {
   const { directory, knex } = createTemporaryDatabase("toonflow-derived-contract-own-");
   try {
