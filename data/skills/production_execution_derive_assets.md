@@ -31,10 +31,10 @@ description: >-
 1. 获取 `script`、`assets`
 2. **直接分析剧本与资产描述**，自行判定每个资产是否存在需要衍生的视觉状态变体（不读取、不依赖导演规划/预划清单）
 3. 按下方「提取规则」逐资产识别衍生：**角色只提取变身状态，场景只提取时间变体，道具不提取任何变体**
-4. 对识别出的每条衍生按下方字段规则生成完整 `name`/`desc`/`type`
+4. 对识别出的每条衍生按下方字段规则生成完整 `name`/`desc`/`changeInstruction`
 5. 简单说明本次新增的衍生资产内容（200 字以内）
 6. 若全部资产均无需衍生，返回"无需衍生资产"，流程结束
-7. 对每条新增衍生资产**逐条调用** `add_deriveAsset` 写入（新增时 `id` 填 `null`，并完整填写 `assetsId`/`name`/`desc`/`type`）
+7. 对每条新增衍生资产**逐条调用** `add_deriveAsset` 写入（新增时 `id` 填 `null`，并完整填写 `assetsId`/`name`/`desc`/`changeInstruction`）
 8. 全部调用完成后再返回简短确认（例如："已完成衍生资产写入，共 N 条"）
 
 ### 强制约束（防漏调用 / 防越权）
@@ -52,7 +52,6 @@ add_deriveAsset({
 	id: number | null,               // 衍生资产ID，新增填 null
 	name: string,                    // 衍生资产名称
 	desc: string,                    // 衍生资产描述
-	type: "role" | "tool" | "scene" | "clip", // 衍生资产类型
 	changeInstruction: {             // 变化契约（必填，带版本持久化）
 		changeKind: "character_wardrobe" | "character_effect" | "character_morphology" | "scene_time" | "legacy_prop_state",
 		evidence: string[],           // 剧本证据摘录（可空数组）
@@ -68,10 +67,7 @@ add_deriveAsset({
 - `id`：新增时必须为 `null`；更新已有衍生资产时填写已有衍生资产 ID
 - `name`：2~6 字，体现视觉外观变化
 - `desc`：`[与默认态的差异] · [视觉特征]`，1~100 字；desc 仅作展示，图片生成不再依赖它改写提示词
-- `type`：
-	- 角色衍生填 `role`
-	- 场景衍生填 `scene`
-	- 本阶段道具不衍生，故不会产生 `tool`；`clip` 仅在镜头/片段级资产时使用，常态下不出现
+- 衍生资产类型由父 Asset 自动继承，`add_deriveAsset` 不接受 `type` 字段；角色与场景的变化类别由 `changeInstruction.changeKind` 表达
 - `changeInstruction.changeKind` 与变化类型一一对应：
 	- 角色服装变化 → `character_wardrobe`
 	- 角色变身特效（光效、能量、粒子） → `character_effect`
