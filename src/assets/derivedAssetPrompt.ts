@@ -146,6 +146,7 @@ export interface ResolveDerivedAssetPromptInput {
     imageId: number | null;
     projectId: number;
     assetsId: number | null;
+    briefType: AssetBriefType;
   } | null;
   references: readonly AssetReferenceRecord[];
   artStyle: string | null;
@@ -204,6 +205,15 @@ export async function resolveDerivedAssetGenerationEntry(
     return {
       ok: false,
       failure: assetPromptFailure("parentAssetAnchorUnauthorized", `衍生资产 ${asset.id} 的父资产 ${parent.id} 不属于当前项目`),
+    };
+  }
+  if (parent.briefType !== asset.briefType) {
+    return {
+      ok: false,
+      failure: assetPromptFailure(
+        "derivedChangeInstructionInvalid",
+        `衍生资产 ${asset.id} 的类型 ${asset.briefType} 与父资产 ${parent.id} 的类型 ${parent.briefType} 不一致，请重新分析`,
+      ),
     };
   }
   if (parent.imageId == null) {

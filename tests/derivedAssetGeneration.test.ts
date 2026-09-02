@@ -866,6 +866,35 @@ test("批量衍生生成逐个提交父锚点并复用占位记录", async () =>
   }
 });
 
+test("父子 Asset 类型不一致时拒绝衍生生成并要求重新分析", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-parent-type-mismatch-");
+  try {
+    await prepareSchema(knex);
+    await seedDerivedSetup(knex, { derivedType: "scene", derivedDescribe: "黄昏时段的章台宫。" });
+    await saveDerivedChangeInstruction(workOf(knex), {
+      projectId: 1,
+      assetsId: 111,
+      instruction: {
+        changeKind: "scene_time",
+        evidence: ["第一幕：黄昏的章台宫。"],
+        preserve: ["空间结构"],
+        change: ["白昼变为黄昏"],
+        exclude: ["人物"],
+      },
+      source: "agent",
+    });
+    const { dependencies } = derivedHarness(knex);
+
+    const resolved = await resolveAssetGenerationInputs(dependencies, { projectId: 1, assetsIds: [111] });
+
+    assert.equal(resolved.ok, false);
+    if (!resolved.ok) assert.equal(resolved.failure.kind, "derivedChangeInstructionInvalid");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("父 Asset 与 Derived Asset 同批生成时冻结批次开始前的父资产锚点", async () => {
   const { directory, knex } = createTemporaryDatabase("toonflow-derived-parent-child-batch-");
   try {
