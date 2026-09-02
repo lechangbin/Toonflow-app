@@ -6,7 +6,7 @@ Read this document before changing Asset prompt polishing, Asset References, bat
 
 The shared Asset orchestration analyzes the current Script once for a selected Asset set, validates model-independent Asset Briefs, compiles differentiated prompts, and persists prompt revisions. The main single- and batch-image routes resolve the persisted final prompt and ordered human Asset References through the configured Image Vendor boundary.
 
-`src/routes/production/assets/batchGenerateAssetsImage.ts` remains a legacy Production Agent adapter: it rewrites Derived Asset prompts with a second Text Model call and submits only the parent image through the legacy conversion path. It must migrate to the shared generation boundary before complete real-chain acceptance.
+`src/routes/production/assets/batchGenerateAssetsImage.ts` is now a thin Production Agent adapter over the same generation boundary. Base Assets resolve persisted prompts and human Asset References; Derived Assets resolve exactly one Parent Asset Anchor and deterministically compile their Derived Change Instruction without a second Text Model call.
 
 ## Target flow
 

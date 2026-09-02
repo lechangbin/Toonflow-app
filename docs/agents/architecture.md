@@ -20,7 +20,7 @@ ADR-0004 is accepted and delivered by `src/database/`: one fixed readiness order
 
 ADR-0006 separates persisted, Script-grounded Asset Briefs from final image-generation prompts. `src/assets/assetPromptOrchestration.ts` analyzes a selected Asset set, validates structured briefs, compiles type-specific prompts, and applies Asset Reference contracts. `src/assets/assetImageGeneration.ts` resolves persisted prompts and references for the configured Image Vendor.
 
-The remaining Production Agent adapter at `src/routes/production/assets/batchGenerateAssetsImage.ts` still bypasses those boundaries. ADR-0007 defines its migration: base Assets own human Asset References, while Derived Assets use a system-resolved Parent Asset Anchor plus a structured Derived Change Instruction and deterministic prompt compilation.
+ADR-0007 is implemented by `src/assets/derivedAssetPrompt.ts` and the thin Production Agent adapter at `src/routes/production/assets/batchGenerateAssetsImage.ts`: base Assets own human Asset References, while Derived Assets use a system-resolved Parent Asset Anchor plus a structured Derived Change Instruction and deterministic prompt compilation.
 
 ## Worth exploring: Agent session runtime
 
@@ -38,4 +38,4 @@ Script Agent and Production Agent duplicate authentication, abort handling, thin
 
 ## Decision status
 
-ADR-0001 and ADR-0002 record the accepted Video decisions; ADR-0003 the container runtime-data lifecycle; ADR-0004 the explicit database readiness lifecycle; ADR-0005 configured Vendor execution; ADR-0006 the two-stage Asset image prompt boundary. Agent session runtime remains an exploration candidate; record new hard-to-reverse decisions under `docs/adr/` before implementation.
+ADR-0001 and ADR-0002 record the accepted Video decisions; ADR-0003 the container runtime-data lifecycle; ADR-0004 the explicit database readiness lifecycle; ADR-0005 configured Vendor execution; ADR-0006 the two-stage Asset image prompt boundary; ADR-0007 the Derived Asset parent-anchor boundary. Agent session runtime remains an exploration candidate; record new hard-to-reverse decisions under `docs/adr/` before implementation.

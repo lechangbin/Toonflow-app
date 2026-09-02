@@ -324,7 +324,11 @@ interface ImageHarness {
 /** 图片生成依赖：fake Vendor（无真实网络）、内存媒体与存储、快照捕获。 */
 function imageHarness(
   knex: Knex,
-  options: { generateImage?: (request: ImageGenerationRequest) => Promise<string> } = {},
+  options: {
+    generateImage?: (request: ImageGenerationRequest) => Promise<string>;
+    writeGeneratedImage?: (imagePath: string, data: string) => Promise<void>;
+    updateTask?: (state: 1 | -1, reason?: string, updatedContent?: string) => Promise<void>;
+  } = {},
 ): ImageHarness {
   const { dependencies } = promptHarness(knex, () => {
     throw new Error("图片生成不得调用 Text Model");
@@ -349,11 +353,13 @@ function imageHarness(
     recordGenerationTask: async (input) => {
       taskSnapshots.push({ describe: input.describe, content: input.content });
       return async (state, reason, updatedContent) => {
+        if (options.updateTask) await options.updateTask(state, reason, updatedContent);
         if (updatedContent !== undefined) taskSnapshots[taskSnapshots.length - 1].content = updatedContent;
         taskStates.push({ state, reason });
       };
     },
     writeGeneratedImage: async (imagePath, data) => {
+      if (options.writeGeneratedImage) return options.writeGeneratedImage(imagePath, data);
       storage.set(imagePath, data);
     },
     getImageUrl: async (imagePath) => "/oss" + imagePath + "?size=20",
@@ -713,6 +719,79 @@ test("供应商失败时任务快照与占位记录保留诊断信息", async ()
     assert.equal(snapshot.failureEvidence.kind, "imageGenerationFailed");
     assert.match(snapshot.failureEvidence.failureReasonHash, /^[a-f0-9]{64}$/u);
     assert.ok(!harness.taskSnapshots[0].content.includes("上游超时"), "失败快照不得持久化原始异常");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("图片落盘失败时 Generation Task 与快照同步失败且只保留脱敏证据", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-persist-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    const harness = imageHarness(knex, {
+      writeGeneratedImage: async () => {
+        throw new Error("磁盘路径含私密用户目录");
+      },
+    });
+    await generatePromptRecord(knex, [102]);
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failure.kind, "imagePersistenceFailed");
+    assert.equal(harness.taskStates.length, 1);
+    assert.equal(harness.taskStates[0].state, -1);
+    assert.match(harness.taskStates[0].reason ?? "", /^imagePersistenceFailed:[a-f0-9]{64}$/u);
+    const snapshot = JSON.parse(harness.taskSnapshots[0].content);
+    assert.equal(snapshot.failureEvidence.kind, "imagePersistenceFailed");
+    assert.match(snapshot.failureEvidence.failureReasonHash, /^[a-f0-9]{64}$/u);
+    assert.ok(!harness.taskSnapshots[0].content.includes("私密用户目录"));
+    const image = await knex("o_image").first();
+    assert.equal(image.state, "生成失败");
+    assert.match(String(image.errorReason), /^imagePersistenceFailed:[a-f0-9]{64}$/u);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Generation Task 成功回写失败时补偿为图片与任务失败", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-task-finalize-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    const harness = imageHarness(knex, {
+      updateTask: async (state) => {
+        if (state === 1) throw new Error("任务表连接含私密地址");
+      },
+    });
+    await generatePromptRecord(knex, [102]);
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failure.kind, "imagePersistenceFailed");
+    assert.equal(harness.taskStates.length, 1);
+    assert.equal(harness.taskStates[0].state, -1);
+    assert.match(harness.taskStates[0].reason ?? "", /^imagePersistenceFailed:[a-f0-9]{64}$/u);
+    assert.ok(!harness.taskSnapshots[0].content.includes("私密地址"));
+    const image = await knex("o_image").first();
+    assert.equal(image.state, "生成失败");
+    assert.match(String(image.errorReason), /^imagePersistenceFailed:[a-f0-9]{64}$/u);
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });

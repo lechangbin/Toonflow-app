@@ -150,18 +150,39 @@ function toRecord(row: {
   if (!parsed.success) {
     return { ok: false, kind: "derivedChangeInstructionInvalid", message: "持久化的变化契约不是合法 JSON 或不符合 Schema" };
   }
-  const source = row.source === "legacy_description" ? "legacy_description" : "agent";
+  const source = row.source;
+  if (
+    !Number.isInteger(row.id) ||
+    row.id <= 0 ||
+    typeof row.projectId !== "number" ||
+    !Number.isInteger(row.projectId) ||
+    row.projectId <= 0 ||
+    !Number.isInteger(row.assetsId) ||
+    row.assetsId <= 0 ||
+    (source !== "agent" && source !== "legacy_description") ||
+    typeof row.revision !== "number" ||
+    !Number.isInteger(row.revision) ||
+    row.revision < 1 ||
+    typeof row.createTime !== "number" ||
+    !Number.isInteger(row.createTime) ||
+    row.createTime < 0 ||
+    typeof row.updateTime !== "number" ||
+    !Number.isInteger(row.updateTime) ||
+    row.updateTime < 0
+  ) {
+    return { ok: false, kind: "derivedChangeInstructionInvalid", message: "持久化的变化契约缺少合法的来源、版本或归属信息" };
+  }
   return {
     ok: true,
     value: {
       id: row.id,
-      projectId: row.projectId ?? 0,
+      projectId: row.projectId,
       assetsId: row.assetsId,
       source,
-      revision: row.revision ?? 1,
+      revision: row.revision,
       instruction: parsed.data,
-      createTime: row.createTime ?? 0,
-      updateTime: row.updateTime ?? 0,
+      createTime: row.createTime,
+      updateTime: row.updateTime,
     },
   };
 }
@@ -201,20 +222,31 @@ export async function saveDerivedChangeInstruction(
     };
   }
   const now = (input.now ?? Date.now)();
-  const record = await work(async (db) =>
+  const saved = await work(async (db) =>
     db.transaction(async (tx) => {
       const existing = await tx("o_derivedChangeInstruction")
         .where({ assetsId: input.assetsId, projectId: input.projectId })
         .first();
       if (existing) {
-        const revision = (existing.revision ?? 1) + 1;
+        const parsedExisting = toRecord(existing);
+        if (!parsedExisting.ok) return parsedExisting;
+        const revision = parsedExisting.value.revision + 1;
         await tx("o_derivedChangeInstruction").where("id", existing.id).update({
           source: input.source,
           revision,
           instruction: JSON.stringify(instruction),
           updateTime: now,
         });
-        return { id: existing.id, revision };
+        return {
+          ok: true as const,
+          value: {
+            ...parsedExisting.value,
+            source: input.source,
+            revision,
+            instruction,
+            updateTime: now,
+          },
+        };
       }
       const [id] = await tx("o_derivedChangeInstruction").insert({
         projectId: input.projectId,
@@ -225,22 +257,22 @@ export async function saveDerivedChangeInstruction(
         createTime: now,
         updateTime: now,
       });
-      return { id, revision: 1 };
+      return {
+        ok: true as const,
+        value: {
+          id,
+          projectId: input.projectId,
+          assetsId: input.assetsId,
+          source: input.source,
+          revision: 1,
+          instruction,
+          createTime: now,
+          updateTime: now,
+        },
+      };
     }),
   );
-  return {
-    ok: true,
-    value: {
-      id: record.id,
-      projectId: input.projectId,
-      assetsId: input.assetsId,
-      source: input.source,
-      revision: record.revision,
-      instruction,
-      createTime: now,
-      updateTime: now,
-    },
-  };
+  return saved;
 }
 
 /**
