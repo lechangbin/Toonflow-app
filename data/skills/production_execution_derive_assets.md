@@ -53,6 +53,13 @@ add_deriveAsset({
 	name: string,                    // 衍生资产名称
 	desc: string,                    // 衍生资产描述
 	type: "role" | "tool" | "scene" | "clip", // 衍生资产类型
+	changeInstruction: {             // 变化契约（必填，带版本持久化）
+		changeKind: "character_wardrobe" | "character_effect" | "character_morphology" | "scene_time" | "legacy_prop_state",
+		evidence: string[],           // 剧本证据摘录（可空数组）
+		preserve: string[],           // 必须从父资产继承的特征（至少 1 条）
+		change: string[],             // 允许发生的变化（至少 1 条）
+		exclude: string[],            // 禁止出现的内容（可空数组）
+	},
 })
 ```
 
@@ -60,11 +67,24 @@ add_deriveAsset({
 - `assetsId`：父资产在工作区中的 ID
 - `id`：新增时必须为 `null`；更新已有衍生资产时填写已有衍生资产 ID
 - `name`：2~6 字，体现视觉外观变化
-- `desc`：`[与默认态的差异] · [视觉特征]`，1~100 字
+- `desc`：`[与默认态的差异] · [视觉特征]`，1~100 字；desc 仅作展示，图片生成不再依赖它改写提示词
 - `type`：
 	- 角色衍生填 `role`
 	- 场景衍生填 `scene`
 	- 本阶段道具不衍生，故不会产生 `tool`；`clip` 仅在镜头/片段级资产时使用，常态下不出现
+- `changeInstruction.changeKind` 与变化类型一一对应：
+	- 角色服装变化 → `character_wardrobe`
+	- 角色变身特效（光效、能量、粒子） → `character_effect`
+	- 角色整体变形（兽化、巨大化、异化） → `character_morphology`
+	- 场景时间变体 → `scene_time`
+	- `legacy_prop_state` 仅用于存量道具衍生兼容，本阶段不会产生
+- `changeInstruction.preserve`：从父资产必须原样继承的识别特征（如脸部拓扑、体型轮廓、空间结构）
+- `changeInstruction.change`：本次允许发生且仅允许发生的变化，与 desc 的差异描述一致
+- `changeInstruction.exclude`：禁止出现的偏差（如背景变化、文字、水印、额外角色）
+
+> 变化契约是衍生资产图片生成的唯一可执行依据：生成阶段以父资产当前选定的图像为
+> Parent Asset Anchor，确定性编译最终提示词，**不再调用文本模型二次改写**，也不会
+> 使用历史图片。缺少或非法的变化契约会导致生成稳定失败，必须重新调用本工具写入。
 
 
 

@@ -5,6 +5,7 @@ import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { removeAssetReferenceRows } from "@/assets/assetReferences";
 import { removeAssetPromptRecordRows } from "@/assets/assetPromptOrchestration";
+import { removeDerivedChangeInstructionRows } from "@/assets/derivedChangeInstruction";
 import { deleteMediaFileBestEffort, deleteMediaFileIfPresent } from "@/assets/assetReferenceMedia";
 const router = express.Router();
 
@@ -28,6 +29,7 @@ export default router.post(
       db.transaction(async (tx) => {
         const paths = await removeAssetReferenceRows(tx, [id, ...childIds]);
         await removeAssetPromptRecordRows(tx, [id, ...childIds]);
+        await removeDerivedChangeInstructionRows(tx, [id, ...childIds]);
         if (imageIds.length > 0) {
           await tx("o_assets").whereIn("imageId", imageIds).update({ imageId: null });
         }
