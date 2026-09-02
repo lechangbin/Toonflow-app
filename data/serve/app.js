@@ -239002,18 +239002,29 @@ async function saveDerivedChangeInstruction(work, input) {
     };
   }
   const now2 = (input.now ?? Date.now)();
-  const record3 = await work(
+  const saved = await work(
     async (db) => db.transaction(async (tx) => {
       const existing = await tx("o_derivedChangeInstruction").where({ assetsId: input.assetsId, projectId: input.projectId }).first();
       if (existing) {
-        const revision = (existing.revision ?? 1) + 1;
+        const parsedExisting = toRecord(existing);
+        if (!parsedExisting.ok) return parsedExisting;
+        const revision = parsedExisting.value.revision + 1;
         await tx("o_derivedChangeInstruction").where("id", existing.id).update({
           source: input.source,
           revision,
           instruction: JSON.stringify(instruction),
           updateTime: now2
         });
-        return { id: existing.id, revision };
+        return {
+          ok: true,
+          value: {
+            ...parsedExisting.value,
+            source: input.source,
+            revision,
+            instruction,
+            updateTime: now2
+          }
+        };
       }
       const [id] = await tx("o_derivedChangeInstruction").insert({
         projectId: input.projectId,
@@ -239024,22 +239035,22 @@ async function saveDerivedChangeInstruction(work, input) {
         createTime: now2,
         updateTime: now2
       });
-      return { id, revision: 1 };
+      return {
+        ok: true,
+        value: {
+          id,
+          projectId: input.projectId,
+          assetsId: input.assetsId,
+          source: input.source,
+          revision: 1,
+          instruction,
+          createTime: now2,
+          updateTime: now2
+        }
+      };
     })
   );
-  return {
-    ok: true,
-    value: {
-      id: record3.id,
-      projectId: input.projectId,
-      assetsId: input.assetsId,
-      source: input.source,
-      revision: record3.revision,
-      instruction,
-      createTime: now2,
-      updateTime: now2
-    }
-  };
+  return saved;
 }
 async function loadDerivedChangeInstruction(work, input) {
   const row = await work(
@@ -242617,7 +242628,12 @@ async function generateAssetImage(dependencies, input) {
     await failRecordedTask("imagePersistenceFailed", error_default(error67).message);
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "\u751F\u6210\u56FE\u7247\u5199\u5165\u5B58\u50A8\u5931\u8D25") };
   }
-  await taskDone(1);
+  try {
+    await taskDone(1);
+  } catch (error67) {
+    await failRecordedTask("imagePersistenceFailed", error_default(error67).message);
+    return { ok: false, failure: imageFailure("imagePersistenceFailed", "\u751F\u6210\u4EFB\u52A1\u5B8C\u6210\u72B6\u6001\u5199\u5165\u5931\u8D25") };
+  }
   return { ok: true, value: { assetsId, imageId: imageRecordId, imagePath, imageUrl } };
 }
 async function prepareBatchAssetImages(dependencies, input) {

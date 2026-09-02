@@ -513,7 +513,12 @@ export async function generateAssetImage(
     await failRecordedTask("imagePersistenceFailed", normalizeError(error).message);
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "生成图片写入存储失败") };
   }
-  await taskDone(1);
+  try {
+    await taskDone(1);
+  } catch (error) {
+    await failRecordedTask("imagePersistenceFailed", normalizeError(error).message);
+    return { ok: false, failure: imageFailure("imagePersistenceFailed", "生成任务完成状态写入失败") };
+  }
   return { ok: true, value: { assetsId, imageId: imageRecordId, imagePath, imageUrl } };
 }
 
