@@ -227,17 +227,50 @@ function buildImageGenerationInput(
   entry: ResolvedAssetGenerationInput,
   prepared: readonly PreparedReferenceMedia[],
   resolution: string,
+  parentAnchorBase64: string | null,
 ): ImageGenerationInput {
   return {
     prompt: entry.generationPrompt,
     // 旧链路语义：resolution 原样透传，由 Vendor adapter 决定兜底尺寸
     size: resolution as ImageGenerationInput["size"],
     aspectRatio: "16:9",
-    // 0 张参考图 = 纯文本请求：完全省略 reference media
-    ...(prepared.length > 0
-      ? { referenceList: prepared.map((item) => ({ type: "image" as const, base64: item.base64 })) }
-      : {}),
+    // 衍生资产：恰好提交一个父资产锚点；基础资产 0 张参考图 = 纯文本请求
+    ...(parentAnchorBase64 != null
+      ? { referenceList: [{ type: "image" as const, base64: parentAnchorBase64 }] }
+      : prepared.length > 0
+        ? { referenceList: prepared.map((item) => ({ type: "image" as const, base64: item.base64 })) }
+        : {}),
   };
+}
+
+/** 衍生资产父锚点媒体准备：读取 + magic-byte 校验，全部在外部调用前完成。 */
+async function prepareParentAnchorMedia(
+  dependencies: AssetImageGenerationDependencies,
+  entry: ResolvedAssetGenerationInput,
+): Promise<AssetImageGenerationResult<{ base64: string } | null>> {
+  if (!entry.derived) return { ok: true, value: null };
+  let buffer: Buffer;
+  try {
+    buffer = await dependencies.readReferenceMedia(entry.derived.anchorMediaPath);
+  } catch {
+    return {
+      ok: false,
+      failure: imageFailure(
+        "parentAssetAnchorUnreadable",
+        `父资产 ${entry.derived.parentAssetId} 的锚点图片 ${entry.derived.parentImageId} 缺失或无法读取`,
+      ),
+    };
+  }
+  if (!detectImageMime(buffer)) {
+    return {
+      ok: false,
+      failure: imageFailure(
+        "parentAssetAnchorUnreadable",
+        `父资产 ${entry.derived.parentAssetId} 的锚点图片 ${entry.derived.parentImageId} 内容不是受支持的图片`,
+      ),
+    };
+  }
+  return { ok: true, value: { base64: buffer.toString("base64") } };
 }
 
 /**
@@ -296,6 +329,16 @@ export async function generateAssetImage(
     return { ok: false, failure: preparedMedia.failure };
   }
 
+  // 衍生资产：父资产锚点媒体准备（恰好一张，取代任何参考图）
+  const anchorMedia = await prepareParentAnchorMedia(dependencies, entry);
+  if (!anchorMedia.ok) {
+    if (imageId != null) {
+      await markImageFailed(dependencies, imageId, `${anchorMedia.failure.kind}: ${anchorMedia.failure.message}`);
+    }
+    return { ok: false, failure: anchorMedia.failure };
+  }
+  const parentAnchorBase64 = anchorMedia.value ? anchorMedia.value.base64 : null;
+
   // 单个路径：解析与媒体校验全部通过后才创建占位记录
   let imageRecordId: number;
   if (imageId == null) {
@@ -315,19 +358,34 @@ export async function generateAssetImage(
     await dependencies.work((db) => db("o_assets").where("id", assetsId).update({ imageId: imageRecordId }));
   }
 
-  // 脱敏 command snapshot：参考图身份（id/顺序/媒体类型）+ 提示词版本；不含 base64、凭证或媒体路径
+  // 脱敏 command snapshot：参考图身份（id/顺序/媒体类型）+ 提示词版本；衍生资产附父
+  // 资产 ID、父图 ID、变化契约 revision 与契约来源（generationPrompt revision 即 promptRevision）；
+  // 不含 base64、凭证或媒体路径
   const snapshotContent = JSON.stringify({
     id: assetsId,
     projectId,
     type: typeConfig.label,
     promptRevision: entry.promptRevision,
+    ...(entry.derived
+      ? {
+          derived: {
+            parentAssetId: entry.derived.parentAssetId,
+            parentImageId: entry.derived.parentImageId,
+            changeKind: entry.derived.changeKind,
+            changeInstructionRevision: entry.derived.changeInstructionRevision,
+            changeInstructionSource: entry.derived.changeInstructionSource,
+          },
+        }
+      : {}),
     references: preparedMedia.value.map((item) => ({
       id: item.reference.id,
       orderIndex: item.reference.orderIndex,
       mediaMime: item.reference.mediaMime,
     })),
   });
-  const describe = `生成${typeConfig.label}图，名称：${entry.name}，参考图 ${preparedMedia.value.length} 张`;
+  const describe = entry.derived
+    ? `生成${typeConfig.label}衍生图，名称：${entry.name}，父资产锚点 1 张`
+    : `生成${typeConfig.label}图，名称：${entry.name}，参考图 ${preparedMedia.value.length} 张`;
 
   let result: string;
   let taskDone: AssetImageTaskHandle;
@@ -342,7 +400,7 @@ export async function generateAssetImage(
     try {
       result = await dependencies.generateImage({
         target,
-        input: buildImageGenerationInput(entry, preparedMedia.value, resolution),
+        input: buildImageGenerationInput(entry, preparedMedia.value, resolution, parentAnchorBase64),
       });
     } catch (error) {
       const reason = normalizeError(error).message;

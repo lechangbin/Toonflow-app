@@ -5,6 +5,14 @@ import ResTool from "@/socket/resTool";
 import u from "@/utils";
 
 import { getDatabaseRuntime } from "@/database";
+import {
+  DERIVED_CHANGE_KINDS,
+  derivedChangeInstructionSchema,
+  isChangeKindCompatibleWithBriefType,
+  removeDerivedChangeInstructionRows,
+  saveDerivedChangeInstruction,
+} from "@/assets/derivedChangeInstruction";
+import { canonicalAssetBriefType } from "@/assets/assetBriefContract";
 const deriveAssetSchema = z.object({
   id: z.number().describe("衍生资产ID,如果新增则为空"),
   assetsId: z.number().describe("关联的资产ID"),
@@ -112,14 +120,29 @@ export default (toolCpnfig: ToolConfig) => {
       },
     }),
     add_deriveAsset: tool({
-      description: "新增或更新衍生资产",
-      inputSchema: jsonSchema<{ assetsId: number; id: number | null; name: string; desc: string }>(
+      description: "新增或更新衍生资产（同时写入带版本的变化契约）",
+      inputSchema: jsonSchema<{
+        assetsId: number;
+        id: number | null;
+        name: string;
+        desc: string;
+        changeInstruction: {
+          changeKind: (typeof DERIVED_CHANGE_KINDS)[number];
+          evidence: string[];
+          preserve: string[];
+          change: string[];
+          exclude: string[];
+        };
+      }>(
         z
           .object({
             assetsId: z.number().describe("关联的资产ID"),
             id: z.number().nullable().describe("衍生资产ID,如果新增则为空"),
             name: z.string().describe("衍生资产名称"),
             desc: z.string().describe("衍生资产描述"),
+            changeInstruction: derivedChangeInstructionSchema.describe(
+              "变化契约：changeKind 与变化一致；preserve 至少一条；change 至少一条；exclude 可为空数组",
+            ),
           })
           .toJSONSchema(),
       ),
@@ -134,6 +157,20 @@ export default (toolCpnfig: ToolConfig) => {
         const startTime = Date.now();
         const parentAssets = await getDatabaseRuntime().work((db) => db("o_assets").where("id", deriveAsset.assetsId).select("id", "type").first());
         if (!parentAssets) return "关联的资产不存在";
+        const briefType = canonicalAssetBriefType(parentAssets.type);
+        if (!briefType) {
+          return `关联资产类型不受支持（${parentAssets.type ?? "未设置"}），无法写入衍生资产`;
+        }
+
+        // 变化契约在外部写入前校验：name/desc 只是展示字段，不构成可执行契约
+        const parsedInstruction = derivedChangeInstructionSchema.safeParse(deriveAsset.changeInstruction);
+        if (!parsedInstruction.success) {
+          const issue = parsedInstruction.error.issues[0];
+          return `变化契约不合法（${issue?.path?.join(".") ?? ""} ${issue?.message ?? "结构错误"}），请按 changeKind/evidence/preserve/change/exclude 结构重新提交`;
+        }
+        if (!isChangeKindCompatibleWithBriefType(parsedInstruction.data.changeKind, briefType)) {
+          return `变化类型 ${parsedInstruction.data.changeKind} 与父资产类型 ${briefType} 不一致，请修正 changeKind 后重试`;
+        }
 
         const data = {
           id: deriveAsset.id ?? undefined,
@@ -144,15 +181,36 @@ export default (toolCpnfig: ToolConfig) => {
           describe: deriveAsset.desc,
           startTime,
         };
-        if (deriveAsset.id) {
-          await getDatabaseRuntime().work((db) => db("o_assets").where("id", deriveAsset.id).update(data));
-          thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
-        } else {
-          const [insertedId] = await getDatabaseRuntime().work((db) => db("o_assets").insert(data));
-          data.id = insertedId;
-          await getDatabaseRuntime().work((db) => db("o_scriptAssets").insert({ scriptId, assetId: insertedId }));
-          thinking.appendText(`已新增衍生资产，ID: ${insertedId}\n`);
+        // 资产与变化契约同事务写入：契约失败时回滚，不留下“有资产无契约”的部分成功状态
+        const contract = await getDatabaseRuntime().work((db) =>
+          db.transaction(async (tx) => {
+            if (deriveAsset.id) {
+              await tx("o_assets").where("id", deriveAsset.id).update(data);
+              thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
+            } else {
+              const [insertedId] = await tx("o_assets").insert(data);
+              data.id = insertedId;
+              await tx("o_scriptAssets").insert({ scriptId, assetId: insertedId });
+              thinking.appendText(`已新增衍生资产，ID: ${insertedId}\n`);
+            }
+            // 变化契约与衍生资产一起落库（agent 来源、带版本），图片生成阶段确定性编译
+            return saveDerivedChangeInstruction(async (operation) => operation(tx), {
+              projectId,
+              assetsId: data.id!,
+              instruction: parsedInstruction.data,
+              source: "agent",
+              expectedBriefType: briefType,
+            });
+          }),
+        );
+        if (!contract.ok) {
+          thinking.appendText(`变化契约写入失败：${contract.message}\n`);
+          thinking.updateTitle("变化契约写入失败");
+          thinking.complete();
+          return `变化契约写入失败：${contract.message}`;
         }
+        thinking.appendText(`已写入变化契约，revision: ${contract.value.revision}\n`);
+
         const res = await new Promise((resolve) => socket.emit("addDeriveAsset", data, (res: any) => resolve(res)));
         thinking.updateTitle("资产操作完成");
         thinking.complete();
@@ -172,7 +230,10 @@ export default (toolCpnfig: ToolConfig) => {
       execute: async ({ assetsId, id }) => {
         const thinking = msg.thinking("正在操作资产...");
         const { scriptId } = resTool.data;
-        await getDatabaseRuntime().work((db) => db("o_assets").where("id", id).del());
+        await getDatabaseRuntime().work(async (db) => {
+          await removeDerivedChangeInstructionRows(db, [id]);
+          await db("o_assets").where("id", id).del();
+        });
         await getDatabaseRuntime().work((db) => db("o_scriptAssets").where({ scriptId, assetId: id }).del());
         thinking.appendText(`已删除衍生资产，ID: ${id}\n`);
         const res = await new Promise((resolve) => socket.emit("delDeriveAsset", { assetsId, id }, (res: any) => resolve(res)));
