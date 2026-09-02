@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import {
   assetPromptFailure,
   type AssetBriefType,
@@ -18,6 +16,7 @@ import {
 } from "./derivedChangeInstruction";
 import type { AssetReferenceRecord } from "./assetReferences";
 import type { AssetPromptOrchestrationDependencies } from "./assetPromptOrchestration";
+import { sha256 } from "./contentHash";
 
 /**
  * Derived Asset 提示词确定性编译（Issue #37，ADR-0007）。
@@ -152,10 +151,6 @@ export interface ResolveDerivedAssetPromptInput {
   artStyle: string | null;
   manualContent: string | null;
   artStylePrefix: string | null;
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 function isReusableDerivedRecord(

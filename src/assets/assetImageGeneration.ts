@@ -14,6 +14,7 @@ import { applyLegacyImageReferenceConversion, normalizeHttpResult } from "@/util
 
 import type { AssetReferenceRecord } from "./assetReferences";
 import { detectImageMime } from "./assetReferenceMedia";
+import { sha256 } from "./contentHash";
 import type { AssetBriefType, AssetPromptFailure, AssetPromptResult } from "./assetBriefContract";
 import {
   ASSET_PROMPT_FAILURE_ENVELOPE,
@@ -151,6 +152,8 @@ export interface GenerateAssetImageInput {
   resolution: string;
   /** 批量路径预置的 o_image 占位记录 id；单个路径由本模块创建。 */
   imageId?: number;
+  /** 批量预置时在任何 imageId 变更前冻结的生成输入。仅由领域预置结果传入。 */
+  generationInput?: ResolvedAssetGenerationInput;
 }
 
 export interface GeneratedAssetImage {
@@ -184,6 +187,33 @@ async function markImageFailed(
   await dependencies
     .work((db) => db("o_image").where("id", imageId).update({ state: "生成失败", errorReason: reason }))
     .catch(() => undefined);
+}
+
+interface GenerationAttemptEvidence {
+  attempt: number;
+  retryEvidence: { retryOfImageId: number; failureReasonHash: string } | null;
+}
+
+/** 只记录上一失败尝试的标识与原因指纹，不把供应商错误原文写入 command snapshot。 */
+async function loadGenerationAttemptEvidence(
+  dependencies: AssetImageGenerationDependencies,
+  assetsId: number,
+  currentImageId: number | null,
+): Promise<GenerationAttemptEvidence> {
+  const previous = await dependencies.work((db) => {
+    const query = db("o_image").where("assetsId", assetsId);
+    if (currentImageId != null) query.whereNot("id", currentImageId);
+    return query.orderBy("id", "desc").select("id", "state", "errorReason");
+  });
+  const latest = previous[0];
+  const retryEvidence =
+    latest?.state === "生成失败"
+      ? {
+          retryOfImageId: Number(latest.id),
+          failureReasonHash: sha256(String(latest.errorReason ?? "")),
+        }
+      : null;
+  return { attempt: previous.length + 1, retryEvidence };
 }
 
 /** 参考媒体准备：读取 + magic-byte 校验 + 与持久化媒体类型一致，全部在外部调用前完成。 */
@@ -310,7 +340,12 @@ export async function generateAssetImage(
   }
 
   // 领域解析：新鲜提示词 + 有序参考图（所有权、数量上限、新鲜度都在此判定）
-  const resolved = await dependencies.resolveGenerationInputs({ projectId, assetsIds: [assetsId] });
+  if (input.generationInput && input.generationInput.assetsId !== assetsId) {
+    return { ok: false, failure: imageFailure("invalidRequest", "generationInput 与 assetsId 不匹配") };
+  }
+  const resolved = input.generationInput
+    ? ({ ok: true, value: [input.generationInput] } as const)
+    : await dependencies.resolveGenerationInputs({ projectId, assetsIds: [assetsId] });
   if (!resolved.ok) {
     if (imageId != null) {
       await markImageFailed(dependencies, imageId, `${resolved.failure.kind}: ${resolved.failure.message}`);
@@ -338,6 +373,7 @@ export async function generateAssetImage(
     return { ok: false, failure: anchorMedia.failure };
   }
   const parentAnchorBase64 = anchorMedia.value ? anchorMedia.value.base64 : null;
+  const attemptEvidence = await loadGenerationAttemptEvidence(dependencies, assetsId, imageId);
 
   // 单个路径：解析与媒体校验全部通过后才创建占位记录
   let imageRecordId: number;
@@ -365,6 +401,7 @@ export async function generateAssetImage(
     id: assetsId,
     projectId,
     type: typeConfig.label,
+    ...attemptEvidence,
     promptRevision: entry.promptRevision,
     ...(entry.derived
       ? {
@@ -455,6 +492,8 @@ export interface PrepareBatchAssetImagesInput {
 export interface PreparedAssetImageRecord {
   assetsId: number;
   imageId: number;
+  /** 在本批占位覆盖 o_assets.imageId 前冻结，防止父子同批时锚点漂移。 */
+  generationInput: ResolvedAssetGenerationInput;
 }
 
 /**
@@ -477,6 +516,15 @@ export async function prepareBatchAssetImages(
   const parsedTarget = parseImageGenerationTarget(input?.model, input?.resolution);
   if (!parsedTarget.ok) return parsedTarget;
   const { target, resolution } = parsedTarget.value;
+
+  // 先冻结整批提示词、参考图与 Parent Asset Anchor，再创建会改写
+  // o_assets.imageId 的占位记录；否则父子同批时子资产会误读父资产的新占位。
+  const resolved = await dependencies.resolveGenerationInputs({ projectId, assetsIds });
+  if (!resolved.ok) return { ok: false, failure: resolved.failure };
+  const generationInputByAsset = new Map(resolved.value.map((entry) => [entry.assetsId, entry]));
+  if (generationInputByAsset.size !== assetsIds.length) {
+    return { ok: false, failure: imageFailure("assetNotFound", "批量生成输入不完整") };
+  }
 
   return dependencies.work(async (db) => {
     const project = await db("o_project").where("id", projectId).first();
@@ -501,7 +549,7 @@ export async function prepareBatchAssetImages(
         resolution,
       });
       await db("o_assets").where("id", assetsId).update({ imageId });
-      entries.push({ assetsId, imageId });
+      entries.push({ assetsId, imageId, generationInput: generationInputByAsset.get(assetsId)! });
     }
     return { ok: true as const, value: entries };
   });

@@ -37286,7 +37286,7 @@ var require_websocket2 = __commonJS({
     var http4 = require("http");
     var net = require("net");
     var tls = require("tls");
-    var { randomBytes, createHash: createHash3 } = require("crypto");
+    var { randomBytes, createHash: createHash2 } = require("crypto");
     var { Duplex, Readable: Readable2 } = require("stream");
     var { URL: URL2 } = require("url");
     var PerMessageDeflate = require_permessage_deflate();
@@ -37943,7 +37943,7 @@ var require_websocket2 = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash3("sha1").update(key + GUID).digest("base64");
+        const digest = createHash2("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -38310,7 +38310,7 @@ var require_websocket_server = __commonJS({
     var EventEmitter3 = require("events");
     var http4 = require("http");
     var { Duplex } = require("stream");
-    var { createHash: createHash3 } = require("crypto");
+    var { createHash: createHash2 } = require("crypto");
     var extension = require_extension();
     var PerMessageDeflate = require_permessage_deflate();
     var subprotocol = require_subprotocol();
@@ -38607,7 +38607,7 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash3("sha1").update(key + GUID).digest("base64");
+        const digest = createHash2("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -47436,7 +47436,7 @@ var require_websocket4 = __commonJS({
     var http4 = require("http");
     var net = require("net");
     var tls = require("tls");
-    var { randomBytes, createHash: createHash3 } = require("crypto");
+    var { randomBytes, createHash: createHash2 } = require("crypto");
     var { Readable: Readable2 } = require("stream");
     var { URL: URL2 } = require("url");
     var PerMessageDeflate = require_permessage_deflate2();
@@ -48010,7 +48010,7 @@ var require_websocket4 = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash3("sha1").update(key + GUID).digest("base64");
+        const digest = createHash2("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -48318,7 +48318,7 @@ var require_websocket_server2 = __commonJS({
     var https2 = require("https");
     var net = require("net");
     var tls = require("tls");
-    var { createHash: createHash3 } = require("crypto");
+    var { createHash: createHash2 } = require("crypto");
     var PerMessageDeflate = require_permessage_deflate2();
     var WebSocket = require_websocket4();
     var { format, parse: parse4 } = require_extension2();
@@ -48539,7 +48539,7 @@ var require_websocket_server2 = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash3("sha1").update(key + GUID).digest("base64");
+        const digest = createHash2("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -239112,12 +239112,13 @@ function assetReferenceErrorEnvelope(failure2) {
 function failure(kind) {
   return { kind, message: FAILURE_MESSAGE[kind] };
 }
-async function ownedAssetFailure(db, projectId, assetsId) {
+async function ownedAssetFailure(db, projectId, assetsId, options = {}) {
   const project = await db("o_project").where("id", projectId).first();
   if (!project) return failure("projectNotFound");
   const asset = await db("o_assets").where("id", assetsId).first();
   if (!asset) return failure("assetNotFound");
   if (asset.projectId !== projectId) return failure("assetProjectMismatch");
+  if (options.rejectDerived && asset.assetsId != null) return failure("derivedAssetReferenceForbidden");
   return null;
 }
 function parseJsonArray2(raw) {
@@ -239175,11 +239176,9 @@ async function listAssetReferences(work, input) {
   );
 }
 async function createAssetReference(work, input, store) {
-  const description = normalizeDescription(input.description ?? "");
-  if (!description) return { ok: false, failure: failure("descriptionRequired") };
   const admission = await work(
     (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
       const existing = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).count("* as total").first();
       const total = Number(existing?.total ?? 0);
@@ -239190,6 +239189,8 @@ async function createAssetReference(work, input, store) {
     })
   );
   if (!admission.ok) return { ok: false, failure: admission.failure };
+  const description = normalizeDescription(input.description ?? "");
+  if (!description) return { ok: false, failure: failure("descriptionRequired") };
   const media = await store.write({
     projectId: input.projectId,
     assetsId: input.assetsId,
@@ -239228,23 +239229,23 @@ async function createAssetReference(work, input, store) {
   }
 }
 async function updateAssetReference(work, input) {
-  const patch = { updateTime: Date.now() };
-  if (input.description !== void 0) {
-    const description = normalizeDescription(input.description);
-    if (!description) return { ok: false, failure: failure("descriptionRequired") };
-    patch.description = description;
-  }
-  if (input.visualRole !== void 0) patch.visualRole = input.visualRole.trim();
-  if (input.requiredTransfers !== void 0) {
-    patch.requiredTransfers = JSON.stringify(normalizeTransfers(input.requiredTransfers));
-  }
-  if (input.exclusions !== void 0) {
-    patch.exclusions = JSON.stringify(normalizeTransfers(input.exclusions));
-  }
   return work(
     (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
+      const patch = { updateTime: Date.now() };
+      if (input.description !== void 0) {
+        const description = normalizeDescription(input.description);
+        if (!description) return { ok: false, failure: failure("descriptionRequired") };
+        patch.description = description;
+      }
+      if (input.visualRole !== void 0) patch.visualRole = input.visualRole.trim();
+      if (input.requiredTransfers !== void 0) {
+        patch.requiredTransfers = JSON.stringify(normalizeTransfers(input.requiredTransfers));
+      }
+      if (input.exclusions !== void 0) {
+        patch.exclusions = JSON.stringify(normalizeTransfers(input.exclusions));
+      }
       const updated = await tx("o_assetReference").where({ id: input.id, assetsId: input.assetsId, projectId: input.projectId }).update(patch);
       if (!updated) return { ok: false, failure: failure("referenceNotFound") };
       const row = await tx("o_assetReference").where("id", input.id).first();
@@ -239255,7 +239256,7 @@ async function updateAssetReference(work, input) {
 async function reorderAssetReferences(work, input) {
   return work(
     (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
       const rows = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").orderBy("id", "asc").select();
       const currentIds = rows.map((row) => row.id).sort((a, b) => a - b);
@@ -239275,7 +239276,7 @@ async function reorderAssetReferences(work, input) {
 async function deleteAssetReference(work, input) {
   return work(
     (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId, { rejectDerived: true });
       if (ownership) return { ok: false, failure: ownership };
       const removed = await tx("o_assetReference").where({ id: input.id, assetsId: input.assetsId, projectId: input.projectId }).first();
       if (!removed) return { ok: false, failure: failure("referenceNotFound") };
@@ -239309,6 +239310,7 @@ var init_assetReferences = __esm({
       referenceNotFound: 404,
       assetProjectMismatch: 403,
       referenceLimitExceeded: 400,
+      derivedAssetReferenceForbidden: 400,
       descriptionRequired: 400,
       invalidMedia: 400,
       orderMismatch: 400
@@ -239319,10 +239321,23 @@ var init_assetReferences = __esm({
       assetProjectMismatch: "\u8D44\u4EA7\u4E0D\u5C5E\u4E8E\u8BE5\u9879\u76EE",
       referenceNotFound: "\u53C2\u8003\u56FE\u4E0D\u5B58\u5728\u6216\u4E0D\u5C5E\u4E8E\u8BE5\u8D44\u4EA7",
       referenceLimitExceeded: `\u5355\u4E2A\u8D44\u4EA7\u6700\u591A\u652F\u6301 ${ASSET_REFERENCE_LIMIT} \u5F20\u53C2\u8003\u56FE`,
+      derivedAssetReferenceForbidden: "\u884D\u751F\u8D44\u4EA7\u4E0D\u652F\u6301\u4EBA\u5DE5\u53C2\u8003\u56FE",
       descriptionRequired: "\u53C2\u8003\u56FE\u63CF\u8FF0\u4E3A\u5FC5\u586B\u9879\uFF0C\u672C\u7248\u672C\u5FC5\u987B\u7531\u4EBA\u5DE5\u64B0\u5199",
       invalidMedia: "\u53C2\u8003\u56FE\u5185\u5BB9\u4E0D\u662F\u53D7\u652F\u6301\u7684\u56FE\u7247\uFF08PNG/JPEG/WebP/GIF\uFF09",
       orderMismatch: "\u6392\u5E8F\u5217\u8868\u4E0E\u8D44\u4EA7\u73B0\u6709\u53C2\u8003\u56FE\u4E0D\u4E00\u81F4"
     };
+  }
+});
+
+// src/assets/contentHash.ts
+function sha256(value) {
+  return (0, import_node_crypto4.createHash)("sha256").update(value, "utf8").digest("hex");
+}
+var import_node_crypto4;
+var init_contentHash = __esm({
+  "src/assets/contentHash.ts"() {
+    "use strict";
+    import_node_crypto4 = require("node:crypto");
   }
 });
 
@@ -239900,9 +239915,6 @@ function compileDerivedAssetPrompt(input) {
   }
   return { ok: true, value: { generationPrompt: segments.join("") } };
 }
-function sha256(value) {
-  return (0, import_node_crypto4.createHash)("sha256").update(value, "utf8").digest("hex");
-}
 function isReusableDerivedRecord(record3, expectation) {
   if (!record3) return false;
   return record3.skillVersion === DERIVED_ANCHOR_SKILL_VERSION && record3.templateHash === expectation.templateHash && record3.contextHash === expectation.contextHash && record3.referenceHash === expectation.referenceHash && record3.modelProfile === expectation.modelProfileJson && typeof record3.generationPrompt === "string" && record3.generationPrompt.length > 0;
@@ -240078,14 +240090,14 @@ async function resolveDerivedAssetGenerationEntry(dependencies, input) {
     }
   };
 }
-var import_node_crypto4, DERIVED_ANCHOR_SKILL_VERSION, DERIVED_PROMPT_COMPILER_VERSION, CHANGE_KIND_LABELS, OUTPUT_RULES_BY_TYPE;
+var DERIVED_ANCHOR_SKILL_VERSION, DERIVED_PROMPT_COMPILER_VERSION, CHANGE_KIND_LABELS, OUTPUT_RULES_BY_TYPE;
 var init_derivedAssetPrompt = __esm({
   "src/assets/derivedAssetPrompt.ts"() {
     "use strict";
-    import_node_crypto4 = require("node:crypto");
     init_assetBriefContract();
     init_assetPromptCompiler();
     init_derivedChangeInstruction();
+    init_contentHash();
     DERIVED_ANCHOR_SKILL_VERSION = "asset-prompting-derived@1.0";
     DERIVED_PROMPT_COMPILER_VERSION = "derived-prompt-compiler@1.0";
     CHANGE_KIND_LABELS = {
@@ -240119,9 +240131,6 @@ function assetPromptErrorEnvelope(failure2) {
 function toTypedAssetRow(row) {
   return { ...row, briefType: canonicalAssetBriefType(row.type) };
 }
-function sha2562(value) {
-  return (0, import_node_crypto5.createHash)("sha256").update(value, "utf8").digest("hex");
-}
 function assetManualKeys(asset) {
   return [visualManualKey(asset.briefType, asset.assetsId != null)];
 }
@@ -240130,7 +240139,7 @@ function computeAssetContextHash(input) {
   const script = context2.scripts.find((row) => row.id === asset.scriptId) ?? null;
   const parent = asset.assetsId != null ? context2.parentById.get(asset.assetsId) ?? null : null;
   const manuals = assetManualKeys(asset).filter((manualKey) => input.visualManuals.has(manualKey)).map((manualKey) => ({ manualKey, content: input.visualManuals.get(manualKey) }));
-  return sha2562(
+  return sha256(
     JSON.stringify({
       project: {
         artStyle: context2.project.artStyle,
@@ -240153,7 +240162,7 @@ function computeAssetContextHash(input) {
   );
 }
 function computeAssetReferenceHash(asset, context2) {
-  return sha2562(
+  return sha256(
     JSON.stringify(
       (context2.referencesByAsset.get(asset.id) ?? []).map((reference) => ({
         id: reference.id,
@@ -240372,7 +240381,7 @@ function createAssetPromptOrchestration(dependencies) {
     }
     const visualManuals = await loadVisualManuals(dependencies, context2.project.artStyle, context2.assets);
     if (!visualManuals.ok) return failBatch(visualManuals.failure);
-    const templateHash = sha2562(analysisTemplate);
+    const templateHash = sha256(analysisTemplate);
     const modelProfileJson = JSON.stringify(DEFAULT_MODEL_PROFILE);
     const contextHashByAsset = /* @__PURE__ */ new Map();
     const referenceHashByAsset = /* @__PURE__ */ new Map();
@@ -240541,11 +240550,15 @@ async function resolveAssetGenerationInputs(dependencies, input) {
       };
     }
   }
-  const analysisTemplate = await dependencies.loadSkillFile(ANALYSIS_TEMPLATE_PATH);
-  if (!analysisTemplate) {
-    return { ok: false, failure: assetPromptFailure("skillContractMissing", "batch_asset_analysis.md \u7F3A\u5931") };
+  const hasBaseAssets = context2.assets.some((asset) => asset.assetsId == null);
+  let templateHash = "";
+  if (hasBaseAssets) {
+    const analysisTemplate = await dependencies.loadSkillFile(ANALYSIS_TEMPLATE_PATH);
+    if (!analysisTemplate) {
+      return { ok: false, failure: assetPromptFailure("skillContractMissing", "batch_asset_analysis.md \u7F3A\u5931") };
+    }
+    templateHash = sha256(analysisTemplate);
   }
-  const templateHash = sha2562(analysisTemplate);
   const visualManuals = await loadVisualManuals(dependencies, context2.project.artStyle, context2.assets);
   if (!visualManuals.ok) return { ok: false, failure: visualManuals.failure };
   const modelProfileJson = JSON.stringify(DEFAULT_MODEL_PROFILE);
@@ -240669,17 +240682,17 @@ function createDefaultAssetPromptDependencies() {
     now: () => Date.now()
   };
 }
-var import_node_crypto5, import_node_fs6, ASSET_PROMPTING_SKILL_VERSION, ANALYSIS_TEMPLATE_PATH, OUTPUT_SCHEMA_PATH, DEFAULT_MODEL_PROFILE, ASSET_PROMPT_FAILURE_ENVELOPE;
+var import_node_fs6, ASSET_PROMPTING_SKILL_VERSION, ANALYSIS_TEMPLATE_PATH, OUTPUT_SCHEMA_PATH, DEFAULT_MODEL_PROFILE, ASSET_PROMPT_FAILURE_ENVELOPE;
 var init_assetPromptOrchestration = __esm({
   "src/assets/assetPromptOrchestration.ts"() {
     "use strict";
-    import_node_crypto5 = require("node:crypto");
     import_node_fs6 = __toESM(require("node:fs"));
     init_database();
     init_vendor2();
     init_getPath();
     init_getArtPrompt();
     init_assetReferences();
+    init_contentHash();
     init_assetBriefContract();
     init_assetPromptCompiler();
     init_derivedAssetPrompt();
@@ -242294,6 +242307,19 @@ function parseBatchAssetsIds(value) {
 async function markImageFailed(dependencies, imageId, reason) {
   await dependencies.work((db) => db("o_image").where("id", imageId).update({ state: "\u751F\u6210\u5931\u8D25", errorReason: reason })).catch(() => void 0);
 }
+async function loadGenerationAttemptEvidence(dependencies, assetsId, currentImageId) {
+  const previous = await dependencies.work((db) => {
+    const query = db("o_image").where("assetsId", assetsId);
+    if (currentImageId != null) query.whereNot("id", currentImageId);
+    return query.orderBy("id", "desc").select("id", "state", "errorReason");
+  });
+  const latest = previous[0];
+  const retryEvidence = latest?.state === "\u751F\u6210\u5931\u8D25" ? {
+    retryOfImageId: Number(latest.id),
+    failureReasonHash: sha256(String(latest.errorReason ?? ""))
+  } : null;
+  return { attempt: previous.length + 1, retryEvidence };
+}
 async function prepareReferenceMedia(dependencies, entry) {
   const referencesById = new Map(entry.references.map((reference) => [reference.id, reference]));
   const prepared = [];
@@ -242383,7 +242409,10 @@ async function generateAssetImage(dependencies, input) {
     if (placeholder.state === "\u751F\u6210\u5931\u8D25") return { ok: false, failure: imageFailure("cancelled", "\u751F\u6210\u5DF2\u53D6\u6D88") };
     imageId = providedImageId;
   }
-  const resolved = await dependencies.resolveGenerationInputs({ projectId, assetsIds: [assetsId] });
+  if (input.generationInput && input.generationInput.assetsId !== assetsId) {
+    return { ok: false, failure: imageFailure("invalidRequest", "generationInput \u4E0E assetsId \u4E0D\u5339\u914D") };
+  }
+  const resolved = input.generationInput ? { ok: true, value: [input.generationInput] } : await dependencies.resolveGenerationInputs({ projectId, assetsIds: [assetsId] });
   if (!resolved.ok) {
     if (imageId != null) {
       await markImageFailed(dependencies, imageId, `${resolved.failure.kind}: ${resolved.failure.message}`);
@@ -242407,6 +242436,7 @@ async function generateAssetImage(dependencies, input) {
     return { ok: false, failure: anchorMedia.failure };
   }
   const parentAnchorBase64 = anchorMedia.value ? anchorMedia.value.base64 : null;
+  const attemptEvidence = await loadGenerationAttemptEvidence(dependencies, assetsId, imageId);
   let imageRecordId;
   if (imageId == null) {
     imageRecordId = await dependencies.work(async (db) => {
@@ -242428,6 +242458,7 @@ async function generateAssetImage(dependencies, input) {
     id: assetsId,
     projectId,
     type: typeConfig.label,
+    ...attemptEvidence,
     promptRevision: entry.promptRevision,
     ...entry.derived ? {
       derived: {
@@ -242508,6 +242539,12 @@ async function prepareBatchAssetImages(dependencies, input) {
   const parsedTarget = parseImageGenerationTarget(input?.model, input?.resolution);
   if (!parsedTarget.ok) return parsedTarget;
   const { target, resolution } = parsedTarget.value;
+  const resolved = await dependencies.resolveGenerationInputs({ projectId, assetsIds });
+  if (!resolved.ok) return { ok: false, failure: resolved.failure };
+  const generationInputByAsset = new Map(resolved.value.map((entry) => [entry.assetsId, entry]));
+  if (generationInputByAsset.size !== assetsIds.length) {
+    return { ok: false, failure: imageFailure("assetNotFound", "\u6279\u91CF\u751F\u6210\u8F93\u5165\u4E0D\u5B8C\u6574") };
+  }
   return dependencies.work(async (db) => {
     const project = await db("o_project").where("id", projectId).first();
     if (!project) return { ok: false, failure: imageFailure("projectNotFound", "\u9879\u76EE\u4E0D\u5B58\u5728") };
@@ -242531,7 +242568,7 @@ async function prepareBatchAssetImages(dependencies, input) {
         resolution
       });
       await db("o_assets").where("id", assetsId).update({ imageId });
-      entries.push({ assetsId, imageId });
+      entries.push({ assetsId, imageId, generationInput: generationInputByAsset.get(assetsId) });
     }
     return { ok: true, value: entries };
   });
@@ -242568,6 +242605,7 @@ var init_assetImageGeneration = __esm({
     init_error();
     init_imageGeneration();
     init_assetReferenceMedia();
+    init_contentHash();
     init_assetPromptOrchestration();
     FAILURE_ENVELOPE = {
       ...ASSET_PROMPT_FAILURE_ENVELOPE,
@@ -242617,7 +242655,8 @@ function createBatchGenerateImageAssetsRouter(dependencies = createDefaultAssetI
             assetsId: record3.assetsId,
             model,
             resolution,
-            imageId: record3.imageId
+            imageId: record3.imageId,
+            generationInput: record3.generationInput
           })
         )
       );
@@ -243829,7 +243868,8 @@ function createBatchGenerateAssetsImageRouter(dependencies = createDefaultAssetI
             assetsId: record3.assetsId,
             model: project.imageModel,
             resolution: project.imageQuality,
-            imageId: record3.imageId
+            imageId: record3.imageId,
+            generationInput: record3.generationInput
           })
         )
       );
@@ -245772,7 +245812,7 @@ function buildCommand(item, prompt, images) {
 function commandSnapshot(command, references) {
   const redactImage = (image, role) => image ? {
     mediaType: image.mediaType,
-    sha256: import_node_crypto6.default.createHash("sha256").update(image.base64).digest("hex"),
+    sha256: import_node_crypto5.default.createHash("sha256").update(image.base64).digest("hex"),
     source: references.find((reference) => reference.role === role)
   } : void 0;
   const snapshot = { ...command };
@@ -245989,11 +246029,11 @@ function createDefaultVideoProduction() {
 function startVideoGenerationBatch(inputValue) {
   return createDefaultVideoProduction().startVideoGenerationBatch(inputValue);
 }
-var import_node_crypto6;
+var import_node_crypto5;
 var init_production = __esm({
   "src/video/production.ts"() {
     "use strict";
-    import_node_crypto6 = __toESM(require("node:crypto"));
+    import_node_crypto5 = __toESM(require("node:crypto"));
     init_axios2();
     init_dist_node();
     init_database();
@@ -261911,14 +261951,26 @@ var tools_default = (toolCpnfig) => {
         const thinking = msg.thinking("\u6B63\u5728\u64CD\u4F5C\u8D44\u4EA7...");
         const { projectId, scriptId } = resTool.data;
         const startTime = Date.now();
-        const parentAssets = await getDatabaseRuntime().work((db) => db("o_assets").where("id", deriveAsset.assetsId).select("id", "type").first());
+        const parentAssets = await getDatabaseRuntime().work(
+          (db) => db("o_assets").where({ id: deriveAsset.assetsId, projectId }).select("id", "type").first()
+        );
         if (!parentAssets) return "\u5173\u8054\u7684\u8D44\u4EA7\u4E0D\u5B58\u5728";
         const briefType = canonicalAssetBriefType(parentAssets.type);
         if (!briefType) {
           return `\u5173\u8054\u8D44\u4EA7\u7C7B\u578B\u4E0D\u53D7\u652F\u6301\uFF08${parentAssets.type ?? "\u672A\u8BBE\u7F6E"}\uFF09\uFF0C\u65E0\u6CD5\u5199\u5165\u884D\u751F\u8D44\u4EA7`;
         }
-        if (briefType === "prop" && !deriveAsset.id) {
-          return "\u9053\u5177\u8D44\u4EA7\u672C\u9636\u6BB5\u4E0D\u4E3B\u52A8\u884D\u751F\uFF1B\u4EC5\u53EF\u901A\u8FC7\u66F4\u65B0\u65E2\u6709\u884D\u751F\u9053\u5177\uFF08legacy_prop_state\uFF09\u7EF4\u62A4";
+        if (briefType === "prop") {
+          const existingDerivedProp = deriveAsset.id === null ? null : await getDatabaseRuntime().work(
+            (db) => db("o_assets").where({
+              id: deriveAsset.id,
+              projectId,
+              assetsId: deriveAsset.assetsId,
+              type: parentAssets.type
+            }).select("id").first()
+          );
+          if (!existingDerivedProp) {
+            return "\u9053\u5177\u8D44\u4EA7\u672C\u9636\u6BB5\u4E0D\u4E3B\u52A8\u884D\u751F\uFF1B\u4EC5\u53EF\u66F4\u65B0\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u4E14\u6302\u5728\u6307\u5B9A\u7236\u8D44\u4EA7\u4E0B\u7684\u65E2\u6709\u884D\u751F\u9053\u5177\uFF08legacy_prop_state\uFF09";
+          }
         }
         const parsedInstruction = derivedChangeInstructionSchema.safeParse(deriveAsset.changeInstruction);
         if (!parsedInstruction.success) {
@@ -261939,7 +261991,7 @@ var tools_default = (toolCpnfig) => {
         };
         const contract = await getDatabaseRuntime().work(
           (db) => db.transaction(async (tx) => {
-            if (deriveAsset.id) {
+            if (deriveAsset.id !== null) {
               await tx("o_assets").where("id", deriveAsset.id).update(data);
               thinking.appendText(`\u5DF2\u66F4\u65B0\u884D\u751F\u8D44\u4EA7\uFF0CID: ${deriveAsset.id}
 `);

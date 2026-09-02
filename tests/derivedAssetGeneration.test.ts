@@ -156,7 +156,11 @@ test("changeKind 与资产类型的一致性可被确定性校验", () => {
 });
 // ─── Slice 2：确定性提示词编译与解析（resolve seam） ─────────────────────────
 
-import { resolveAssetGenerationInputs, type AssetPromptOrchestrationDependencies } from "../src/assets/assetPromptOrchestration";
+import {
+  resolveAssetGenerationInputs,
+  type AssetPromptOrchestrationDependencies,
+  type ResolvedAssetGenerationInput,
+} from "../src/assets/assetPromptOrchestration";
 import { DERIVED_ANCHOR_SKILL_VERSION } from "../src/assets/derivedAssetPrompt";
 
 const SKILL_ROOT = path.resolve(process.cwd(), "data", "skills", "asset-prompting");
@@ -164,7 +168,7 @@ const SKILL_ROOT = path.resolve(process.cwd(), "data", "skills", "asset-promptin
 /** 衍生解析依赖：analyze 记录调用并抛错——衍生链路不得调用 Text Model。 */
 function derivedHarness(
   knex: Knex,
-  options: { manual?: () => string } = {},
+  options: { manual?: () => string; omitBaseAnalysisTemplate?: boolean } = {},
 ): { dependencies: AssetPromptOrchestrationDependencies; textCalls: unknown[] } {
   const textCalls: unknown[] = [];
   const dependencies: AssetPromptOrchestrationDependencies = {
@@ -174,6 +178,7 @@ function derivedHarness(
       throw new Error("衍生资产生成不得调用 Text Model");
     },
     loadSkillFile: async (relativePath) => {
+      if (options.omitBaseAnalysisTemplate && relativePath === "prompts/batch_asset_analysis.md") return null;
       try {
         return fs.readFileSync(path.join(SKILL_ROOT, ...relativePath.split("/")), "utf8");
       } catch {
@@ -265,6 +270,29 @@ test("有效角色衍生解析为父锚点条目并确定性编译提示词（�
     assert.equal(assetRow.prompt, entry.generationPrompt, "编译结果同步到资产最终提示词");
 
     assert.equal(textCalls.length, 0, "衍生解析阶段 Text Model 调用次数必须为 0");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("仅解析 Derived Asset 时不依赖基础 Asset 分析模板", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-no-base-template-");
+  try {
+    await prepareSchema(knex);
+    await seedDerivedSetup(knex);
+    await saveDerivedChangeInstruction(workOf(knex), {
+      projectId: 1,
+      assetsId: 111,
+      instruction: WARDROBE_INSTRUCTION,
+      source: "agent",
+    });
+    const { dependencies, textCalls } = derivedHarness(knex, { omitBaseAnalysisTemplate: true });
+
+    const resolved = await resolveAssetGenerationInputs(dependencies, { projectId: 1, assetsIds: [111] });
+
+    assert.equal(resolved.ok, true, "Derived 确定性编译不得要求 batch_asset_analysis.md");
+    assert.equal(textCalls.length, 0);
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });
@@ -837,6 +865,91 @@ test("批量衍生生成逐个提交父锚点并复用占位记录", async () =>
   }
 });
 
+test("父 Asset 与 Derived Asset 同批生成时冻结批次开始前的父资产锚点", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-parent-child-batch-");
+  try {
+    await prepareSchema(knex);
+    await seedDerivedSetup(knex);
+    const harness = derivedImageHarness(knex);
+    harness.media.set(ANCHOR_PATH, pngBuffer("ACCEPTED-PARENT-ANCHOR"));
+    let resolveCalls = 0;
+    harness.deps.resolveGenerationInputs = async ({ assetsIds }) => {
+      resolveCalls += 1;
+      const parent = await knex("o_assets").where("id", 101).first();
+      const parentImage = await knex("o_image").where("id", parent.imageId).first();
+      const revision = {
+        skillVersion: "test",
+        templateHash: "template",
+        contextHash: "context",
+        referenceHash: "reference",
+      };
+      const entries = assetsIds.map((assetsId): ResolvedAssetGenerationInput => {
+        if (assetsId === 101) {
+          return {
+            assetsId,
+            assetRawType: "role",
+            briefType: "character",
+            name: "胡亥",
+            generationPrompt: "父资产生成提示词",
+            promptRevision: revision,
+            references: [],
+            selectedReferenceIds: [],
+          };
+        }
+        return {
+          assetsId,
+          assetRawType: "role",
+          briefType: "character",
+          name: "祭服胡亥",
+          generationPrompt: "衍生资产生成提示词",
+          promptRevision: revision,
+          references: [],
+          selectedReferenceIds: [],
+          derived: {
+            parentAssetId: 101,
+            parentImageId: parentImage.id,
+            anchorMediaPath: parentImage.filePath,
+            changeKind: "character_wardrobe",
+            changeInstructionRevision: 1,
+            changeInstructionSource: "agent",
+          },
+        };
+      });
+      return { ok: true, value: entries };
+    };
+
+    const prepared = await prepareBatchAssetImages(harness.deps, {
+      projectId: 1,
+      assetsIds: [101, 111],
+      model: MODEL,
+      resolution: "1K",
+    });
+    assert.equal(prepared.ok, true);
+    if (!prepared.ok) return;
+    assert.equal(resolveCalls, 1, "批量预置前必须一次性解析并冻结所有生成输入");
+    const child = prepared.value.find((entry) => entry.assetsId === 111)!;
+    assert.equal(child.generationInput.derived?.parentImageId, 501, "子资产必须冻结批次开始前已接受的父图");
+    assert.notEqual((await knex("o_assets").where("id", 101).first()).imageId, 501, "父资产随后可绑定本批占位");
+
+    const generated = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 111,
+      model: MODEL,
+      resolution: "1K",
+      imageId: child.imageId,
+      generationInput: child.generationInput,
+    });
+    assert.equal(generated.ok, true);
+    assert.equal(resolveCalls, 1, "生成阶段不得在父 imageId 被占位覆盖后重新解析锚点");
+    assert.deepEqual(harness.vendorRequests[0].input.referenceList, [
+      { type: "image", base64: pngBuffer("ACCEPTED-PARENT-ANCHOR").toString("base64") },
+    ]);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("父锚点媒体缺失或非法时在外部提交前稳定失败", async () => {
   const { directory, knex } = createTemporaryDatabase("toonflow-derived-image-unreadable-");
   try {
@@ -922,6 +1035,9 @@ test("衍生生成失败可重试且复用稳定输入，快照记录失败信�
       { state: -1, reason: "vendor down" },
       "任务快照必须记录失败状态与原因",
     );
+    const firstSnapshot = JSON.parse(harness.taskSnapshots[0].content);
+    assert.equal(firstSnapshot.attempt, 1);
+    assert.equal(firstSnapshot.retryEvidence, null);
 
     const second = await generateAssetImage(harness.deps, {
       projectId: 1,
@@ -933,7 +1049,14 @@ test("衍生生成失败可重试且复用稳定输入，快照记录失败信�
     if (!second.ok) return;
     assert.equal(harness.vendorRequests.length, 2);
     assert.deepEqual(harness.vendorRequests[0].input, harness.vendorRequests[1].input, "重试必须提交完全相同的稳定输入");
-    assert.equal(harness.taskSnapshots[0].content, harness.taskSnapshots[1].content, "重试快照必须一致（可诊断）");
+    const secondSnapshot = JSON.parse(harness.taskSnapshots[1].content);
+    assert.equal(secondSnapshot.attempt, 2, "快照必须记录重试序号");
+    assert.equal(secondSnapshot.retryEvidence.retryOfImageId, failedRow.id, "快照必须关联上一失败图片记录");
+    assert.match(secondSnapshot.retryEvidence.failureReasonHash, /^[a-f0-9]{64}$/u, "失败证据只记录脱敏指纹");
+    assert.ok(!harness.taskSnapshots[1].content.includes("vendor down"), "快照不得记录原始供应商错误文本");
+    const { attempt: firstAttempt, retryEvidence: firstRetry, ...firstStable } = firstSnapshot;
+    const { attempt: secondAttempt, retryEvidence: secondRetry, ...secondStable } = secondSnapshot;
+    assert.deepEqual(firstStable, secondStable, "重试必须保留稳定生成命令，只改变尝试证据");
     const promptRecords = await knex("o_assetPromptRecord").where("assetsId", 111).select();
     assert.equal(promptRecords.length, 1, "重试复用同一条提示词记录");
     const images = await knex("o_image").where("assetsId", 111).select();
