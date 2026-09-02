@@ -16,9 +16,11 @@ ADR-0005 is accepted and delivered by `src/vendor/`: one configured Vendor modul
 
 ADR-0004 is accepted and delivered by `src/database/`: one fixed readiness order — open local resources, ensure the current schema, apply known upgrades, reconcile required defaults, recover interrupted work, and validate the database and required runtime invariants — with ordinary work through shared leases and typed exclusive maintenance that replays the whole lifecycle. Every former `u.db(...)` call site now borrows a lease through `getDatabaseRuntime().work(...)`; the transitional bridge is deleted and `tests/staticContractGuards.test.ts` rejects new bypasses. SQLite remains the only storage adapter, so storage replacement is still not a justified seam.
 
-## Planned: Asset image prompt orchestration
+## Implemented: Asset image prompt orchestration
 
-ADR-0006 separates persisted, Script-grounded Asset Briefs from final image-generation prompts. One shared orchestration boundary will analyze a selected Asset set, validate structured briefs, compile type-specific prompts, and apply Asset Reference contracts. Read `docs/agents/asset-prompt-generation.md` before implementing or reviewing this path.
+ADR-0006 separates persisted, Script-grounded Asset Briefs from final image-generation prompts. `src/assets/assetPromptOrchestration.ts` analyzes a selected Asset set, validates structured briefs, compiles type-specific prompts, and applies Asset Reference contracts. `src/assets/assetImageGeneration.ts` resolves persisted prompts and references for the configured Image Vendor.
+
+The remaining Production Agent adapter at `src/routes/production/assets/batchGenerateAssetsImage.ts` still bypasses those boundaries. ADR-0007 defines its migration: base Assets own human Asset References, while Derived Assets use a system-resolved Parent Asset Anchor plus a structured Derived Change Instruction and deterministic prompt compilation.
 
 ## Worth exploring: Agent session runtime
 

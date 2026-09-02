@@ -4,9 +4,9 @@ Read this document before changing Asset prompt polishing, Asset References, bat
 
 ## Current behavior
 
-The current batch-polish route invokes the universal Text Model once per Asset. Its context contains the selected art-style prefix, one type-specific art manual, optional extra text, and the Asset name and description. It does not receive the current Script, sibling Assets, parent Asset content, or persisted reference metadata. The main Asset page can omit a required extra-text field, the frontend fallback type can disagree with the backend prop type, and model output is persisted without a structured contract.
+The shared Asset orchestration analyzes the current Script once for a selected Asset set, validates model-independent Asset Briefs, compiles differentiated prompts, and persists prompt revisions. The main single- and batch-image routes resolve the persisted final prompt and ordered human Asset References through the configured Image Vendor boundary.
 
-Single-Asset image generation accepts one temporary Base64 reference, but that reference is neither persisted nor described. Batch image generation is text-only. These paths are transitional behavior, not the target contract.
+`src/routes/production/assets/batchGenerateAssetsImage.ts` remains a legacy Production Agent adapter: it rewrites Derived Asset prompts with a second Text Model call and submits only the parent image through the legacy conversion path. It must migrate to the shared generation boundary before complete real-chain acceptance.
 
 ## Target flow
 
@@ -38,6 +38,25 @@ Each Asset Reference is human-uploaded and requires a human-written description.
 
 The configured limit shown by the UI is six references, matching the current Agnes Image 2.1 Flash capability. Agnes Image 2.5 Flash remains a separate capability-validation task; its expected superset does not change the current limit until a real contract test confirms it.
 
+Asset References belong only to base Assets. A Derived Asset rejects human Asset References and instead receives exactly one system-resolved Parent Asset Anchor: the parent Asset's currently accepted image. Missing, unauthorized, or unreadable anchors are stable pre-submission failures rather than text-only fallbacks.
+
+## Derived Asset generation
+
+The Production Agent identifies only stable, reusable, whole-Asset variations. Its current extraction scope remains character wardrobe/transformation/morphology and scene time variants; it does not proactively create Derived Props, although the compiler remains compatible with existing Derived Prop records.
+
+When the Agent creates or updates a Derived Asset it records a structured Derived Change Instruction with `changeKind`, Script `evidence`, parent traits to `preserve`, permitted `change` entries, and `exclude` entries. The ordinary name and description remain display content, not the executable contract. Existing non-empty descriptions may enter through a deterministic compatibility conversion; empty or parentless records require re-analysis.
+
+Image generation does not ask a Text Model to reinterpret this contract. It deterministically compiles:
+
+```text
+Parent Asset Anchor inheritance rules
++ Derived Change Instruction
++ matching art_*_derivative visual manual
++ output-format and prohibited-element rules
+```
+
+The result is persisted as the Asset's final `generationPrompt` and then consumed through `src/assets/assetImageGeneration.ts`. Revisions of the parent image, change instruction, derivative manual, or project style invalidate the compiled result and cause deterministic recompilation.
+
 ## Template routing
 
 The internal production Skill lives under `data/skills/asset-prompting/` and stays outside the editable runtime prompt catalog:
@@ -62,7 +81,7 @@ Restore the earlier prompt-management interaction, including click-to-detail beh
 
 ## Invalidation and observability
 
-A reusable Asset Brief is valid only when its recorded Script, template, Asset, parent-Asset, and reference-contract revisions still match. Regeneration records the active revisions and preserves enough metadata to explain retries. Intermediate brief content stays hidden from ordinary frontend users but remains inspectable through persistence and tests.
+A reusable Asset Brief is valid only when its recorded Script, template, Asset, parent-Asset, and reference-contract revisions still match. A Derived Asset prompt additionally records its Parent Asset Anchor and Derived Change Instruction revisions. Regeneration records the active revisions and preserves enough metadata to explain retries. Intermediate brief and change-contract content stays hidden from ordinary frontend users but remains inspectable through persistence and tests.
 
 ## Method sources
 

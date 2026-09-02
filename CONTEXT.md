@@ -25,8 +25,16 @@ A reusable production subject from a Script: a role, scene, prop, or bound voice
 _Avoid_: File, media item
 
 **Derived Asset**:
-A visual variation that belongs to a parent Asset while preserving its production identity.
+A visual variation that belongs to a parent Asset while preserving its production identity. It does not own human Asset References; generation inherits the parent through a Parent Asset Anchor and applies only a rule-governed change instruction produced by the Production Agent.
 _Avoid_: Duplicate Asset
+
+**Parent Asset Anchor**:
+The parent Asset's currently accepted image, supplied automatically when generating a Derived Asset to preserve invariant identity while the change instruction states only the allowed visual differences.
+_Avoid_: Asset Reference, Reference Image, user upload
+
+**Derived Change Instruction**:
+A Production Agent-authored contract for a Derived Asset that states the parent traits to preserve, the permitted visual changes, and the changes to exclude. It is compiled with the Parent Asset Anchor and the matching derivative visual manual without a second Text Model interpretation.
+_Avoid_: Asset Reference description, full image prompt, free-form restyling request
 
 **Asset Reference**:
 An authorized, human-uploaded image attached to an Asset with a declared visual role, required transfers, and explicit exclusions.
