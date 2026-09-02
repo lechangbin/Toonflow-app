@@ -239096,6 +239096,236 @@ var init_derivedChangeInstruction = __esm({
   }
 });
 
+// src/assets/assetReferences.ts
+function assetReferenceErrorEnvelope(failure2) {
+  const status = FAILURE_STATUS[failure2.kind];
+  return {
+    status,
+    body: {
+      code: status,
+      data: null,
+      message: FAILURE_MESSAGE[failure2.kind] ?? failure2.message,
+      error: failure2.kind
+    }
+  };
+}
+function failure(kind) {
+  return { kind, message: FAILURE_MESSAGE[kind] };
+}
+async function ownedAssetFailure(db, projectId, assetsId) {
+  const project = await db("o_project").where("id", projectId).first();
+  if (!project) return failure("projectNotFound");
+  const asset = await db("o_assets").where("id", assetsId).first();
+  if (!asset) return failure("assetNotFound");
+  if (asset.projectId !== projectId) return failure("assetProjectMismatch");
+  return null;
+}
+function parseJsonArray2(raw) {
+  if (typeof raw !== "string" || raw.length === 0) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function toRecord2(row) {
+  return {
+    id: row.id,
+    projectId: row.projectId,
+    assetsId: row.assetsId,
+    mediaPath: row.mediaPath ?? "",
+    mediaMime: row.mediaMime ?? null,
+    orderIndex: row.orderIndex ?? 0,
+    description: row.description ?? "",
+    descriptionSource: row.descriptionSource ?? ASSET_REFERENCE_MANUAL_SOURCE,
+    analysisState: row.analysisState ?? ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED,
+    visualRole: row.visualRole ?? "",
+    requiredTransfers: parseJsonArray2(row.requiredTransfers),
+    exclusions: parseJsonArray2(row.exclusions),
+    createTime: row.createTime ?? 0,
+    updateTime: row.updateTime ?? 0
+  };
+}
+function normalizeDescription(description) {
+  const trimmed = description?.trim();
+  return trimmed ? trimmed : null;
+}
+function normalizeTransfers(values) {
+  return (values ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
+}
+function isReferenceOrderConflict(error67) {
+  const message = error67 instanceof Error ? error67.message : String(error67);
+  return message.includes("UNIQUE constraint failed") && message.includes("o_assetReference");
+}
+async function renumberReferences(tx, input) {
+  await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).increment("orderIndex", ASSET_REFERENCE_LIMIT);
+  for (const assignment of input.assignments) {
+    await tx("o_assetReference").where({ id: assignment.id, assetsId: input.assetsId }).update({ orderIndex: assignment.orderIndex, updateTime: Date.now() });
+  }
+}
+async function listAssetReferences(work, input) {
+  return work(
+    (db) => db.transaction(async (tx) => {
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      if (ownership) return { ok: false, failure: ownership };
+      const rows = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").orderBy("id", "asc").select();
+      return { ok: true, value: rows.map(toRecord2) };
+    })
+  );
+}
+async function createAssetReference(work, input, store) {
+  const description = normalizeDescription(input.description ?? "");
+  if (!description) return { ok: false, failure: failure("descriptionRequired") };
+  const admission = await work(
+    (db) => db.transaction(async (tx) => {
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      if (ownership) return { ok: false, failure: ownership };
+      const existing = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).count("* as total").first();
+      const total = Number(existing?.total ?? 0);
+      if (total >= ASSET_REFERENCE_LIMIT) {
+        return { ok: false, failure: failure("referenceLimitExceeded") };
+      }
+      return { ok: true, orderIndex: total };
+    })
+  );
+  if (!admission.ok) return { ok: false, failure: admission.failure };
+  const media = await store.write({
+    projectId: input.projectId,
+    assetsId: input.assetsId,
+    orderIndex: admission.orderIndex
+  });
+  const now2 = Date.now();
+  try {
+    const record3 = await work(
+      (db) => db.transaction(async (tx) => {
+        const [id] = await tx("o_assetReference").insert({
+          projectId: input.projectId,
+          assetsId: input.assetsId,
+          mediaPath: media.mediaPath,
+          mediaMime: media.mediaMime,
+          orderIndex: admission.orderIndex,
+          description,
+          descriptionSource: ASSET_REFERENCE_MANUAL_SOURCE,
+          analysisState: ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED,
+          visualRole: input.visualRole?.trim() ?? "",
+          requiredTransfers: JSON.stringify(normalizeTransfers(input.requiredTransfers)),
+          exclusions: JSON.stringify(normalizeTransfers(input.exclusions)),
+          createTime: now2,
+          updateTime: now2
+        });
+        const row = await tx("o_assetReference").where("id", id).first();
+        return toRecord2(row);
+      })
+    );
+    return { ok: true, value: record3 };
+  } catch (error67) {
+    await store.remove(media.mediaPath);
+    if (isReferenceOrderConflict(error67)) {
+      return { ok: false, failure: failure("referenceLimitExceeded") };
+    }
+    throw error67;
+  }
+}
+async function updateAssetReference(work, input) {
+  const patch = { updateTime: Date.now() };
+  if (input.description !== void 0) {
+    const description = normalizeDescription(input.description);
+    if (!description) return { ok: false, failure: failure("descriptionRequired") };
+    patch.description = description;
+  }
+  if (input.visualRole !== void 0) patch.visualRole = input.visualRole.trim();
+  if (input.requiredTransfers !== void 0) {
+    patch.requiredTransfers = JSON.stringify(normalizeTransfers(input.requiredTransfers));
+  }
+  if (input.exclusions !== void 0) {
+    patch.exclusions = JSON.stringify(normalizeTransfers(input.exclusions));
+  }
+  return work(
+    (db) => db.transaction(async (tx) => {
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      if (ownership) return { ok: false, failure: ownership };
+      const updated = await tx("o_assetReference").where({ id: input.id, assetsId: input.assetsId, projectId: input.projectId }).update(patch);
+      if (!updated) return { ok: false, failure: failure("referenceNotFound") };
+      const row = await tx("o_assetReference").where("id", input.id).first();
+      return { ok: true, value: toRecord2(row) };
+    })
+  );
+}
+async function reorderAssetReferences(work, input) {
+  return work(
+    (db) => db.transaction(async (tx) => {
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      if (ownership) return { ok: false, failure: ownership };
+      const rows = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").orderBy("id", "asc").select();
+      const currentIds = rows.map((row) => row.id).sort((a, b) => a - b);
+      const orderedIds = [...input.orderedIds].sort((a, b) => a - b);
+      const sameSet = currentIds.length === orderedIds.length && currentIds.every((id, index) => id === orderedIds[index]);
+      if (!sameSet) return { ok: false, failure: failure("orderMismatch") };
+      await renumberReferences(tx, {
+        projectId: input.projectId,
+        assetsId: input.assetsId,
+        assignments: input.orderedIds.map((id, orderIndex) => ({ id, orderIndex }))
+      });
+      const reordered = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").select();
+      return { ok: true, value: reordered.map(toRecord2) };
+    })
+  );
+}
+async function deleteAssetReference(work, input) {
+  return work(
+    (db) => db.transaction(async (tx) => {
+      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
+      if (ownership) return { ok: false, failure: ownership };
+      const removed = await tx("o_assetReference").where({ id: input.id, assetsId: input.assetsId, projectId: input.projectId }).first();
+      if (!removed) return { ok: false, failure: failure("referenceNotFound") };
+      await tx("o_assetReference").where("id", input.id).delete();
+      const remaining = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").orderBy("id", "asc").select();
+      await renumberReferences(tx, {
+        projectId: input.projectId,
+        assetsId: input.assetsId,
+        assignments: remaining.map((row, orderIndex) => ({ id: row.id, orderIndex }))
+      });
+      return { ok: true, value: { mediaPath: removed.mediaPath ?? "" } };
+    })
+  );
+}
+async function removeAssetReferenceRows(db, assetIds) {
+  if (assetIds.length === 0) return [];
+  const rows = await db("o_assetReference").whereIn("assetsId", assetIds).select("mediaPath");
+  await db("o_assetReference").whereIn("assetsId", assetIds).delete();
+  return rows.map((row) => row.mediaPath ?? "").filter((mediaPath) => mediaPath.length > 0);
+}
+var ASSET_REFERENCE_LIMIT, ASSET_REFERENCE_MANUAL_SOURCE, ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED, FAILURE_STATUS, FAILURE_MESSAGE;
+var init_assetReferences = __esm({
+  "src/assets/assetReferences.ts"() {
+    "use strict";
+    ASSET_REFERENCE_LIMIT = 6;
+    ASSET_REFERENCE_MANUAL_SOURCE = "manual";
+    ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED = "not_requested";
+    FAILURE_STATUS = {
+      projectNotFound: 404,
+      assetNotFound: 404,
+      referenceNotFound: 404,
+      assetProjectMismatch: 403,
+      referenceLimitExceeded: 400,
+      descriptionRequired: 400,
+      invalidMedia: 400,
+      orderMismatch: 400
+    };
+    FAILURE_MESSAGE = {
+      projectNotFound: "\u9879\u76EE\u4E0D\u5B58\u5728",
+      assetNotFound: "\u8D44\u4EA7\u4E0D\u5B58\u5728",
+      assetProjectMismatch: "\u8D44\u4EA7\u4E0D\u5C5E\u4E8E\u8BE5\u9879\u76EE",
+      referenceNotFound: "\u53C2\u8003\u56FE\u4E0D\u5B58\u5728\u6216\u4E0D\u5C5E\u4E8E\u8BE5\u8D44\u4EA7",
+      referenceLimitExceeded: `\u5355\u4E2A\u8D44\u4EA7\u6700\u591A\u652F\u6301 ${ASSET_REFERENCE_LIMIT} \u5F20\u53C2\u8003\u56FE`,
+      descriptionRequired: "\u53C2\u8003\u56FE\u63CF\u8FF0\u4E3A\u5FC5\u586B\u9879\uFF0C\u672C\u7248\u672C\u5FC5\u987B\u7531\u4EBA\u5DE5\u64B0\u5199",
+      invalidMedia: "\u53C2\u8003\u56FE\u5185\u5BB9\u4E0D\u662F\u53D7\u652F\u6301\u7684\u56FE\u7247\uFF08PNG/JPEG/WebP/GIF\uFF09",
+      orderMismatch: "\u6392\u5E8F\u5217\u8868\u4E0E\u8D44\u4EA7\u73B0\u6709\u53C2\u8003\u56FE\u4E0D\u4E00\u81F4"
+    };
+  }
+});
+
 // src/assets/assetBriefContract.ts
 function assetPromptFailure(kind, message) {
   return { kind, message };
@@ -239398,891 +239628,6 @@ var init_assetBriefContract = __esm({
       prop: "prop",
       props: "prop"
     };
-  }
-});
-
-// src/lib/responseFormat.ts
-function success3(data = null, message = "\u6210\u529F") {
-  return {
-    code: 200,
-    data,
-    message
-  };
-}
-function error50(message = "", data = null) {
-  return {
-    code: 400,
-    data,
-    message
-  };
-}
-var init_responseFormat = __esm({
-  "src/lib/responseFormat.ts"() {
-    "use strict";
-  }
-});
-
-// node_modules/zod/locales/index.js
-var init_locales2 = __esm({
-  "node_modules/zod/locales/index.js"() {
-    "use strict";
-    init_locales();
-  }
-});
-
-// src/middleware/middleware.ts
-function validateFields(shape, source = "body") {
-  const schema = external_exports.object(shape);
-  return (req, res, next) => {
-    const data = req[source];
-    const parseResult = schema.safeParse(data);
-    if (!parseResult.success) {
-      const errors = parseResult.error.issues.map((issue3) => `\u5B57\u6BB5 ${issue3.path.join(".")} ${issue3.message}`);
-      console.error(errors);
-      return res.status(400).json({ message: "\u53C2\u6570\u9519\u8BEF", errors });
-    }
-    next();
-  };
-}
-var init_middleware = __esm({
-  "src/middleware/middleware.ts"() {
-    "use strict";
-    init_zod();
-    init_locales2();
-    external_exports.config(zh_CN_default());
-  }
-});
-
-// src/routes/agents/clearMemory.ts
-var import_express2, router, clearMemory_default;
-var init_clearMemory = __esm({
-  "src/routes/agents/clearMemory.ts"() {
-    "use strict";
-    import_express2 = __toESM(require_express2());
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    init_database();
-    router = import_express2.default.Router();
-    clearMemory_default = router.post(
-      "/",
-      validateFields({
-        projectId: external_exports.number(),
-        episodesId: external_exports.number().optional(),
-        agentType: external_exports.enum(["scriptAgent", "productionAgent"]),
-        type: external_exports.enum(["message", "summary", "all"]).optional()
-      }),
-      async (req, res) => {
-        const { projectId, episodesId, agentType, type = "all" } = req.body;
-        const isolationKey = `${projectId}:${agentType}${episodesId ? `:${episodesId}` : ""}`;
-        if (type === "all") {
-          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey }).del());
-        } else if (type === "message") {
-          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "message" }).del());
-          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "summary" }).del());
-        } else {
-          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "message", summarized: 1 }).update({ summarized: 0 }));
-          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "summary" }).del());
-        }
-        res.status(200).send(success3(null));
-      }
-    );
-  }
-});
-
-// src/routes/agents/getMemory.ts
-function normalizeRole(role) {
-  return role?.startsWith("assistant") ? "assistant" : "user";
-}
-var import_express3, router2, getMemory_default;
-var init_getMemory = __esm({
-  "src/routes/agents/getMemory.ts"() {
-    "use strict";
-    import_express3 = __toESM(require_express2());
-    init_database();
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    router2 = import_express3.default.Router();
-    getMemory_default = router2.post(
-      "/",
-      validateFields({
-        projectId: external_exports.number(),
-        agentType: external_exports.enum(["scriptAgent", "productionAgent"]),
-        episodesId: external_exports.number().optional()
-      }),
-      async (req, res) => {
-        const { projectId, agentType, episodesId } = req.body;
-        const isolationKey = `${projectId}:${agentType}${episodesId ? `:${episodesId}` : ""}`;
-        const rows = await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "message" }).orderBy("createTime", "asc").select("id", "role", "name", "content", "createTime"));
-        const history = rows.map((row) => ({
-          id: row.id,
-          role: normalizeRole(row.role),
-          name: row.name ?? void 0,
-          status: "complete",
-          datetime: new Date(row.createTime).toISOString(),
-          content: [{ type: "markdown", status: "complete", data: row.content }],
-          createTime: row.createTime
-        }));
-        res.status(200).send(success3(history));
-      }
-    );
-  }
-});
-
-// src/routes/artStyle/addArtStyle.ts
-var import_express4, router3, addArtStyle_default;
-var init_addArtStyle = __esm({
-  "src/routes/artStyle/addArtStyle.ts"() {
-    "use strict";
-    import_express4 = __toESM(require_express2());
-    init_utils3();
-    init_zod();
-    init_dist_node();
-    init_responseFormat();
-    init_middleware();
-    init_database();
-    router3 = import_express4.default.Router();
-    addArtStyle_default = router3.post(
-      "/",
-      validateFields({
-        name: external_exports.string(),
-        fileUrl: external_exports.string(),
-        prompt: external_exports.string()
-      }),
-      async (req, res) => {
-        const { name: name28, fileUrl, prompt } = req.body;
-        const imagePath = `/artStyle/${v4_default()}.jpg`;
-        const matches = fileUrl.match(/^data:image\/\w+;base64,(.+)$/);
-        const realBase64 = matches ? matches[1] : fileUrl;
-        await utils_default2.oss.writeFile(imagePath, Buffer.from(realBase64, "base64"));
-        await getDatabaseRuntime().work((db) => db("o_artStyle").insert({
-          name: name28,
-          fileUrl: imagePath,
-          label: name28,
-          prompt
-        }));
-        res.status(200).send(success3("\u827A\u672F\u98CE\u683C\u6DFB\u52A0\u6210\u529F"));
-      }
-    );
-  }
-});
-
-// src/routes/artStyle/editArtStyle.ts
-var import_express5, router4, editArtStyle_default;
-var init_editArtStyle = __esm({
-  "src/routes/artStyle/editArtStyle.ts"() {
-    "use strict";
-    import_express5 = __toESM(require_express2());
-    init_utils3();
-    init_database();
-    init_zod();
-    init_dist_node();
-    init_responseFormat();
-    init_middleware();
-    router4 = import_express5.default.Router();
-    editArtStyle_default = router4.post(
-      "/",
-      validateFields({
-        id: external_exports.number(),
-        name: external_exports.string(),
-        fileUrl: external_exports.string(),
-        prompt: external_exports.string()
-      }),
-      async (req, res) => {
-        const { id, name: name28, fileUrl, prompt } = req.body;
-        const imagePath = `/artStyle/${v4_default()}.jpg`;
-        const matches = fileUrl.match(/^data:image\/\w+;base64,(.+)$/);
-        const realBase64 = matches ? matches[1] : fileUrl;
-        await utils_default2.oss.writeFile(imagePath, Buffer.from(realBase64, "base64"));
-        await getDatabaseRuntime().work((db) => db("o_artStyle").update({
-          name: name28,
-          fileUrl: imagePath,
-          label: name28,
-          prompt
-        }).where("id", id));
-        res.status(200).send(success3("\u827A\u672F\u98CE\u683C\u7F16\u8F91\u6210\u529F"));
-      }
-    );
-  }
-});
-
-// src/routes/artStyle/extractStylePrompt.ts
-var import_express6, router5, extractStylePrompt_default;
-var init_extractStylePrompt = __esm({
-  "src/routes/artStyle/extractStylePrompt.ts"() {
-    "use strict";
-    import_express6 = __toESM(require_express2());
-    init_utils3();
-    init_vendor2();
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    init_runtime();
-    router5 = import_express6.default.Router();
-    extractStylePrompt_default = router5.post(
-      "/",
-      validateFields({
-        images: external_exports.array(external_exports.string())
-      }),
-      async (req, res) => {
-        const { images } = req.body;
-        try {
-          const resText = await getDefaultConfiguredVendor().invokeText({
-            target: { kind: "logical", key: "universalAi" },
-            input: {
-              system: await getRuntimePrompt(runtimePromptKeys.artStyleExtraction),
-              messages: [
-                {
-                  role: "user",
-                  content: [
-                    ...images.map((image) => ({
-                      type: "image",
-                      image
-                    }))
-                  ]
-                }
-              ]
-            }
-          });
-          res.status(200).send(success3(resText.text));
-        } catch (e) {
-          const err = utils_default2.error(e);
-          res.status(500).send({ message: err.message });
-        }
-      }
-    );
-  }
-});
-
-// src/routes/artStyle/getArtStyle.ts
-var import_express7, router6, getArtStyle_default;
-var init_getArtStyle = __esm({
-  "src/routes/artStyle/getArtStyle.ts"() {
-    "use strict";
-    import_express7 = __toESM(require_express2());
-    init_utils3();
-    init_responseFormat();
-    init_database();
-    router6 = import_express7.default.Router();
-    getArtStyle_default = router6.post("/", async (req, res) => {
-      const list2 = await getDatabaseRuntime().work((db) => db("o_artStyle").select("*"));
-      const data = await Promise.all(
-        list2.map(async (item) => {
-          const fileUrl = await utils_default2.oss.getSmallImageUrl(item.fileUrl);
-          return { ...item, fileUrl };
-        })
-      );
-      res.status(200).send(success3(data));
-    });
-  }
-});
-
-// src/assets/assetReferences.ts
-function assetReferenceErrorEnvelope(failure2) {
-  const status = FAILURE_STATUS[failure2.kind];
-  return {
-    status,
-    body: {
-      code: status,
-      data: null,
-      message: FAILURE_MESSAGE[failure2.kind] ?? failure2.message,
-      error: failure2.kind
-    }
-  };
-}
-function failure(kind) {
-  return { kind, message: FAILURE_MESSAGE[kind] };
-}
-async function ownedAssetFailure(db, projectId, assetsId) {
-  const project = await db("o_project").where("id", projectId).first();
-  if (!project) return failure("projectNotFound");
-  const asset = await db("o_assets").where("id", assetsId).first();
-  if (!asset) return failure("assetNotFound");
-  if (asset.projectId !== projectId) return failure("assetProjectMismatch");
-  return null;
-}
-function parseJsonArray2(raw) {
-  if (typeof raw !== "string" || raw.length === 0) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
-}
-function toRecord2(row) {
-  return {
-    id: row.id,
-    projectId: row.projectId,
-    assetsId: row.assetsId,
-    mediaPath: row.mediaPath ?? "",
-    mediaMime: row.mediaMime ?? null,
-    orderIndex: row.orderIndex ?? 0,
-    description: row.description ?? "",
-    descriptionSource: row.descriptionSource ?? ASSET_REFERENCE_MANUAL_SOURCE,
-    analysisState: row.analysisState ?? ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED,
-    visualRole: row.visualRole ?? "",
-    requiredTransfers: parseJsonArray2(row.requiredTransfers),
-    exclusions: parseJsonArray2(row.exclusions),
-    createTime: row.createTime ?? 0,
-    updateTime: row.updateTime ?? 0
-  };
-}
-function normalizeDescription(description) {
-  const trimmed = description?.trim();
-  return trimmed ? trimmed : null;
-}
-function normalizeTransfers(values) {
-  return (values ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
-}
-function isReferenceOrderConflict(error67) {
-  const message = error67 instanceof Error ? error67.message : String(error67);
-  return message.includes("UNIQUE constraint failed") && message.includes("o_assetReference");
-}
-async function renumberReferences(tx, input) {
-  await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).increment("orderIndex", ASSET_REFERENCE_LIMIT);
-  for (const assignment of input.assignments) {
-    await tx("o_assetReference").where({ id: assignment.id, assetsId: input.assetsId }).update({ orderIndex: assignment.orderIndex, updateTime: Date.now() });
-  }
-}
-async function listAssetReferences(work, input) {
-  return work(
-    (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
-      if (ownership) return { ok: false, failure: ownership };
-      const rows = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").orderBy("id", "asc").select();
-      return { ok: true, value: rows.map(toRecord2) };
-    })
-  );
-}
-async function createAssetReference(work, input, store) {
-  const description = normalizeDescription(input.description ?? "");
-  if (!description) return { ok: false, failure: failure("descriptionRequired") };
-  const admission = await work(
-    (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
-      if (ownership) return { ok: false, failure: ownership };
-      const existing = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).count("* as total").first();
-      const total = Number(existing?.total ?? 0);
-      if (total >= ASSET_REFERENCE_LIMIT) {
-        return { ok: false, failure: failure("referenceLimitExceeded") };
-      }
-      return { ok: true, orderIndex: total };
-    })
-  );
-  if (!admission.ok) return { ok: false, failure: admission.failure };
-  const media = await store.write({
-    projectId: input.projectId,
-    assetsId: input.assetsId,
-    orderIndex: admission.orderIndex
-  });
-  const now2 = Date.now();
-  try {
-    const record3 = await work(
-      (db) => db.transaction(async (tx) => {
-        const [id] = await tx("o_assetReference").insert({
-          projectId: input.projectId,
-          assetsId: input.assetsId,
-          mediaPath: media.mediaPath,
-          mediaMime: media.mediaMime,
-          orderIndex: admission.orderIndex,
-          description,
-          descriptionSource: ASSET_REFERENCE_MANUAL_SOURCE,
-          analysisState: ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED,
-          visualRole: input.visualRole?.trim() ?? "",
-          requiredTransfers: JSON.stringify(normalizeTransfers(input.requiredTransfers)),
-          exclusions: JSON.stringify(normalizeTransfers(input.exclusions)),
-          createTime: now2,
-          updateTime: now2
-        });
-        const row = await tx("o_assetReference").where("id", id).first();
-        return toRecord2(row);
-      })
-    );
-    return { ok: true, value: record3 };
-  } catch (error67) {
-    await store.remove(media.mediaPath);
-    if (isReferenceOrderConflict(error67)) {
-      return { ok: false, failure: failure("referenceLimitExceeded") };
-    }
-    throw error67;
-  }
-}
-async function updateAssetReference(work, input) {
-  const patch = { updateTime: Date.now() };
-  if (input.description !== void 0) {
-    const description = normalizeDescription(input.description);
-    if (!description) return { ok: false, failure: failure("descriptionRequired") };
-    patch.description = description;
-  }
-  if (input.visualRole !== void 0) patch.visualRole = input.visualRole.trim();
-  if (input.requiredTransfers !== void 0) {
-    patch.requiredTransfers = JSON.stringify(normalizeTransfers(input.requiredTransfers));
-  }
-  if (input.exclusions !== void 0) {
-    patch.exclusions = JSON.stringify(normalizeTransfers(input.exclusions));
-  }
-  return work(
-    (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
-      if (ownership) return { ok: false, failure: ownership };
-      const updated = await tx("o_assetReference").where({ id: input.id, assetsId: input.assetsId, projectId: input.projectId }).update(patch);
-      if (!updated) return { ok: false, failure: failure("referenceNotFound") };
-      const row = await tx("o_assetReference").where("id", input.id).first();
-      return { ok: true, value: toRecord2(row) };
-    })
-  );
-}
-async function reorderAssetReferences(work, input) {
-  return work(
-    (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
-      if (ownership) return { ok: false, failure: ownership };
-      const rows = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").orderBy("id", "asc").select();
-      const currentIds = rows.map((row) => row.id).sort((a, b) => a - b);
-      const orderedIds = [...input.orderedIds].sort((a, b) => a - b);
-      const sameSet = currentIds.length === orderedIds.length && currentIds.every((id, index) => id === orderedIds[index]);
-      if (!sameSet) return { ok: false, failure: failure("orderMismatch") };
-      await renumberReferences(tx, {
-        projectId: input.projectId,
-        assetsId: input.assetsId,
-        assignments: input.orderedIds.map((id, orderIndex) => ({ id, orderIndex }))
-      });
-      const reordered = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").select();
-      return { ok: true, value: reordered.map(toRecord2) };
-    })
-  );
-}
-async function deleteAssetReference(work, input) {
-  return work(
-    (db) => db.transaction(async (tx) => {
-      const ownership = await ownedAssetFailure(tx, input.projectId, input.assetsId);
-      if (ownership) return { ok: false, failure: ownership };
-      const removed = await tx("o_assetReference").where({ id: input.id, assetsId: input.assetsId, projectId: input.projectId }).first();
-      if (!removed) return { ok: false, failure: failure("referenceNotFound") };
-      await tx("o_assetReference").where("id", input.id).delete();
-      const remaining = await tx("o_assetReference").where({ assetsId: input.assetsId, projectId: input.projectId }).orderBy("orderIndex", "asc").orderBy("id", "asc").select();
-      await renumberReferences(tx, {
-        projectId: input.projectId,
-        assetsId: input.assetsId,
-        assignments: remaining.map((row, orderIndex) => ({ id: row.id, orderIndex }))
-      });
-      return { ok: true, value: { mediaPath: removed.mediaPath ?? "" } };
-    })
-  );
-}
-async function removeAssetReferenceRows(db, assetIds) {
-  if (assetIds.length === 0) return [];
-  const rows = await db("o_assetReference").whereIn("assetsId", assetIds).select("mediaPath");
-  await db("o_assetReference").whereIn("assetsId", assetIds).delete();
-  return rows.map((row) => row.mediaPath ?? "").filter((mediaPath) => mediaPath.length > 0);
-}
-var ASSET_REFERENCE_LIMIT, ASSET_REFERENCE_MANUAL_SOURCE, ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED, FAILURE_STATUS, FAILURE_MESSAGE;
-var init_assetReferences = __esm({
-  "src/assets/assetReferences.ts"() {
-    "use strict";
-    ASSET_REFERENCE_LIMIT = 6;
-    ASSET_REFERENCE_MANUAL_SOURCE = "manual";
-    ASSET_REFERENCE_ANALYSIS_NOT_REQUESTED = "not_requested";
-    FAILURE_STATUS = {
-      projectNotFound: 404,
-      assetNotFound: 404,
-      referenceNotFound: 404,
-      assetProjectMismatch: 403,
-      referenceLimitExceeded: 400,
-      descriptionRequired: 400,
-      invalidMedia: 400,
-      orderMismatch: 400
-    };
-    FAILURE_MESSAGE = {
-      projectNotFound: "\u9879\u76EE\u4E0D\u5B58\u5728",
-      assetNotFound: "\u8D44\u4EA7\u4E0D\u5B58\u5728",
-      assetProjectMismatch: "\u8D44\u4EA7\u4E0D\u5C5E\u4E8E\u8BE5\u9879\u76EE",
-      referenceNotFound: "\u53C2\u8003\u56FE\u4E0D\u5B58\u5728\u6216\u4E0D\u5C5E\u4E8E\u8BE5\u8D44\u4EA7",
-      referenceLimitExceeded: `\u5355\u4E2A\u8D44\u4EA7\u6700\u591A\u652F\u6301 ${ASSET_REFERENCE_LIMIT} \u5F20\u53C2\u8003\u56FE`,
-      descriptionRequired: "\u53C2\u8003\u56FE\u63CF\u8FF0\u4E3A\u5FC5\u586B\u9879\uFF0C\u672C\u7248\u672C\u5FC5\u987B\u7531\u4EBA\u5DE5\u64B0\u5199",
-      invalidMedia: "\u53C2\u8003\u56FE\u5185\u5BB9\u4E0D\u662F\u53D7\u652F\u6301\u7684\u56FE\u7247\uFF08PNG/JPEG/WebP/GIF\uFF09",
-      orderMismatch: "\u6392\u5E8F\u5217\u8868\u4E0E\u8D44\u4EA7\u73B0\u6709\u53C2\u8003\u56FE\u4E0D\u4E00\u81F4"
-    };
-  }
-});
-
-// src/assets/assetReferenceMedia.ts
-function detectImageMime(buffer) {
-  if (buffer.length >= 8 && buffer[0] === 137 && buffer[1] === 80 && buffer[2] === 78 && buffer[3] === 71 && buffer[4] === 13 && buffer[5] === 10 && buffer[6] === 26 && buffer[7] === 10) {
-    return "image/png";
-  }
-  if (buffer.length >= 3 && buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255) {
-    return "image/jpeg";
-  }
-  if (buffer.length >= 6) {
-    const header = buffer.toString("ascii", 0, 6);
-    if (header === "GIF87a" || header === "GIF89a") return "image/gif";
-  }
-  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
-    return "image/webp";
-  }
-  return null;
-}
-function extensionForMime(mime) {
-  return MIME_EXTENSIONS[mime];
-}
-async function deleteMediaFileIfPresent(mediaPath) {
-  try {
-    await utils_default2.oss.deleteFile(mediaPath);
-  } catch (error67) {
-    if (error67?.code !== "ENOENT") throw error67;
-  }
-}
-async function deleteMediaFileBestEffort(mediaPath) {
-  try {
-    await deleteMediaFileIfPresent(mediaPath);
-  } catch (error67) {
-    console.warn("[assetReference] \u5A92\u4F53\u6587\u4EF6\u6E05\u7406\u5931\u8D25:", mediaPath, error67);
-  }
-}
-var MIME_EXTENSIONS;
-var init_assetReferenceMedia = __esm({
-  "src/assets/assetReferenceMedia.ts"() {
-    "use strict";
-    init_utils3();
-    MIME_EXTENSIONS = {
-      "image/png": "png",
-      "image/jpeg": "jpg",
-      "image/webp": "webp",
-      "image/gif": "gif"
-    };
-  }
-});
-
-// src/routes/assetReference/addAssetReference.ts
-var import_express8, router7, addAssetReference_default;
-var init_addAssetReference = __esm({
-  "src/routes/assetReference/addAssetReference.ts"() {
-    "use strict";
-    import_express8 = __toESM(require_express2());
-    init_utils3();
-    init_database();
-    init_zod();
-    init_dist_node();
-    init_responseFormat();
-    init_middleware();
-    init_assetReferences();
-    init_assetReferenceMedia();
-    router7 = import_express8.default.Router();
-    addAssetReference_default = router7.post(
-      "/",
-      validateFields({
-        projectId: external_exports.number().int(),
-        assetsId: external_exports.number().int(),
-        base64: external_exports.string().min(1),
-        description: external_exports.string(),
-        visualRole: external_exports.string().optional(),
-        requiredTransfers: external_exports.array(external_exports.string()).optional(),
-        exclusions: external_exports.array(external_exports.string()).optional()
-      }),
-      async (req, res) => {
-        const { projectId, assetsId, base64: base644, description, visualRole, requiredTransfers, exclusions } = req.body;
-        const matches = base644.match(/^data:image\/[\w.+-]+;base64,(.+)$/);
-        const realBase64 = matches ? matches[1] : base644;
-        const buffer = Buffer.from(realBase64, "base64");
-        const mediaMime = detectImageMime(buffer);
-        if (!mediaMime) {
-          const envelope = assetReferenceErrorEnvelope({ kind: "invalidMedia", message: "" });
-          return res.status(envelope.status).send(envelope.body);
-        }
-        const store = {
-          async write({ projectId: ownerProjectId }) {
-            const savePath = `/${ownerProjectId}/assetReferences/${v4_default()}.${extensionForMime(mediaMime)}`;
-            await utils_default2.oss.writeFile(savePath, buffer);
-            return { mediaPath: savePath, mediaMime };
-          },
-          async remove(mediaPath) {
-            await deleteMediaFileBestEffort(mediaPath);
-          }
-        };
-        const result = await createAssetReference(
-          getDatabaseRuntime().work,
-          { projectId, assetsId, description, visualRole, requiredTransfers, exclusions },
-          store
-        );
-        if (!result.ok) {
-          const envelope = assetReferenceErrorEnvelope(result.failure);
-          return res.status(envelope.status).send(envelope.body);
-        }
-        res.status(200).send(success3(result.value, "\u53C2\u8003\u56FE\u521B\u5EFA\u6210\u529F"));
-      }
-    );
-  }
-});
-
-// src/routes/assetReference/delAssetReference.ts
-var import_express9, router8, delAssetReference_default;
-var init_delAssetReference = __esm({
-  "src/routes/assetReference/delAssetReference.ts"() {
-    "use strict";
-    import_express9 = __toESM(require_express2());
-    init_database();
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    init_assetReferences();
-    init_assetReferenceMedia();
-    router8 = import_express9.default.Router();
-    delAssetReference_default = router8.post(
-      "/",
-      validateFields({
-        projectId: external_exports.number().int(),
-        assetsId: external_exports.number().int(),
-        id: external_exports.number().int()
-      }),
-      async (req, res) => {
-        const { projectId, assetsId, id } = req.body;
-        const result = await deleteAssetReference(getDatabaseRuntime().work, { projectId, assetsId, id });
-        if (!result.ok) {
-          const envelope = assetReferenceErrorEnvelope(result.failure);
-          return res.status(envelope.status).send(envelope.body);
-        }
-        if (result.value.mediaPath) {
-          await deleteMediaFileBestEffort(result.value.mediaPath);
-        }
-        res.status(200).send(success3({ message: "\u53C2\u8003\u56FE\u5220\u9664\u6210\u529F" }));
-      }
-    );
-  }
-});
-
-// src/routes/assetReference/getAssetReference.ts
-var import_express10, router9, getAssetReference_default;
-var init_getAssetReference = __esm({
-  "src/routes/assetReference/getAssetReference.ts"() {
-    "use strict";
-    import_express10 = __toESM(require_express2());
-    init_database();
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    init_assetReferences();
-    router9 = import_express10.default.Router();
-    getAssetReference_default = router9.post(
-      "/",
-      validateFields({
-        projectId: external_exports.number().int(),
-        assetsId: external_exports.number().int()
-      }),
-      async (req, res) => {
-        const { projectId, assetsId } = req.body;
-        const result = await listAssetReferences(getDatabaseRuntime().work, { projectId, assetsId });
-        if (!result.ok) {
-          const envelope = assetReferenceErrorEnvelope(result.failure);
-          return res.status(envelope.status).send(envelope.body);
-        }
-        res.status(200).send(success3({ list: result.value, total: result.value.length }));
-      }
-    );
-  }
-});
-
-// src/routes/assetReference/reorderAssetReference.ts
-var import_express11, router10, reorderAssetReference_default;
-var init_reorderAssetReference = __esm({
-  "src/routes/assetReference/reorderAssetReference.ts"() {
-    "use strict";
-    import_express11 = __toESM(require_express2());
-    init_database();
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    init_assetReferences();
-    router10 = import_express11.default.Router();
-    reorderAssetReference_default = router10.post(
-      "/",
-      validateFields({
-        projectId: external_exports.number().int(),
-        assetsId: external_exports.number().int(),
-        orderedIds: external_exports.array(external_exports.number().int())
-      }),
-      async (req, res) => {
-        const { projectId, assetsId, orderedIds } = req.body;
-        const result = await reorderAssetReferences(getDatabaseRuntime().work, { projectId, assetsId, orderedIds });
-        if (!result.ok) {
-          const envelope = assetReferenceErrorEnvelope(result.failure);
-          return res.status(envelope.status).send(envelope.body);
-        }
-        res.status(200).send(success3({ list: result.value, total: result.value.length }, "\u53C2\u8003\u56FE\u6392\u5E8F\u6210\u529F"));
-      }
-    );
-  }
-});
-
-// src/routes/assetReference/updateAssetReference.ts
-var import_express12, router11, updateAssetReference_default;
-var init_updateAssetReference = __esm({
-  "src/routes/assetReference/updateAssetReference.ts"() {
-    "use strict";
-    import_express12 = __toESM(require_express2());
-    init_database();
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    init_assetReferences();
-    router11 = import_express12.default.Router();
-    updateAssetReference_default = router11.post(
-      "/",
-      validateFields({
-        projectId: external_exports.number().int(),
-        assetsId: external_exports.number().int(),
-        id: external_exports.number().int(),
-        description: external_exports.string().optional(),
-        visualRole: external_exports.string().optional(),
-        requiredTransfers: external_exports.array(external_exports.string()).optional(),
-        exclusions: external_exports.array(external_exports.string()).optional()
-      }),
-      async (req, res) => {
-        const { projectId, assetsId, id, description, visualRole, requiredTransfers, exclusions } = req.body;
-        const result = await updateAssetReference(getDatabaseRuntime().work, {
-          projectId,
-          assetsId,
-          id,
-          description,
-          visualRole,
-          requiredTransfers,
-          exclusions
-        });
-        if (!result.ok) {
-          const envelope = assetReferenceErrorEnvelope(result.failure);
-          return res.status(envelope.status).send(envelope.body);
-        }
-        res.status(200).send(success3(result.value, "\u53C2\u8003\u56FE\u66F4\u65B0\u6210\u529F"));
-      }
-    );
-  }
-});
-
-// src/routes/assets/addAssets.ts
-var import_express13, router12, addAssets_default;
-var init_addAssets = __esm({
-  "src/routes/assets/addAssets.ts"() {
-    "use strict";
-    import_express13 = __toESM(require_express2());
-    init_database();
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    router12 = import_express13.default.Router();
-    addAssets_default = router12.post(
-      "/",
-      validateFields({
-        name: external_exports.string(),
-        describe: external_exports.string(),
-        type: external_exports.string(),
-        projectId: external_exports.number(),
-        remark: external_exports.string().optional().nullable(),
-        prompt: external_exports.string().optional().nullable()
-      }),
-      async (req, res) => {
-        const { name: name28, describe: describe4, type, projectId, remark, prompt } = req.body;
-        await getDatabaseRuntime().work(async (db) => {
-          await db("o_assets").insert({
-            name: name28,
-            describe: describe4,
-            type,
-            projectId,
-            remark,
-            prompt,
-            startTime: Date.now()
-          });
-        });
-        res.status(200).send(success3({ message: "\u65B0\u589E\u8D44\u4EA7\u6210\u529F" }));
-      }
-    );
-  }
-});
-
-// src/routes/assets/addAudioAssets.ts
-var import_express14, router13, addAudioAssets_default;
-var init_addAudioAssets = __esm({
-  "src/routes/assets/addAudioAssets.ts"() {
-    "use strict";
-    import_express14 = __toESM(require_express2());
-    init_utils3();
-    init_database();
-    init_zod();
-    init_responseFormat();
-    init_middleware();
-    router13 = import_express14.default.Router();
-    addAudioAssets_default = router13.post(
-      "/",
-      validateFields({
-        name: external_exports.string(),
-        describe: external_exports.string(),
-        projectId: external_exports.number(),
-        assetsItem: external_exports.array(
-          external_exports.object({
-            base64: external_exports.string(),
-            prompt: external_exports.string(),
-            describe: external_exports.string(),
-            name: external_exports.string()
-          })
-        )
-      }),
-      async (req, res) => {
-        const { name: name28, describe: describe4, projectId, assetsItem } = req.body;
-        await Promise.all(
-          assetsItem.map(async (i) => {
-            if (i.base64) {
-              const mimeMatch = i.base64.match(/^data:audio\/([^;]+);base64,/);
-              const mimeExt = mimeMatch ? mimeMatch[1] : "mp3";
-              const mimeToExt = {
-                mpeg: "mp3",
-                "x-wav": "wav",
-                "x-aiff": "aiff",
-                "x-m4a": "m4a",
-                "x-flac": "flac"
-              };
-              const ext = mimeToExt[mimeExt] ?? mimeExt;
-              const savePath = `/${projectId}/assets/audio/${utils_default2.uuid()}.${ext}`;
-              const base64Data = i.base64.replace(/^data:[^;]+;base64,/, "");
-              await utils_default2.oss.writeFile(savePath, base64Data);
-              i.src = savePath;
-            }
-          })
-        );
-        const [id] = await getDatabaseRuntime().work(async (db) => {
-          return await db("o_assets").insert({
-            name: name28,
-            describe: describe4,
-            type: "audio",
-            projectId,
-            startTime: Date.now()
-          });
-        });
-        await getDatabaseRuntime().work(async (db) => {
-          for (const item of assetsItem) {
-            const [assetsId] = await db("o_assets").insert({
-              prompt: item.prompt,
-              assetsId: id,
-              type: "audio",
-              describe: item.describe,
-              name: item.name,
-              projectId,
-              startTime: Date.now()
-            });
-            const [imageId] = await db("o_image").insert({
-              filePath: item.src,
-              type: "audio",
-              assetsId,
-              state: "\u5DF2\u5B8C\u6210"
-            });
-            await db("o_assets").where("id", assetsId).update({
-              imageId
-            });
-          }
-        });
-        res.status(200).send(success3({ message: "\u65B0\u589E\u8D44\u4EA7\u6210\u529F" }));
-      }
-    );
   }
 });
 
@@ -241372,6 +240717,661 @@ var init_assetPromptOrchestration = __esm({
       derivedChangeInstructionInvalid: { status: 500, message: "\u884D\u751F\u8D44\u4EA7\u53D8\u5316\u5951\u7EA6\u975E\u6CD5" },
       derivedPromptCompilationFailed: { status: 500, message: "\u884D\u751F\u8D44\u4EA7\u63D0\u793A\u8BCD\u7F16\u8BD1\u5931\u8D25" }
     };
+  }
+});
+
+// src/lib/responseFormat.ts
+function success3(data = null, message = "\u6210\u529F") {
+  return {
+    code: 200,
+    data,
+    message
+  };
+}
+function error50(message = "", data = null) {
+  return {
+    code: 400,
+    data,
+    message
+  };
+}
+var init_responseFormat = __esm({
+  "src/lib/responseFormat.ts"() {
+    "use strict";
+  }
+});
+
+// node_modules/zod/locales/index.js
+var init_locales2 = __esm({
+  "node_modules/zod/locales/index.js"() {
+    "use strict";
+    init_locales();
+  }
+});
+
+// src/middleware/middleware.ts
+function validateFields(shape, source = "body") {
+  const schema = external_exports.object(shape);
+  return (req, res, next) => {
+    const data = req[source];
+    const parseResult = schema.safeParse(data);
+    if (!parseResult.success) {
+      const errors = parseResult.error.issues.map((issue3) => `\u5B57\u6BB5 ${issue3.path.join(".")} ${issue3.message}`);
+      console.error(errors);
+      return res.status(400).json({ message: "\u53C2\u6570\u9519\u8BEF", errors });
+    }
+    next();
+  };
+}
+var init_middleware = __esm({
+  "src/middleware/middleware.ts"() {
+    "use strict";
+    init_zod();
+    init_locales2();
+    external_exports.config(zh_CN_default());
+  }
+});
+
+// src/routes/agents/clearMemory.ts
+var import_express2, router, clearMemory_default;
+var init_clearMemory = __esm({
+  "src/routes/agents/clearMemory.ts"() {
+    "use strict";
+    import_express2 = __toESM(require_express2());
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    init_database();
+    router = import_express2.default.Router();
+    clearMemory_default = router.post(
+      "/",
+      validateFields({
+        projectId: external_exports.number(),
+        episodesId: external_exports.number().optional(),
+        agentType: external_exports.enum(["scriptAgent", "productionAgent"]),
+        type: external_exports.enum(["message", "summary", "all"]).optional()
+      }),
+      async (req, res) => {
+        const { projectId, episodesId, agentType, type = "all" } = req.body;
+        const isolationKey = `${projectId}:${agentType}${episodesId ? `:${episodesId}` : ""}`;
+        if (type === "all") {
+          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey }).del());
+        } else if (type === "message") {
+          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "message" }).del());
+          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "summary" }).del());
+        } else {
+          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "message", summarized: 1 }).update({ summarized: 0 }));
+          await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "summary" }).del());
+        }
+        res.status(200).send(success3(null));
+      }
+    );
+  }
+});
+
+// src/routes/agents/getMemory.ts
+function normalizeRole(role) {
+  return role?.startsWith("assistant") ? "assistant" : "user";
+}
+var import_express3, router2, getMemory_default;
+var init_getMemory = __esm({
+  "src/routes/agents/getMemory.ts"() {
+    "use strict";
+    import_express3 = __toESM(require_express2());
+    init_database();
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    router2 = import_express3.default.Router();
+    getMemory_default = router2.post(
+      "/",
+      validateFields({
+        projectId: external_exports.number(),
+        agentType: external_exports.enum(["scriptAgent", "productionAgent"]),
+        episodesId: external_exports.number().optional()
+      }),
+      async (req, res) => {
+        const { projectId, agentType, episodesId } = req.body;
+        const isolationKey = `${projectId}:${agentType}${episodesId ? `:${episodesId}` : ""}`;
+        const rows = await getDatabaseRuntime().work((db) => db("memories").where({ isolationKey, type: "message" }).orderBy("createTime", "asc").select("id", "role", "name", "content", "createTime"));
+        const history = rows.map((row) => ({
+          id: row.id,
+          role: normalizeRole(row.role),
+          name: row.name ?? void 0,
+          status: "complete",
+          datetime: new Date(row.createTime).toISOString(),
+          content: [{ type: "markdown", status: "complete", data: row.content }],
+          createTime: row.createTime
+        }));
+        res.status(200).send(success3(history));
+      }
+    );
+  }
+});
+
+// src/routes/artStyle/addArtStyle.ts
+var import_express4, router3, addArtStyle_default;
+var init_addArtStyle = __esm({
+  "src/routes/artStyle/addArtStyle.ts"() {
+    "use strict";
+    import_express4 = __toESM(require_express2());
+    init_utils3();
+    init_zod();
+    init_dist_node();
+    init_responseFormat();
+    init_middleware();
+    init_database();
+    router3 = import_express4.default.Router();
+    addArtStyle_default = router3.post(
+      "/",
+      validateFields({
+        name: external_exports.string(),
+        fileUrl: external_exports.string(),
+        prompt: external_exports.string()
+      }),
+      async (req, res) => {
+        const { name: name28, fileUrl, prompt } = req.body;
+        const imagePath = `/artStyle/${v4_default()}.jpg`;
+        const matches = fileUrl.match(/^data:image\/\w+;base64,(.+)$/);
+        const realBase64 = matches ? matches[1] : fileUrl;
+        await utils_default2.oss.writeFile(imagePath, Buffer.from(realBase64, "base64"));
+        await getDatabaseRuntime().work((db) => db("o_artStyle").insert({
+          name: name28,
+          fileUrl: imagePath,
+          label: name28,
+          prompt
+        }));
+        res.status(200).send(success3("\u827A\u672F\u98CE\u683C\u6DFB\u52A0\u6210\u529F"));
+      }
+    );
+  }
+});
+
+// src/routes/artStyle/editArtStyle.ts
+var import_express5, router4, editArtStyle_default;
+var init_editArtStyle = __esm({
+  "src/routes/artStyle/editArtStyle.ts"() {
+    "use strict";
+    import_express5 = __toESM(require_express2());
+    init_utils3();
+    init_database();
+    init_zod();
+    init_dist_node();
+    init_responseFormat();
+    init_middleware();
+    router4 = import_express5.default.Router();
+    editArtStyle_default = router4.post(
+      "/",
+      validateFields({
+        id: external_exports.number(),
+        name: external_exports.string(),
+        fileUrl: external_exports.string(),
+        prompt: external_exports.string()
+      }),
+      async (req, res) => {
+        const { id, name: name28, fileUrl, prompt } = req.body;
+        const imagePath = `/artStyle/${v4_default()}.jpg`;
+        const matches = fileUrl.match(/^data:image\/\w+;base64,(.+)$/);
+        const realBase64 = matches ? matches[1] : fileUrl;
+        await utils_default2.oss.writeFile(imagePath, Buffer.from(realBase64, "base64"));
+        await getDatabaseRuntime().work((db) => db("o_artStyle").update({
+          name: name28,
+          fileUrl: imagePath,
+          label: name28,
+          prompt
+        }).where("id", id));
+        res.status(200).send(success3("\u827A\u672F\u98CE\u683C\u7F16\u8F91\u6210\u529F"));
+      }
+    );
+  }
+});
+
+// src/routes/artStyle/extractStylePrompt.ts
+var import_express6, router5, extractStylePrompt_default;
+var init_extractStylePrompt = __esm({
+  "src/routes/artStyle/extractStylePrompt.ts"() {
+    "use strict";
+    import_express6 = __toESM(require_express2());
+    init_utils3();
+    init_vendor2();
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    init_runtime();
+    router5 = import_express6.default.Router();
+    extractStylePrompt_default = router5.post(
+      "/",
+      validateFields({
+        images: external_exports.array(external_exports.string())
+      }),
+      async (req, res) => {
+        const { images } = req.body;
+        try {
+          const resText = await getDefaultConfiguredVendor().invokeText({
+            target: { kind: "logical", key: "universalAi" },
+            input: {
+              system: await getRuntimePrompt(runtimePromptKeys.artStyleExtraction),
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    ...images.map((image) => ({
+                      type: "image",
+                      image
+                    }))
+                  ]
+                }
+              ]
+            }
+          });
+          res.status(200).send(success3(resText.text));
+        } catch (e) {
+          const err = utils_default2.error(e);
+          res.status(500).send({ message: err.message });
+        }
+      }
+    );
+  }
+});
+
+// src/routes/artStyle/getArtStyle.ts
+var import_express7, router6, getArtStyle_default;
+var init_getArtStyle = __esm({
+  "src/routes/artStyle/getArtStyle.ts"() {
+    "use strict";
+    import_express7 = __toESM(require_express2());
+    init_utils3();
+    init_responseFormat();
+    init_database();
+    router6 = import_express7.default.Router();
+    getArtStyle_default = router6.post("/", async (req, res) => {
+      const list2 = await getDatabaseRuntime().work((db) => db("o_artStyle").select("*"));
+      const data = await Promise.all(
+        list2.map(async (item) => {
+          const fileUrl = await utils_default2.oss.getSmallImageUrl(item.fileUrl);
+          return { ...item, fileUrl };
+        })
+      );
+      res.status(200).send(success3(data));
+    });
+  }
+});
+
+// src/assets/assetReferenceMedia.ts
+function detectImageMime(buffer) {
+  if (buffer.length >= 8 && buffer[0] === 137 && buffer[1] === 80 && buffer[2] === 78 && buffer[3] === 71 && buffer[4] === 13 && buffer[5] === 10 && buffer[6] === 26 && buffer[7] === 10) {
+    return "image/png";
+  }
+  if (buffer.length >= 3 && buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255) {
+    return "image/jpeg";
+  }
+  if (buffer.length >= 6) {
+    const header = buffer.toString("ascii", 0, 6);
+    if (header === "GIF87a" || header === "GIF89a") return "image/gif";
+  }
+  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
+    return "image/webp";
+  }
+  return null;
+}
+function extensionForMime(mime) {
+  return MIME_EXTENSIONS[mime];
+}
+async function deleteMediaFileIfPresent(mediaPath) {
+  try {
+    await utils_default2.oss.deleteFile(mediaPath);
+  } catch (error67) {
+    if (error67?.code !== "ENOENT") throw error67;
+  }
+}
+async function deleteMediaFileBestEffort(mediaPath) {
+  try {
+    await deleteMediaFileIfPresent(mediaPath);
+  } catch (error67) {
+    console.warn("[assetReference] \u5A92\u4F53\u6587\u4EF6\u6E05\u7406\u5931\u8D25:", mediaPath, error67);
+  }
+}
+var MIME_EXTENSIONS;
+var init_assetReferenceMedia = __esm({
+  "src/assets/assetReferenceMedia.ts"() {
+    "use strict";
+    init_utils3();
+    MIME_EXTENSIONS = {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "image/webp": "webp",
+      "image/gif": "gif"
+    };
+  }
+});
+
+// src/routes/assetReference/addAssetReference.ts
+var import_express8, router7, addAssetReference_default;
+var init_addAssetReference = __esm({
+  "src/routes/assetReference/addAssetReference.ts"() {
+    "use strict";
+    import_express8 = __toESM(require_express2());
+    init_utils3();
+    init_database();
+    init_zod();
+    init_dist_node();
+    init_responseFormat();
+    init_middleware();
+    init_assetReferences();
+    init_assetReferenceMedia();
+    router7 = import_express8.default.Router();
+    addAssetReference_default = router7.post(
+      "/",
+      validateFields({
+        projectId: external_exports.number().int(),
+        assetsId: external_exports.number().int(),
+        base64: external_exports.string().min(1),
+        description: external_exports.string(),
+        visualRole: external_exports.string().optional(),
+        requiredTransfers: external_exports.array(external_exports.string()).optional(),
+        exclusions: external_exports.array(external_exports.string()).optional()
+      }),
+      async (req, res) => {
+        const { projectId, assetsId, base64: base644, description, visualRole, requiredTransfers, exclusions } = req.body;
+        const matches = base644.match(/^data:image\/[\w.+-]+;base64,(.+)$/);
+        const realBase64 = matches ? matches[1] : base644;
+        const buffer = Buffer.from(realBase64, "base64");
+        const mediaMime = detectImageMime(buffer);
+        if (!mediaMime) {
+          const envelope = assetReferenceErrorEnvelope({ kind: "invalidMedia", message: "" });
+          return res.status(envelope.status).send(envelope.body);
+        }
+        const store = {
+          async write({ projectId: ownerProjectId }) {
+            const savePath = `/${ownerProjectId}/assetReferences/${v4_default()}.${extensionForMime(mediaMime)}`;
+            await utils_default2.oss.writeFile(savePath, buffer);
+            return { mediaPath: savePath, mediaMime };
+          },
+          async remove(mediaPath) {
+            await deleteMediaFileBestEffort(mediaPath);
+          }
+        };
+        const result = await createAssetReference(
+          getDatabaseRuntime().work,
+          { projectId, assetsId, description, visualRole, requiredTransfers, exclusions },
+          store
+        );
+        if (!result.ok) {
+          const envelope = assetReferenceErrorEnvelope(result.failure);
+          return res.status(envelope.status).send(envelope.body);
+        }
+        res.status(200).send(success3(result.value, "\u53C2\u8003\u56FE\u521B\u5EFA\u6210\u529F"));
+      }
+    );
+  }
+});
+
+// src/routes/assetReference/delAssetReference.ts
+var import_express9, router8, delAssetReference_default;
+var init_delAssetReference = __esm({
+  "src/routes/assetReference/delAssetReference.ts"() {
+    "use strict";
+    import_express9 = __toESM(require_express2());
+    init_database();
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    init_assetReferences();
+    init_assetReferenceMedia();
+    router8 = import_express9.default.Router();
+    delAssetReference_default = router8.post(
+      "/",
+      validateFields({
+        projectId: external_exports.number().int(),
+        assetsId: external_exports.number().int(),
+        id: external_exports.number().int()
+      }),
+      async (req, res) => {
+        const { projectId, assetsId, id } = req.body;
+        const result = await deleteAssetReference(getDatabaseRuntime().work, { projectId, assetsId, id });
+        if (!result.ok) {
+          const envelope = assetReferenceErrorEnvelope(result.failure);
+          return res.status(envelope.status).send(envelope.body);
+        }
+        if (result.value.mediaPath) {
+          await deleteMediaFileBestEffort(result.value.mediaPath);
+        }
+        res.status(200).send(success3({ message: "\u53C2\u8003\u56FE\u5220\u9664\u6210\u529F" }));
+      }
+    );
+  }
+});
+
+// src/routes/assetReference/getAssetReference.ts
+var import_express10, router9, getAssetReference_default;
+var init_getAssetReference = __esm({
+  "src/routes/assetReference/getAssetReference.ts"() {
+    "use strict";
+    import_express10 = __toESM(require_express2());
+    init_database();
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    init_assetReferences();
+    router9 = import_express10.default.Router();
+    getAssetReference_default = router9.post(
+      "/",
+      validateFields({
+        projectId: external_exports.number().int(),
+        assetsId: external_exports.number().int()
+      }),
+      async (req, res) => {
+        const { projectId, assetsId } = req.body;
+        const result = await listAssetReferences(getDatabaseRuntime().work, { projectId, assetsId });
+        if (!result.ok) {
+          const envelope = assetReferenceErrorEnvelope(result.failure);
+          return res.status(envelope.status).send(envelope.body);
+        }
+        res.status(200).send(success3({ list: result.value, total: result.value.length }));
+      }
+    );
+  }
+});
+
+// src/routes/assetReference/reorderAssetReference.ts
+var import_express11, router10, reorderAssetReference_default;
+var init_reorderAssetReference = __esm({
+  "src/routes/assetReference/reorderAssetReference.ts"() {
+    "use strict";
+    import_express11 = __toESM(require_express2());
+    init_database();
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    init_assetReferences();
+    router10 = import_express11.default.Router();
+    reorderAssetReference_default = router10.post(
+      "/",
+      validateFields({
+        projectId: external_exports.number().int(),
+        assetsId: external_exports.number().int(),
+        orderedIds: external_exports.array(external_exports.number().int())
+      }),
+      async (req, res) => {
+        const { projectId, assetsId, orderedIds } = req.body;
+        const result = await reorderAssetReferences(getDatabaseRuntime().work, { projectId, assetsId, orderedIds });
+        if (!result.ok) {
+          const envelope = assetReferenceErrorEnvelope(result.failure);
+          return res.status(envelope.status).send(envelope.body);
+        }
+        res.status(200).send(success3({ list: result.value, total: result.value.length }, "\u53C2\u8003\u56FE\u6392\u5E8F\u6210\u529F"));
+      }
+    );
+  }
+});
+
+// src/routes/assetReference/updateAssetReference.ts
+var import_express12, router11, updateAssetReference_default;
+var init_updateAssetReference = __esm({
+  "src/routes/assetReference/updateAssetReference.ts"() {
+    "use strict";
+    import_express12 = __toESM(require_express2());
+    init_database();
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    init_assetReferences();
+    router11 = import_express12.default.Router();
+    updateAssetReference_default = router11.post(
+      "/",
+      validateFields({
+        projectId: external_exports.number().int(),
+        assetsId: external_exports.number().int(),
+        id: external_exports.number().int(),
+        description: external_exports.string().optional(),
+        visualRole: external_exports.string().optional(),
+        requiredTransfers: external_exports.array(external_exports.string()).optional(),
+        exclusions: external_exports.array(external_exports.string()).optional()
+      }),
+      async (req, res) => {
+        const { projectId, assetsId, id, description, visualRole, requiredTransfers, exclusions } = req.body;
+        const result = await updateAssetReference(getDatabaseRuntime().work, {
+          projectId,
+          assetsId,
+          id,
+          description,
+          visualRole,
+          requiredTransfers,
+          exclusions
+        });
+        if (!result.ok) {
+          const envelope = assetReferenceErrorEnvelope(result.failure);
+          return res.status(envelope.status).send(envelope.body);
+        }
+        res.status(200).send(success3(result.value, "\u53C2\u8003\u56FE\u66F4\u65B0\u6210\u529F"));
+      }
+    );
+  }
+});
+
+// src/routes/assets/addAssets.ts
+var import_express13, router12, addAssets_default;
+var init_addAssets = __esm({
+  "src/routes/assets/addAssets.ts"() {
+    "use strict";
+    import_express13 = __toESM(require_express2());
+    init_database();
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    router12 = import_express13.default.Router();
+    addAssets_default = router12.post(
+      "/",
+      validateFields({
+        name: external_exports.string(),
+        describe: external_exports.string(),
+        type: external_exports.string(),
+        projectId: external_exports.number(),
+        remark: external_exports.string().optional().nullable(),
+        prompt: external_exports.string().optional().nullable()
+      }),
+      async (req, res) => {
+        const { name: name28, describe: describe4, type, projectId, remark, prompt } = req.body;
+        await getDatabaseRuntime().work(async (db) => {
+          await db("o_assets").insert({
+            name: name28,
+            describe: describe4,
+            type,
+            projectId,
+            remark,
+            prompt,
+            startTime: Date.now()
+          });
+        });
+        res.status(200).send(success3({ message: "\u65B0\u589E\u8D44\u4EA7\u6210\u529F" }));
+      }
+    );
+  }
+});
+
+// src/routes/assets/addAudioAssets.ts
+var import_express14, router13, addAudioAssets_default;
+var init_addAudioAssets = __esm({
+  "src/routes/assets/addAudioAssets.ts"() {
+    "use strict";
+    import_express14 = __toESM(require_express2());
+    init_utils3();
+    init_database();
+    init_zod();
+    init_responseFormat();
+    init_middleware();
+    router13 = import_express14.default.Router();
+    addAudioAssets_default = router13.post(
+      "/",
+      validateFields({
+        name: external_exports.string(),
+        describe: external_exports.string(),
+        projectId: external_exports.number(),
+        assetsItem: external_exports.array(
+          external_exports.object({
+            base64: external_exports.string(),
+            prompt: external_exports.string(),
+            describe: external_exports.string(),
+            name: external_exports.string()
+          })
+        )
+      }),
+      async (req, res) => {
+        const { name: name28, describe: describe4, projectId, assetsItem } = req.body;
+        await Promise.all(
+          assetsItem.map(async (i) => {
+            if (i.base64) {
+              const mimeMatch = i.base64.match(/^data:audio\/([^;]+);base64,/);
+              const mimeExt = mimeMatch ? mimeMatch[1] : "mp3";
+              const mimeToExt = {
+                mpeg: "mp3",
+                "x-wav": "wav",
+                "x-aiff": "aiff",
+                "x-m4a": "m4a",
+                "x-flac": "flac"
+              };
+              const ext = mimeToExt[mimeExt] ?? mimeExt;
+              const savePath = `/${projectId}/assets/audio/${utils_default2.uuid()}.${ext}`;
+              const base64Data = i.base64.replace(/^data:[^;]+;base64,/, "");
+              await utils_default2.oss.writeFile(savePath, base64Data);
+              i.src = savePath;
+            }
+          })
+        );
+        const [id] = await getDatabaseRuntime().work(async (db) => {
+          return await db("o_assets").insert({
+            name: name28,
+            describe: describe4,
+            type: "audio",
+            projectId,
+            startTime: Date.now()
+          });
+        });
+        await getDatabaseRuntime().work(async (db) => {
+          for (const item of assetsItem) {
+            const [assetsId] = await db("o_assets").insert({
+              prompt: item.prompt,
+              assetsId: id,
+              type: "audio",
+              describe: item.describe,
+              name: item.name,
+              projectId,
+              startTime: Date.now()
+            });
+            const [imageId] = await db("o_image").insert({
+              filePath: item.src,
+              type: "audio",
+              assetsId,
+              state: "\u5DF2\u5B8C\u6210"
+            });
+            await db("o_assets").where("id", assetsId).update({
+              imageId
+            });
+          }
+        });
+        res.status(200).send(success3({ message: "\u65B0\u589E\u8D44\u4EA7\u6210\u529F" }));
+      }
+    );
   }
 });
 
@@ -243792,7 +243792,7 @@ function createBatchGenerateAssetsImageRouter(dependencies = createDefaultAssetI
     validateFields({
       assetIds: external_exports.array(external_exports.number()),
       projectId: external_exports.number(),
-      scriptId: external_exports.number(),
+      scriptId: external_exports.number().optional(),
       concurrentCount: external_exports.number().min(1).optional()
     }),
     async (req, res) => {
@@ -243865,6 +243865,8 @@ var init_deleteAssetsDireve = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
+    init_assetPromptOrchestration();
+    init_derivedChangeInstruction();
     router56 = import_express60.default.Router();
     deleteAssetsDireve_default = router56.post(
       "/",
@@ -243881,8 +243883,14 @@ var init_deleteAssetsDireve = __esm({
         if (assetsFirstData?.flowId) {
           await getDatabaseRuntime().work((db) => db("o_imageFlow").where("id", assetsFirstData?.flowId).delete());
         }
-        await getDatabaseRuntime().work((db) => db("o_assets").where("id", id).delete());
-        await getDatabaseRuntime().work((db) => db("o_assets2Storyboard").where("assetId", id).delete());
+        await getDatabaseRuntime().work(
+          (db) => db.transaction(async (tx) => {
+            await removeDerivedChangeInstructionRows(tx, [id]);
+            await removeAssetPromptRecordRows(tx, [id]);
+            await tx("o_assets").where("id", id).delete();
+            await tx("o_assets2Storyboard").where("assetId", id).delete();
+          })
+        );
         res.status(200).send(success3({ message: "\u89C6\u9891\u5220\u9664\u6210\u529F" }));
       }
     );
@@ -261791,7 +261799,10 @@ init_zod();
 init_utils3();
 init_database();
 init_derivedChangeInstruction();
+init_assetPromptOrchestration();
 init_assetBriefContract();
+var ChangeInstructionWriteError = class extends Error {
+};
 var deriveAssetSchema = external_exports.object({
   id: external_exports.number().describe("\u884D\u751F\u8D44\u4EA7ID,\u5982\u679C\u65B0\u589E\u5219\u4E3A\u7A7A"),
   assetsId: external_exports.number().describe("\u5173\u8054\u7684\u8D44\u4EA7ID"),
@@ -261906,6 +261917,9 @@ var tools_default = (toolCpnfig) => {
         if (!briefType) {
           return `\u5173\u8054\u8D44\u4EA7\u7C7B\u578B\u4E0D\u53D7\u652F\u6301\uFF08${parentAssets.type ?? "\u672A\u8BBE\u7F6E"}\uFF09\uFF0C\u65E0\u6CD5\u5199\u5165\u884D\u751F\u8D44\u4EA7`;
         }
+        if (briefType === "prop" && !deriveAsset.id) {
+          return "\u9053\u5177\u8D44\u4EA7\u672C\u9636\u6BB5\u4E0D\u4E3B\u52A8\u884D\u751F\uFF1B\u4EC5\u53EF\u901A\u8FC7\u66F4\u65B0\u65E2\u6709\u884D\u751F\u9053\u5177\uFF08legacy_prop_state\uFF09\u7EF4\u62A4";
+        }
         const parsedInstruction = derivedChangeInstructionSchema.safeParse(deriveAsset.changeInstruction);
         if (!parsedInstruction.success) {
           const issue3 = parsedInstruction.error.issues[0];
@@ -261936,15 +261950,22 @@ var tools_default = (toolCpnfig) => {
               thinking.appendText(`\u5DF2\u65B0\u589E\u884D\u751F\u8D44\u4EA7\uFF0CID: ${insertedId}
 `);
             }
-            return saveDerivedChangeInstruction(async (operation) => operation(tx), {
+            const saved = await saveDerivedChangeInstruction(async (operation) => operation(tx), {
               projectId,
               assetsId: data.id,
               instruction: parsedInstruction.data,
               source: "agent",
               expectedBriefType: briefType
             });
+            if (!saved.ok) throw new ChangeInstructionWriteError(saved.message);
+            return saved;
           })
-        );
+        ).catch((error67) => {
+          if (error67 instanceof ChangeInstructionWriteError) {
+            return { ok: false, kind: "derivedChangeInstructionInvalid", message: error67.message };
+          }
+          throw error67;
+        });
         if (!contract.ok) {
           thinking.appendText(`\u53D8\u5316\u5951\u7EA6\u5199\u5165\u5931\u8D25\uFF1A${contract.message}
 `);
@@ -261972,10 +261993,13 @@ var tools_default = (toolCpnfig) => {
         const thinking = msg.thinking("\u6B63\u5728\u64CD\u4F5C\u8D44\u4EA7...");
         const { scriptId } = resTool.data;
         await getDatabaseRuntime().work(async (db) => {
-          await removeDerivedChangeInstructionRows(db, [id]);
-          await db("o_assets").where("id", id).del();
+          await db.transaction(async (tx) => {
+            await removeDerivedChangeInstructionRows(tx, [id]);
+            await removeAssetPromptRecordRows(tx, [id]);
+            await tx("o_scriptAssets").where({ scriptId, assetId: id }).del();
+            await tx("o_assets").where("id", id).del();
+          });
         });
-        await getDatabaseRuntime().work((db) => db("o_scriptAssets").where({ scriptId, assetId: id }).del());
         thinking.appendText(`\u5DF2\u5220\u9664\u884D\u751F\u8D44\u4EA7\uFF0CID: ${id}
 `);
         const res = await new Promise((resolve3) => socket.emit("delDeriveAsset", { assetsId, id }, (res2) => resolve3(res2)));
@@ -262080,7 +262104,7 @@ var tools_default = (toolCpnfig) => {
 };
 
 // src/agents/productionAgent/index.ts
-var fs13 = __toESM(require("fs"));
+var fs14 = __toESM(require("fs"));
 var import_path8 = __toESM(require("path"));
 init_database();
 init_runtime();
@@ -262109,7 +262133,7 @@ async function runDecisionAI(ctx) {
   const memory = new memory_default("productionAgent", isolationKey);
   await memory.add("user", text2);
   const skill = import_path8.default.join(utils_default2.getPath("skills"), "production_agent_decision.md");
-  const prompt = await fs13.promises.readFile(skill, "utf-8");
+  const prompt = await fs14.promises.readFile(skill, "utf-8");
   const projectInfo = await getDatabaseRuntime().work((db) => db("o_project").where("id", ctx.resTool.data.projectId).first());
   if (!projectInfo) throw new Error(`\u9879\u76EE\u4E0D\u5B58\u5728\uFF0CID: ${ctx.resTool.data.projectId}`);
   const [_, imageModelName] = projectInfo.imageModel.split(/:(.+)/);
@@ -262206,7 +262230,7 @@ async function createSubAgent(parentCtx) {
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path8.default.join(utils_default2.getPath("skills"), "production_execution_derive_assets.md");
-      const systemPrompt = await fs13.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
       return runAgent({
         key: "productionAgent:deriveAssetsAgent",
         prompt,
@@ -262227,7 +262251,7 @@ ${modelInfo}` },
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path8.default.join(utils_default2.getPath("skills"), "production_execution_generate_assets.md");
-      const systemPrompt = await fs13.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
       return runAgent({
         key: "productionAgent:generateAssetsAgent",
         prompt,
@@ -262248,7 +262272,7 @@ ${modelInfo}` },
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path8.default.join(utils_default2.getPath("skills"), "production_execution_director_plan.md");
-      const systemPrompt = await fs13.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
       const addPrompt = `
 ${await getRuntimePrompt(runtimePromptKeys.productionDirectorPlanFormat)}`;
       return runAgent({
@@ -262271,7 +262295,7 @@ ${modelInfo}` },
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path8.default.join(utils_default2.getPath("skills"), "production_execution_storyboard_gen.md");
-      const systemPrompt = await fs13.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
       return runAgent({
         key: "productionAgent:storyboardGenAgent",
         prompt,
@@ -262293,7 +262317,7 @@ ${modelInfo}` },
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path8.default.join(utils_default2.getPath("skills"), "production_execution_storyboard_panel.md");
-      const systemPrompt = await fs13.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
       const addPrompt = `
 ${await getRuntimePrompt(runtimePromptKeys.productionStoryboardPanelFormat)}`;
       return runAgent({
@@ -262316,7 +262340,7 @@ ${modelInfo}` },
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path8.default.join(utils_default2.getPath("skills"), "production_execution_storyboard_table.md");
-      const systemPrompt = await fs13.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
       const addPrompt = `
 ${await getRuntimePrompt(runtimePromptKeys.productionStoryboardTableFormat)}`;
       return runAgent({
@@ -262339,7 +262363,7 @@ ${modelInfo}` },
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path8.default.join(utils_default2.getPath("skills"), "production_agent_supervision.md");
-      const systemPrompt = await fs13.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
       return runAgent({
         key: "productionAgent:supervisionAgent",
         prompt,
@@ -262365,8 +262389,8 @@ async function createArtSkills(artName, storyName) {
   const skillList = [...await scanSkills(artWorkerPath + "/*.md"), ...await scanSkills(storyWorkerPath + "/*.md")];
   const mainSkills = [];
   for (const skillPath of skillList) {
-    if (!fs13.existsSync(skillPath)) throw new Error(`\u4E3B\u6280\u80FD\u6587\u4EF6\u4E0D\u5B58\u5728: ${skillPath}`);
-    const content = await fs13.promises.readFile(skillPath, "utf-8");
+    if (!fs14.existsSync(skillPath)) throw new Error(`\u4E3B\u6280\u80FD\u6587\u4EF6\u4E0D\u5B58\u5728: ${skillPath}`);
+    const content = await fs14.promises.readFile(skillPath, "utf-8");
     const parsed = parseFrontmatter(content);
     mainSkills.push({ path: skillPath, ...parsed });
   }
@@ -262452,8 +262476,8 @@ async function useProductionSkills(artName, storyName) {
   ];
   const mainSkills = [];
   for (const skillPath of skillList) {
-    if (!fs13.existsSync(skillPath)) throw new Error(`\u4E3B\u6280\u80FD\u6587\u4EF6\u4E0D\u5B58\u5728: ${skillPath}`);
-    const content = await fs13.promises.readFile(skillPath, "utf-8");
+    if (!fs14.existsSync(skillPath)) throw new Error(`\u4E3B\u6280\u80FD\u6587\u4EF6\u4E0D\u5B58\u5728: ${skillPath}`);
+    const content = await fs14.promises.readFile(skillPath, "utf-8");
     const parsed = parseFrontmatter(content);
     mainSkills.push({ path: skillPath, ...parsed });
   }
@@ -263252,7 +263276,7 @@ var tools_default2 = (toolCpnfig) => {
 };
 
 // src/agents/scriptAgent/index.ts
-var fs14 = __toESM(require("fs"));
+var fs15 = __toESM(require("fs"));
 var import_path9 = __toESM(require("path"));
 init_database();
 init_runtime();
@@ -263281,7 +263305,7 @@ async function runDecisionAI2(ctx) {
   const memory = new memory_default("scriptAgent", isolationKey);
   await memory.add("user", text2, { createTime: userMessageTime });
   const skill = import_path9.default.join(utils_default2.getPath("skills"), "script_agent_decision.md");
-  const prompt = await fs14.promises.readFile(skill, "utf-8");
+  const prompt = await fs15.promises.readFile(skill, "utf-8");
   const mem = buildMemPrompt2(await memory.get(text2));
   const projectData = await getDatabaseRuntime().work((db) => db("o_project").where("id", resTool.data.projectId).first());
   const novelData = await getDatabaseRuntime().work((db) => db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex"));
@@ -263366,7 +263390,7 @@ function createSubAgent2(parentCtx) {
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path9.default.join(utils_default2.getPath("skills"), "script_execution_skeleton.md");
-      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs15.promises.readFile(skill, "utf-8");
       const formatPrompt = `
 ${await getRuntimePrompt(runtimePromptKeys.scriptStorySkeletonFormat)}`;
       return runAgent({
@@ -263384,7 +263408,7 @@ ${await getRuntimePrompt(runtimePromptKeys.scriptStorySkeletonFormat)}`;
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path9.default.join(utils_default2.getPath("skills"), "script_execution_adaptation.md");
-      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs15.promises.readFile(skill, "utf-8");
       const formatPrompt = `
 ${await getRuntimePrompt(runtimePromptKeys.scriptAdaptationFormat)}`;
       return runAgent({
@@ -263402,7 +263426,7 @@ ${await getRuntimePrompt(runtimePromptKeys.scriptAdaptationFormat)}`;
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path9.default.join(utils_default2.getPath("skills"), "script_execution_script.md");
-      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs15.promises.readFile(skill, "utf-8");
       const scriptList = await getDatabaseRuntime().work((db) => db("o_script").where("projectId", resTool.data.projectId).select("id", "name"));
       const scriptPrompt = ["## \u53EF\u7528\u5267\u672C(ID:\u540D\u79F0)", scriptList.map((s) => `${s.id}:${(s.name || "").replace(/[,:]/g, "")}`).join(","), ""].join(
         "\n"
@@ -263428,7 +263452,7 @@ ${await getRuntimePrompt(runtimePromptKeys.scriptExecutionFormat)}`;
     inputSchema: jsonSchema(promptInput),
     execute: async ({ prompt }) => {
       const skill = import_path9.default.join(utils_default2.getPath("skills"), "script_agent_supervision.md");
-      const systemPrompt = await fs14.promises.readFile(skill, "utf-8");
+      const systemPrompt = await fs15.promises.readFile(skill, "utf-8");
       return runAgent({
         key: "scriptAgent:supervisionAgent",
         prompt,

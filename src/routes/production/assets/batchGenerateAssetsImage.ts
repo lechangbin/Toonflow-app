@@ -30,7 +30,7 @@ export function createBatchGenerateAssetsImageRouter(
     validateFields({
       assetIds: z.array(z.number()),
       projectId: z.number(),
-      scriptId: z.number(),
+      scriptId: z.number().optional(),
       concurrentCount: z.number().min(1).optional(),
     }),
     async (req, res) => {
