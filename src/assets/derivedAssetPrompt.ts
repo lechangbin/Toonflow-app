@@ -5,25 +5,25 @@ import {
 } from "./assetBriefContract";
 import { AGNES_IMAGE_2_1_FLASH_PROFILE } from "./assetPromptCompiler";
 import {
-  changeKindBriefType,
-  isChangeKindCompatibleWithBriefType,
+  areDimensionsCompatibleWithBriefType,
   legacyInstructionFromDescription,
   loadDerivedChangeInstruction,
   saveDerivedChangeInstruction,
+  visualStateDimensionBriefType,
   type DerivedChangeInstruction,
   type DerivedChangeInstructionSource,
-  type DerivedChangeKind,
+  type VisualStateDimension,
 } from "./derivedChangeInstruction";
 import type { AssetReferenceRecord } from "./assetReferences";
 import type { AssetPromptOrchestrationDependencies } from "./assetPromptOrchestration";
 import { sha256 } from "./contentHash";
 
 /**
- * Derived Asset 提示词确定性编译（Issue #37，ADR-0007）。
+ * Derived Asset 提示词确定性编译（Issue #37 / #42，ADR-0007）。
  *
  * 编译输入只有四类，全部确定性可得，不调用 Text Model：
- *   父资产锚点继承规则 + Derived Change Instruction + art_*_derivative 视觉手册
- *   + 输出格式与禁止项。
+ *   父资产锚点继承规则 + Derived Change Instruction（可组合 dimensions[]）
+ *   + art_*_derivative 视觉手册 + 输出格式与禁止项。
  *
  * 失效契约：父图（o_assets.imageId 指向的已接受图像）、变化契约 revision、
  * 衍生视觉手册内容或项目风格（前缀/手册）任一变化都会改变 contextHash/
@@ -32,14 +32,26 @@ import { sha256 } from "./contentHash";
 
 export const DERIVED_ANCHOR_SKILL_VERSION = "asset-prompting-derived@1.0";
 
-const DERIVED_PROMPT_COMPILER_VERSION = "derived-prompt-compiler@1.0";
+const DERIVED_PROMPT_COMPILER_VERSION = "derived-prompt-compiler@2.0";
 
-const CHANGE_KIND_LABELS: Record<DerivedChangeKind, string> = {
-  character_wardrobe: "服装变化",
-  character_effect: "变身特效",
-  character_morphology: "形态变化",
-  scene_time: "时间变体",
-  legacy_prop_state: "旧道具状态",
+const VISUAL_STATE_DIMENSION_LABELS: Record<VisualStateDimension, string> = {
+  age_stage: "年龄阶段",
+  wardrobe: "服装变化",
+  grooming: "妆造变化",
+  morphology: "形态变化",
+  surface_condition: "表面状态",
+  effect: "特效状态",
+  status_presentation: "身份地位呈现",
+  time_of_day: "时段状态",
+  weather: "天气状态",
+  season: "季节状态",
+  atmosphere: "氛围状态",
+  practical_lighting: "实际灯光",
+  persistent_condition: "持续环境状态",
+  condition: "状态变化",
+  configuration: "配置状态",
+  activation: "激活状态",
+  contents: "内容物状态",
 };
 
 /** 类型化输出格式与禁止项（与基础编译器的确定性要求一致）。 */
@@ -79,8 +91,21 @@ export function compileDerivedAssetPrompt(input: CompileDerivedAssetPromptInput)
   }
 
   const segments: string[] = [];
+  const dimensionLabels = input.instruction.dimensions.map((dimension) => VISUAL_STATE_DIMENSION_LABELS[dimension]);
+  // 输出格式按维度所属类型推导；维度跨类型混合时无法确定性选择输出规则，稳定失败
+  const dimensionBriefTypes = new Set(input.instruction.dimensions.map(visualStateDimensionBriefType));
+  if (dimensionBriefTypes.size !== 1) {
+    return {
+      ok: false,
+      failure: assetPromptFailure(
+        "derivedPromptCompilationFailed",
+        `变化契约的视觉状态维度 [${input.instruction.dimensions.join(", ")}] 跨资产类型混合，无法编译`,
+      ),
+    };
+  }
+  const briefType = [...dimensionBriefTypes][0]!;
   segments.push(
-    `${input.assetName}是父资产「${input.parentAsset.name}」的衍生视觉状态（变化类型：${CHANGE_KIND_LABELS[input.instruction.changeKind]}），` +
+    `${input.assetName}是父资产「${input.parentAsset.name}」的衍生视觉状态（视觉状态维度：${joinList(dimensionLabels)}），` +
       `以本次请求随图提交的父资产锚点图（父资产当前接受的图像）为唯一视觉基准。`,
   );
   segments.push(
@@ -95,7 +120,7 @@ export function compileDerivedAssetPrompt(input: CompileDerivedAssetPromptInput)
     segments.push(`变化依据（剧本证据）：${joinList(input.instruction.evidence, "；")}。`);
   }
   segments.push(`${input.manualKey} 视觉手册：${manual}`);
-  segments.push(`${OUTPUT_RULES_BY_TYPE[changeKindBriefType(input.instruction.changeKind)]}画面不包含文字、水印或边框。`);
+  segments.push(`${OUTPUT_RULES_BY_TYPE[briefType]}画面不包含文字、水印或边框。`);
   const prefix = input.artStylePrefix?.trim();
   if (prefix) {
     segments.push(prefix.endsWith("。") ? prefix : `${prefix}。`);
@@ -107,7 +132,7 @@ export interface DerivedParentAnchor {
   parentAssetId: number;
   parentImageId: number;
   anchorMediaPath: string;
-  changeKind: DerivedChangeKind;
+  dimensions: VisualStateDimension[];
   changeInstructionRevision: number;
   changeInstructionSource: DerivedChangeInstructionSource;
 }
@@ -258,12 +283,14 @@ export async function resolveDerivedAssetGenerationEntry(
     if (!saved.ok) return { ok: false, failure: saved };
     instructionRecord = saved.value;
   }
-  if (!isChangeKindCompatibleWithBriefType(instructionRecord.instruction.changeKind, asset.briefType)) {
+  if (
+    !areDimensionsCompatibleWithBriefType(instructionRecord.instruction.dimensions, asset.briefType)
+  ) {
     return {
       ok: false,
       failure: assetPromptFailure(
         "derivedChangeInstructionInvalid",
-        `衍生资产 ${asset.id} 的变化类型 ${instructionRecord.instruction.changeKind} 与资产类型 ${asset.briefType} 不一致`,
+        `衍生资产 ${asset.id} 的视觉状态维度 [${instructionRecord.instruction.dimensions.join(", ")}] 与资产类型 ${asset.briefType} 不一致，请重新分析`,
       ),
     };
   }
@@ -277,7 +304,7 @@ export async function resolveDerivedAssetGenerationEntry(
       instruction: {
         revision: instructionRecord.revision,
         source: instructionRecord.source,
-        changeKind: instructionRecord.instruction.changeKind,
+        dimensions: instructionRecord.instruction.dimensions,
         evidence: instructionRecord.instruction.evidence,
         preserve: instructionRecord.instruction.preserve,
         change: instructionRecord.instruction.change,
@@ -359,7 +386,7 @@ export async function resolveDerivedAssetGenerationEntry(
         parentAssetId: parent.id,
         parentImageId: parent.imageId!,
         anchorMediaPath: parentImage.filePath,
-        changeKind: instructionRecord.instruction.changeKind,
+        dimensions: instructionRecord.instruction.dimensions,
         changeInstructionRevision: instructionRecord.revision,
         changeInstructionSource: instructionRecord.source,
       },

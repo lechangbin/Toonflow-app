@@ -406,7 +406,7 @@ export async function generateAssetImage(
   }
 
   // 脱敏 command snapshot：参考图身份（id/顺序/媒体类型）+ 提示词版本；衍生资产附父
-  // 资产 ID、父图 ID、变化契约 revision 与契约来源（generationPrompt revision 即 promptRevision）；
+  // 资产 ID、父图 ID、视觉状态维度、变化契约 revision 与契约来源（generationPrompt revision 即 promptRevision）；
   // 不含 base64、凭证或媒体路径
   const snapshot = {
     id: assetsId,
@@ -420,7 +420,7 @@ export async function generateAssetImage(
           derived: {
             parentAssetId: entry.derived.parentAssetId,
             parentImageId: entry.derived.parentImageId,
-            changeKind: entry.derived.changeKind,
+            dimensions: entry.derived.dimensions,
             changeInstructionRevision: entry.derived.changeInstructionRevision,
             changeInstructionSource: entry.derived.changeInstructionSource,
           },

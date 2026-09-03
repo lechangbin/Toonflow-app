@@ -9,18 +9,20 @@ import knexFactory, { type Knex } from "knex";
 import initDB from "../src/lib/initDB";
 import { workOf } from "./databaseTestSupport";
 import {
-  isChangeKindCompatibleWithBriefType,
+  LEGACY_CHANGE_KIND_DIMENSIONS,
+  areDimensionsCompatibleWithBriefType,
   legacyInstructionFromDescription,
   loadDerivedChangeInstruction,
+  normalizeDerivedChangeInstruction,
   saveDerivedChangeInstruction,
   type DerivedChangeInstruction,
 } from "../src/assets/derivedChangeInstruction";
 
 /**
- * Issue #37：Derived Asset 走 Parent Asset Anchor + Derived Change Instruction
- * 的确定性生成链路。本文件按 seam 分层覆盖：
+ * Issue #37 / #42：Derived Asset 走 Parent Asset Anchor + Derived Change Instruction
+ * （可组合 dimensions[]）的确定性生成链路。本文件按 seam 分层覆盖：
  *   1. 变化契约的持久化与版本（derivedChangeInstruction 模块）
- *   2. 旧 desc 的确定性兼容转换
+ *   2. 旧 changeKind / 旧 desc 的确定性兼容转换
  *   3. 提示词确定性编译与失效重编译（derivedAssetPrompt → resolve）
  *   4. 图片生成提交恰好一个父资产锚点（assetImageGeneration）
  *   5. Production Agent 批量路由迁移（batchGenerateAssetsImage 薄适配器）
@@ -43,7 +45,7 @@ async function prepareSchema(knex: Knex): Promise<void> {
 }
 
 const WARDROBE_INSTRUCTION: DerivedChangeInstruction = {
-  changeKind: "character_wardrobe",
+  dimensions: ["wardrobe"],
   evidence: ["第三幕：胡亥换上玄色祭服。"],
   preserve: ["脸部拓扑", "体型轮廓", "发型结构"],
   change: ["服装由日常玄色外袍替换为祭天礼服"],
@@ -156,10 +158,10 @@ test("loadDerivedChangeInstruction 校验 projectId 归属避免跨项目读取"
   }
 });
 
-test("旧 desc 确定性转换为变化契约：类型映射 + preserve/exclude 默认值 + 不调用模型", () => {
+test("旧 desc 确定性转换为变化契约：维度映射 + preserve/exclude 默认值 + 不调用模型", () => {
   const role = legacyInstructionFromDescription({ describe: "换上祭天礼服 · 玄色广袖", briefType: "character" });
   assert.ok(role);
-  assert.equal(role.changeKind, "character_wardrobe", "旧角色衍生按类型确定性映射 changeKind");
+  assert.deepEqual(role.dimensions, ["wardrobe"], "旧角色衍生按类型确定性映射维度");
   assert.deepEqual(role.change, ["换上祭天礼服 · 玄色广袖"], "旧 desc 原文作为唯一允许变化");
   assert.ok(role.preserve.length > 0, "角色衍生必须补充类型化 preserve 默认值");
   assert.ok(role.exclude.length > 0, "角色衍生必须补充类型化 exclude 默认值");
@@ -167,11 +169,11 @@ test("旧 desc 确定性转换为变化契约：类型映射 + preserve/exclude 
 
   const scene = legacyInstructionFromDescription({ describe: "黄昏时分的章台宫", briefType: "scene" });
   assert.ok(scene);
-  assert.equal(scene.changeKind, "scene_time");
+  assert.deepEqual(scene.dimensions, ["time_of_day"]);
 
   const prop = legacyInstructionFromDescription({ describe: "暴雨浸湿的名册", briefType: "prop" });
   assert.ok(prop);
-  assert.equal(prop.changeKind, "legacy_prop_state", "现有 Derived Prop 通过 legacy_prop_state 保持兼容");
+  assert.deepEqual(prop.dimensions, ["condition"], "现有 Derived Prop 通过 condition 维度保持兼容");
 
   assert.equal(
     legacyInstructionFromDescription({ describe: "   ", briefType: "character" }),
@@ -180,12 +182,137 @@ test("旧 desc 确定性转换为变化契约：类型映射 + preserve/exclude 
   );
 });
 
-test("changeKind 与资产类型的一致性可被确定性校验", () => {
-  assert.equal(isChangeKindCompatibleWithBriefType("character_wardrobe", "character"), true);
-  assert.equal(isChangeKindCompatibleWithBriefType("character_morphology", "scene"), false);
-  assert.equal(isChangeKindCompatibleWithBriefType("scene_time", "scene"), true);
-  assert.equal(isChangeKindCompatibleWithBriefType("legacy_prop_state", "prop"), true);
-  assert.equal(isChangeKindCompatibleWithBriefType("legacy_prop_state", "character"), false);
+test("dimensions 与资产类型的一致性可被确定性校验", () => {
+  assert.equal(areDimensionsCompatibleWithBriefType(["wardrobe"], "character"), true);
+  assert.equal(areDimensionsCompatibleWithBriefType(["age_stage", "status_presentation"], "character"), true, "人物年龄阶段与身份呈现是合法维度");
+  assert.equal(areDimensionsCompatibleWithBriefType(["morphology"], "scene"), false);
+  assert.equal(areDimensionsCompatibleWithBriefType(["time_of_day", "weather"], "scene"), true, "复合维度允许组合");
+  assert.equal(areDimensionsCompatibleWithBriefType(["condition", "activation"], "prop"), true, "道具状态与激活是合法维度");
+  assert.equal(areDimensionsCompatibleWithBriefType(["condition"], "character"), false);
+  assert.equal(areDimensionsCompatibleWithBriefType([], "character"), false, "维度至少一个");
+});
+
+test("镜头/构图/动作/表情等非法维度被 Schema 拒绝", () => {
+  for (const dimension of ["camera", "shot_scale", "framing", "frame_position", "pose", "action_phase", "expression", "gaze", "eyeline"]) {
+    assert.equal(
+      normalizeDerivedChangeInstruction({ ...WARDROBE_INSTRUCTION, dimensions: [dimension] }),
+      null,
+      `镜头级维度 ${dimension} 必须被拒绝`,
+    );
+  }
+  assert.equal(normalizeDerivedChangeInstruction({ ...WARDROBE_INSTRUCTION, dimensions: [] }), null, "空维度非法");
+  assert.equal(
+    normalizeDerivedChangeInstruction({ ...WARDROBE_INSTRUCTION, dimensions: ["wardrobe", "wardrobe"] }),
+    null,
+    "同一契约内维度不得重复",
+  );
+  assert.ok(normalizeDerivedChangeInstruction(WARDROBE_INSTRUCTION), "合法新契约可解析");
+});
+
+test("旧 changeKind 记录确定性转换为单元素 dimensions[]", () => {
+  assert.deepEqual(
+    Object.entries(LEGACY_CHANGE_KIND_DIMENSIONS),
+    [
+      ["character_wardrobe", "wardrobe"],
+      ["character_effect", "effect"],
+      ["character_morphology", "morphology"],
+      ["scene_time", "time_of_day"],
+      ["legacy_prop_state", "condition"],
+    ],
+    "旧 changeKind 映射表必须完整且确定性",
+  );
+  const legacy = normalizeDerivedChangeInstruction({
+    changeKind: "scene_time",
+    evidence: ["第一幕：黄昏的章台宫。"],
+    preserve: ["空间结构", "核心地标"],
+    change: ["时段由白昼变为黄昏"],
+    exclude: ["人物"],
+  });
+  assert.ok(legacy);
+  assert.deepEqual(legacy.dimensions, ["time_of_day"]);
+  assert.deepEqual(legacy.preserve, ["空间结构", "核心地标"], "旧记录其余字段原样保留");
+  assert.equal(normalizeDerivedChangeInstruction({ changeKind: "camera", evidence: [], preserve: ["a"], change: ["b"], exclude: [] }), null, "非法旧 changeKind 稳定失败");
+  assert.equal(normalizeDerivedChangeInstruction("{not-json"), null, "非法 JSON 稳定失败");
+});
+
+test("持久化的旧 changeKind 记录可读并在下一次正常更新时写回新版格式", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-legacy-row-");
+  try {
+    await prepareSchema(knex);
+    await knex("o_derivedChangeInstruction").insert({
+      id: 1,
+      projectId: 1,
+      assetsId: 111,
+      source: "agent",
+      revision: 4,
+      instruction: JSON.stringify({
+        changeKind: "scene_time",
+        evidence: ["第一幕：黄昏的章台宫。"],
+        preserve: ["空间结构", "核心地标"],
+        change: ["时段由白昼变为黄昏"],
+        exclude: ["人物"],
+      }),
+      createTime: 1,
+      updateTime: 1,
+    });
+
+    const loaded = await loadDerivedChangeInstruction(workOf(knex), { projectId: 1, assetsId: 111 });
+    assert.equal(loaded.ok, true);
+    if (!loaded.ok) return;
+    assert.ok(loaded.value);
+    assert.equal(loaded.value.revision, 4, "旧记录 revision 原样保留");
+    assert.deepEqual(loaded.value.instruction.dimensions, ["time_of_day"], "读取时确定性转换为单元素 dimensions");
+
+    const row = await knex("o_derivedChangeInstruction").where("id", 1).first();
+    assert.ok(JSON.parse(row.instruction).changeKind, "读取不做写回，旧格式保留在库中");
+
+    const updated = await saveDerivedChangeInstruction(workOf(knex), {
+      projectId: 1,
+      assetsId: 111,
+      instruction: {
+        dimensions: ["time_of_day", "weather"],
+        evidence: ["第二幕：大泽乡雨夜。"],
+        preserve: ["空间结构", "核心地标"],
+        change: ["时段转为夜晚，暴雨倾盆"],
+        exclude: ["人物"],
+      },
+      source: "agent",
+      expectedBriefType: "scene",
+    });
+    assert.equal(updated.ok, true);
+    if (!updated.ok) return;
+    assert.equal(updated.value.revision, 5, "更新递增 revision");
+    const updatedRow = await knex("o_derivedChangeInstruction").where("id", 1).first();
+    assert.deepEqual(JSON.parse(updatedRow.instruction).dimensions, ["time_of_day", "weather"], "下一次正常更新写回新版格式");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("saveDerivedChangeInstruction 拒绝旧 changeKind 写入（新写入只允许 dimensions[]）", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-reject-legacy-write-");
+  try {
+    await prepareSchema(knex);
+    const saved = await saveDerivedChangeInstruction(workOf(knex), {
+      projectId: 1,
+      assetsId: 111,
+      instruction: {
+        changeKind: "character_wardrobe",
+        evidence: ["第三幕：换装。"],
+        preserve: ["脸部拓扑"],
+        change: ["换上祭服"],
+        exclude: [],
+      } as never,
+      source: "agent",
+    });
+    assert.equal(saved.ok, false);
+    if (!saved.ok) assert.equal(saved.kind, "derivedChangeInstructionInvalid");
+    assert.equal(await knex("o_derivedChangeInstruction").where("assetsId", 111).first(), undefined, "拒绝时不落库");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 // ─── Slice 2：确定性提示词编译与解析（resolve seam） ─────────────────────────
 
@@ -343,7 +470,7 @@ test("有效场景时间衍生确定性编译", async () => {
       projectId: 1,
       assetsId: 111,
       instruction: {
-        changeKind: "scene_time",
+        dimensions: ["time_of_day"],
         evidence: ["第一幕：黄昏的章台宫。"],
         preserve: ["空间结构", "核心地标"],
         change: ["时段由白昼变为黄昏，整体光照与色调转为暖橙"],
@@ -360,6 +487,43 @@ test("有效场景时间衍生确定性编译", async () => {
     assert.equal(resolved.value[0].briefType, "scene");
     assert.ok(resolved.value[0].generationPrompt.includes("时段由白昼变为黄昏"));
     assert.ok(resolved.value[0].generationPrompt.includes("画面中不出现任何人物"), "场景衍生保留无人约束");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("大泽乡·雨夜复合状态使用 weather + time_of_day 单一衍生确定性编译", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-derived-resolve-composite-");
+  try {
+    await prepareSchema(knex);
+    await seedDerivedSetup(knex, { derivedType: "scene", derivedDescribe: "雨夜中的大泽乡营地。" });
+    await knex("o_assets").where("id", 101).update({ type: "scene", name: "大泽乡" });
+    await knex("o_assets").where("id", 111).update({ name: "大泽乡·雨夜" });
+    await knex("o_image").where("id", 501).update({ type: "scene" });
+    await saveDerivedChangeInstruction(workOf(knex), {
+      projectId: 1,
+      assetsId: 111,
+      instruction: {
+        dimensions: ["weather", "time_of_day"],
+        evidence: ["第二幕：是夜，大雨，戍卒宿于大泽乡。", "第二幕：雨夜中燃起篝火。"],
+        preserve: ["空间结构", "核心地标", "建造方式"],
+        change: ["时段转为夜晚，暴雨倾盆，整体光照转为冷蓝夜色"],
+        exclude: ["人物"],
+      },
+      source: "agent",
+    });
+    const { dependencies, textCalls } = derivedHarness(knex);
+
+    const resolved = await resolveAssetGenerationInputs(dependencies, { projectId: 1, assetsIds: [111] });
+
+    assert.equal(resolved.ok, true);
+    if (!resolved.ok) return;
+    const entry = resolved.value[0];
+    assert.deepEqual(entry.derived?.dimensions, ["weather", "time_of_day"], "复合状态必须是单一衍生资产的组合维度");
+    assert.ok(entry.generationPrompt.includes("暴雨倾盆"), "提示词必须包含复合状态声明的变化");
+    assert.ok(entry.generationPrompt.includes("大泽乡"), "提示词必须锚定父资产名称");
+    assert.equal(textCalls.length, 0, "复合维度编译 Text Model 调用次数必须为 0");
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });
@@ -635,7 +799,7 @@ test("现有 Derived Prop 通过 legacy_prop_state 保持生成兼容", async ()
     const entry = resolved.value[0];
     assert.equal(entry.briefType, "prop");
     assert.ok(entry.derived, "衍生条目必须携带父资产锚点信息");
-    assert.equal(entry.derived.changeKind, "legacy_prop_state");
+    assert.deepEqual(entry.derived.dimensions, ["condition"], "旧道具衍生确定性转换为 condition 维度");
     assert.ok(entry.generationPrompt.includes("暴雨浸湿的名册"));
     assert.ok(entry.generationPrompt.includes("不出现人物、手部或持握关系"), "道具衍生保留纯道具约束");
   } finally {
@@ -830,7 +994,7 @@ test("衍生资产图片生成提交恰好一个父资产锚点且快照脱敏�
       {
         parentAssetId: 101,
         parentImageId: 501,
-        changeKind: "character_wardrobe",
+        dimensions: ["wardrobe"],
         changeInstructionRevision: 1,
         changeInstructionSource: "agent",
       },
@@ -932,7 +1096,7 @@ test("父子 Asset 类型不一致时拒绝衍生生成并要求重新分析", a
       projectId: 1,
       assetsId: 111,
       instruction: {
-        changeKind: "scene_time",
+        dimensions: ["time_of_day"],
         evidence: ["第一幕：黄昏的章台宫。"],
         preserve: ["空间结构"],
         change: ["白昼变为黄昏"],
@@ -996,7 +1160,7 @@ test("父 Asset 与 Derived Asset 同批生成时冻结批次开始前的父资�
             parentAssetId: 101,
             parentImageId: parentImage.id,
             anchorMediaPath: parentImage.filePath,
-            changeKind: "character_wardrobe",
+            dimensions: ["wardrobe"],
             changeInstructionRevision: 1,
             changeInstructionSource: "agent",
           },
