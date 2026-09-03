@@ -80,6 +80,16 @@ export interface TextStreamRequest {
   readonly input: TextStreamInput;
 }
 
+/**
+ * A Text invocation handle bound to one already-resolved configured Model
+ * target. Related calls in a single task (for example the two Asset-extraction
+ * stages) open one call so they provably reuse the same Model target and its
+ * persisted tuning instead of re-resolving the logical role per call.
+ */
+export interface ConfiguredTextCall {
+  invokeText(input: TextInvokeInput): ReturnType<typeof generateText>;
+}
+
 export interface ImageReference {
   readonly type: "image";
   readonly base64: string;

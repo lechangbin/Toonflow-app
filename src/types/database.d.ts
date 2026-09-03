@@ -1,4 +1,4 @@
-// @db-hash b28b366704f66c6908e01789c9aa6bfd
+// @db-hash ced8385b810cce28d32937ab7743771e
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -51,6 +51,15 @@ export interface o_artStyle {
   'label'?: string | null;
   'name'?: string | null;
   'prompt'?: string | null;
+}
+export interface o_assetIdentity {
+  'assetsId': number;
+  'createTime'?: number | null;
+  'id'?: number;
+  'identity'?: string | null;
+  'projectId'?: number | null;
+  'schemaVersion': number;
+  'updateTime'?: number | null;
 }
 export interface o_assetPromptRecord {
   'additionalRequirements'?: string | null;
@@ -338,6 +347,7 @@ export interface DB {
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;
   "o_artStyle": o_artStyle;
+  "o_assetIdentity": o_assetIdentity;
   "o_assetPromptRecord": o_assetPromptRecord;
   "o_assetReference": o_assetReference;
   "o_assets": o_assets;
