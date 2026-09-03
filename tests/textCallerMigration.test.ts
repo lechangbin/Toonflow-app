@@ -19,7 +19,9 @@ const migratedTextCallers = [
   "agents/productionAgent/index.ts",
   "utils/agent/memory.ts",
   "video/promptGeneration.ts",
-  "routes/script/extractAssets.ts",
+  // routes/script/extractAssets.ts 已在 #41 迁移为纯薄适配器，不再接触
+  // Text/Vendor；模型编排由 src/script/baseAssetExtraction.ts 拥有，见下方
+  // base-asset extraction delegation 守卫与 tests/baseAssetExtraction.test.ts。
   "routes/script/getAiRegex.ts",
   "utils/cleanNovel.ts",
   "routes/artStyle/extractStylePrompt.ts",
@@ -63,6 +65,24 @@ test("asset prompt routes delegate Text calls to the orchestration module", () =
       relative + " 未委托 orchestration 模块",
     );
   }
+});
+
+test("script asset extraction delegates Text calls to the base-asset orchestration module", () => {
+  // Issue #41：路由是薄适配器，双阶段模型编排由深模块拥有
+  const orchestration = readSource("script/baseAssetExtraction.ts");
+  assert.ok(orchestration.includes('from "@/vendor"'), 'orchestration 未依赖 configured Vendor 模块');
+  assert.ok(orchestration.includes("getDefaultConfiguredVendor"), "orchestration 未使用 getDefaultConfiguredVendor");
+  assert.ok(orchestration.includes("openTextCall"), "orchestration 未使用一次性解析的 openTextCall");
+
+  const source = readSource("routes/script/extractAssets.ts");
+  assert.ok(!source.includes("u.Ai.Text"), "extractAssets 仍调用 u.Ai.Text");
+  assert.ok(!source.includes('from "@/utils/ai"'), "extractAssets 仍加载旧 ai 模块");
+  assert.ok(!source.includes('from "@/utils/vendor"'), "extractAssets 仍加载旧 vendor 模块");
+  assert.ok(!source.includes("invokeText"), "extractAssets 不应直接调用 Text 模型");
+  assert.ok(
+    source.includes('from "@/script/baseAssetExtraction"'),
+    "extractAssets 未委托 base-asset orchestration 模块",
+  );
 });
 
 test("the only remaining legacy Text entry points are gone from source", () => {

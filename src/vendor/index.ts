@@ -7,11 +7,14 @@ import { VideoPromptProfileRegistry } from "@/video/promptProfile";
 
 import { createConfiguredVendorConfigRunner } from "./config";
 import type {
+  ConfiguredTextCall,
   ConfiguredVendorCommand,
   ConfiguredVendorResultFor,
   ConfiguredVendorValidationResult,
   ImageGenerationRequest,
+  TextInvokeInput,
   TextInvokeRequest,
+  TextModelTarget,
   TextStreamRequest,
   TtsGenerationRequest,
   VendorInspection,
@@ -34,6 +37,12 @@ import { deleteVendorSourceFile, readVendorSourceFile, validateConfiguredVendors
  */
 export interface ConfiguredVendor {
   invokeText(request: TextInvokeRequest): ReturnType<typeof generateText>;
+  /**
+   * Resolves a Text target once and returns an invocation handle bound to that
+   * exact configured Model, so multi-stage tasks reuse one target instead of
+   * re-resolving the logical role per call.
+   */
+  openTextCall(target: TextModelTarget): Promise<ConfiguredTextCall>;
   streamText(request: TextStreamRequest): Promise<ReturnType<typeof streamText>>;
   generateImage(request: ImageGenerationRequest): Promise<string>;
   generateVideo(request: VideoGenerationRequest): Promise<string>;
@@ -48,7 +57,8 @@ export function createConfiguredVendor(dependencies: ConfiguredVendorDependencie
   const configRunner = createConfiguredVendorConfigRunner(dependencies);
 
   return {
-    invokeText: (request) => invokeText(dependencies, request),
+    invokeText: (request) => invokeTextOperation(dependencies, request),
+    openTextCall: (target) => openTextCallImpl(dependencies, target),
     streamText: (request) => streamTextOperation(dependencies, request),
     generateImage: (request) => generateImage(dependencies, request),
     generateVideo: (request) => generateVideo(dependencies, request),
@@ -83,12 +93,32 @@ export function getDefaultConfiguredVendor(): ConfiguredVendor {
   return defaultConfiguredVendor;
 }
 
-async function invokeText(dependencies: ConfiguredVendorDependencies, request: TextInvokeRequest) {
+async function invokeTextOperation(dependencies: ConfiguredVendorDependencies, request: TextInvokeRequest) {
   const resolved = await resolveTextTarget(dependencies, request.target);
-  const model = await resolveTextLanguageModel(dependencies, resolved, request.think, request.thinkLevel ?? 0, false);
+  return invokeWithResolvedModel(dependencies, resolved, request.input, request.think, request.thinkLevel ?? 0);
+}
+
+async function openTextCallImpl(
+  dependencies: ConfiguredVendorDependencies,
+  target: TextModelTarget,
+): Promise<ConfiguredTextCall> {
+  const resolved = await resolveTextTarget(dependencies, target);
+  return {
+    invokeText: (input) => invokeWithResolvedModel(dependencies, resolved, input),
+  };
+}
+
+async function invokeWithResolvedModel(
+  dependencies: ConfiguredVendorDependencies,
+  resolved: ResolvedTextModel,
+  input: TextInvokeInput,
+  think?: boolean,
+  thinkLevel?: 0 | 1 | 2 | 3,
+) {
+  const model = await resolveTextLanguageModel(dependencies, resolved, think, thinkLevel ?? 0, false);
   return generateText({
-    ...(request.input.tools ? { stopWhen: stepCountIs(Object.keys(request.input.tools).length * 50) } : {}),
-    ...request.input,
+    ...(input.tools ? { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) } : {}),
+    ...input,
     model,
     ...(resolved.temperature ? { temperature: resolved.temperature } : {}),
     ...(resolved.maxOutputTokens ? { maxOutputTokens: resolved.maxOutputTokens } : {}),
