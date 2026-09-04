@@ -238765,35 +238765,49 @@ var init_utils3 = __esm({
 });
 
 // src/assets/derivedChangeInstruction.ts
-function isChangeKindCompatibleWithBriefType(changeKind, briefType) {
-  return CHANGE_KINDS_BY_BRIEF_TYPE[briefType].includes(changeKind);
+function isVisualStateDimensionCompatibleWithBriefType(dimension, briefType) {
+  return VISUAL_STATE_DIMENSIONS_BY_BRIEF_TYPE[briefType].includes(dimension);
 }
-function changeKindBriefType(changeKind) {
-  const briefType = Object.keys(CHANGE_KINDS_BY_BRIEF_TYPE).find(
-    (briefType2) => CHANGE_KINDS_BY_BRIEF_TYPE[briefType2].includes(changeKind)
+function areDimensionsCompatibleWithBriefType(dimensions, briefType) {
+  return dimensions.length > 0 && dimensions.every((dimension) => isVisualStateDimensionCompatibleWithBriefType(dimension, briefType));
+}
+function visualStateDimensionBriefType(dimension) {
+  const briefType = Object.keys(VISUAL_STATE_DIMENSIONS_BY_BRIEF_TYPE).find(
+    (briefType2) => VISUAL_STATE_DIMENSIONS_BY_BRIEF_TYPE[briefType2].includes(dimension)
   );
   return briefType ?? "character";
+}
+function normalizeDerivedChangeInstruction(raw) {
+  const next = derivedChangeInstructionSchema.safeParse(raw);
+  if (next.success) return next.data;
+  const legacy = legacyDerivedChangeInstructionSchema.safeParse(raw);
+  if (!legacy.success) return null;
+  const { changeKind, ...rest } = legacy.data;
+  return { ...rest, dimensions: [LEGACY_CHANGE_KIND_DIMENSIONS[changeKind]] };
 }
 function legacyInstructionFromDescription(input) {
   const describe4 = input.describe?.trim();
   if (!describe4) return null;
-  const changeKind = LEGACY_CHANGE_KIND_BY_BRIEF_TYPE[input.briefType];
   return {
-    changeKind,
+    dimensions: [...LEGACY_DIMENSIONS_BY_BRIEF_TYPE[input.briefType]],
     evidence: [],
-    preserve: [...LEGACY_PRESERVE_BY_KIND[changeKind]],
+    preserve: [...LEGACY_PRESERVE_BY_BRIEF_TYPE[input.briefType]],
     change: [describe4],
-    exclude: [...LEGACY_EXCLUDE_BY_KIND[changeKind]]
+    exclude: [...LEGACY_EXCLUDE_BY_BRIEF_TYPE[input.briefType]]
   };
 }
 function toRecord(row) {
-  const parsed = derivedChangeInstructionSchema.safeParse(safeParseJson(row.instruction));
-  if (!parsed.success) {
-    return { ok: false, kind: "derivedChangeInstructionInvalid", message: "\u6301\u4E45\u5316\u7684\u53D8\u5316\u5951\u7EA6\u4E0D\u662F\u5408\u6CD5 JSON \u6216\u4E0D\u7B26\u5408 Schema" };
-  }
+  const instruction = normalizeDerivedChangeInstruction(safeParseJson(row.instruction));
   const source = row.source;
   if (!Number.isInteger(row.id) || row.id <= 0 || typeof row.projectId !== "number" || !Number.isInteger(row.projectId) || row.projectId <= 0 || !Number.isInteger(row.assetsId) || row.assetsId <= 0 || source !== "agent" && source !== "legacy_description" || typeof row.revision !== "number" || !Number.isInteger(row.revision) || row.revision < 1 || typeof row.createTime !== "number" || !Number.isInteger(row.createTime) || row.createTime < 0 || typeof row.updateTime !== "number" || !Number.isInteger(row.updateTime) || row.updateTime < 0) {
     return { ok: false, kind: "derivedChangeInstructionInvalid", message: "\u6301\u4E45\u5316\u7684\u53D8\u5316\u5951\u7EA6\u7F3A\u5C11\u5408\u6CD5\u7684\u6765\u6E90\u3001\u7248\u672C\u6216\u5F52\u5C5E\u4FE1\u606F" };
+  }
+  if (!instruction) {
+    return {
+      ok: false,
+      kind: "derivedChangeInstructionInvalid",
+      message: "\u6301\u4E45\u5316\u7684\u53D8\u5316\u5951\u7EA6\u4E0D\u662F\u5408\u6CD5 JSON \u6216\u4E0D\u7B26\u5408 Schema\uFF08\u65B0\u65E7\u683C\u5F0F\u5747\u4E0D\u5339\u914D\uFF09"
+    };
   }
   return {
     ok: true,
@@ -238803,7 +238817,7 @@ function toRecord(row) {
       assetsId: row.assetsId,
       source,
       revision: row.revision,
-      instruction: parsed.data,
+      instruction,
       createTime: row.createTime,
       updateTime: row.updateTime
     }
@@ -238821,18 +238835,19 @@ async function saveDerivedChangeInstruction(work, input) {
   const parsed = derivedChangeInstructionSchema.safeParse(input.instruction);
   if (!parsed.success) {
     const issue3 = parsed.error.issues[0];
+    const isLegacyChangeKind = typeof input.instruction === "object" && input.instruction !== null && "changeKind" in input.instruction;
     return {
       ok: false,
       kind: "derivedChangeInstructionInvalid",
-      message: `\u53D8\u5316\u5951\u7EA6\u4E0D\u7B26\u5408 Schema\uFF08${issue3?.path?.join(".") ?? ""}\uFF09: ${issue3?.message ?? "\u7ED3\u6784\u9519\u8BEF"}`
+      message: isLegacyChangeKind ? `\u65B0\u5199\u5165\u53EA\u5141\u8BB8\u65B0\u7248 dimensions[] \u683C\u5F0F\uFF08${issue3?.path?.join(".") ?? ""}\uFF09: ${issue3?.message ?? "\u7ED3\u6784\u9519\u8BEF"}` : `\u53D8\u5316\u5951\u7EA6\u4E0D\u7B26\u5408 Schema\uFF08${issue3?.path?.join(".") ?? ""}\uFF09: ${issue3?.message ?? "\u7ED3\u6784\u9519\u8BEF"}`
     };
   }
   const instruction = parsed.data;
-  if (input.expectedBriefType && !isChangeKindCompatibleWithBriefType(instruction.changeKind, input.expectedBriefType)) {
+  if (input.expectedBriefType && !areDimensionsCompatibleWithBriefType(instruction.dimensions, input.expectedBriefType)) {
     return {
       ok: false,
       kind: "derivedChangeInstructionInvalid",
-      message: `\u53D8\u5316\u7C7B\u578B ${instruction.changeKind} \u4E0E\u8D44\u4EA7\u7C7B\u578B ${input.expectedBriefType} \u4E0D\u4E00\u81F4`
+      message: `\u89C6\u89C9\u72B6\u6001\u7EF4\u5EA6 [${instruction.dimensions.join(", ")}] \u4E0E\u8D44\u4EA7\u7C7B\u578B ${input.expectedBriefType} \u4E0D\u4E00\u81F4`
     };
   }
   const now2 = (input.now ?? Date.now)();
@@ -238895,15 +238910,63 @@ async function loadDerivedChangeInstruction(work, input) {
   if (!parsed.ok) return parsed;
   return { ok: true, value: parsed.value };
 }
+async function findEquivalentDerivedAsset(work, input) {
+  const siblings = await work(
+    (db) => db("o_assets").where({ assetsId: input.parentAssetsId, projectId: input.projectId }).select("id")
+  );
+  const siblingIds = siblings.map((sibling) => sibling.id).filter((id) => id !== input.excludeAssetsId);
+  if (siblingIds.length === 0) return null;
+  const rows = await work(
+    (db) => db("o_derivedChangeInstruction").whereIn("assetsId", siblingIds).andWhere({ projectId: input.projectId }).select("assetsId", "instruction")
+  );
+  const expected = equivalentStateKey(input.dimensions, input.change);
+  for (const row of rows) {
+    const instruction = normalizeDerivedChangeInstruction(safeParseJson(row.instruction));
+    if (!instruction) continue;
+    if (equivalentStateKey(instruction.dimensions, instruction.change) === expected) return row.assetsId;
+  }
+  return null;
+}
+function equivalentStateKey(dimensions, change) {
+  return JSON.stringify({ dimensions: [...dimensions].sort(), change: [...change].sort() });
+}
 async function removeDerivedChangeInstructionRows(db, assetIds) {
   if (assetIds.length === 0) return;
   await db("o_derivedChangeInstruction").whereIn("assetsId", [...assetIds]).delete();
 }
-var DERIVED_CHANGE_KINDS, derivedChangeInstructionSchema, CHANGE_KINDS_BY_BRIEF_TYPE, LEGACY_CHANGE_KIND_BY_BRIEF_TYPE, LEGACY_PRESERVE_BY_KIND, LEGACY_EXCLUDE_BY_KIND;
+var CHARACTER_VISUAL_STATE_DIMENSIONS, SCENE_VISUAL_STATE_DIMENSIONS, PROP_VISUAL_STATE_DIMENSIONS, VISUAL_STATE_DIMENSIONS, VISUAL_STATE_DIMENSIONS_BY_BRIEF_TYPE, DERIVED_CHANGE_KINDS, LEGACY_CHANGE_KIND_DIMENSIONS, evidenceSchema, preserveSchema, changeSchema, excludeSchema, derivedChangeInstructionSchema, legacyDerivedChangeInstructionSchema, LEGACY_DIMENSIONS_BY_BRIEF_TYPE, LEGACY_PRESERVE_BY_BRIEF_TYPE, LEGACY_EXCLUDE_BY_BRIEF_TYPE;
 var init_derivedChangeInstruction = __esm({
   "src/assets/derivedChangeInstruction.ts"() {
     "use strict";
     init_zod();
+    CHARACTER_VISUAL_STATE_DIMENSIONS = [
+      "age_stage",
+      "wardrobe",
+      "grooming",
+      "morphology",
+      "surface_condition",
+      "effect",
+      "status_presentation"
+    ];
+    SCENE_VISUAL_STATE_DIMENSIONS = [
+      "time_of_day",
+      "weather",
+      "season",
+      "atmosphere",
+      "practical_lighting",
+      "persistent_condition"
+    ];
+    PROP_VISUAL_STATE_DIMENSIONS = ["condition", "configuration", "activation", "contents"];
+    VISUAL_STATE_DIMENSIONS = [
+      ...CHARACTER_VISUAL_STATE_DIMENSIONS,
+      ...SCENE_VISUAL_STATE_DIMENSIONS,
+      ...PROP_VISUAL_STATE_DIMENSIONS
+    ];
+    VISUAL_STATE_DIMENSIONS_BY_BRIEF_TYPE = {
+      character: CHARACTER_VISUAL_STATE_DIMENSIONS,
+      scene: SCENE_VISUAL_STATE_DIMENSIONS,
+      prop: PROP_VISUAL_STATE_DIMENSIONS
+    };
     DERIVED_CHANGE_KINDS = [
       "character_wardrobe",
       "character_effect",
@@ -238911,36 +238974,45 @@ var init_derivedChangeInstruction = __esm({
       "scene_time",
       "legacy_prop_state"
     ];
+    LEGACY_CHANGE_KIND_DIMENSIONS = {
+      character_wardrobe: "wardrobe",
+      character_effect: "effect",
+      character_morphology: "morphology",
+      scene_time: "time_of_day",
+      legacy_prop_state: "condition"
+    };
+    evidenceSchema = external_exports.array(external_exports.string().min(1));
+    preserveSchema = external_exports.array(external_exports.string().min(1)).min(1);
+    changeSchema = external_exports.array(external_exports.string().min(1)).min(1);
+    excludeSchema = external_exports.array(external_exports.string().min(1));
     derivedChangeInstructionSchema = external_exports.object({
-      changeKind: external_exports.enum(DERIVED_CHANGE_KINDS),
-      evidence: external_exports.array(external_exports.string().min(1)),
-      preserve: external_exports.array(external_exports.string().min(1)).min(1),
-      change: external_exports.array(external_exports.string().min(1)).min(1),
-      exclude: external_exports.array(external_exports.string().min(1))
+      dimensions: external_exports.array(external_exports.enum(VISUAL_STATE_DIMENSIONS)).min(1).refine((dimensions) => new Set(dimensions).size === dimensions.length, { message: "dimensions \u4E0D\u5F97\u91CD\u590D" }),
+      evidence: evidenceSchema,
+      preserve: preserveSchema,
+      change: changeSchema,
+      exclude: excludeSchema
     }).strict();
-    CHANGE_KINDS_BY_BRIEF_TYPE = {
-      character: ["character_wardrobe", "character_effect", "character_morphology"],
-      scene: ["scene_time"],
-      prop: ["legacy_prop_state"]
+    legacyDerivedChangeInstructionSchema = external_exports.object({
+      changeKind: external_exports.enum(DERIVED_CHANGE_KINDS),
+      evidence: evidenceSchema,
+      preserve: preserveSchema,
+      change: changeSchema,
+      exclude: excludeSchema
+    }).strict();
+    LEGACY_DIMENSIONS_BY_BRIEF_TYPE = {
+      character: ["wardrobe"],
+      scene: ["time_of_day"],
+      prop: ["condition"]
     };
-    LEGACY_CHANGE_KIND_BY_BRIEF_TYPE = {
-      character: "character_wardrobe",
-      scene: "scene_time",
-      prop: "legacy_prop_state"
+    LEGACY_PRESERVE_BY_BRIEF_TYPE = {
+      character: ["\u8138\u90E8\u62D3\u6251", "\u4F53\u578B\u8F6E\u5ED3", "\u53D1\u578B\u7ED3\u6784", "\u6807\u5FD7\u6027\u7EC6\u8282"],
+      scene: ["\u7A7A\u95F4\u7ED3\u6784", "\u6838\u5FC3\u5730\u6807", "\u5EFA\u9020\u65B9\u5F0F", "\u6750\u6599\u5DE5\u827A", "\u5C3A\u5EA6"],
+      prop: ["\u51E0\u4F55\u8F6E\u5ED3", "\u6750\u6599\u5DE5\u827A", "\u8FA8\u8BC6\u6807\u8BB0"]
     };
-    LEGACY_PRESERVE_BY_KIND = {
-      character_wardrobe: ["\u8138\u90E8\u62D3\u6251", "\u4F53\u578B\u8F6E\u5ED3", "\u53D1\u578B\u7ED3\u6784", "\u6807\u5FD7\u6027\u7EC6\u8282"],
-      character_effect: ["\u8138\u90E8\u62D3\u6251", "\u4F53\u578B\u8F6E\u5ED3", "\u53D1\u578B\u7ED3\u6784", "\u670D\u88C5\u7ED3\u6784", "\u6807\u5FD7\u6027\u7EC6\u8282"],
-      character_morphology: ["\u8138\u90E8\u62D3\u6251", "\u53D1\u578B\u7ED3\u6784", "\u6807\u5FD7\u6027\u7EC6\u8282"],
-      scene_time: ["\u7A7A\u95F4\u7ED3\u6784", "\u6838\u5FC3\u5730\u6807", "\u5EFA\u9020\u65B9\u5F0F", "\u6750\u6599\u5DE5\u827A", "\u5C3A\u5EA6"],
-      legacy_prop_state: ["\u51E0\u4F55\u8F6E\u5ED3", "\u6750\u6599\u5DE5\u827A", "\u8FA8\u8BC6\u6807\u8BB0"]
-    };
-    LEGACY_EXCLUDE_BY_KIND = {
-      character_wardrobe: ["\u80CC\u666F\u53D8\u5316", "\u6587\u5B57", "\u6C34\u5370", "\u989D\u5916\u89D2\u8272"],
-      character_effect: ["\u80CC\u666F\u53D8\u5316", "\u6587\u5B57", "\u6C34\u5370", "\u989D\u5916\u89D2\u8272"],
-      character_morphology: ["\u80CC\u666F\u53D8\u5316", "\u6587\u5B57", "\u6C34\u5370", "\u989D\u5916\u89D2\u8272"],
-      scene_time: ["\u4EBA\u7269", "\u6587\u5B57", "\u6C34\u5370"],
-      legacy_prop_state: ["\u4EBA\u7269", "\u624B\u90E8", "\u6301\u63E1\u5173\u7CFB", "\u6587\u5B57", "\u6C34\u5370"]
+    LEGACY_EXCLUDE_BY_BRIEF_TYPE = {
+      character: ["\u80CC\u666F\u53D8\u5316", "\u6587\u5B57", "\u6C34\u5370", "\u989D\u5916\u89D2\u8272"],
+      scene: ["\u4EBA\u7269", "\u6587\u5B57", "\u6C34\u5370"],
+      prop: ["\u4EBA\u7269", "\u624B\u90E8", "\u6301\u63E1\u5173\u7CFB", "\u6587\u5B57", "\u6C34\u5370"]
     };
   }
 });
@@ -239092,7 +239164,7 @@ function validateAssetBriefBatch(batchValue, expected) {
   }
   return { ok: true, value: { batch: { ...batch, assetBriefs: repairedBriefs }, repairs } };
 }
-var nonEmptyString, stringList, nullableId, evidenceSchema, differenceAnchorSchema, siblingContrastSchema, ASSET_BRIEF_PRIMARY_ROLES, assetReferenceBindingSchema, generationRequirementsSchema, briefCommonShape, characterDesignSchema, sceneDesignSchema, propDesignSchema, characterBriefSchema, sceneBriefSchema, propBriefSchema, assetBriefSchema, worldBibleSchema, contrastEntrySchema, assetBriefBatchSchema, ASSET_TYPE_ALIASES;
+var nonEmptyString, stringList, nullableId, evidenceSchema2, differenceAnchorSchema, siblingContrastSchema, ASSET_BRIEF_PRIMARY_ROLES, assetReferenceBindingSchema, generationRequirementsSchema, briefCommonShape, characterDesignSchema, sceneDesignSchema, propDesignSchema, characterBriefSchema, sceneBriefSchema, propBriefSchema, assetBriefSchema, worldBibleSchema, contrastEntrySchema, assetBriefBatchSchema, ASSET_TYPE_ALIASES;
 var init_assetBriefContract = __esm({
   "src/assets/assetBriefContract.ts"() {
     "use strict";
@@ -239100,7 +239172,7 @@ var init_assetBriefContract = __esm({
     nonEmptyString = external_exports.string().min(1);
     stringList = external_exports.array(nonEmptyString);
     nullableId = external_exports.number().int().min(1).nullable();
-    evidenceSchema = external_exports.object({
+    evidenceSchema2 = external_exports.object({
       source: external_exports.enum(["reference", "script", "asset", "parent", "inference", "style-default"]),
       fact: nonEmptyString,
       locator: nonEmptyString,
@@ -239152,7 +239224,7 @@ var init_assetBriefContract = __esm({
       name: nonEmptyString,
       narrativeFunction: nonEmptyString,
       eraRegion: nonEmptyString,
-      evidence: external_exports.array(evidenceSchema).min(1),
+      evidence: external_exports.array(evidenceSchema2).min(1),
       immutable: stringList,
       flexible: stringList,
       storyChanging: stringList,
@@ -239751,8 +239823,20 @@ function compileDerivedAssetPrompt(input) {
     };
   }
   const segments = [];
+  const dimensionLabels = input.instruction.dimensions.map((dimension) => VISUAL_STATE_DIMENSION_LABELS[dimension]);
+  const dimensionBriefTypes = new Set(input.instruction.dimensions.map(visualStateDimensionBriefType));
+  if (dimensionBriefTypes.size !== 1) {
+    return {
+      ok: false,
+      failure: assetPromptFailure(
+        "derivedPromptCompilationFailed",
+        `\u53D8\u5316\u5951\u7EA6\u7684\u89C6\u89C9\u72B6\u6001\u7EF4\u5EA6 [${input.instruction.dimensions.join(", ")}] \u8DE8\u8D44\u4EA7\u7C7B\u578B\u6DF7\u5408\uFF0C\u65E0\u6CD5\u7F16\u8BD1`
+      )
+    };
+  }
+  const briefType = [...dimensionBriefTypes][0];
   segments.push(
-    `${input.assetName}\u662F\u7236\u8D44\u4EA7\u300C${input.parentAsset.name}\u300D\u7684\u884D\u751F\u89C6\u89C9\u72B6\u6001\uFF08\u53D8\u5316\u7C7B\u578B\uFF1A${CHANGE_KIND_LABELS[input.instruction.changeKind]}\uFF09\uFF0C\u4EE5\u672C\u6B21\u8BF7\u6C42\u968F\u56FE\u63D0\u4EA4\u7684\u7236\u8D44\u4EA7\u951A\u70B9\u56FE\uFF08\u7236\u8D44\u4EA7\u5F53\u524D\u63A5\u53D7\u7684\u56FE\u50CF\uFF09\u4E3A\u552F\u4E00\u89C6\u89C9\u57FA\u51C6\u3002`
+    `${input.assetName}\u662F\u7236\u8D44\u4EA7\u300C${input.parentAsset.name}\u300D\u7684\u884D\u751F\u89C6\u89C9\u72B6\u6001\uFF08\u89C6\u89C9\u72B6\u6001\u7EF4\u5EA6\uFF1A${joinList2(dimensionLabels)}\uFF09\uFF0C\u4EE5\u672C\u6B21\u8BF7\u6C42\u968F\u56FE\u63D0\u4EA4\u7684\u7236\u8D44\u4EA7\u951A\u70B9\u56FE\uFF08\u7236\u8D44\u4EA7\u5F53\u524D\u63A5\u53D7\u7684\u56FE\u50CF\uFF09\u4E3A\u552F\u4E00\u89C6\u89C9\u57FA\u51C6\u3002`
   );
   segments.push(
     `\u7236\u8D44\u4EA7\u951A\u70B9\u7EE7\u627F\u89C4\u5219\uFF1A\u5FC5\u987B\u5B8C\u6574\u7EE7\u627F${joinList2(input.instruction.preserve)}\u7B49\u7236\u8D44\u4EA7\u65E2\u6709\u7279\u5F81\uFF1B\u9664\u4E0B\u5217\u58F0\u660E\u7684\u5141\u8BB8\u53D8\u5316\u5916\uFF0C\u4E0D\u5F97\u5BF9\u7236\u8D44\u4EA7\u5916\u89C2\u505A\u4EFB\u4F55\u5176\u4ED6\u4FEE\u6539\u3002`
@@ -239765,7 +239849,7 @@ function compileDerivedAssetPrompt(input) {
     segments.push(`\u53D8\u5316\u4F9D\u636E\uFF08\u5267\u672C\u8BC1\u636E\uFF09\uFF1A${joinList2(input.instruction.evidence, "\uFF1B")}\u3002`);
   }
   segments.push(`${input.manualKey} \u89C6\u89C9\u624B\u518C\uFF1A${manual}`);
-  segments.push(`${OUTPUT_RULES_BY_TYPE[changeKindBriefType(input.instruction.changeKind)]}\u753B\u9762\u4E0D\u5305\u542B\u6587\u5B57\u3001\u6C34\u5370\u6216\u8FB9\u6846\u3002`);
+  segments.push(`${OUTPUT_RULES_BY_TYPE[briefType]}\u753B\u9762\u4E0D\u5305\u542B\u6587\u5B57\u3001\u6C34\u5370\u6216\u8FB9\u6846\u3002`);
   const prefix = input.artStylePrefix?.trim();
   if (prefix) {
     segments.push(prefix.endsWith("\u3002") ? prefix : `${prefix}\u3002`);
@@ -239852,12 +239936,12 @@ async function resolveDerivedAssetGenerationEntry(dependencies, input) {
     if (!saved.ok) return { ok: false, failure: saved };
     instructionRecord = saved.value;
   }
-  if (!isChangeKindCompatibleWithBriefType(instructionRecord.instruction.changeKind, asset.briefType)) {
+  if (!areDimensionsCompatibleWithBriefType(instructionRecord.instruction.dimensions, asset.briefType)) {
     return {
       ok: false,
       failure: assetPromptFailure(
         "derivedChangeInstructionInvalid",
-        `\u884D\u751F\u8D44\u4EA7 ${asset.id} \u7684\u53D8\u5316\u7C7B\u578B ${instructionRecord.instruction.changeKind} \u4E0E\u8D44\u4EA7\u7C7B\u578B ${asset.briefType} \u4E0D\u4E00\u81F4`
+        `\u884D\u751F\u8D44\u4EA7 ${asset.id} \u7684\u89C6\u89C9\u72B6\u6001\u7EF4\u5EA6 [${instructionRecord.instruction.dimensions.join(", ")}] \u4E0E\u8D44\u4EA7\u7C7B\u578B ${asset.briefType} \u4E0D\u4E00\u81F4\uFF0C\u8BF7\u91CD\u65B0\u5206\u6790`
       )
     };
   }
@@ -239870,7 +239954,7 @@ async function resolveDerivedAssetGenerationEntry(dependencies, input) {
       instruction: {
         revision: instructionRecord.revision,
         source: instructionRecord.source,
-        changeKind: instructionRecord.instruction.changeKind,
+        dimensions: instructionRecord.instruction.dimensions,
         evidence: instructionRecord.instruction.evidence,
         preserve: instructionRecord.instruction.preserve,
         change: instructionRecord.instruction.change,
@@ -239949,14 +240033,14 @@ async function resolveDerivedAssetGenerationEntry(dependencies, input) {
         parentAssetId: parent.id,
         parentImageId: parent.imageId,
         anchorMediaPath: parentImage.filePath,
-        changeKind: instructionRecord.instruction.changeKind,
+        dimensions: instructionRecord.instruction.dimensions,
         changeInstructionRevision: instructionRecord.revision,
         changeInstructionSource: instructionRecord.source
       }
     }
   };
 }
-var DERIVED_ANCHOR_SKILL_VERSION, DERIVED_PROMPT_COMPILER_VERSION, CHANGE_KIND_LABELS, OUTPUT_RULES_BY_TYPE;
+var DERIVED_ANCHOR_SKILL_VERSION, DERIVED_PROMPT_COMPILER_VERSION, VISUAL_STATE_DIMENSION_LABELS, OUTPUT_RULES_BY_TYPE;
 var init_derivedAssetPrompt = __esm({
   "src/assets/derivedAssetPrompt.ts"() {
     "use strict";
@@ -239965,13 +240049,25 @@ var init_derivedAssetPrompt = __esm({
     init_derivedChangeInstruction();
     init_contentHash();
     DERIVED_ANCHOR_SKILL_VERSION = "asset-prompting-derived@1.0";
-    DERIVED_PROMPT_COMPILER_VERSION = "derived-prompt-compiler@1.0";
-    CHANGE_KIND_LABELS = {
-      character_wardrobe: "\u670D\u88C5\u53D8\u5316",
-      character_effect: "\u53D8\u8EAB\u7279\u6548",
-      character_morphology: "\u5F62\u6001\u53D8\u5316",
-      scene_time: "\u65F6\u95F4\u53D8\u4F53",
-      legacy_prop_state: "\u65E7\u9053\u5177\u72B6\u6001"
+    DERIVED_PROMPT_COMPILER_VERSION = "derived-prompt-compiler@2.0";
+    VISUAL_STATE_DIMENSION_LABELS = {
+      age_stage: "\u5E74\u9F84\u9636\u6BB5",
+      wardrobe: "\u670D\u88C5\u53D8\u5316",
+      grooming: "\u5986\u9020\u53D8\u5316",
+      morphology: "\u5F62\u6001\u53D8\u5316",
+      surface_condition: "\u8868\u9762\u72B6\u6001",
+      effect: "\u7279\u6548\u72B6\u6001",
+      status_presentation: "\u8EAB\u4EFD\u5730\u4F4D\u5448\u73B0",
+      time_of_day: "\u65F6\u6BB5\u72B6\u6001",
+      weather: "\u5929\u6C14\u72B6\u6001",
+      season: "\u5B63\u8282\u72B6\u6001",
+      atmosphere: "\u6C1B\u56F4\u72B6\u6001",
+      practical_lighting: "\u5B9E\u9645\u706F\u5149",
+      persistent_condition: "\u6301\u7EED\u73AF\u5883\u72B6\u6001",
+      condition: "\u72B6\u6001\u53D8\u5316",
+      configuration: "\u914D\u7F6E\u72B6\u6001",
+      activation: "\u6FC0\u6D3B\u72B6\u6001",
+      contents: "\u5185\u5BB9\u7269\u72B6\u6001"
     };
     OUTPUT_RULES_BY_TYPE = {
       character: "\u8F93\u51FA\u4E3A\u5355\u89D2\u8272\u5B9A\u5986\u8BBE\u5B9A\u56FE\uFF0C\u6784\u56FE\u5B8C\u6574\u5448\u73B0\u53D8\u5316\u540E\u7684\u6574\u4F53\u5916\u89C2\uFF0C\u753B\u9762\u4E2D\u4E0D\u51FA\u73B0\u5176\u4ED6\u89D2\u8272\u3002",
@@ -242379,7 +242475,7 @@ async function generateAssetImage(dependencies, input) {
       derived: {
         parentAssetId: entry.derived.parentAssetId,
         parentImageId: entry.derived.parentImageId,
-        changeKind: entry.derived.changeKind,
+        dimensions: entry.derived.dimensions,
         changeInstructionRevision: entry.derived.changeInstructionRevision,
         changeInstructionSource: entry.derived.changeInstructionSource
       }
@@ -262451,7 +262547,7 @@ var tools_default = (toolCpnfig) => {
           name: external_exports.string().describe("\u884D\u751F\u8D44\u4EA7\u540D\u79F0"),
           desc: external_exports.string().describe("\u884D\u751F\u8D44\u4EA7\u63CF\u8FF0"),
           changeInstruction: derivedChangeInstructionSchema.describe(
-            "\u53D8\u5316\u5951\u7EA6\uFF1AchangeKind \u4E0E\u53D8\u5316\u4E00\u81F4\uFF1Bpreserve \u81F3\u5C11\u4E00\u6761\uFF1Bchange \u81F3\u5C11\u4E00\u6761\uFF1Bexclude \u53EF\u4E3A\u7A7A\u6570\u7EC4"
+            "\u53D8\u5316\u5951\u7EA6\uFF1Adimensions \u662F\u4E0E\u7236\u8D44\u4EA7\u7C7B\u578B\u4E00\u81F4\u7684\u89C6\u89C9\u72B6\u6001\u7EF4\u5EA6\u7EC4\u5408\uFF08\u81F3\u5C11\u4E00\u4E2A\u3001\u4E0D\u53EF\u91CD\u590D\uFF09\uFF1Bevidence \u81F3\u5C11\u4E00\u6761\u5267\u672C\u8BC1\u636E\uFF1Bpreserve \u81F3\u5C11\u4E00\u6761\uFF1Bchange \u81F3\u5C11\u4E00\u6761\uFF1Bexclude \u53EF\u4E3A\u7A7A\u6570\u7EC4"
           )
         }).toJSONSchema()
       ),
@@ -262478,19 +262574,29 @@ var tools_default = (toolCpnfig) => {
             type: parentAssets.type
           }).select("id").first()
         );
-        if (briefType === "prop" && !existingDerivedAsset) {
-          return "\u9053\u5177\u8D44\u4EA7\u672C\u9636\u6BB5\u4E0D\u4E3B\u52A8\u884D\u751F\uFF1B\u4EC5\u53EF\u66F4\u65B0\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u4E14\u6302\u5728\u6307\u5B9A\u7236\u8D44\u4EA7\u4E0B\u7684\u65E2\u6709\u884D\u751F\u9053\u5177\uFF08legacy_prop_state\uFF09";
-        }
         if (deriveAsset.id !== null && !existingDerivedAsset) {
           return "\u4EC5\u53EF\u66F4\u65B0\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u4E14\u6302\u5728\u6307\u5B9A\u7236\u8D44\u4EA7\u4E0B\u7684\u65E2\u6709\u884D\u751F\u8D44\u4EA7";
         }
         const parsedInstruction = derivedChangeInstructionSchema.safeParse(deriveAsset.changeInstruction);
         if (!parsedInstruction.success) {
           const issue3 = parsedInstruction.error.issues[0];
-          return `\u53D8\u5316\u5951\u7EA6\u4E0D\u5408\u6CD5\uFF08${issue3?.path?.join(".") ?? ""} ${issue3?.message ?? "\u7ED3\u6784\u9519\u8BEF"}\uFF09\uFF0C\u8BF7\u6309 changeKind/evidence/preserve/change/exclude \u7ED3\u6784\u91CD\u65B0\u63D0\u4EA4`;
+          return `\u53D8\u5316\u5951\u7EA6\u4E0D\u5408\u6CD5\uFF08${issue3?.path?.join(".") ?? ""} ${issue3?.message ?? "\u7ED3\u6784\u9519\u8BEF"}\uFF09\uFF0C\u8BF7\u6309 dimensions/evidence/preserve/change/exclude \u7ED3\u6784\u91CD\u65B0\u63D0\u4EA4`;
         }
-        if (!isChangeKindCompatibleWithBriefType(parsedInstruction.data.changeKind, briefType)) {
-          return `\u53D8\u5316\u7C7B\u578B ${parsedInstruction.data.changeKind} \u4E0E\u7236\u8D44\u4EA7\u7C7B\u578B ${briefType} \u4E0D\u4E00\u81F4\uFF0C\u8BF7\u4FEE\u6B63 changeKind \u540E\u91CD\u8BD5`;
+        if (!areDimensionsCompatibleWithBriefType(parsedInstruction.data.dimensions, briefType)) {
+          return `\u89C6\u89C9\u72B6\u6001\u7EF4\u5EA6 [${parsedInstruction.data.dimensions.join(", ")}] \u4E0E\u7236\u8D44\u4EA7\u7C7B\u578B ${briefType} \u4E0D\u4E00\u81F4\uFF0C\u8BF7\u4FEE\u6B63 dimensions \u540E\u91CD\u8BD5`;
+        }
+        if (parsedInstruction.data.evidence.length === 0) {
+          return "\u53D8\u5316\u5951\u7EA6\u7F3A\u5C11\u5267\u672C\u8BC1\u636E\uFF08evidence \u81F3\u5C11\u4E00\u6761\uFF09\uFF0C\u7981\u6B62\u4E3A\u4E86\u6EE1\u8DB3\u6570\u91CF\u800C\u521B\u5EFA\u65E0\u8BC1\u636E\u884D\u751F\u8D44\u4EA7";
+        }
+        const equivalent = await findEquivalentDerivedAsset(getDatabaseRuntime().work, {
+          projectId,
+          parentAssetsId: deriveAsset.assetsId,
+          dimensions: parsedInstruction.data.dimensions,
+          change: parsedInstruction.data.change,
+          excludeAssetsId: deriveAsset.id ?? void 0
+        });
+        if (equivalent !== null) {
+          return `\u7236\u8D44\u4EA7 ${deriveAsset.assetsId} \u4E0B\u5DF2\u5B58\u5728\u7B49\u4EF7\u89C6\u89C9\u72B6\u6001\uFF08dimensions \u4E0E change \u4E00\u81F4\uFF09\u7684\u884D\u751F\u8D44\u4EA7\uFF0CID: ${equivalent}\uFF0C\u8BF7\u76F4\u63A5\u590D\u7528\u6216\u66F4\u65B0\u8BE5\u8D44\u4EA7\uFF0C\u4E0D\u8981\u91CD\u590D\u521B\u5EFA`;
         }
         const data = {
           id: deriveAsset.id ?? void 0,
