@@ -4,8 +4,6 @@ import { getDatabaseRuntime } from "@/database";
 
 export const runtimePromptKeys = {
   eventExtraction: "eventExtraction",
-  scriptAssetExtraction: "scriptAssetExtraction",
-  scriptAssetExtractionBatch: "scriptAssetExtractionBatch",
   audioBind: "audioBindPrompt",
   memorySummary: "memorySummary",
   memoryRelevance: "memoryRelevance",
@@ -28,14 +26,6 @@ interface RuntimePromptDefault {
 }
 
 const additionalDefaults: RuntimePromptDefault[] = [
-  {
-    type: runtimePromptKeys.scriptAssetExtractionBatch,
-    name: "剧本资产批量提取补充指令",
-    data: [
-      "提取剧本中涉及的资产（角色、场景、道具），参考技能 script_assets_extract 规范，结果必须通过 resultTool 工具返回。",
-      "注意：本次会同时提供多集剧本，每集剧本以 ===== 【剧本ID: xxx】 ===== 分隔。你需要分析每集剧本使用了哪些资产，并在输出中用 scriptIds 数组标明每个资产在哪些剧本中出现。",
-    ].join("\n\n"),
-  },
   {
     type: runtimePromptKeys.memorySummary,
     name: "Agent 记忆压缩",
