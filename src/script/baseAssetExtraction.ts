@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
+import { stepCountIs } from "ai";
 import type { Knex } from "knex";
 
 import type { DatabaseWork } from "@/database";
@@ -170,6 +171,7 @@ async function runBaseAssetExtractionWithScripts(
   const requestId = randomUUID();
   const projectId = scripts[0].projectId;
   const selectedIds = new Set(scripts.map((script) => script.id));
+  const scriptContentById = new Map(scripts.map((script) => [script.id, script.content ?? ""]));
   const scriptsContent = compileScriptsContent(scripts);
   const call = await dependencies.openTextCall();
 
@@ -188,7 +190,7 @@ async function runBaseAssetExtractionWithScripts(
     () => parseBaseExtractionToolInput(extractionRaw),
     "基础资产提取结果",
   );
-  const candidates = validateCandidates(extractionResult.assets, selectedIds);
+  const candidates = validateCandidates(extractionResult.assets, selectedIds, scriptContentById);
   dependencies.log({ requestId, stage: "extraction", scriptIds: [...selectedIds], count: candidates.length });
 
   // ---- 阶段二：一次完整性审计调用 ----
@@ -213,7 +215,7 @@ async function runBaseAssetExtractionWithScripts(
     throw new BaseAssetExtractionFailure("modelOutputMissing", "完整性审计未返回工具结果");
   }
   const audit = parseWithFailure(() => parseCompletenessAuditToolInput(auditRaw), "完整性审计结果");
-  const operations = validateAuditOperations(audit, selectedIds);
+  const operations = validateAuditOperations(audit, selectedIds, scriptContentById);
   dependencies.log({
     requestId,
     stage: "audit",
@@ -302,6 +304,15 @@ export function mergeBaseAssetCandidates(
       );
     }
     const normalized = normalizeIdentityFacts(target.type, fact.identityFacts) ?? {};
+    for (const [key, value] of Object.entries(normalized)) {
+      const existing = target.identityFacts[key];
+      if (existing !== undefined && existing !== value) {
+        throw new BaseAssetExtractionFailure(
+          "invalidOutput",
+          `完整性审计的事实补充与已有事实冲突：${fact.canonicalName}.${key}`,
+        );
+      }
+    }
     Object.assign(target.identityFacts, normalized);
     target.evidence.push(...fact.evidence);
   }
@@ -382,17 +393,13 @@ export async function persistBaseAssetExtraction(
               existingAssets.map((asset) => asset.id),
             )
           : [];
-        const identityByAssetId = new Map<number, { canonicalName: string; type: string }>();
+        const identityByAssetId = new Map<number, BaseAssetIdentityRecord>();
         for (const row of existingIdentities) {
           try {
-            const record = JSON.parse(row.identity as string) as { canonicalName?: string; type?: string };
-            if (record.canonicalName && record.type)
-              identityByAssetId.set(row.assetsId, {
-                canonicalName: record.canonicalName,
-                type: record.type,
-              });
+            const record = parseBaseAssetIdentityRecord(row.identity);
+            identityByAssetId.set(row.assetsId, record);
           } catch {
-            // 损坏的身份记录按缺失处理，保守回退到资产名匹配。
+            // 损坏或缺失的身份记录没有足够证据支持自动复用。
           }
         }
 
@@ -402,9 +409,29 @@ export async function persistBaseAssetExtraction(
           const matched = existingAssets.find((asset) => {
             if (consumedAssetIds.has(asset.id)) return false;
             const identity = identityByAssetId.get(asset.id);
-            const identityName = identity?.canonicalName ?? asset.name ?? "";
-            return asset.type === candidate.type && identityName === candidate.canonicalName;
+            return identity ? identitiesAreLinked(identity, candidate) : false;
           });
+          if (!matched) {
+            const ambiguous = existingAssets.find((asset) => {
+              const identity = identityByAssetId.get(asset.id);
+              return (
+                !consumedAssetIds.has(asset.id) &&
+                asset.type === candidate.type &&
+                identity?.canonicalName === candidate.canonicalName
+              );
+            });
+            if (ambiguous) {
+              dependencies.log({
+                stage: "persist",
+                kind: "identityAmbiguous",
+                reason: "sameNameWithoutEvidenceLink",
+                type: candidate.type,
+                name: candidate.canonicalName,
+                existingAssetId: ambiguous.id,
+                scriptIds: candidate.scriptIds,
+              });
+            }
+          }
           if (matched) {
             consumedAssetIds.add(matched.id);
             // 提取管理的资产（已有身份记录）刷新确定性编译摘要；人工创建或
@@ -470,16 +497,13 @@ export async function executeScriptAssetExtraction(
     }
     resolvedIds = scripts.map((script) => script.id);
 
-    // 重入保护：任一选中剧本已有提取在进行时，拒绝本次请求而不是并行重跑。
-    const inProgress = await dependencies.work((db) =>
-      db("o_script").whereIn("id", resolvedIds).where("extractState", 0).select("id"),
-    );
-    if (inProgress.length) {
+    // 单条条件更新原子占用全部剧本。并发请求中只有一个能把全部非运行态改为运行态；
+    // 事务回滚确保部分可占用时也不会留下半套状态。
+    const claimed = await claimScriptsForExtraction(dependencies, resolvedIds);
+    if (!claimed) {
       dependencies.log({ requestId, stage: "resolve", kind: "extractionInProgress", scriptIds: resolvedIds });
       return { ok: false, error: "extractionInProgress" };
     }
-
-    await dependencies.work((db) => db("o_script").whereIn("id", resolvedIds).update({ extractState: 0 }));
 
     const staged = await runBaseAssetExtractionWithScripts(dependencies, scripts);
     await persistBaseAssetExtraction(dependencies, staged);
@@ -520,6 +544,27 @@ export async function executeScriptAssetExtraction(
   }
 }
 
+async function claimScriptsForExtraction(
+  dependencies: BaseAssetExtractionDependencies,
+  scriptIds: readonly number[],
+): Promise<boolean> {
+  return dependencies.work((db) =>
+    db.transaction(async (trx) => {
+      const updated = await trx("o_script")
+        .whereIn("id", scriptIds)
+        .where((builder) => builder.whereNull("extractState").orWhereNot("extractState", 0))
+        .update({ extractState: 0 });
+      if (Number(updated) === scriptIds.length) return true;
+      throw new ExtractionClaimConflict();
+    }).catch((error: unknown) => {
+      if (error instanceof ExtractionClaimConflict) return false;
+      throw error;
+    }),
+  );
+}
+
+class ExtractionClaimConflict extends Error {}
+
 // ---------------------------------------------------------------------------
 // 生产环境依赖
 // ---------------------------------------------------------------------------
@@ -547,6 +592,7 @@ export function createDefaultBaseAssetExtractionDependencies(): BaseAssetExtract
             system,
             messages: [{ role: "user", content: user }],
             tools: tools as Parameters<typeof call.invokeText>[0]["tools"],
+            stopWhen: stepCountIs(1),
           });
         },
       };
@@ -579,6 +625,28 @@ export function parseBaseAssetIdentityRecord(serialized: unknown): BaseAssetIden
     throw new Error("Base Asset 身份记录无效");
   }
   return record;
+}
+
+function identitiesAreLinked(existing: BaseAssetIdentityRecord, candidate: StagedBaseAsset): boolean {
+  if (existing.type !== candidate.type) return false;
+  const existingAliases = new Set(existing.aliases ?? []);
+  const candidateAliases = new Set(candidate.aliases);
+  const sameCanonicalName = existing.canonicalName === candidate.canonicalName;
+  const hasExplicitNameAliasLink =
+    existingAliases.has(candidate.canonicalName) || candidateAliases.has(existing.canonicalName);
+  if (!sameCanonicalName && !hasExplicitNameAliasLink) return false;
+
+  const existingScriptIds = new Set(existing.scriptIds ?? []);
+  if (candidate.scriptIds.some((scriptId) => existingScriptIds.has(scriptId))) return true;
+  if (hasExplicitNameAliasLink) return true;
+
+  // 跨剧本同规范名不能只靠名称复用；至少需要一个一致的结构化身份事实，且
+  // 已有事实之间不能冲突。通用称号的 alias 交集不构成身份链接。
+  const existingFacts = existing.identityFacts ?? {};
+  const candidateFacts = candidate.identityFacts ?? {};
+  const sharedKeys = Object.keys(existingFacts).filter((key) => candidateFacts[key] !== undefined);
+  if (sharedKeys.some((key) => existingFacts[key] !== candidateFacts[key])) return false;
+  return sharedKeys.some((key) => existingFacts[key] === candidateFacts[key]);
 }
 
 async function upsertAssetIdentity(
@@ -688,6 +756,7 @@ function parseWithFailure<T>(parse: () => T, label: string): T {
 function validateCandidates(
   candidates: BaseAssetCandidate[],
   selectedIds: Set<number>,
+  scriptContentById: ReadonlyMap<number, string>,
 ): BaseAssetCandidate[] {
   for (const candidate of candidates) {
     const unknown = [
@@ -708,15 +777,39 @@ function validateCandidates(
         `资产 ${candidate.canonicalName} 的剧本 ${missingEvidence.join(",")} 缺少证据`,
       );
     }
+    validateEvidenceExcerpts(`资产 ${candidate.canonicalName}`, candidate.evidence, scriptContentById);
   }
   return candidates;
+}
+
+function validateEvidenceExcerpts(
+  label: string,
+  evidence: readonly AssetEvidence[],
+  scriptContentById: ReadonlyMap<number, string>,
+): void {
+  for (const item of evidence) {
+    const content = scriptContentById.get(item.scriptId);
+    if (content === undefined) continue;
+    const normalizedExcerpt = normalizeEvidenceText(item.excerpt);
+    if (!normalizedExcerpt || !normalizeEvidenceText(content).includes(normalizedExcerpt)) {
+      throw new BaseAssetExtractionFailure(
+        "invalidOutput",
+        `${label}的证据摘录不存在于剧本 ${item.scriptId} 原文中`,
+      );
+    }
+  }
+}
+
+function normalizeEvidenceText(value: string): string {
+  return value.replace(/\s+/gu, "");
 }
 
 function validateAuditOperations(
   audit: CompletenessAuditToolResult,
   selectedIds: Set<number>,
+  scriptContentById: ReadonlyMap<number, string>,
 ): CompletenessAuditOperations {
-  const validatedAdditions = validateCandidates(audit.additions, selectedIds);
+  const validatedAdditions = validateCandidates(audit.additions, selectedIds, scriptContentById);
 
   const requireKnownScriptIds = (label: string, evidence: AssetEvidence[]) => {
     for (const item of evidence) {
@@ -724,6 +817,7 @@ function validateAuditOperations(
         throw new BaseAssetExtractionFailure("invalidOutput", `${label}引用了未知剧本 ID：${item.scriptId}`);
       }
     }
+    validateEvidenceExcerpts(label, evidence, scriptContentById);
   };
 
   // 重复与冲突的审计操作直接拒绝：同一候选被同类操作命中两次、或同一候选

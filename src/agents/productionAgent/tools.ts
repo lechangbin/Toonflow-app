@@ -17,6 +17,11 @@ import { deleteDerivedAssetRecord } from "@/assets/derivedAssetDeletion";
 
 /** 变化契约写入失败时抛出以中断事务并回滚资产写入（有资产必有契约）。 */
 class ChangeInstructionWriteError extends Error {}
+class EquivalentDerivedAssetError extends Error {
+  constructor(readonly assetId: number) {
+    super(`父资产下已存在等价视觉状态的衍生资产，ID: ${assetId}`);
+  }
+}
 const deriveAssetSchema = z.object({
   id: z.number().describe("衍生资产ID,如果新增则为空"),
   assetsId: z.number().describe("关联的资产ID"),
@@ -192,19 +197,6 @@ export default (toolCpnfig: ToolConfig) => {
           return "变化契约缺少剧本证据（evidence 至少一条），禁止为了满足数量而创建无证据衍生资产";
         }
 
-        // 等价状态复用：同一父资产下 dimensions 组合与 change 变化声明都相同（顺序无关）
-        // 即视为同一状态，必须复用既有衍生资产，不得重复创建或改写其他兄弟资产
-        const equivalent = await findEquivalentDerivedAsset(getDatabaseRuntime().work, {
-          projectId,
-          parentAssetsId: deriveAsset.assetsId,
-          dimensions: parsedInstruction.data.dimensions,
-          change: parsedInstruction.data.change,
-          excludeAssetsId: deriveAsset.id ?? undefined,
-        });
-        if (equivalent !== null) {
-          return `父资产 ${deriveAsset.assetsId} 下已存在等价视觉状态（dimensions 与 change 一致）的衍生资产，ID: ${equivalent}，请直接复用或更新该资产，不要重复创建`;
-        }
-
         const data = {
           id: deriveAsset.id ?? undefined,
           assetsId: deriveAsset.assetsId,
@@ -218,6 +210,15 @@ export default (toolCpnfig: ToolConfig) => {
         const contract = await getDatabaseRuntime()
           .work((db) =>
             db.transaction(async (tx) => {
+              // 等价检查与写入共用同一串行事务，避免两个并发请求都在插入前看到“无重复”。
+              const equivalent = await findEquivalentDerivedAsset(async (operation) => operation(tx), {
+                projectId,
+                parentAssetsId: deriveAsset.assetsId,
+                dimensions: parsedInstruction.data.dimensions,
+                change: parsedInstruction.data.change,
+                excludeAssetsId: deriveAsset.id ?? undefined,
+              });
+              if (equivalent !== null) throw new EquivalentDerivedAssetError(equivalent);
               if (deriveAsset.id !== null) {
                 const updated = await tx("o_assets")
                   .where({
@@ -248,12 +249,25 @@ export default (toolCpnfig: ToolConfig) => {
             }),
         )
           .catch((error: unknown) => {
+            if (error instanceof EquivalentDerivedAssetError) {
+              return {
+                ok: false as const,
+                kind: "equivalentDerivedAsset" as const,
+                message: `${error.message}，请直接复用或更新该资产，不要重复创建`,
+              };
+            }
             if (error instanceof ChangeInstructionWriteError) {
               return { ok: false as const, kind: "derivedChangeInstructionInvalid" as const, message: error.message };
             }
             throw error;
           });
         if (!contract.ok) {
+          if (contract.kind === "equivalentDerivedAsset") {
+            thinking.appendText(`${contract.message}\n`);
+            thinking.updateTitle("已存在等价衍生资产");
+            thinking.complete();
+            return contract.message;
+          }
           thinking.appendText(`变化契约写入失败：${contract.message}\n`);
           thinking.updateTitle("变化契约写入失败");
           thinking.complete();
