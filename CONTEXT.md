@@ -33,8 +33,12 @@ The parent Asset's currently accepted image, supplied automatically when generat
 _Avoid_: Asset Reference, Reference Image, user upload
 
 **Derived Change Instruction**:
-A Production Agent-authored contract for a Derived Asset that states the parent traits to preserve, the permitted visual changes, and the changes to exclude. It is compiled with the Parent Asset Anchor and the matching derivative visual manual without a second Text Model interpretation.
+A Production Agent-authored contract for a Derived Asset that states the composable Visual State Dimensions involved, the parent traits to preserve, the permitted visual changes, and the changes to exclude. It is compiled with the Parent Asset Anchor and the matching derivative visual manual without a second Text Model interpretation.
 _Avoid_: Asset Reference description, full image prompt, free-form restyling request
+
+**Visual State Dimension**:
+A typed, composable axis of reusable visual change owned by the Production Agent, grouped by Asset type (character, scene, prop); one real co-occurring state combines several dimensions into one Derived Asset, while camera, framing, pose, expression, and gaze never qualify.
+_Avoid_: changeKind, shot attribute, camera parameter
 
 **Asset Reference**:
 An authorized, human-uploaded image attached to an Asset with a declared visual role, required transfers, and explicit exclusions.

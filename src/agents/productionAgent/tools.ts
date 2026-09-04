@@ -6,8 +6,9 @@ import u from "@/utils";
 
 import { getDatabaseRuntime } from "@/database";
 import {
+  areDimensionsCompatibleWithBriefType,
   derivedChangeInstructionSchema,
-  isChangeKindCompatibleWithBriefType,
+  findEquivalentDerivedAsset,
   saveDerivedChangeInstruction,
   type DerivedChangeInstruction,
 } from "@/assets/derivedChangeInstruction";
@@ -138,7 +139,7 @@ export default (toolCpnfig: ToolConfig) => {
             name: z.string().describe("衍生资产名称"),
             desc: z.string().describe("衍生资产描述"),
             changeInstruction: derivedChangeInstructionSchema.describe(
-              "变化契约：changeKind 与变化一致；preserve 至少一条；change 至少一条；exclude 可为空数组",
+              "变化契约：dimensions 是与父资产类型一致的视觉状态维度组合（至少一个、不可重复）；evidence 至少一条剧本证据；preserve 至少一条；change 至少一条；exclude 可为空数组",
             ),
           })
           .toJSONSchema(),
@@ -174,9 +175,6 @@ export default (toolCpnfig: ToolConfig) => {
                   .select("id")
                   .first(),
               );
-        if (briefType === "prop" && !existingDerivedAsset) {
-          return "道具资产本阶段不主动衍生；仅可更新属于当前项目且挂在指定父资产下的既有衍生道具（legacy_prop_state）";
-        }
         if (deriveAsset.id !== null && !existingDerivedAsset) {
           return "仅可更新属于当前项目且挂在指定父资产下的既有衍生资产";
         }
@@ -185,10 +183,26 @@ export default (toolCpnfig: ToolConfig) => {
         const parsedInstruction = derivedChangeInstructionSchema.safeParse(deriveAsset.changeInstruction);
         if (!parsedInstruction.success) {
           const issue = parsedInstruction.error.issues[0];
-          return `变化契约不合法（${issue?.path?.join(".") ?? ""} ${issue?.message ?? "结构错误"}），请按 changeKind/evidence/preserve/change/exclude 结构重新提交`;
+          return `变化契约不合法（${issue?.path?.join(".") ?? ""} ${issue?.message ?? "结构错误"}），请按 dimensions/evidence/preserve/change/exclude 结构重新提交`;
         }
-        if (!isChangeKindCompatibleWithBriefType(parsedInstruction.data.changeKind, briefType)) {
-          return `变化类型 ${parsedInstruction.data.changeKind} 与父资产类型 ${briefType} 不一致，请修正 changeKind 后重试`;
+        if (!areDimensionsCompatibleWithBriefType(parsedInstruction.data.dimensions, briefType)) {
+          return `视觉状态维度 [${parsedInstruction.data.dimensions.join(", ")}] 与父资产类型 ${briefType} 不一致，请修正 dimensions 后重试`;
+        }
+        if (parsedInstruction.data.evidence.length === 0) {
+          return "变化契约缺少剧本证据（evidence 至少一条），禁止为了满足数量而创建无证据衍生资产";
+        }
+
+        // 等价状态复用：同一父资产下 dimensions 组合与 change 变化声明都相同（顺序无关）
+        // 即视为同一状态，必须复用既有衍生资产，不得重复创建或改写其他兄弟资产
+        const equivalent = await findEquivalentDerivedAsset(getDatabaseRuntime().work, {
+          projectId,
+          parentAssetsId: deriveAsset.assetsId,
+          dimensions: parsedInstruction.data.dimensions,
+          change: parsedInstruction.data.change,
+          excludeAssetsId: deriveAsset.id ?? undefined,
+        });
+        if (equivalent !== null) {
+          return `父资产 ${deriveAsset.assetsId} 下已存在等价视觉状态（dimensions 与 change 一致）的衍生资产，ID: ${equivalent}，请直接复用或更新该资产，不要重复创建`;
         }
 
         const data = {
