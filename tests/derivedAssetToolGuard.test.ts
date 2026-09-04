@@ -405,6 +405,38 @@ test("等价的父资产与状态组合不会重复写入，必须复用既有�
   });
 });
 
+test("并发新增同一等价状态时只能持久化一个 Derived Asset", async () => {
+  await withDataRoot("toonflow-derived-concurrent-equivalent-", async (dataRoot) => {
+    await openDatabase({ dataRoot });
+    await seedPropAssets();
+    const firstHarness = createAddDerivedAssetTool(1);
+    const secondHarness = createAddDerivedAssetTool(1);
+    const input: AddDerivedAssetInput = {
+      assetsId: 102,
+      id: null,
+      name: "雨夜开启玉匣",
+      desc: "匣盖开启并被雨水浸湿",
+      changeInstruction: {
+        dimensions: ["configuration", "condition"],
+        evidence: ["第三幕：雨夜中使者打开被雨水浸湿的玉匣。"],
+        preserve: ["几何轮廓", "材料工艺", "辨识标记"],
+        change: ["匣盖开启", "表面被雨水浸湿"],
+        exclude: ["人物", "手部"],
+      },
+    };
+
+    const results = await Promise.all([firstHarness.execute(input), secondHarness.execute(input)]);
+
+    assert.equal(results.filter((result) => result === "socket mutation accepted").length, 1);
+    assert.equal(results.filter((result) => /已存在等价.*衍生资产|复用/u.test(String(result))).length, 1);
+    const rows = await getDatabaseRuntime().work((db) =>
+      db("o_assets").where({ assetsId: 102, projectId: 1, name: "雨夜开启玉匣" }).select("id"),
+    );
+    assert.equal(rows.length, 1, "并发请求不得创建两个等价兄弟资产");
+    assert.equal(firstHarness.socketEvents.length + secondHarness.socketEvents.length, 1);
+  });
+});
+
 test("更新衍生资产不得改写为与其他兄弟等价的状态组合", async () => {
   await withDataRoot("toonflow-derived-update-collision-", async (dataRoot) => {
     await openDatabase({ dataRoot });

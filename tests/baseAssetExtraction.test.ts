@@ -48,12 +48,22 @@ interface ScriptRow {
 }
 
 function candidate(overrides: Partial<BaseAssetCandidate> & { canonicalName: string }): BaseAssetCandidate {
+  const firstScriptId = overrides.scriptIds?.[0] ?? 1;
   return {
     type: "role",
     aliases: [],
     summary: `${overrides.canonicalName}的剧本内身份摘要。`,
     scriptIds: [1],
-    evidence: [{ scriptId: 1, excerpt: `${overrides.canonicalName}在剧本中出场。`, locator: "第1场" }],
+    evidence: [
+      {
+        scriptId: firstScriptId,
+        excerpt:
+          firstScriptId === 2
+            ? "大泽乡戍卒营地，连日暴雨"
+            : "章台宫内，年轻的秦二世胡亥面对堆叠奏牍",
+        locator: "第1场",
+      },
+    ],
     identityFacts: undefined,
     ...overrides,
   } as BaseAssetCandidate;
@@ -143,13 +153,13 @@ function fullExtractionOutput() {
         canonicalName: "吴广",
         aliases: ["吴叔"],
         scriptIds: [2],
-        evidence: [{ scriptId: 2, excerpt: "吴广与同伴检查误期名册木牍。", locator: "第1场" }],
+        evidence: [{ scriptId: 2, excerpt: "吴广与同伴检查误期名册木牍", locator: "第1场" }],
       }),
       candidate({
         type: "role",
         canonicalName: "陈胜",
         scriptIds: [2],
-        evidence: [{ scriptId: 2, excerpt: "陈胜对众人说：今亡亦死。", locator: "第2场" }],
+        evidence: [{ scriptId: 2, excerpt: "陈胜对众人说：“今亡亦死，举大计亦死。”", locator: "第2场" }],
       }),
       candidate({
         type: "scene",
@@ -170,14 +180,14 @@ function fullExtractionOutput() {
         canonicalName: "误期名册木牍",
         scriptIds: [2],
         summary: "记录戍卒姓名与到期日期的官府木牍。",
-        evidence: [{ scriptId: 2, excerpt: "吴广与同伴检查误期名册木牍。", locator: "第1场" }],
+        evidence: [{ scriptId: 2, excerpt: "吴广与同伴检查误期名册木牍", locator: "第1场" }],
       }),
       candidate({
         type: "role",
         canonicalName: "起义戍卒",
         scriptIds: [2],
         summary: "反复出现、统一举义的戍卒群体。",
-        evidence: [{ scriptId: 2, excerpt: "营地中的起义戍卒齐声应和。", locator: "第3场" }],
+        evidence: [{ scriptId: 2, excerpt: "营地中的起义戍卒齐声应和", locator: "第3场" }],
       }),
     ],
   };
@@ -199,7 +209,7 @@ function fullAuditOutput() {
         type: "role",
         canonicalName: "胡亥",
         identityFacts: { gender: "男", ageBand: "青年" },
-        evidence: [{ scriptId: 1, excerpt: "年轻的秦二世胡亥。", locator: "第1场" }],
+        evidence: [{ scriptId: 1, excerpt: "年轻的秦二世胡亥", locator: "第1场" }],
       },
     ],
     typeCorrections: [],
@@ -208,7 +218,7 @@ function fullAuditOutput() {
         type: "role",
         canonicalName: "陈胜",
         alias: "陈王",
-        evidence: [{ scriptId: 2, excerpt: "陈胜对众人说：今亡亦死。", locator: "第2场" }],
+        evidence: [{ scriptId: 2, excerpt: "陈胜对众人说：“今亡亦死，举大计亦死。”", locator: "第2场" }],
       },
     ],
   };
@@ -286,7 +296,7 @@ test("同名不同身份保持两个候选并只在后端记录 identityAmbiguou
           canonicalName: "李信",
           scriptIds: [2],
           summary: "与大泽乡李信同名的另一名戍卒。",
-          evidence: [{ scriptId: 2, excerpt: "另一名李信。", locator: "第1场" }],
+          evidence: [{ scriptId: 2, excerpt: "营地中的起义戍卒齐声应和", locator: "第3场" }],
         }),
       ],
     });
@@ -319,7 +329,7 @@ test("全名、简称、称号别名合并为同一候选", async () => {
           aliases: ["刘邦"],
           scriptIds: [2],
           summary: "起兵前的刘邦。",
-          evidence: [{ scriptId: 2, excerpt: "沛公在沛县起兵。", locator: "第1场" }],
+          evidence: [{ scriptId: 2, excerpt: "雨夜里，两名戍卒举着火把", locator: "第4场" }],
         }),
       ],
     });
@@ -518,7 +528,7 @@ test("同名不同身份持久化为两个独立资产，身份记录不互相�
           canonicalName: "李信",
           scriptIds: [2],
           summary: "与大泽乡李信同名的另一名戍卒。",
-          evidence: [{ scriptId: 2, excerpt: "另一名李信。", locator: "第1场" }],
+          evidence: [{ scriptId: 2, excerpt: "营地中的起义戍卒齐声应和", locator: "第3场" }],
         }),
       ],
     });
@@ -548,7 +558,7 @@ test("同名不同身份持久化为两个独立资产，身份记录不互相�
 test("重复或冲突的审计操作被确定性拒绝", async () => {
   const harness = await createHarness();
   try {
-    const factEvidence = [{ scriptId: 1, excerpt: "年轻的秦二世胡亥。", locator: "第1场" }];
+    const factEvidence = [{ scriptId: 1, excerpt: "年轻的秦二世胡亥", locator: "第1场" }];
     const cases: { name: string; audit: () => unknown }[] = [
       {
         name: "重复事实补充",
@@ -603,6 +613,30 @@ test("重复或冲突的审计操作被确定性拒绝", async () => {
   }
 });
 
+test("审计不得用不同值静默覆盖已有身份事实", () => {
+  assert.throws(
+    () =>
+      mergeBaseAssetCandidates(
+        [candidate({ canonicalName: "胡亥", identityFacts: { gender: "男" } })],
+        {
+          additions: [],
+          factAdditions: [
+            {
+              type: "role",
+              canonicalName: "胡亥",
+              identityFacts: { gender: "女" },
+              evidence: [{ scriptId: 1, excerpt: "年轻的秦二世胡亥", locator: "第1场" }],
+            },
+          ],
+          typeCorrections: [],
+          aliasProposals: [],
+        },
+        { log: () => undefined },
+      ),
+    /事实补充与已有事实冲突/,
+  );
+});
+
 test("提取进行中的剧本拒绝重入请求", async () => {
   const harness = await createHarness();
   try {
@@ -616,6 +650,122 @@ test("提取进行中的剧本拒绝重入请求", async () => {
     const states = await harness.knex("o_script").whereIn("id", [1, 2]).select("id", "extractState");
     assert.equal(states.find((s) => s.id === 1)!.extractState, 0, "进行中的剧本状态不被覆盖");
     assert.notEqual(states.find((s) => s.id === 2)!.extractState, 1, "重入请求不产生任何写入");
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test("分批提取的同名候选没有证据或别名关联时不得复用旧资产", async () => {
+  const harness = await createHarness();
+  try {
+    const emptyAudit = () => ({ additions: [], factAdditions: [], typeCorrections: [], aliasProposals: [] });
+    const firstDeps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({ assets: [candidate({ canonicalName: "李信", scriptIds: [1] })] }),
+        emptyAudit,
+      ),
+    });
+    const secondDeps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({ assets: [candidate({ canonicalName: "李信", scriptIds: [2] })] }),
+        emptyAudit,
+      ),
+    });
+    await persistBaseAssetExtraction(firstDeps, await runBaseAssetExtraction(firstDeps, { projectId: 7, scriptIds: [1] }));
+    await persistBaseAssetExtraction(secondDeps, await runBaseAssetExtraction(secondDeps, { projectId: 7, scriptIds: [2] }));
+
+    assert.equal((await harness.knex("o_assets").where({ projectId: 7, name: "李信" })).length, 2);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test("共享资产跨剧本具有一致身份事实时复用既有资产", async () => {
+  const harness = await createHarness();
+  try {
+    const emptyAudit = () => ({ additions: [], factAdditions: [], typeCorrections: [], aliasProposals: [] });
+    const firstDeps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({ assets: [candidate({ canonicalName: "胡亥", scriptIds: [1], identityFacts: { occupation: "秦二世" } })] }),
+        emptyAudit,
+      ),
+    });
+    const secondDeps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({ assets: [candidate({ canonicalName: "胡亥", scriptIds: [2], identityFacts: { occupation: "秦二世" } })] }),
+        emptyAudit,
+      ),
+    });
+    await persistBaseAssetExtraction(firstDeps, await runBaseAssetExtraction(firstDeps, { projectId: 7, scriptIds: [1] }));
+    await persistBaseAssetExtraction(secondDeps, await runBaseAssetExtraction(secondDeps, { projectId: 7, scriptIds: [2] }));
+
+    assert.equal((await harness.knex("o_assets").where({ projectId: 7, name: "胡亥" })).length, 1);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test("不同规范名仅共享通用称号时不得合并身份", async () => {
+  const harness = await createHarness();
+  try {
+    const emptyAudit = () => ({ additions: [], factAdditions: [], typeCorrections: [], aliasProposals: [] });
+    const firstDeps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({ assets: [candidate({ canonicalName: "甲将军", aliases: ["将军"], scriptIds: [1] })] }),
+        emptyAudit,
+      ),
+    });
+    const secondDeps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({ assets: [candidate({ canonicalName: "乙将军", aliases: ["将军"], scriptIds: [2] })] }),
+        emptyAudit,
+      ),
+    });
+    await persistBaseAssetExtraction(firstDeps, await runBaseAssetExtraction(firstDeps, { projectId: 7, scriptIds: [1] }));
+    await persistBaseAssetExtraction(secondDeps, await runBaseAssetExtraction(secondDeps, { projectId: 7, scriptIds: [2] }));
+
+    assert.equal((await harness.knex("o_assets").where("projectId", 7)).length, 2);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test("两个同时开始的提取请求只能有一个原子占用剧本", async () => {
+  const harness = await createHarness();
+  try {
+    let workCalls = 0;
+    let releaseChecks!: () => void;
+    const bothChecksFinished = new Promise<void>((resolve) => {
+      releaseChecks = resolve;
+    });
+    let waitingChecks = 0;
+    const racingWork: BaseAssetExtractionDependencies["work"] = async (operation) => {
+      const call = ++workCalls;
+      const result = await operation(harness.knex);
+      // 旧实现的第 3/4 次 work 分别是两个请求的“先查后写”重入检查。
+      // 把两次读取都停在写入之前，可稳定复现两个请求同时通过检查的竞态。
+      if (call === 3 || call === 4) {
+        waitingChecks += 1;
+        if (waitingChecks === 2) releaseChecks();
+        await bothChecksFinished;
+      }
+      return result;
+    };
+    const counters = { opened: 0, invoked: 0 };
+    const deps = harness.deps({
+      work: racingWork,
+      openTextCall: fakeTextCall(fullExtractionOutput, fullAuditOutput, counters),
+    });
+
+    const outcomes = await Promise.all([
+      executeScriptAssetExtraction(deps, { projectId: 7, scriptIds: [1, 2] }),
+      executeScriptAssetExtraction(deps, { projectId: 7, scriptIds: [1, 2] }),
+    ]);
+
+    assert.equal(outcomes.filter((outcome) => outcome.ok).length, 1);
+    assert.equal(outcomes.filter((outcome) => outcome.error === "extractionInProgress").length, 1);
+    assert.equal(counters.opened, 1, "被拒绝的并发请求不得打开 Text Model 调用");
+    assert.equal(counters.invoked, 2, "获胜请求只执行基础提取与完整性审计两次调用");
   } finally {
     await harness.cleanup();
   }
@@ -708,6 +858,36 @@ test("技能模板文件存在且不包含主观提取标准", async () => {
   }
   assert.ok(extractionPrompt.includes("群体"), "基础提取模板必须写明群体收录边界");
   assert.ok(auditPrompt.includes("不得删除"), "审计模板必须写明不可删除边界");
+});
+
+test("生产适配器限制每个阶段最多一次模型 step", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src", "script", "baseAssetExtraction.ts"), "utf8");
+  assert.ok(source.includes("stopWhen: stepCountIs(1)"));
+});
+
+test("模型证据摘录必须确实存在于对应剧本原文", async () => {
+  const harness = await createHarness();
+  try {
+    const deps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({
+          assets: [
+            candidate({
+              canonicalName: "伪证据候选",
+              evidence: [{ scriptId: 1, excerpt: "剧本中不存在的伪造证据", locator: "第1场" }],
+            }),
+          ],
+        }),
+        () => ({ additions: [], factAdditions: [], typeCorrections: [], aliasProposals: [] }),
+      ),
+    });
+    await assert.rejects(
+      runBaseAssetExtraction(deps, { projectId: 7, scriptIds: [1] }),
+      /证据摘录不存在于剧本 1 原文中/,
+    );
+  } finally {
+    await harness.cleanup();
+  }
 });
 
 test("路由不再拥有 Text Model 编排或分片规则", () => {
