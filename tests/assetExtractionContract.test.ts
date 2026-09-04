@@ -1,81 +1,97 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { safeParseJSON } from "@ai-sdk/provider-utils";
 
-import { assetExtractionToolInputSchema, parseAssetExtractionToolInput } from "../src/script/assetExtractionContract";
+import {
+  baseExtractionToolInputSchema,
+  completenessAuditToolInputSchema,
+  normalizeIdentityFacts,
+  parseBaseExtractionToolInput,
+  parseCompletenessAuditToolInput,
+} from "../src/script/assetExtractionContract";
 
-test("preserves canonical Asset Extraction arrays from a strict Model", () => {
-  const input = {
-    newAssets: [
+const CANDIDATE = {
+  type: "role" as const,
+  canonicalName: "吴广",
+  aliases: ["吴叔"],
+  summary: "秦末戍卒领袖，参与大泽乡起义。",
+  scriptIds: [2],
+  evidence: [{ scriptId: 2, excerpt: "吴广与同伴检查误期名册木牍。", locator: "第1场" }],
+};
+
+test("preserves canonical Base Asset candidates from a strict Model", () => {
+  const input = { assets: [CANDIDATE] };
+  assert.deepEqual(parseBaseExtractionToolInput(input), input);
+});
+
+test("normalizes JSON-encoded candidate arrays from a compatible Model", () => {
+  const result = parseBaseExtractionToolInput({ assets: JSON.stringify([CANDIDATE]) });
+  assert.deepEqual(result, { assets: [CANDIDATE] });
+});
+
+test("decodes fenced JSON tool parameters", () => {
+  const result = parseBaseExtractionToolInput(
+    "```json\n" + JSON.stringify({ assets: [CANDIDATE] }) + "\n```",
+  );
+  assert.deepEqual(result, { assets: [CANDIDATE] });
+});
+
+test("bounds evidence excerpt length deterministically", () => {
+  const long = "长".repeat(500);
+  const result = parseBaseExtractionToolInput({
+    assets: [{ ...CANDIDATE, evidence: [{ scriptId: 2, excerpt: long, locator: "第1场" }] }],
+  });
+  assert.equal(result.assets[0].evidence[0].excerpt.length, 200);
+});
+
+test("normalizes completeness audit output with double-encoded arrays", () => {
+  const audit = {
+    additions: [],
+    factAdditions: [
       {
-        name: "赤霄剑",
-        desc: "刘邦所持佩剑",
-        type: "tool" as const,
-        scriptIds: [1],
+        type: "role",
+        canonicalName: "胡亥",
+        identityFacts: { gender: "男", invented: "推测字段" },
+        evidence: [{ scriptId: 1, excerpt: "年轻的秦二世胡亥。", locator: "第1场" }],
       },
     ],
-    existingAssetRefs: [{ name: "刘邦", scriptIds: [1] }],
+    typeCorrections: [],
+    aliasProposals: [],
   };
-
-  assert.deepEqual(parseAssetExtractionToolInput(input), input);
+  const result = parseCompletenessAuditToolInput({
+    additions: JSON.stringify(audit.additions),
+    factAdditions: JSON.stringify(audit.factAdditions),
+    typeCorrections: JSON.stringify(audit.typeCorrections),
+    aliasProposals: JSON.stringify(audit.aliasProposals),
+  });
+  assert.equal(result.factAdditions.length, 1);
+  assert.deepEqual(result.factAdditions[0].identityFacts, { gender: "男", invented: "推测字段" });
 });
 
-test("normalizes JSON-encoded Asset Extraction arrays from a compatible Model", () => {
-  const result = parseAssetExtractionToolInput({
-    newAssets: JSON.stringify([
-      {
-        name: "刘邦",
-        desc: "汉军统帅",
-        type: "role",
-        scriptIds: [1],
-      },
-    ]),
-    existingAssetRefs: JSON.stringify([]),
-  });
-
-  assert.deepEqual(result, {
-    newAssets: [
-      {
-        name: "刘邦",
-        desc: "汉军统帅",
-        type: "role",
-        scriptIds: [1],
-      },
-    ],
-    existingAssetRefs: [],
-  });
+test("strips unknown identity fact keys per asset type", () => {
+  assert.deepEqual(normalizeIdentityFacts("role", { gender: "男", landmark: "x" }), { gender: "男" });
+  assert.deepEqual(normalizeIdentityFacts("scene", { landmark: "亭舍", gender: "男" }), { landmark: "亭舍" });
+  assert.equal(normalizeIdentityFacts("tool", { gender: "男" }), undefined);
 });
 
-test("normalizes compatible Model output at the AI SDK tool-input seam", async () => {
-  const result = await safeParseJSON({
-    text: JSON.stringify({
-      newAssets: JSON.stringify([
-        {
-          name: "鸿门宴军帐",
-          desc: "项羽设宴的中军大帐",
-          type: "scene",
-          scriptIds: [1],
-        },
-      ]),
-      existingAssetRefs: JSON.stringify([]),
-    }),
-    schema: assetExtractionToolInputSchema,
-  });
-
-  assert.equal(result.success, true);
-  if (!result.success) return;
-  assert.equal(Array.isArray(result.value.newAssets), true);
-  assert.equal(result.value.newAssets[0].name, "鸿门宴军帐");
-  assert.deepEqual(result.value.existingAssetRefs, []);
-});
-
-test("rejects unsupported Model output with an Asset Extraction contract error", () => {
+test("rejects unsupported Model output with a contract error", () => {
+  assert.throws(
+    () => parseBaseExtractionToolInput({ assets: { not: "an-array" } }),
+    /基础资产提取结果格式无效/,
+  );
   assert.throws(
     () =>
-      parseAssetExtractionToolInput({
-        newAssets: { assets: [] },
-        existingAssetRefs: [],
+      parseBaseExtractionToolInput({
+        assets: [{ ...CANDIDATE, type: "location" as unknown as typeof CANDIDATE.type }],
       }),
-    /资产提取结果格式无效.*newAssets/,
+    /基础资产提取结果格式无效/,
   );
+  assert.throws(
+    () => parseCompletenessAuditToolInput({ additions: [], factAdditions: [], typeCorrections: [], aliasProposals: {} }),
+    /完整性审计结果格式无效/,
+  );
+});
+
+test("exposes tool input schemas at the AI SDK tool-input seam", () => {
+  assert.ok(baseExtractionToolInputSchema);
+  assert.ok(completenessAuditToolInputSchema);
 });

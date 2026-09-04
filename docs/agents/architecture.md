@@ -22,6 +22,25 @@ ADR-0006 separates persisted, Script-grounded Asset Briefs from final image-gene
 
 ADR-0007 is implemented by `src/assets/derivedAssetPrompt.ts` and the thin Production Agent adapter at `src/routes/production/assets/batchGenerateAssetsImage.ts`: base Assets own human Asset References, while Derived Assets use a system-resolved Parent Asset Anchor plus a structured Derived Change Instruction and deterministic prompt compilation.
 
+## Implemented: Base Asset two-stage extraction
+
+Issue #41 replaces the grouped, route-owned Script Asset extraction with the deep orchestration module `src/script/baseAssetExtraction.ts`. One run receives all selected Scripts as a single full context and performs exactly two Text Model calls: one Base Asset extraction pass and one completeness-review pass. Both calls reuse one Model target resolved once at run start through the `ConfiguredVendor.openTextCall(target)` handle, which binds the resolved Vendor/Model and its persisted tuning. The HTTP route `src/routes/script/extractAssets.ts` is a thin adapter; it no longer owns Text Model orchestration, `groupSize`, Script chunking, or per-group database writes.
+
+Provider wire-format normalization and strict runtime validation stay in `src/script/assetExtractionContract.ts`. Model tool output is captured raw and parsed after the call returns, so invalid tool output always fails the run instead of being swallowed as a tool error. Deterministic backend code then validates evidence (known Script IDs, non-empty bounded excerpts with locatable scene/section markers), merges identities (type + canonical name + aliases + script evidence; same-name-only merging and fuzzy/embedding matching are forbidden; ambiguous identities stay separate and log `identityAmbiguous` backend-only), folds derived-state names such as 大泽乡·雨夜 back into their Base Asset, and sorts the staged result.
+
+Persistence adds `o_assetIdentity`: one current, schema-versioned structured identity record per Base Asset, separate from `o_assets.describe`, which remains the deterministic compiled compatibility summary (refreshed on re-extraction only for extraction-managed Assets, i.e. those that already carry an identity record). `persistBaseAssetExtraction` writes Assets, identity records, and Script links in one transaction inside a single database lease, so a mid-write failure rolls back without partial writes; every model or validation failure happens before any write. The staged result consumed by persist is the integration seam for #44's confirmed atomic replacement.
+
+### Prompt asset loading route
+
+The two stage prompts are version-controlled Skill templates under `data/skills/asset-extraction/`, loaded at runtime by `createDefaultBaseAssetSkillFileLoader()` (resolves under the data root, returns null when missing):
+
+| Stage | Template | Input contract | Output contract |
+| --- | --- | --- | --- |
+| Base extraction | `prompts/base_asset_extraction.md` | all selected Scripts joined with `===== 【剧本ID: id】name =====` separators | `resultTool` with `{ assets: BaseAssetCandidate[] }` |
+| Completeness review | `prompts/base_asset_completeness_review.md` | candidate digest + the same full Script context | `resultTool` with `{ additions, factAdditions, typeCorrections, aliasProposals }` |
+
+The review may add omitted Assets, add stable evidence-grounded facts, correct types, and propose evidence-backed aliases; the contract has no removal operation and the backend rejects derived-state output. The templates are not part of frontend prompt management (`o_prompt`); the legacy `scriptAssetExtraction` / `scriptAssetExtractionBatch` prompt rows are deleted on upgrade. Field-level contracts live in `assetExtractionContract.ts`; changing them requires updating the templates, the contract module, and `tests/baseAssetExtraction.test.ts` together (see `data/skills/asset-extraction/SKILL.md`).
+
 ## Worth exploring: Agent session runtime
 
 Script Agent and Production Agent duplicate authentication, abort handling, thinking state, stream consumption, memory writes, sub-Agent lifecycle, and output cleanup. They are two real adapters for a shared session seam, but migration risk is higher because behavior is largely untested.
