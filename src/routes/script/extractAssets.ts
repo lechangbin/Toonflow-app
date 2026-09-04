@@ -1,19 +1,23 @@
 import express from "express";
 import { z } from "zod";
 
-import { error, success } from "@/lib/responseFormat";
+import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import {
-  createDefaultBaseAssetExtractionDependencies,
-  executeScriptAssetExtraction,
-} from "@/script/baseAssetExtraction";
+  claimScriptAssetExtraction,
+  createDefaultScriptAssetExtractionDependencies,
+  runClaimedScriptAssetExtraction,
+  scriptAssetExtractionErrorEnvelope,
+} from "@/script/assetExtractionReplacement";
 
 /**
- * Script Base Asset 提取的薄适配器（Issue #41）。
+ * Script Base Asset 提取的薄适配器（Issue #41 / #44）。
  *
- * 校验、双阶段 Text Model 编排、确定性归并与一次性写入全部在
- * src/script/baseAssetExtraction.ts；本路由只转发请求。全量选中剧本作为
- * 一个完整上下文处理，不存在分组或分片。
+ * 确认门禁、并发占用、双阶段 Text Model 编排、确定性归并与单事务原子替换全部
+ * 在 src/script/assetExtractionReplacement.ts 及其复用的
+ * src/script/baseAssetExtraction.ts；本路由只转发请求与稳定错误信封：
+ *   - 任意选中剧本已有资产且缺少 replaceExisting → 409 reextractConfirmationRequired
+ *   - 同一剧本已有提取在运行 → 409 extractionInProgress
  */
 const router = express.Router();
 
@@ -22,16 +26,24 @@ export default router.post(
   validateFields({
     scriptIds: z.array(z.number()),
     projectId: z.number(),
+    replaceExisting: z.boolean().optional(),
   }),
   async (req, res) => {
-    const { scriptIds, projectId } = req.body;
-    if (!scriptIds.length) return res.status(400).send(error("请先选择剧本"));
+    const { scriptIds, projectId, replaceExisting } = req.body;
+    if (!scriptIds.length) return res.status(400).send({ code: 400, data: null, message: "请先选择剧本" });
 
-    // 提取在后台完成；进度通过 o_script.extractState 轮询（pollScriptAssets）。
-    void executeScriptAssetExtraction(createDefaultBaseAssetExtractionDependencies(), {
+    const claim = await claimScriptAssetExtraction(createDefaultScriptAssetExtractionDependencies(), {
       projectId,
       scriptIds,
+      replaceExisting: replaceExisting === true,
     });
+    if (claim.status !== "claimed") {
+      const envelope = scriptAssetExtractionErrorEnvelope(claim.status);
+      return res.status(envelope.status).send(envelope.body);
+    }
+
+    // 提取在后台完成；进度通过 o_script.extractState 轮询（pollScriptAssets）。
+    void runClaimedScriptAssetExtraction(createDefaultScriptAssetExtractionDependencies(), claim.scripts);
     res.send(success("开始提取资产"));
   },
 );

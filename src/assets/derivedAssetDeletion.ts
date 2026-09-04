@@ -8,8 +8,14 @@ export type DeleteDerivedAssetResult =
   | { ok: false; message: string };
 
 /**
- * 删除 Derived Asset 的唯一领域边界。目标必须属于当前 Project，必须确实有父
- * Asset；Agent 调用还可锁定预期父 Asset，防止伪造 ID 跨父级删除。
+ * 删除单个 Derived Asset 的领域边界（Agent 工具与路由入口）。目标必须属于当前
+ * Project，必须确实有父 Asset；Agent 调用还可锁定预期父 Asset，防止伪造 ID 跨
+ * 父级删除。
+ *
+ * Issue #44 的替换式重新提取在 assetExtractionReplacement 的事务内对孤儿资产
+ * 及其 Derived children 执行自己的级联清理（含分镜失效与视频过期），不经过本
+ * 函数；两者共享 removeAssetPromptRecordRows / removeDerivedChangeInstructionRows
+ * 等行删除原语。
  */
 export async function deleteDerivedAssetRecord(
   work: DatabaseWork,
