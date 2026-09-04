@@ -258508,6 +258508,7 @@ async function runBaseAssetExtractionWithScripts(dependencies, scripts) {
   const requestId = (0, import_node_crypto6.randomUUID)();
   const projectId = scripts[0].projectId;
   const selectedIds = new Set(scripts.map((script) => script.id));
+  const scriptContentById = new Map(scripts.map((script) => [script.id, script.content ?? ""]));
   const scriptsContent = compileScriptsContent(scripts);
   const call = await dependencies.openTextCall();
   const extractionPrompt = await requireSkillFile(dependencies, EXTRACTION_TEMPLATE_PATH);
@@ -258526,7 +258527,7 @@ ${scriptsContent}`,
     () => parseBaseExtractionToolInput(extractionRaw),
     "\u57FA\u7840\u8D44\u4EA7\u63D0\u53D6\u7ED3\u679C"
   );
-  const candidates = validateCandidates(extractionResult.assets, selectedIds);
+  const candidates = validateCandidates(extractionResult.assets, selectedIds, scriptContentById);
   dependencies.log({ requestId, stage: "extraction", scriptIds: [...selectedIds], count: candidates.length });
   const auditPrompt = await requireSkillFile(dependencies, AUDIT_TEMPLATE_PATH);
   let auditRaw = void 0;
@@ -258549,7 +258550,7 @@ ${scriptsContent}`,
     throw new BaseAssetExtractionFailure("modelOutputMissing", "\u5B8C\u6574\u6027\u5BA1\u8BA1\u672A\u8FD4\u56DE\u5DE5\u5177\u7ED3\u679C");
   }
   const audit = parseWithFailure(() => parseCompletenessAuditToolInput(auditRaw), "\u5B8C\u6574\u6027\u5BA1\u8BA1\u7ED3\u679C");
-  const operations = validateAuditOperations(audit, selectedIds);
+  const operations = validateAuditOperations(audit, selectedIds, scriptContentById);
   dependencies.log({
     requestId,
     stage: "audit",
@@ -258620,6 +258621,15 @@ function mergeBaseAssetCandidates(candidates, operations, context2) {
       );
     }
     const normalized = normalizeIdentityFacts(target.type, fact.identityFacts) ?? {};
+    for (const [key, value] of Object.entries(normalized)) {
+      const existing = target.identityFacts[key];
+      if (existing !== void 0 && existing !== value) {
+        throw new BaseAssetExtractionFailure(
+          "invalidOutput",
+          `\u5B8C\u6574\u6027\u5BA1\u8BA1\u7684\u4E8B\u5B9E\u8865\u5145\u4E0E\u5DF2\u6709\u4E8B\u5B9E\u51B2\u7A81\uFF1A${fact.canonicalName}.${key}`
+        );
+      }
+    }
     Object.assign(target.identityFacts, normalized);
     target.evidence.push(...fact.evidence);
   }
@@ -258666,126 +258676,100 @@ function mergeBaseAssetCandidates(candidates, operations, context2) {
   foldStateVariants(working, context2);
   return working.map((candidate) => toStagedBaseAsset(candidate)).sort((a, b) => compareCodePoints(a.canonicalName, b.canonicalName)).sort((a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type]);
 }
-async function persistBaseAssetExtraction(dependencies, staged) {
-  try {
-    return await dependencies.work(
-      (db) => db.transaction(async (trx) => {
-        const existingAssets = await trx("o_assets").where("projectId", staged.projectId).select("id", "name", "type");
-        const existingIdentities = existingAssets.length ? await trx("o_assetIdentity").whereIn(
-          "assetsId",
-          existingAssets.map((asset) => asset.id)
-        ) : [];
-        const identityByAssetId = /* @__PURE__ */ new Map();
-        for (const row of existingIdentities) {
-          try {
-            const record3 = JSON.parse(row.identity);
-            if (record3.canonicalName && record3.type)
-              identityByAssetId.set(row.assetsId, {
-                canonicalName: record3.canonicalName,
-                type: record3.type
-              });
-          } catch {
-          }
-        }
-        const assetIds = [];
-        const consumedAssetIds = /* @__PURE__ */ new Set();
-        for (const candidate of staged.candidates) {
-          const matched = existingAssets.find((asset) => {
-            if (consumedAssetIds.has(asset.id)) return false;
-            const identity2 = identityByAssetId.get(asset.id);
-            const identityName = identity2?.canonicalName ?? asset.name ?? "";
-            return asset.type === candidate.type && identityName === candidate.canonicalName;
-          });
-          if (matched) {
-            consumedAssetIds.add(matched.id);
-            if (identityByAssetId.has(matched.id)) {
-              await trx("o_assets").where("id", matched.id).update({ describe: candidate.describe });
-            }
-            await upsertAssetIdentity(trx, dependencies, matched.id, staged.projectId, candidate);
-            assetIds.push(matched.id);
-            continue;
-          }
-          const [assetId] = await trx("o_assets").insert({
-            name: candidate.canonicalName,
-            type: candidate.type,
-            describe: candidate.describe,
-            projectId: staged.projectId,
-            startTime: dependencies.now()
-          });
-          await upsertAssetIdentity(trx, dependencies, assetId, staged.projectId, candidate);
-          assetIds.push(assetId);
-        }
-        await trx("o_scriptAssets").whereIn("scriptId", staged.scriptIds).delete();
-        const linkRows = /* @__PURE__ */ new Map();
-        staged.candidates.forEach((candidate, index) => {
-          for (const scriptId of candidate.scriptIds) {
-            const assetId = assetIds[index];
-            linkRows.set(`${scriptId}_${assetId}`, { scriptId, assetId });
-          }
-        });
-        if (linkRows.size) await trx("o_scriptAssets").insert([...linkRows.values()]);
-        return { assetIds };
-      })
-    );
-  } catch (error67) {
-    throw new BaseAssetExtractionFailure("persistenceFailed", `Base Asset \u7ED3\u679C\u5199\u5165\u5931\u8D25: ${errorMessage(error67)}`);
+async function persistStagedBaseAssets(trx, dependencies, staged) {
+  const existingAssets = await trx("o_assets").where("projectId", staged.projectId).select("id", "name", "type");
+  const existingIdentities = existingAssets.length ? await trx("o_assetIdentity").whereIn(
+    "assetsId",
+    existingAssets.map((asset) => asset.id)
+  ) : [];
+  const identityByAssetId = /* @__PURE__ */ new Map();
+  for (const row of existingIdentities) {
+    try {
+      const record3 = parseBaseAssetIdentityRecord(row.identity);
+      identityByAssetId.set(row.assetsId, record3);
+    } catch {
+    }
   }
-}
-async function executeScriptAssetExtraction(dependencies, input) {
-  const requestId = (0, import_node_crypto6.randomUUID)();
-  let resolvedIds = [];
-  try {
-    const scripts = await resolveScripts(dependencies, input);
-    if (!scripts.length) {
-      dependencies.log({ requestId, stage: "resolve", kind: "scriptNotFound", scriptIds: [...input.scriptIds] });
-      return { ok: false, error: "scriptNotFound" };
-    }
-    resolvedIds = scripts.map((script) => script.id);
-    const inProgress = await dependencies.work(
-      (db) => db("o_script").whereIn("id", resolvedIds).where("extractState", 0).select("id")
-    );
-    if (inProgress.length) {
-      dependencies.log({ requestId, stage: "resolve", kind: "extractionInProgress", scriptIds: resolvedIds });
-      return { ok: false, error: "extractionInProgress" };
-    }
-    await dependencies.work((db) => db("o_script").whereIn("id", resolvedIds).update({ extractState: 0 }));
-    const staged = await runBaseAssetExtractionWithScripts(dependencies, scripts);
-    await persistBaseAssetExtraction(dependencies, staged);
-    await dependencies.work(
-      (db) => db("o_script").whereIn("id", resolvedIds).update({ extractState: 1, errorReason: null })
-    );
-    dependencies.log({
-      requestId,
-      stage: "persist",
-      scriptIds: resolvedIds,
-      count: staged.candidates.length
+  const assetIds = [];
+  const reusedAssetIds = [];
+  const createdAssetIds = [];
+  const consumedAssetIds = /* @__PURE__ */ new Set();
+  for (const candidate of staged.candidates) {
+    const matched = existingAssets.find((asset) => {
+      if (consumedAssetIds.has(asset.id)) return false;
+      const identity2 = identityByAssetId.get(asset.id);
+      return identity2 ? identitiesAreLinked(identity2, candidate) : false;
     });
-    return { ok: true, assetCount: staged.candidates.length };
-  } catch (error67) {
-    const failure2 = asFailure(error67);
-    dependencies.log({
-      requestId,
-      stage: "failed",
-      kind: failure2.kind,
-      scriptIds: resolvedIds,
-      message: failure2.message
-    });
-    if (resolvedIds.length) {
-      try {
-        await dependencies.work(
-          (db) => db("o_script").whereIn("id", resolvedIds).update({ extractState: -1, errorReason: failure2.message })
-        );
-      } catch (stateError) {
+    if (!matched) {
+      const ambiguous = existingAssets.find((asset) => {
+        const identity2 = identityByAssetId.get(asset.id);
+        return !consumedAssetIds.has(asset.id) && asset.type === candidate.type && identity2?.canonicalName === candidate.canonicalName;
+      });
+      if (ambiguous) {
         dependencies.log({
-          requestId,
-          stage: "failed",
-          kind: "stateWriteFailed",
-          message: errorMessage(stateError)
+          stage: "persist",
+          kind: "identityAmbiguous",
+          reason: "sameNameWithoutEvidenceLink",
+          type: candidate.type,
+          name: candidate.canonicalName,
+          existingAssetId: ambiguous.id,
+          scriptIds: candidate.scriptIds
         });
       }
     }
-    return { ok: false, error: failure2.kind };
+    if (matched) {
+      consumedAssetIds.add(matched.id);
+      if (identityByAssetId.has(matched.id)) {
+        await trx("o_assets").where("id", matched.id).update({ describe: candidate.describe });
+      }
+      await upsertAssetIdentity(trx, dependencies, matched.id, staged.projectId, candidate);
+      assetIds.push(matched.id);
+      reusedAssetIds.push(matched.id);
+      continue;
+    }
+    const [assetId] = await trx("o_assets").insert({
+      name: candidate.canonicalName,
+      type: candidate.type,
+      describe: candidate.describe,
+      projectId: staged.projectId,
+      startTime: dependencies.now()
+    });
+    await upsertAssetIdentity(trx, dependencies, assetId, staged.projectId, candidate);
+    assetIds.push(assetId);
+    createdAssetIds.push(assetId);
   }
+  await trx("o_scriptAssets").whereIn("scriptId", staged.scriptIds).delete();
+  const linkRows = /* @__PURE__ */ new Map();
+  staged.candidates.forEach((candidate, index) => {
+    for (const scriptId of candidate.scriptIds) {
+      const assetId = assetIds[index];
+      linkRows.set(`${scriptId}_${assetId}`, { scriptId, assetId });
+    }
+  });
+  if (linkRows.size) await trx("o_scriptAssets").insert([...linkRows.values()]);
+  return { assetIds, reusedAssetIds, createdAssetIds };
+}
+async function claimScriptAssetExtraction(dependencies, input) {
+  const scripts = await resolveScripts(dependencies, input);
+  if (!scripts.length) return { status: "scriptNotFound" };
+  const scriptIds = scripts.map((script) => script.id);
+  const claim = await dependencies.work(
+    (db) => db.transaction(async (trx) => {
+      if (!input.replaceExisting) {
+        const linked = await trx("o_scriptAssets").whereIn("scriptId", scriptIds).select("scriptId");
+        if (linked.length) throw new ReextractConfirmationRequired();
+      }
+      const updated = await trx("o_script").whereIn("id", scriptIds).where((builder) => builder.whereNull("extractState").orWhereNot("extractState", 0)).update({ extractState: 0 });
+      if (Number(updated) === scriptIds.length) return true;
+      throw new ExtractionClaimConflict();
+    }).catch((error67) => {
+      if (error67 instanceof ReextractConfirmationRequired) return "reextractConfirmationRequired";
+      if (error67 instanceof ExtractionClaimConflict) return "extractionInProgress";
+      throw error67;
+    })
+  );
+  if (claim !== true) return { status: claim };
+  return { status: "claimed", scripts };
 }
 function createDefaultBaseAssetSkillFileLoader() {
   return async (relativePath) => {
@@ -258807,7 +258791,8 @@ function createDefaultBaseAssetExtractionDependencies() {
           await call.invokeText({
             system,
             messages: [{ role: "user", content: user }],
-            tools
+            tools,
+            stopWhen: stepCountIs(1)
           });
         }
       };
@@ -258816,6 +258801,29 @@ function createDefaultBaseAssetExtractionDependencies() {
     now: () => Date.now(),
     log: (entry) => console.log(`[baseAssetExtraction] ${JSON.stringify(entry)}`)
   };
+}
+function parseBaseAssetIdentityRecord(serialized) {
+  const record3 = JSON.parse(typeof serialized === "string" ? serialized : "{}");
+  if (!record3 || typeof record3 !== "object" || !record3.canonicalName) {
+    throw new Error("Base Asset \u8EAB\u4EFD\u8BB0\u5F55\u65E0\u6548");
+  }
+  return record3;
+}
+function identitiesAreLinked(existing, candidate) {
+  if (existing.type !== candidate.type) return false;
+  const existingAliases = new Set(existing.aliases ?? []);
+  const candidateAliases = new Set(candidate.aliases);
+  const sameCanonicalName = existing.canonicalName === candidate.canonicalName;
+  const hasExplicitNameAliasLink = existingAliases.has(candidate.canonicalName) || candidateAliases.has(existing.canonicalName);
+  if (!sameCanonicalName && !hasExplicitNameAliasLink) return false;
+  const existingScriptIds = new Set(existing.scriptIds ?? []);
+  if (candidate.scriptIds.some((scriptId) => existingScriptIds.has(scriptId))) return true;
+  if (hasExplicitNameAliasLink) return true;
+  const existingFacts = existing.identityFacts ?? {};
+  const candidateFacts = candidate.identityFacts ?? {};
+  const sharedKeys = Object.keys(existingFacts).filter((key) => candidateFacts[key] !== void 0);
+  if (sharedKeys.some((key) => existingFacts[key] !== candidateFacts[key])) return false;
+  return sharedKeys.some((key) => existingFacts[key] === candidateFacts[key]);
 }
 async function upsertAssetIdentity(db, dependencies, assetsId, projectId, candidate) {
   const record3 = {
@@ -258892,7 +258900,7 @@ function parseWithFailure(parse4, label) {
     throw new BaseAssetExtractionFailure("malformedOutput", `${label}\u975E\u6CD5: ${errorMessage(error67)}`);
   }
 }
-function validateCandidates(candidates, selectedIds) {
+function validateCandidates(candidates, selectedIds, scriptContentById) {
   for (const candidate of candidates) {
     const unknown3 = [
       ...candidate.scriptIds,
@@ -258912,17 +258920,35 @@ function validateCandidates(candidates, selectedIds) {
         `\u8D44\u4EA7 ${candidate.canonicalName} \u7684\u5267\u672C ${missingEvidence.join(",")} \u7F3A\u5C11\u8BC1\u636E`
       );
     }
+    validateEvidenceExcerpts(`\u8D44\u4EA7 ${candidate.canonicalName}`, candidate.evidence, scriptContentById);
   }
   return candidates;
 }
-function validateAuditOperations(audit, selectedIds) {
-  const validatedAdditions = validateCandidates(audit.additions, selectedIds);
+function validateEvidenceExcerpts(label, evidence, scriptContentById) {
+  for (const item of evidence) {
+    const content = scriptContentById.get(item.scriptId);
+    if (content === void 0) continue;
+    const normalizedExcerpt = normalizeEvidenceText(item.excerpt);
+    if (!normalizedExcerpt || !normalizeEvidenceText(content).includes(normalizedExcerpt)) {
+      throw new BaseAssetExtractionFailure(
+        "invalidOutput",
+        `${label}\u7684\u8BC1\u636E\u6458\u5F55\u4E0D\u5B58\u5728\u4E8E\u5267\u672C ${item.scriptId} \u539F\u6587\u4E2D`
+      );
+    }
+  }
+}
+function normalizeEvidenceText(value) {
+  return value.replace(/\s+/gu, "");
+}
+function validateAuditOperations(audit, selectedIds, scriptContentById) {
+  const validatedAdditions = validateCandidates(audit.additions, selectedIds, scriptContentById);
   const requireKnownScriptIds = (label, evidence) => {
     for (const item of evidence) {
       if (!selectedIds.has(item.scriptId)) {
         throw new BaseAssetExtractionFailure("invalidOutput", `${label}\u5F15\u7528\u4E86\u672A\u77E5\u5267\u672C ID\uFF1A${item.scriptId}`);
       }
     }
+    validateEvidenceExcerpts(label, evidence, scriptContentById);
   };
   const correctionKeys = /* @__PURE__ */ new Set();
   for (const correction of audit.typeCorrections) {
@@ -259114,16 +259140,13 @@ function compareCodePoints(a, b) {
 function errorMessage(error67) {
   return error67 instanceof Error ? error67.message : String(error67);
 }
-function asFailure(error67) {
-  if (error67 instanceof BaseAssetExtractionFailure) return error67;
-  return new BaseAssetExtractionFailure("modelCallFailed", errorMessage(error67));
-}
-var import_node_fs7, import_node_crypto6, ASSET_IDENTITY_SCHEMA_VERSION, EXTRACTION_TEMPLATE_PATH, AUDIT_TEMPLATE_PATH, VARIANT_SEPARATORS, TYPE_ORDER, TYPE_LABELS, BaseAssetExtractionFailure;
+var import_node_fs7, import_node_crypto6, ASSET_IDENTITY_SCHEMA_VERSION, EXTRACTION_TEMPLATE_PATH, AUDIT_TEMPLATE_PATH, VARIANT_SEPARATORS, TYPE_ORDER, TYPE_LABELS, BaseAssetExtractionFailure, ExtractionClaimConflict, ReextractConfirmationRequired;
 var init_baseAssetExtraction = __esm({
   "src/script/baseAssetExtraction.ts"() {
     "use strict";
     import_node_fs7 = __toESM(require("node:fs"));
     import_node_crypto6 = require("node:crypto");
+    init_dist23();
     init_database();
     init_vendor2();
     init_getPath();
@@ -259142,6 +259165,208 @@ var init_baseAssetExtraction = __esm({
         this.kind = kind;
       }
     };
+    ExtractionClaimConflict = class extends Error {
+    };
+    ReextractConfirmationRequired = class extends Error {
+    };
+  }
+});
+
+// src/script/assetExtractionReplacement.ts
+function scriptAssetExtractionErrorEnvelope(kind) {
+  const { status, message } = SCRIPT_ASSET_EXTRACTION_FAILURES[kind];
+  return { status, body: { code: status, data: null, message, error: kind } };
+}
+async function replaceScriptAssetExtraction(dependencies, staged) {
+  const mediaPaths = [];
+  let result;
+  try {
+    result = await dependencies.work(
+      (db) => db.transaction(async (trx) => {
+        const previousLinks = await trx("o_scriptAssets").whereIn("scriptId", staged.scriptIds).select("assetId");
+        const previousAssetIds = [...new Set(previousLinks.map((link) => link.assetId))];
+        const persisted = await persistStagedBaseAssets(trx, dependencies, staged);
+        const reused = new Set(persisted.reusedAssetIds);
+        let stillLinked = /* @__PURE__ */ new Set();
+        if (previousAssetIds.length) {
+          const remaining = await trx("o_scriptAssets").whereIn("assetId", previousAssetIds).select("assetId");
+          stillLinked = new Set(remaining.map((link) => link.assetId));
+        }
+        const baseOrphans = previousAssetIds.filter((id) => !reused.has(id) && !stillLinked.has(id));
+        const deletedAssetIds = await expandDerivedChildren(trx, baseOrphans);
+        const { affectedStoryboardIds, staleVideoTrackIds } = await cascadeDeleteOrphanedAssets(
+          trx,
+          dependencies,
+          deletedAssetIds,
+          mediaPaths
+        );
+        return {
+          reusedAssetIds: persisted.reusedAssetIds,
+          createdAssetIds: persisted.createdAssetIds,
+          deletedAssetIds,
+          affectedStoryboardIds,
+          staleVideoTrackIds
+        };
+      })
+    );
+  } catch (error67) {
+    throw new BaseAssetExtractionFailure(
+      "persistenceFailed",
+      `Base Asset \u66FF\u6362\u4E8B\u52A1\u5931\u8D25: ${error67 instanceof Error ? error67.message : String(error67)}`
+    );
+  }
+  for (const mediaPath of mediaPaths) {
+    try {
+      await dependencies.deleteMediaFile(mediaPath);
+    } catch (error67) {
+      dependencies.log({
+        stage: "mediaCleanup",
+        kind: "mediaCleanupFailed",
+        mediaPath,
+        message: error67 instanceof Error ? error67.message : String(error67)
+      });
+    }
+  }
+  return result;
+}
+async function expandDerivedChildren(trx, baseOrphans) {
+  const all3 = new Set(baseOrphans);
+  let frontier = baseOrphans;
+  while (frontier.length) {
+    const children = await trx("o_assets").whereIn("assetsId", frontier).select("id");
+    frontier = children.map((child) => child.id).filter((id) => !all3.has(id));
+    frontier.forEach((id) => all3.add(id));
+  }
+  return [...all3];
+}
+async function cascadeDeleteOrphanedAssets(trx, dependencies, deletedAssetIds, mediaPaths) {
+  if (!deletedAssetIds.length) return { affectedStoryboardIds: [], staleVideoTrackIds: [] };
+  mediaPaths.push(...await removeAssetReferenceRows(trx, deletedAssetIds));
+  await removeAssetPromptRecordRows(trx, deletedAssetIds);
+  await removeDerivedChangeInstructionRows(trx, deletedAssetIds);
+  const imageRows = await trx("o_image").whereIn("assetsId", deletedAssetIds).select("id", "filePath");
+  mediaPaths.push(...imageRows.map((row) => row.filePath).filter((filePath) => Boolean(filePath)));
+  const imageIds = imageRows.map((row) => row.id);
+  if (imageIds.length) {
+    await trx("o_assets").whereIn("imageId", imageIds).update({ imageId: null });
+    await trx("o_image").whereIn("id", imageIds).delete();
+  }
+  const flowRows = await trx("o_assets").whereIn("id", deletedAssetIds).whereNotNull("flowId").select("flowId");
+  const orphanFlowIds = [...new Set(flowRows.map((row) => row.flowId))];
+  if (orphanFlowIds.length) {
+    const survivingFlowRows = await trx("o_assets").whereNotNull("flowId").whereNotIn("id", deletedAssetIds).select("flowId");
+    const survivingFlowIds = new Set(survivingFlowRows.map((row) => row.flowId));
+    const removableFlowIds = orphanFlowIds.filter((flowId) => !survivingFlowIds.has(flowId));
+    if (removableFlowIds.length) await trx("o_imageFlow").whereIn("id", removableFlowIds).delete();
+  }
+  const storyboardLinkRows = await trx("o_assets2Storyboard").whereIn("assetId", deletedAssetIds).select("storyboardId");
+  const affectedStoryboardIds = [...new Set(storyboardLinkRows.map((row) => row.storyboardId))];
+  await trx("o_assets2Storyboard").whereIn("assetId", deletedAssetIds).delete();
+  await trx("o_scriptAssets").whereIn("assetId", deletedAssetIds).delete();
+  await trx("o_assetIdentity").whereIn("assetsId", deletedAssetIds).delete();
+  await trx("o_assets").whereIn("id", deletedAssetIds).delete();
+  let staleVideoTrackIds = [];
+  if (affectedStoryboardIds.length) {
+    await trx("o_storyboard").whereIn("id", affectedStoryboardIds).update({
+      filePath: "",
+      state: "\u672A\u751F\u6210"
+    });
+    const storyboardRows = await trx("o_storyboard").whereIn("id", affectedStoryboardIds).whereNotNull("trackId").select("trackId");
+    staleVideoTrackIds = [...new Set(storyboardRows.map((row) => row.trackId))];
+  }
+  if (staleVideoTrackIds.length) {
+    const videoRows = await trx("o_video").whereIn("videoTrackId", staleVideoTrackIds).select("artifactRevisionId");
+    await trx("o_video").whereIn("videoTrackId", staleVideoTrackIds).update({ state: "\u5DF2\u8FC7\u671F" });
+    await trx("o_videoTrack").whereIn("id", staleVideoTrackIds).update({
+      state: "\u5DF2\u8FC7\u671F",
+      reason: "\u8D44\u4EA7\u5DF2\u66FF\u6362\uFF0C\u5206\u955C\u56FE\u7247\u9700\u91CD\u65B0\u751F\u6210",
+      videoId: null
+    });
+    const revisionIds = videoRows.map((row) => row.artifactRevisionId).filter((revisionId) => Boolean(revisionId));
+    if (revisionIds.length) {
+      await trx("o_artifactRevision").whereIn("id", revisionIds).update({ status: "rejected" });
+    }
+  }
+  dependencies.log({
+    stage: "replacement",
+    kind: "orphanCascade",
+    deletedAssetIds,
+    affectedStoryboardIds,
+    staleVideoTrackIds
+  });
+  return { affectedStoryboardIds, staleVideoTrackIds };
+}
+async function runClaimedScriptAssetExtraction(dependencies, scripts) {
+  const requestId = (0, import_node_crypto7.randomUUID)();
+  const resolvedIds = scripts.map((script) => script.id);
+  try {
+    const staged = await runBaseAssetExtractionWithScripts(dependencies, scripts);
+    const result = await replaceScriptAssetExtraction(dependencies, staged);
+    await dependencies.work(
+      (db) => db("o_script").whereIn("id", resolvedIds).update({ extractState: 1, errorReason: null })
+    );
+    dependencies.log({
+      requestId,
+      stage: "persist",
+      scriptIds: resolvedIds,
+      count: staged.candidates.length,
+      reused: result.reusedAssetIds.length,
+      created: result.createdAssetIds.length,
+      deleted: result.deletedAssetIds.length
+    });
+    return { ok: true, assetCount: staged.candidates.length };
+  } catch (error67) {
+    const failure2 = asFailure(error67);
+    dependencies.log({
+      requestId,
+      stage: "failed",
+      kind: failure2.kind,
+      scriptIds: resolvedIds,
+      message: failure2.message
+    });
+    if (resolvedIds.length) {
+      try {
+        await dependencies.work(
+          (db) => db("o_script").whereIn("id", resolvedIds).update({ extractState: -1, errorReason: failure2.message })
+        );
+      } catch (stateError) {
+        dependencies.log({
+          requestId,
+          stage: "failed",
+          kind: "stateWriteFailed",
+          message: stateError instanceof Error ? stateError.message : String(stateError)
+        });
+      }
+    }
+    return { ok: false, error: failure2.kind };
+  }
+}
+function asFailure(error67) {
+  if (error67 instanceof BaseAssetExtractionFailure) return error67;
+  return new BaseAssetExtractionFailure("modelCallFailed", error67 instanceof Error ? error67.message : String(error67));
+}
+function createDefaultScriptAssetExtractionDependencies() {
+  return {
+    ...createDefaultBaseAssetExtractionDependencies(),
+    deleteMediaFile: (mediaPath) => deleteMediaFileIfPresent(mediaPath)
+  };
+}
+var import_node_crypto7, SCRIPT_ASSET_EXTRACTION_FAILURES;
+var init_assetExtractionReplacement = __esm({
+  "src/script/assetExtractionReplacement.ts"() {
+    "use strict";
+    import_node_crypto7 = require("node:crypto");
+    init_assetReferenceMedia();
+    init_assetReferences();
+    init_assetPromptOrchestration();
+    init_derivedChangeInstruction();
+    init_baseAssetExtraction();
+    init_baseAssetExtraction();
+    SCRIPT_ASSET_EXTRACTION_FAILURES = {
+      reextractConfirmationRequired: { status: 409, message: "\u5F53\u524D\u64CD\u4F5C\u4F1A\u5220\u9664\u5F53\u524D\u5DF2\u6709\u8D44\u4EA7\uFF0C\u8BF7\u786E\u8BA4\u662F\u5426\u63D0\u53D6" },
+      extractionInProgress: { status: 409, message: "\u5DF2\u6709\u63D0\u53D6\u4EFB\u52A1\u6B63\u5728\u8FD0\u884C" },
+      scriptNotFound: { status: 400, message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u53EF\u63D0\u53D6\u5267\u672C" }
+    };
   }
 });
 
@@ -259154,21 +259379,28 @@ var init_extractAssets = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    init_baseAssetExtraction();
+    init_assetExtractionReplacement();
     router112 = import_express118.default.Router();
     extractAssets_default = router112.post(
       "/",
       validateFields({
         scriptIds: external_exports.array(external_exports.number()),
-        projectId: external_exports.number()
+        projectId: external_exports.number(),
+        replaceExisting: external_exports.boolean().optional()
       }),
       async (req, res) => {
-        const { scriptIds, projectId } = req.body;
-        if (!scriptIds.length) return res.status(400).send(error50("\u8BF7\u5148\u9009\u62E9\u5267\u672C"));
-        void executeScriptAssetExtraction(createDefaultBaseAssetExtractionDependencies(), {
+        const { scriptIds, projectId, replaceExisting } = req.body;
+        if (!scriptIds.length) return res.status(400).send({ code: 400, data: null, message: "\u8BF7\u5148\u9009\u62E9\u5267\u672C" });
+        const claim = await claimScriptAssetExtraction(createDefaultScriptAssetExtractionDependencies(), {
           projectId,
-          scriptIds
+          scriptIds,
+          replaceExisting: replaceExisting === true
         });
+        if (claim.status !== "claimed") {
+          const envelope = scriptAssetExtractionErrorEnvelope(claim.status);
+          return res.status(envelope.status).send(envelope.body);
+        }
+        void runClaimedScriptAssetExtraction(createDefaultScriptAssetExtractionDependencies(), claim.scripts);
         res.send(success3("\u5F00\u59CB\u63D0\u53D6\u8D44\u4EA7"));
       }
     );
@@ -262450,6 +262682,12 @@ init_assetBriefContract();
 init_derivedAssetDeletion();
 var ChangeInstructionWriteError = class extends Error {
 };
+var EquivalentDerivedAssetError = class extends Error {
+  constructor(assetId) {
+    super(`\u7236\u8D44\u4EA7\u4E0B\u5DF2\u5B58\u5728\u7B49\u4EF7\u89C6\u89C9\u72B6\u6001\u7684\u884D\u751F\u8D44\u4EA7\uFF0CID: ${assetId}`);
+    this.assetId = assetId;
+  }
+};
 var deriveAssetSchema = external_exports.object({
   id: external_exports.number().describe("\u884D\u751F\u8D44\u4EA7ID,\u5982\u679C\u65B0\u589E\u5219\u4E3A\u7A7A"),
   assetsId: external_exports.number().describe("\u5173\u8054\u7684\u8D44\u4EA7ID"),
@@ -262588,16 +262826,6 @@ var tools_default = (toolCpnfig) => {
         if (parsedInstruction.data.evidence.length === 0) {
           return "\u53D8\u5316\u5951\u7EA6\u7F3A\u5C11\u5267\u672C\u8BC1\u636E\uFF08evidence \u81F3\u5C11\u4E00\u6761\uFF09\uFF0C\u7981\u6B62\u4E3A\u4E86\u6EE1\u8DB3\u6570\u91CF\u800C\u521B\u5EFA\u65E0\u8BC1\u636E\u884D\u751F\u8D44\u4EA7";
         }
-        const equivalent = await findEquivalentDerivedAsset(getDatabaseRuntime().work, {
-          projectId,
-          parentAssetsId: deriveAsset.assetsId,
-          dimensions: parsedInstruction.data.dimensions,
-          change: parsedInstruction.data.change,
-          excludeAssetsId: deriveAsset.id ?? void 0
-        });
-        if (equivalent !== null) {
-          return `\u7236\u8D44\u4EA7 ${deriveAsset.assetsId} \u4E0B\u5DF2\u5B58\u5728\u7B49\u4EF7\u89C6\u89C9\u72B6\u6001\uFF08dimensions \u4E0E change \u4E00\u81F4\uFF09\u7684\u884D\u751F\u8D44\u4EA7\uFF0CID: ${equivalent}\uFF0C\u8BF7\u76F4\u63A5\u590D\u7528\u6216\u66F4\u65B0\u8BE5\u8D44\u4EA7\uFF0C\u4E0D\u8981\u91CD\u590D\u521B\u5EFA`;
-        }
         const data = {
           id: deriveAsset.id ?? void 0,
           assetsId: deriveAsset.assetsId,
@@ -262609,6 +262837,14 @@ var tools_default = (toolCpnfig) => {
         };
         const contract = await getDatabaseRuntime().work(
           (db) => db.transaction(async (tx) => {
+            const equivalent = await findEquivalentDerivedAsset(async (operation) => operation(tx), {
+              projectId,
+              parentAssetsId: deriveAsset.assetsId,
+              dimensions: parsedInstruction.data.dimensions,
+              change: parsedInstruction.data.change,
+              excludeAssetsId: deriveAsset.id ?? void 0
+            });
+            if (equivalent !== null) throw new EquivalentDerivedAssetError(equivalent);
             if (deriveAsset.id !== null) {
               const updated = await tx("o_assets").where({
                 id: deriveAsset.id,
@@ -262637,12 +262873,26 @@ var tools_default = (toolCpnfig) => {
             return saved;
           })
         ).catch((error67) => {
+          if (error67 instanceof EquivalentDerivedAssetError) {
+            return {
+              ok: false,
+              kind: "equivalentDerivedAsset",
+              message: `${error67.message}\uFF0C\u8BF7\u76F4\u63A5\u590D\u7528\u6216\u66F4\u65B0\u8BE5\u8D44\u4EA7\uFF0C\u4E0D\u8981\u91CD\u590D\u521B\u5EFA`
+            };
+          }
           if (error67 instanceof ChangeInstructionWriteError) {
             return { ok: false, kind: "derivedChangeInstructionInvalid", message: error67.message };
           }
           throw error67;
         });
         if (!contract.ok) {
+          if (contract.kind === "equivalentDerivedAsset") {
+            thinking.appendText(`${contract.message}
+`);
+            thinking.updateTitle("\u5DF2\u5B58\u5728\u7B49\u4EF7\u884D\u751F\u8D44\u4EA7");
+            thinking.complete();
+            return contract.message;
+          }
           thinking.appendText(`\u53D8\u5316\u5951\u7EA6\u5199\u5165\u5931\u8D25\uFF1A${contract.message}
 `);
           thinking.updateTitle("\u53D8\u5316\u5951\u7EA6\u5199\u5165\u5931\u8D25");

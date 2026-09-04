@@ -74,14 +74,22 @@ test("script asset extraction delegates Text calls to the base-asset orchestrati
   assert.ok(orchestration.includes("getDefaultConfiguredVendor"), "orchestration 未使用 getDefaultConfiguredVendor");
   assert.ok(orchestration.includes("openTextCall"), "orchestration 未使用一次性解析的 openTextCall");
 
+  // Issue #44：路由只做确认占用与委托，替换编排位于 assetExtractionReplacement
+  const replacement = readSource("script/assetExtractionReplacement.ts");
+  assert.ok(
+    replacement.includes('from "./baseAssetExtraction"'),
+    "replacement 未复用 base-asset orchestration 模块",
+  );
+  assert.ok(!replacement.includes("invokeText"), "replacement 不应直接调用 Text 模型");
+
   const source = readSource("routes/script/extractAssets.ts");
   assert.ok(!source.includes("u.Ai.Text"), "extractAssets 仍调用 u.Ai.Text");
   assert.ok(!source.includes('from "@/utils/ai"'), "extractAssets 仍加载旧 ai 模块");
   assert.ok(!source.includes('from "@/utils/vendor"'), "extractAssets 仍加载旧 vendor 模块");
   assert.ok(!source.includes("invokeText"), "extractAssets 不应直接调用 Text 模型");
   assert.ok(
-    source.includes('from "@/script/baseAssetExtraction"'),
-    "extractAssets 未委托 base-asset orchestration 模块",
+    source.includes('from "@/script/assetExtractionReplacement"'),
+    "extractAssets 未委托替换编排模块",
   );
 });
 

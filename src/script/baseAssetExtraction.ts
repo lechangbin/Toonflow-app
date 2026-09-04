@@ -52,6 +52,7 @@ const TYPE_LABELS: Record<BaseAssetType, string> = { role: "角色", scene: "场
 export type BaseAssetExtractionFailureKind =
   | "scriptNotFound"
   | "extractionInProgress"
+  | "reextractConfirmationRequired"
   | "skillContractMissing"
   | "modelCallFailed"
   | "modelOutputMissing"
@@ -116,6 +117,13 @@ export interface StagedBaseAssetExtraction {
   candidates: StagedBaseAsset[];
 }
 
+export interface ScriptRecord {
+  id: number;
+  name: string | null;
+  content: string | null;
+  projectId: number;
+}
+
 export interface CompletenessAuditOperations {
   additions: BaseAssetCandidate[];
   factAdditions: AuditFactAddition[];
@@ -139,13 +147,6 @@ interface MergeLogContext {
   log: (entry: Record<string, unknown>) => void;
 }
 
-interface ScriptRecord {
-  id: number;
-  name: string | null;
-  content: string | null;
-  projectId: number;
-}
-
 // ---------------------------------------------------------------------------
 // 阶段一 + 阶段二：staged result（不写库）
 // ---------------------------------------------------------------------------
@@ -161,7 +162,7 @@ export async function runBaseAssetExtraction(
   return runBaseAssetExtractionWithScripts(dependencies, scripts);
 }
 
-async function runBaseAssetExtractionWithScripts(
+export async function runBaseAssetExtractionWithScripts(
   dependencies: BaseAssetExtractionDependencies,
   scripts: ScriptRecord[],
 ): Promise<StagedBaseAssetExtraction> {
@@ -379,191 +380,181 @@ export interface PersistedBaseAssetExtraction {
   assetIds: number[];
 }
 
+/** staged 结果的确定性持久化明细：复用的既有资产与新建资产分开返回。 */
+export interface PersistedStagedBaseAssets {
+  assetIds: number[];
+  reusedAssetIds: number[];
+  createdAssetIds: number[];
+}
+
+/**
+ * 在调用方提供的事务内持久化 staged 结果：复用证据支持的既有身份、新建资
+ * 产、重建所选剧本的关联。不提交事务，也不负责孤儿清理（见 #44 替换模块）。
+ */
+export async function persistStagedBaseAssets(
+  trx: Knex,
+  dependencies: BaseAssetExtractionDependencies,
+  staged: StagedBaseAssetExtraction,
+): Promise<PersistedStagedBaseAssets> {
+  const existingAssets = await trx("o_assets").where("projectId", staged.projectId).select("id", "name", "type");
+  const existingIdentities = existingAssets.length
+    ? await trx("o_assetIdentity").whereIn(
+        "assetsId",
+        existingAssets.map((asset) => asset.id),
+      )
+    : [];
+  const identityByAssetId = new Map<number, BaseAssetIdentityRecord>();
+  for (const row of existingIdentities) {
+    try {
+      const record = parseBaseAssetIdentityRecord(row.identity);
+      identityByAssetId.set(row.assetsId, record);
+    } catch {
+      // 损坏或缺失的身份记录没有足够证据支持自动复用。
+    }
+  }
+
+  const assetIds: number[] = [];
+  const reusedAssetIds: number[] = [];
+  const createdAssetIds: number[] = [];
+  const consumedAssetIds = new Set<number>();
+  for (const candidate of staged.candidates) {
+    const matched = existingAssets.find((asset) => {
+      if (consumedAssetIds.has(asset.id)) return false;
+      const identity = identityByAssetId.get(asset.id);
+      return identity ? identitiesAreLinked(identity, candidate) : false;
+    });
+    if (!matched) {
+      const ambiguous = existingAssets.find((asset) => {
+        const identity = identityByAssetId.get(asset.id);
+        return (
+          !consumedAssetIds.has(asset.id) &&
+          asset.type === candidate.type &&
+          identity?.canonicalName === candidate.canonicalName
+        );
+      });
+      if (ambiguous) {
+        dependencies.log({
+          stage: "persist",
+          kind: "identityAmbiguous",
+          reason: "sameNameWithoutEvidenceLink",
+          type: candidate.type,
+          name: candidate.canonicalName,
+          existingAssetId: ambiguous.id,
+          scriptIds: candidate.scriptIds,
+        });
+      }
+    }
+    if (matched) {
+      consumedAssetIds.add(matched.id);
+      // 提取管理的资产（已有身份记录）刷新确定性编译摘要；人工创建或
+      // 修改过的资产（无身份记录）保持原 describe，只补写身份记录。
+      if (identityByAssetId.has(matched.id)) {
+        await trx("o_assets").where("id", matched.id).update({ describe: candidate.describe });
+      }
+      await upsertAssetIdentity(trx, dependencies, matched.id, staged.projectId, candidate);
+      assetIds.push(matched.id);
+      reusedAssetIds.push(matched.id);
+      continue;
+    }
+    const [assetId] = await trx("o_assets").insert({
+      name: candidate.canonicalName,
+      type: candidate.type,
+      describe: candidate.describe,
+      projectId: staged.projectId,
+      startTime: dependencies.now(),
+    });
+    await upsertAssetIdentity(trx, dependencies, assetId, staged.projectId, candidate);
+    assetIds.push(assetId);
+    createdAssetIds.push(assetId);
+  }
+
+  // 新剧本的最终结果一次性重建关联，不逐组写入。
+  await trx("o_scriptAssets").whereIn("scriptId", staged.scriptIds).delete();
+  const linkRows = new Map<string, { scriptId: number; assetId: number }>();
+  staged.candidates.forEach((candidate, index) => {
+    for (const scriptId of candidate.scriptIds) {
+      const assetId = assetIds[index];
+      linkRows.set(`${scriptId}_${assetId}`, { scriptId, assetId });
+    }
+  });
+  if (linkRows.size) await trx("o_scriptAssets").insert([...linkRows.values()]);
+
+  return { assetIds, reusedAssetIds, createdAssetIds };
+}
+
 export async function persistBaseAssetExtraction(
   dependencies: BaseAssetExtractionDependencies,
   staged: StagedBaseAssetExtraction,
 ): Promise<PersistedBaseAssetExtraction> {
   try {
-    return await dependencies.work((db) =>
-      db.transaction(async (trx) => {
-        const existingAssets = await trx("o_assets").where("projectId", staged.projectId).select("id", "name", "type");
-        const existingIdentities = existingAssets.length
-          ? await trx("o_assetIdentity").whereIn(
-              "assetsId",
-              existingAssets.map((asset) => asset.id),
-            )
-          : [];
-        const identityByAssetId = new Map<number, BaseAssetIdentityRecord>();
-        for (const row of existingIdentities) {
-          try {
-            const record = parseBaseAssetIdentityRecord(row.identity);
-            identityByAssetId.set(row.assetsId, record);
-          } catch {
-            // 损坏或缺失的身份记录没有足够证据支持自动复用。
-          }
-        }
-
-        const assetIds: number[] = [];
-        const consumedAssetIds = new Set<number>();
-        for (const candidate of staged.candidates) {
-          const matched = existingAssets.find((asset) => {
-            if (consumedAssetIds.has(asset.id)) return false;
-            const identity = identityByAssetId.get(asset.id);
-            return identity ? identitiesAreLinked(identity, candidate) : false;
-          });
-          if (!matched) {
-            const ambiguous = existingAssets.find((asset) => {
-              const identity = identityByAssetId.get(asset.id);
-              return (
-                !consumedAssetIds.has(asset.id) &&
-                asset.type === candidate.type &&
-                identity?.canonicalName === candidate.canonicalName
-              );
-            });
-            if (ambiguous) {
-              dependencies.log({
-                stage: "persist",
-                kind: "identityAmbiguous",
-                reason: "sameNameWithoutEvidenceLink",
-                type: candidate.type,
-                name: candidate.canonicalName,
-                existingAssetId: ambiguous.id,
-                scriptIds: candidate.scriptIds,
-              });
-            }
-          }
-          if (matched) {
-            consumedAssetIds.add(matched.id);
-            // 提取管理的资产（已有身份记录）刷新确定性编译摘要；人工创建或
-            // 修改过的资产（无身份记录）保持原 describe，只补写身份记录。
-            if (identityByAssetId.has(matched.id)) {
-              await trx("o_assets").where("id", matched.id).update({ describe: candidate.describe });
-            }
-            await upsertAssetIdentity(trx, dependencies, matched.id, staged.projectId, candidate);
-            assetIds.push(matched.id);
-            continue;
-          }
-          const [assetId] = await trx("o_assets").insert({
-            name: candidate.canonicalName,
-            type: candidate.type,
-            describe: candidate.describe,
-            projectId: staged.projectId,
-            startTime: dependencies.now(),
-          });
-          await upsertAssetIdentity(trx, dependencies, assetId, staged.projectId, candidate);
-          assetIds.push(assetId);
-        }
-
-        // 新剧本的最终结果一次性重建关联，不逐组写入。
-        await trx("o_scriptAssets").whereIn("scriptId", staged.scriptIds).delete();
-        const linkRows = new Map<string, { scriptId: number; assetId: number }>();
-        staged.candidates.forEach((candidate, index) => {
-          for (const scriptId of candidate.scriptIds) {
-            const assetId = assetIds[index];
-            linkRows.set(`${scriptId}_${assetId}`, { scriptId, assetId });
-          }
-        });
-        if (linkRows.size) await trx("o_scriptAssets").insert([...linkRows.values()]);
-
-        return { assetIds };
-      }),
+    const { assetIds } = await dependencies.work((db) =>
+      db.transaction(async (trx) => persistStagedBaseAssets(trx, dependencies, staged)),
     );
+    return { assetIds };
   } catch (error) {
     throw new BaseAssetExtractionFailure("persistenceFailed", `Base Asset 结果写入失败: ${errorMessage(error)}`);
   }
 }
 
 // ---------------------------------------------------------------------------
-// 状态机封装：路由调用的入口，失败回写现有 Script 提取状态字段
+// 确认门禁 + 原子占用：替换式重新提取的唯一入口状态检查（#44）
 // ---------------------------------------------------------------------------
 
-export interface BaseAssetExtractionOutcome {
-  ok: boolean;
-  error?: BaseAssetExtractionFailureKind;
-  assetCount?: number;
+export type ScriptAssetExtractionClaim =
+  | { status: "claimed"; scripts: ScriptRecord[] }
+  | { status: "reextractConfirmationRequired" }
+  | { status: "extractionInProgress" }
+  | { status: "scriptNotFound" };
+
+export interface ScriptAssetExtractionClaimInput {
+  projectId: number;
+  scriptIds: readonly number[];
+  /** 显式替换意图；缺少时任意选中剧本已有关联资产即拒绝（HTTP 409）。 */
+  replaceExisting?: boolean;
 }
 
-export async function executeScriptAssetExtraction(
+/**
+ * 同步完成两件事（一个事务）：
+ *   1. 后端权威的重新提取确认——所选剧本存在资产关联且缺少 replaceExisting
+ *      时返回 reextractConfirmationRequired，不执行模型调用、不改变数据库状态。
+ *   2. 原子占用全部剧本（extractState → 0），并发请求只有一个成功。
+ */
+export async function claimScriptAssetExtraction(
   dependencies: BaseAssetExtractionDependencies,
-  input: BaseAssetExtractionInput,
-): Promise<BaseAssetExtractionOutcome> {
-  const requestId = randomUUID();
-  let resolvedIds: number[] = [];
-  try {
-    const scripts = await resolveScripts(dependencies, input);
-    if (!scripts.length) {
-      dependencies.log({ requestId, stage: "resolve", kind: "scriptNotFound", scriptIds: [...input.scriptIds] });
-      return { ok: false, error: "scriptNotFound" };
-    }
-    resolvedIds = scripts.map((script) => script.id);
+  input: ScriptAssetExtractionClaimInput,
+): Promise<ScriptAssetExtractionClaim> {
+  const scripts = await resolveScripts(dependencies, input);
+  if (!scripts.length) return { status: "scriptNotFound" };
+  const scriptIds = scripts.map((script) => script.id);
 
-    // 单条条件更新原子占用全部剧本。并发请求中只有一个能把全部非运行态改为运行态；
-    // 事务回滚确保部分可占用时也不会留下半套状态。
-    const claimed = await claimScriptsForExtraction(dependencies, resolvedIds);
-    if (!claimed) {
-      dependencies.log({ requestId, stage: "resolve", kind: "extractionInProgress", scriptIds: resolvedIds });
-      return { ok: false, error: "extractionInProgress" };
-    }
-
-    const staged = await runBaseAssetExtractionWithScripts(dependencies, scripts);
-    await persistBaseAssetExtraction(dependencies, staged);
-    await dependencies.work((db) =>
-      db("o_script").whereIn("id", resolvedIds).update({ extractState: 1, errorReason: null }),
-    );
-    dependencies.log({
-      requestId,
-      stage: "persist",
-      scriptIds: resolvedIds,
-      count: staged.candidates.length,
-    });
-    return { ok: true, assetCount: staged.candidates.length };
-  } catch (error) {
-    const failure = asFailure(error);
-    dependencies.log({
-      requestId,
-      stage: "failed",
-      kind: failure.kind,
-      scriptIds: resolvedIds,
-      message: failure.message,
-    });
-    if (resolvedIds.length) {
-      try {
-        await dependencies.work((db) =>
-          db("o_script").whereIn("id", resolvedIds).update({ extractState: -1, errorReason: failure.message }),
-        );
-      } catch (stateError) {
-        dependencies.log({
-          requestId,
-          stage: "failed",
-          kind: "stateWriteFailed",
-          message: errorMessage(stateError),
-        });
-      }
-    }
-    return { ok: false, error: failure.kind };
-  }
-}
-
-async function claimScriptsForExtraction(
-  dependencies: BaseAssetExtractionDependencies,
-  scriptIds: readonly number[],
-): Promise<boolean> {
-  return dependencies.work((db) =>
-    db.transaction(async (trx) => {
-      const updated = await trx("o_script")
-        .whereIn("id", scriptIds)
-        .where((builder) => builder.whereNull("extractState").orWhereNot("extractState", 0))
-        .update({ extractState: 0 });
-      if (Number(updated) === scriptIds.length) return true;
-      throw new ExtractionClaimConflict();
-    }).catch((error: unknown) => {
-      if (error instanceof ExtractionClaimConflict) return false;
-      throw error;
-    }),
+  const claim = await dependencies.work((db) =>
+    db
+      .transaction(async (trx): Promise<ClaimOutcome> => {
+        if (!input.replaceExisting) {
+          const linked = await trx("o_scriptAssets").whereIn("scriptId", scriptIds).select("scriptId");
+          if (linked.length) throw new ReextractConfirmationRequired();
+        }
+        const updated = await trx("o_script")
+          .whereIn("id", scriptIds)
+          .where((builder) => builder.whereNull("extractState").orWhereNot("extractState", 0))
+          .update({ extractState: 0 });
+        if (Number(updated) === scriptIds.length) return true;
+        throw new ExtractionClaimConflict();
+      })
+      .catch((error: unknown): ClaimOutcome => {
+        if (error instanceof ReextractConfirmationRequired) return "reextractConfirmationRequired";
+        if (error instanceof ExtractionClaimConflict) return "extractionInProgress";
+        throw error;
+      }),
   );
+  if (claim !== true) return { status: claim };
+  return { status: "claimed", scripts };
 }
+
+type ClaimOutcome = true | "reextractConfirmationRequired" | "extractionInProgress";
 
 class ExtractionClaimConflict extends Error {}
+class ReextractConfirmationRequired extends Error {}
 
 // ---------------------------------------------------------------------------
 // 生产环境依赖
@@ -1059,9 +1050,4 @@ function compareCodePoints(a: string, b: string): number {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function asFailure(error: unknown): BaseAssetExtractionFailure {
-  if (error instanceof BaseAssetExtractionFailure) return error;
-  return new BaseAssetExtractionFailure("modelCallFailed", errorMessage(error));
 }
