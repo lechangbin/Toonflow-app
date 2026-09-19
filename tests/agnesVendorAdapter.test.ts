@@ -459,3 +459,305 @@ test("V2.0 errors identify stage, HTTP status, provider code, task id, and retry
     },
   );
 });
+
+// ─── 图片生成超时与生命周期（Issue #39） ─────────────────────────────────────
+
+function imageModel() {
+  const adapter = loadAdapter({});
+  return adapter.vendor.models.find((item: any) => item.modelName === "agnes-image-2.1-flash");
+}
+
+test("image request timeout is classified and never auto-replayed", async () => {
+  let postCount = 0;
+  const adapter = loadAdapter({
+    axios: {
+      post: async () => {
+        postCount += 1;
+        throw { code: "ECONNABORTED", message: "timeout of 360000ms exceeded" };
+      },
+    },
+  });
+
+  await assert.rejects(
+    adapter.imageRequest({ prompt: "A lantern in the dark.", size: "1K", aspectRatio: "16:9" }, imageModel()),
+    (error: any) => {
+      assert.equal(postCount, 1, "超时结果不确定，绝不自动重放 POST");
+      assert.equal(error.imageFailure.kind, "timeout");
+      assert.equal(error.imageFailure.stage, "generation");
+      assert.equal(error.imageFailure.attempt, 1);
+      assert.equal(error.imageFailure.transportCode, "ECONNABORTED");
+      assert.equal(typeof error.imageFailure.elapsedMs, "number");
+      assert.match(error.message, /kind=timeout/);
+      return true;
+    },
+  );
+});
+
+test("image connection reset is not auto-replayed", async () => {
+  let postCount = 0;
+  const adapter = loadAdapter({
+    axios: {
+      post: async () => {
+        postCount += 1;
+        throw { code: "ECONNRESET", message: "socket hang up" };
+      },
+    },
+  });
+
+  await assert.rejects(
+    adapter.imageRequest({ prompt: "A closed gate.", size: "1K", aspectRatio: "16:9" }, imageModel()),
+    (error: any) => {
+      assert.equal(postCount, 1, "连接重置结果不确定，绝不自动重放 POST");
+      assert.equal(error.imageFailure.kind, "transport");
+      assert.equal(error.imageFailure.transportCode, "ECONNRESET");
+      return true;
+    },
+  );
+});
+
+test("image server errors are never auto-replayed", async () => {
+  let postCount = 0;
+  const adapter = loadAdapter({
+    axios: {
+      post: async () => {
+        postCount += 1;
+        throw { response: { status: 503, data: { message: "upstream unavailable" } } };
+      },
+    },
+  });
+
+  await assert.rejects(
+    adapter.imageRequest({ prompt: "A quiet courtyard.", size: "1K", aspectRatio: "16:9" }, imageModel()),
+    (error: any) => {
+      assert.equal(postCount, 1, "5xx 可能已被供应商处理，绝不自动重放 POST");
+      assert.equal(error.imageFailure.kind, "httpError");
+      assert.equal(error.imageFailure.httpStatus, 503);
+      return true;
+    },
+  );
+});
+
+test("explicit 429 rejection is safely retried with a bounded attempt count", async () => {
+  let postCount = 0;
+  const adapter = loadAdapter({
+    axios: {
+      post: async () => {
+        postCount += 1;
+        if (postCount < 3) throw { response: { status: 429, data: {} } };
+        return { data: { data: [{ b64_json: "RESULT" }] } };
+      },
+    },
+    pollTask: async () => ({ completed: true }),
+  });
+
+  const result = await adapter.imageRequest(
+    { prompt: "A rate-limited request.", size: "1K", aspectRatio: "16:9" },
+    imageModel(),
+  );
+
+  assert.equal(result, "data:image/png;base64,RESULT");
+  assert.equal(postCount, 3, "明确收到的限流拒绝允许有限重试");
+});
+
+test("explicit busy 400 is retried while other 400s fail immediately", async () => {
+  let busyCount = 0;
+  const busyAdapter = loadAdapter({
+    axios: {
+      post: async () => {
+        busyCount += 1;
+        if (busyCount < 2) {
+          throw { response: { status: 400, data: { error: { message: "service is busy, please retry later" } } } };
+        }
+        return { data: { data: [{ b64_json: "BUSY-OK" }] } };
+      },
+    },
+    pollTask: async () => ({ completed: true }),
+  });
+
+  const busyResult = await busyAdapter.imageRequest(
+    { prompt: "A busy provider.", size: "1K", aspectRatio: "16:9" },
+    imageModel(),
+  );
+  assert.equal(busyResult, "data:image/png;base64,BUSY-OK");
+  assert.equal(busyCount, 2, "明确收到的繁忙拒绝允许有限重试");
+
+  let invalidCount = 0;
+  const invalidAdapter = loadAdapter({
+    axios: {
+      post: async () => {
+        invalidCount += 1;
+        throw { response: { status: 400, data: { error: { message: "invalid prompt content" } } } };
+      },
+    },
+    pollTask: async () => ({ completed: true }),
+  });
+
+  await assert.rejects(
+    invalidAdapter.imageRequest({ prompt: "A rejected prompt.", size: "1K", aspectRatio: "16:9" }, imageModel()),
+    (error: any) => {
+      assert.equal(invalidCount, 1, "普通 400 是明确拒绝，不重试");
+      assert.equal(error.imageFailure.kind, "httpError");
+      return true;
+    },
+  );
+});
+
+test("image failure diagnostics omit provider free text and reject unsafe request IDs", async () => {
+  const adapter = loadAdapter({
+    axios: {
+      post: async () => {
+        throw {
+          response: {
+            status: 500,
+            headers: { "x-request-id": "Bearer sk-short" },
+            data: {
+              error: {
+                message:
+                  "failed https://signed.example.com/file?token=SECRETVALUE " +
+                  "QUJD".repeat(60) +
+                  " trailing text",
+              },
+            },
+          },
+        };
+      },
+    },
+  });
+
+  await assert.rejects(
+    adapter.imageRequest({ prompt: "A sanitized failure.", size: "1K", aspectRatio: "16:9" }, imageModel()),
+    (error: any) => {
+      const serialized = JSON.stringify(error.imageFailure);
+      assert.ok(!serialized.includes("SECRETVALUE"), "签名 URL 凭证不得出现在诊断");
+      assert.ok(!serialized.includes("test-key"), "API Key 不得出现在诊断");
+      assert.ok(!serialized.includes("QUJD".repeat(30)), "base64 长串不得出现在诊断");
+      assert.ok(!serialized.includes("A sanitized failure."), "提示词不得出现在诊断");
+      assert.ok(!serialized.includes("sk-short"), "短凭证不得出现在诊断");
+      assert.ok(!('message' in error.imageFailure), "供应商自由文本不得离开适配器");
+      assert.equal(error.imageFailure.httpStatus, 500);
+      assert.equal(error.imageFailure.providerRequestId, undefined);
+      return true;
+    },
+  );
+});
+
+test("image stages begin only after the serialized vendor slot is acquired", async () => {
+  let releaseFirst!: () => void;
+  const firstResponse = new Promise<any>((resolve) => {
+    releaseFirst = () => resolve({ data: { data: [{ b64_json: "FIRST" }] } });
+  });
+  let postCount = 0;
+  const adapter = loadAdapter({
+    axios: {
+      post: async () => {
+        postCount += 1;
+        return postCount === 1 ? firstResponse : { data: { data: [{ b64_json: "SECOND" }] } };
+      },
+    },
+  });
+  const firstEvents: string[] = [];
+  const secondEvents: string[] = [];
+  const first = adapter.imageRequest(
+    { prompt: "First.", size: "1K", aspectRatio: "1:1", onStage: async (stage: string) => firstEvents.push(stage) },
+    imageModel(),
+  );
+  await new Promise((resolve) => setImmediate(resolve));
+  const second = adapter.imageRequest(
+    { prompt: "Second.", size: "1K", aspectRatio: "1:1", onStage: async (stage: string) => secondEvents.push(stage) },
+    imageModel(),
+  );
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(firstEvents, ["generating"]);
+  assert.deepEqual(secondEvents, [], "仍在本地串行队列中的请求不得宣称生成中");
+  assert.equal(postCount, 1);
+
+  releaseFirst();
+  await Promise.all([first, second]);
+  assert.deepEqual(secondEvents, ["generating"], "获得执行槽、即将 POST 时才进入生成中");
+  assert.equal(postCount, 2);
+});
+
+test("URL results enter downloading stage before media download; Base64 results skip it", async () => {
+  const events: string[] = [];
+  const urlAdapter = loadAdapter({
+    axios: {
+      post: async () => ({ data: { data: [{ url: "https://result.invalid/image.png" }] } }),
+    },
+    urlToBase64: async () => {
+      events.push("download");
+      return "URL-RESULT";
+    },
+  });
+
+  const urlResult = await urlAdapter.imageRequest(
+    {
+      prompt: "A URL result.",
+      size: "1K",
+      aspectRatio: "16:9",
+      onStage: async (stage: string) => events.push(stage),
+    },
+    imageModel(),
+  );
+  assert.equal(urlResult, "URL-RESULT");
+  assert.deepEqual(events, ["generating", "downloading", "download", "downloaded"], "生成与下载阶段必须对应真实边界");
+
+  const b64Events: string[] = [];
+  const b64Adapter = loadAdapter({
+    axios: {
+      post: async () => ({ data: { data: [{ b64_json: "B64-RESULT" }] } }),
+    },
+    urlToBase64: async () => {
+      b64Events.push("download");
+      return "SHOULD-NOT-HAPPEN";
+    },
+  });
+
+  const b64Result = await b64Adapter.imageRequest(
+    {
+      prompt: "A Base64 result.",
+      size: "1K",
+      aspectRatio: "16:9",
+      onStage: async (stage: string) => b64Events.push(stage),
+    },
+    imageModel(),
+  );
+  assert.equal(b64Result, "data:image/png;base64,B64-RESULT");
+  assert.deepEqual(b64Events, ["generating"], "Base64 直接返回，只触发真实供应商调用阶段");
+});
+
+test("URL media download failure is classified as downloadFailed at download stage", async () => {
+  const adapter = loadAdapter({
+    axios: {
+      post: async () => ({ data: { data: [{ url: "https://result.invalid/broken.png" }] } }),
+    },
+    urlToBase64: async () => {
+      throw { code: "ECONNRESET", message: "download aborted" };
+    },
+  });
+
+  await assert.rejects(
+    adapter.imageRequest({ prompt: "A broken download.", size: "1K", aspectRatio: "16:9" }, imageModel()),
+    (error: any) => {
+      assert.equal(error.imageFailure.kind, "downloadFailed");
+      assert.equal(error.imageFailure.stage, "download");
+      assert.equal(error.imageFailure.transportCode, "ECONNRESET");
+      return true;
+    },
+  );
+});
+
+test("image request logs local facts instead of provider acknowledgement", async () => {
+  const logs: string[] = [];
+  const adapter = loadAdapter({
+    axios: {
+      post: async () => ({ data: { data: [{ b64_json: "LOG-RESULT" }] } }),
+    },
+    logger: (message: string) => logs.push(message),
+  });
+
+  await adapter.imageRequest({ prompt: "A local fact.", size: "1K", aspectRatio: "16:9" }, imageModel());
+
+  assert.ok(logs.some((line) => line.includes("开始本地供应商请求")), "日志必须描述本地请求事实");
+  assert.ok(logs.every((line) => !line.includes("已进入生成队列")), "不得声称云端已确认排队");
+});

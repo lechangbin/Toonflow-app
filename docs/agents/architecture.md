@@ -22,6 +22,10 @@ ADR-0006 separates persisted, Script-grounded Asset Briefs from final image-gene
 
 ADR-0007 is implemented by `src/assets/derivedAssetPrompt.ts` and the thin Production Agent adapter at `src/routes/production/assets/batchGenerateAssetsImage.ts`: base Assets own human Asset References, while Derived Assets use a system-resolved Parent Asset Anchor plus a structured Derived Change Instruction and deterministic prompt compilation.
 
+## Implemented: image generation lifecycle
+
+ADR-0008 makes `o_image.state` the single authoritative image generation state machine (等待中/生成中/下载中/已完成/生成失败/已取消), shared by the single-asset, batch, and Production Agent entries. The contract lives in `src/assets/imageGenerationLifecycle.ts` (mirrored by the web app's `src/utils/imageGenerationLifecycle.ts`); polling endpoints return one authoritative record per requested asset id, ambiguous vendor timeouts are never auto-replayed, and restart recovery marks interrupted non-terminal rows as failed.
+
 ## Implemented: Base Asset two-stage extraction
 
 Issue #41 replaces the grouped, route-owned Script Asset extraction with the deep orchestration module `src/script/baseAssetExtraction.ts`. One run receives all selected Scripts as a single full context and performs exactly two Text Model calls: one Base Asset extraction pass and one completeness-review pass. Both calls reuse one Model target resolved once at run start through the `ConfiguredVendor.openTextCall(target)` handle, which binds the resolved Vendor/Model and its persisted tuning. The HTTP route `src/routes/script/extractAssets.ts` is a thin adapter; it no longer owns Text Model orchestration, `groupSize`, Script chunking, or per-group database writes.
@@ -57,4 +61,4 @@ Script Agent and Production Agent duplicate authentication, abort handling, thin
 
 ## Decision status
 
-ADR-0001 and ADR-0002 record the accepted Video decisions; ADR-0003 the container runtime-data lifecycle; ADR-0004 the explicit database readiness lifecycle; ADR-0005 configured Vendor execution; ADR-0006 the two-stage Asset image prompt boundary; ADR-0007 the Derived Asset parent-anchor boundary. Agent session runtime remains an exploration candidate; record new hard-to-reverse decisions under `docs/adr/` before implementation.
+ADR-0001 and ADR-0002 record the accepted Video decisions; ADR-0003 the container runtime-data lifecycle; ADR-0004 the explicit database readiness lifecycle; ADR-0005 configured Vendor execution; ADR-0006 the two-stage Asset image prompt boundary; ADR-0007 the Derived Asset parent-anchor boundary; ADR-0008 the persisted image generation lifecycle. Agent session runtime remains an exploration candidate; record new hard-to-reverse decisions under `docs/adr/` before implementation.

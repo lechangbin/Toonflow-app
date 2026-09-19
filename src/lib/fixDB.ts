@@ -5,6 +5,7 @@ import getPath from "@/utils/getPath";
 import rawVendorData from "./vendor.json";
 import { vendorRegistry } from "./vendorRegistry";
 import { failInterruptedVideoProduction } from "@/video/recovery";
+import { failInterruptedImageGenerations } from "@/assets/imageGenerationLifecycle";
 import { ensureRuntimePromptDefaults } from "@/prompts/runtime";
 
 const vendorData = rawVendorData as Record<string, string>;
@@ -59,10 +60,9 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
     promptState: "生成失败",
     promptErrorReason: "软件退出导致失败",
   });
-  await knex("o_image").where("state", "生成中").update({
-    state: "生成失败",
-    errorReason: "软件退出导致失败",
-  });
+  // 图片生成非终态（等待中/生成中/下载中）统一落为生成失败：
+  // 图片任务没有可恢复的供应商任务 ID，不自动续跑（Issue #39）
+  await failInterruptedImageGenerations(knex);
   await knex("o_storyboard").where("state", "生成中").update({
     state: "生成失败",
     reason: "软件退出导致失败",

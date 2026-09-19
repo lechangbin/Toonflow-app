@@ -22,6 +22,13 @@ import {
   resolveAssetGenerationInputs,
   type ResolvedAssetGenerationInput,
 } from "./assetPromptOrchestration";
+import {
+  IMAGE_GENERATION_ACTIVE_STATES,
+  VendorImageGenerationError,
+  classifyVendorImageFailure,
+  extractVendorImageFailure,
+  type VendorImageFailureDiagnostics,
+} from "./imageGenerationLifecycle";
 
 /**
  * Asset 图片生成领域模块（Issue #35）。
@@ -42,12 +49,15 @@ export type AssetImageGenerationFailureKind =
   | "referenceMediaUnreadable"
   | "referenceMediaInvalid"
   | "imageGenerationFailed"
+  | "imageGenerationTimeout"
+  | "imageDownloadFailed"
   | "imagePersistenceFailed"
   | "cancelled";
 
 export interface AssetImageGenerationFailure {
   kind: AssetImageGenerationFailureKind;
   message: string;
+  affectedAssets?: { id: number; name: string }[];
 }
 
 export type AssetImageGenerationResult<T> =
@@ -60,13 +70,18 @@ const FAILURE_ENVELOPE: Record<AssetImageGenerationFailureKind, { status: number
   referenceMediaUnreadable: { status: 500, message: "参考图媒体文件缺失或无法读取" },
   referenceMediaInvalid: { status: 500, message: "参考图媒体内容不是受支持的图片" },
   imageGenerationFailed: { status: 502, message: "图片生成调用失败" },
+  imageGenerationTimeout: {
+    status: 504,
+    message: "图片生成请求超时：供应商结果不确定，已停止自动重试，请稍后手动重试",
+  },
+  imageDownloadFailed: { status: 502, message: "生成图片下载失败" },
   imagePersistenceFailed: { status: 500, message: "生成图片写入存储失败" },
   cancelled: { status: 400, message: "生成已取消" },
 };
 
 export function assetImageGenerationErrorEnvelope(failure: AssetImageGenerationFailure): {
   status: number;
-  body: { code: number; data: null; message: string; error: AssetImageGenerationFailureKind };
+  body: { code: number; data: null; message: string; error: AssetImageGenerationFailureKind; affectedAssets?: { id: number; name: string }[] };
 } {
   const envelope = FAILURE_ENVELOPE[failure.kind] ?? { status: 500, message: "资产图片生成失败" };
   return {
@@ -76,6 +91,7 @@ export function assetImageGenerationErrorEnvelope(failure: AssetImageGenerationF
       data: null,
       message: envelope.message,
       error: failure.kind,
+      ...(failure.affectedAssets ? { affectedAssets: failure.affectedAssets } : {}),
     },
   };
 }
@@ -136,8 +152,14 @@ export interface AssetImageGenerationDependencies {
   }): Promise<AssetPromptResult<ResolvedAssetGenerationInput[]>>;
   /** 读取参考图媒体；缺失/不可读时抛出。 */
   readReferenceMedia(mediaPath: string): Promise<Buffer>;
-  /** configured Image Vendor seam：输入/输出都是 provider 无关契约。 */
-  generateImage(request: ImageGenerationRequest): Promise<string>;
+  /**
+   * configured Image Vendor seam：输入/输出都是 provider 无关契约。
+   * onStage 由实现负责送达适配器（真实 invocation 与 URL 下载边界）。
+   */
+  generateImage(
+    request: ImageGenerationRequest,
+    onStage?: (stage: "generating" | "downloading" | "downloaded") => void | Promise<void>,
+  ): Promise<string>;
   /** Generation Task 记录（command snapshot 落点）。 */
   recordGenerationTask(input: AssetImageTaskSnapshotInput): Promise<AssetImageTaskHandle>;
   writeGeneratedImage(imagePath: string, data: string): Promise<void>;
@@ -179,16 +201,26 @@ function parseBatchAssetsIds(value: unknown): number[] | null {
   return ids;
 }
 
+/** 终态回写只允许从非终态进入：已取消/已完成/已失败的记录不被迟到结果覆盖。 */
 async function markImageFailed(
   dependencies: AssetImageGenerationDependencies,
   imageId: number,
   reason: string,
 ): Promise<void> {
   await dependencies
-    .work((db) => db("o_image").where("id", imageId).update({ state: "生成失败", errorReason: reason }))
+    .work((db) =>
+      db("o_image")
+        .where("id", imageId)
+        .whereIn("state", [...IMAGE_GENERATION_ACTIVE_STATES])
+        .update({ state: "生成失败", errorReason: reason }),
+    )
     .catch(() => undefined);
 }
 
+/**
+ * 占位记录进入“生成中”：只从“等待中”迁移（取消/失败占位保持终态）。
+ * 返回 false 表示记录已不在等待中（被取消或已终态）。
+ */
 interface GenerationAttemptEvidence {
   attempt: number;
   retryEvidence: { retryOfImageId: number; failureReasonHash: string } | null;
@@ -197,6 +229,8 @@ interface GenerationAttemptEvidence {
 interface GenerationFailureEvidence {
   kind: AssetImageGenerationFailureKind;
   failureReasonHash: string;
+  /** 供应商失败的白名单诊断（阶段/尝试次数/耗时/传输码/HTTP 状态/请求 ID），已脱敏。 */
+  diagnostics?: VendorImageFailureDiagnostics;
 }
 
 function failureHashFromStoredReason(reason: unknown): string {
@@ -346,7 +380,9 @@ export async function generateAssetImage(
     const providedImageId: number = input.imageId;
     const placeholder = await dependencies.work((db) => db("o_image").where("id", providedImageId).first());
     if (!placeholder) return { ok: false, failure: imageFailure("assetNotFound", "图片记录不存在") };
-    if (placeholder.state === "生成失败") return { ok: false, failure: imageFailure("cancelled", "生成已取消") };
+    if (placeholder.state === "生成失败" || placeholder.state === "已取消") {
+      return { ok: false, failure: imageFailure("cancelled", "生成已取消") };
+    }
     imageId = providedImageId;
   }
 
@@ -386,13 +422,14 @@ export async function generateAssetImage(
   const parentAnchorBase64 = anchorMedia.value ? anchorMedia.value.base64 : null;
   const attemptEvidence = await loadGenerationAttemptEvidence(dependencies, assetsId, imageId);
 
-  // 单个路径：解析与媒体校验全部通过后才创建占位记录
+  // 单个与批量路径都先持久化“等待中”。只有供应商适配器真正获得本地执行
+  // 槽、即将发起请求时，onStage("generating") 才推进为“生成中”。
   let imageRecordId: number;
   if (imageId == null) {
     imageRecordId = await dependencies.work(async (db) => {
       const [insertedId] = await db("o_image").insert({
         type: entry.assetRawType,
-        state: "生成中",
+        state: "等待中",
         assetsId,
         model: target.modelId,
         resolution,
@@ -439,6 +476,31 @@ export async function generateAssetImage(
 
   let result: string;
   let taskDone: AssetImageTaskHandle;
+  class VendorInvocationCancelled extends Error {}
+  // 阶段回调由适配器在真实边界触发：获得执行槽后才进入生成中；URL 结果
+  // 的下载阶段只包围媒体网络请求。终态记录拒绝继续推进。
+  const onStage = async (stage: "generating" | "downloading" | "downloaded"): Promise<void> => {
+    if (stage === "generating") {
+      const updated = await dependencies.work((db) =>
+        db("o_image").where("id", imageRecordId).where("state", "等待中").update({ state: "生成中" }),
+      );
+      if (!updated) throw new VendorInvocationCancelled("图片生成在供应商调用前已取消");
+      return;
+    }
+    await dependencies
+      .work((db) => {
+        if (stage === "downloading") {
+          return db("o_image")
+            .where("id", imageRecordId)
+            .whereIn("state", ["等待中", "生成中"])
+            .update({ state: "下载中" });
+        }
+        // URL 已下载完毕后退出“下载中”。在新增“持久化中”状态前，复用
+        // “生成中”作为通用非下载活跃态，避免把磁盘/OSS 写入误标为网络下载。
+        return db("o_image").where("id", imageRecordId).where("state", "下载中").update({ state: "生成中" });
+      })
+      .catch(() => undefined);
+  };
   try {
     taskDone = await dependencies.recordGenerationTask({
       projectId,
@@ -448,20 +510,33 @@ export async function generateAssetImage(
       content: snapshotContent,
     });
     try {
-      result = await dependencies.generateImage({
-        target,
-        input: buildImageGenerationInput(entry, preparedMedia.value, resolution, parentAnchorBase64),
-      });
+      result = await dependencies.generateImage(
+        {
+          target,
+          input: buildImageGenerationInput(entry, preparedMedia.value, resolution, parentAnchorBase64),
+        },
+        onStage,
+      );
     } catch (error) {
+      if (error instanceof VendorInvocationCancelled) {
+        await taskDone(-1, "cancelled", JSON.stringify({ ...snapshot, failureEvidence: { kind: "cancelled" } }));
+        return { ok: false, failure: imageFailure("cancelled", "生成已取消") };
+      }
+      // 稳定失败分类：超时 / 下载失败 / 普通生成失败分别落 kind；
+      // 诊断只保留白名单字段并脱敏，原始供应商异常不进入持久化。
+      const kind = classifyVendorImageFailure(error);
+      const diagnostics = extractVendorImageFailure(error) ?? undefined;
       const reason = normalizeError(error).message;
       const failureEvidence: GenerationFailureEvidence = {
-        kind: "imageGenerationFailed",
+        kind,
         failureReasonHash: sha256(reason),
+        ...(diagnostics ? { diagnostics } : {}),
       };
       const sanitizedReason = `${failureEvidence.kind}:${failureEvidence.failureReasonHash}`;
       await taskDone(-1, sanitizedReason, JSON.stringify({ ...snapshot, failureEvidence }));
       await markImageFailed(dependencies, imageRecordId, sanitizedReason);
-      return { ok: false, failure: imageFailure("imageGenerationFailed", "图片生成调用失败") };
+      const envelope = FAILURE_ENVELOPE[kind];
+      return { ok: false, failure: imageFailure(kind, envelope.message) };
     }
   } catch (error) {
     // 任务记录或状态回写失败：按旧链路语义整体失败
@@ -469,13 +544,37 @@ export async function generateAssetImage(
     return { ok: false, failure: imageFailure("imageGenerationFailed", "图片生成调用失败") };
   }
 
-  const failRecordedTask = async (kind: AssetImageGenerationFailureKind, reason: string): Promise<string> => {
+  const failRecordedTask = async (
+    kind: AssetImageGenerationFailureKind,
+    reason: string,
+    options?: { force?: boolean },
+  ): Promise<string> => {
     const failureEvidence: GenerationFailureEvidence = { kind, failureReasonHash: sha256(reason) };
     const sanitizedReason = `${failureEvidence.kind}:${failureEvidence.failureReasonHash}`;
     await taskDone(-1, sanitizedReason, JSON.stringify({ ...snapshot, failureEvidence })).catch(() => undefined);
-    await markImageFailed(dependencies, imageRecordId, sanitizedReason);
+    if (options?.force) {
+      // 同步补偿路径（如任务终写失败时记录已是“已完成”）：同一执行流内
+      // 无条件回退为“生成失败”，不受活跃状态守卫限制（该守卫只用于阻止
+      // 迟到供应商结果覆盖终态）。此时取消路由无法改写“已完成”，无竞态。
+      await dependencies
+        .work((db) => db("o_image").where("id", imageRecordId).update({ state: "生成失败", errorReason: sanitizedReason }))
+        .catch(() => undefined);
+    } else {
+      await markImageFailed(dependencies, imageRecordId, sanitizedReason);
+    }
     return sanitizedReason;
   };
+
+  // 供应商返回后先检查取消/删除，避免为已取消任务落盘媒体
+  const imageRowAfterVendor = await dependencies.work((db) => db("o_image").where("id", imageRecordId).first());
+  if (!imageRowAfterVendor) {
+    await failRecordedTask("assetNotFound", "资产在图片生成期间被删除");
+    return { ok: false, failure: imageFailure("assetNotFound", "资产已被删除") };
+  }
+  if (imageRowAfterVendor.state === "生成失败" || imageRowAfterVendor.state === "已取消") {
+    await failRecordedTask("cancelled", "图片生成已取消");
+    return { ok: false, failure: imageFailure("cancelled", "生成已取消") };
+  }
 
   const imagePath = `/${projectId}/${typeConfig.dir}/${uuidv4()}.jpg`;
   try {
@@ -485,28 +584,25 @@ export async function generateAssetImage(
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "生成图片写入存储失败") };
   }
 
-  // 生成期间资产可能被删除（o_image 随资产清理）或被取消
-  const imageRow = await dependencies.work((db) => db("o_image").where("id", imageRecordId).first());
-  if (!imageRow) {
-    await failRecordedTask("assetNotFound", "资产在图片生成期间被删除");
-    return { ok: false, failure: imageFailure("assetNotFound", "资产已被删除") };
-  }
-  if (imageRow.state === "生成失败") {
-    await failRecordedTask("cancelled", "图片生成已取消");
-    return { ok: false, failure: imageFailure("cancelled", "生成已取消") };
-  }
-
   let imageUrl: string;
   try {
-    await dependencies.work((db) =>
-      db("o_image").where("id", imageRecordId).update({
-        state: "已完成",
-        filePath: imagePath,
-        type: entry.assetRawType,
-        model: target.modelId,
-        resolution,
-      }),
+    // 条件终态写入：只在非终态上落“已完成”，供应商迟到结果绝不覆盖“已取消”
+    const completed = await dependencies.work((db) =>
+      db("o_image")
+        .where("id", imageRecordId)
+        .whereIn("state", [...IMAGE_GENERATION_ACTIVE_STATES])
+        .update({
+          state: "已完成",
+          filePath: imagePath,
+          type: entry.assetRawType,
+          model: target.modelId,
+          resolution,
+        }),
     );
+    if (!completed) {
+      await failRecordedTask("cancelled", "图片生成已取消");
+      return { ok: false, failure: imageFailure("cancelled", "生成已取消") };
+    }
     await dependencies.work((db) => db("o_assets").where("id", assetsId).update({ imageId: imageRecordId }));
     imageUrl = await dependencies.getImageUrl(imagePath);
   } catch (error) {
@@ -516,7 +612,8 @@ export async function generateAssetImage(
   try {
     await taskDone(1);
   } catch (error) {
-    await failRecordedTask("imagePersistenceFailed", normalizeError(error).message);
+    // 任务终写失败补偿：记录已被本流程置为“已完成”，必须无条件回退失败
+    await failRecordedTask("imagePersistenceFailed", normalizeError(error).message, { force: true });
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "生成任务完成状态写入失败") };
   }
   return { ok: true, value: { assetsId, imageId: imageRecordId, imagePath, imageUrl } };
@@ -537,8 +634,9 @@ export interface PreparedAssetImageRecord {
 }
 
 /**
- * 批量生成预置：一次性完成所有权校验并为每个资产生成 o_image 占位，
- * 后台按占位 id 逐个调用 generateAssetImage。任何所有权失败都在占位
+ * 批量生成预置：一次性完成所有权校验并为每个资产生成“等待中”o_image
+ * 占位（批量请求已被接受、尚未获得本地并发槽），后台按占位 id 逐个经
+ * generateAssetImage 迁移到“生成中”并提交。任何所有权失败都在占位
  * 创建前以稳定信封拒绝，不会留下孤儿记录。
  */
 export async function prepareBatchAssetImages(
@@ -583,7 +681,7 @@ export async function prepareBatchAssetImages(
     for (const assetsId of assetsIds) {
       const [imageId] = await db("o_image").insert({
         type: typeById.get(assetsId) ?? null,
-        state: "生成中",
+        state: "等待中",
         assetsId,
         model: target.modelId,
         resolution,
@@ -602,13 +700,39 @@ export function createDefaultAssetImageGenerationDependencies(): AssetImageGener
     work: promptDependencies.work,
     resolveGenerationInputs: (input) => resolveAssetGenerationInputs(promptDependencies, input),
     readReferenceMedia: (mediaPath) => oss.getFile(mediaPath),
-    generateImage: async (request) => {
+    generateImage: async (request, onStage) => {
       const vendor = getDefaultConfiguredVendor();
       // 旧供应商（声明版本 < 2.0）的 referenceList → imageBase64 兼容翻译保持在调用方边界
       const { version } = await vendor.inspectVendor(request.target.vendorId);
       const input = applyLegacyImageReferenceConversion(version, request.input);
-      const result = await vendor.generateImage({ target: request.target, input });
-      return normalizeHttpResult(result);
+      let result: string;
+      try {
+        result = await vendor.generateImage({
+          target: request.target,
+          // 阶段回调注入供应商输入：适配器开始下载 URL 结果媒体时通知领域
+          input: onStage ? { ...input, onStage } : input,
+        });
+      } catch (error) {
+        // 适配器通过 error.imageFailure 携带白名单诊断（VM 边界普通对象）
+        const diagnostics = extractVendorImageFailure(error);
+        throw diagnostics ? new VendorImageGenerationError(diagnostics) : error;
+      }
+      if (typeof result === "string" && result.startsWith("http")) {
+        // 供应商直接返回 URL：媒体网络下载开始，进入“下载中”
+        await onStage?.("downloading");
+        try {
+          const downloaded = await normalizeHttpResult(result);
+          await onStage?.("downloaded");
+          return downloaded;
+        } catch (error) {
+          throw new VendorImageGenerationError({
+            kind: "downloadFailed",
+            stage: "download",
+            attempt: 1,
+          });
+        }
+      }
+      return result;
     },
     recordGenerationTask: (input) =>
       taskRecord(input.projectId, input.taskClass, input.modelId, {
