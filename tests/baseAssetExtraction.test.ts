@@ -13,10 +13,10 @@ import initDB from "../src/lib/initDB";
 import { withDataRoot, workOf } from "./databaseTestSupport";
 import extractAssetsRoute from "../src/routes/script/extractAssets";
 import type { BaseAssetCandidate } from "../src/script/assetExtractionContract";
+import { executeScriptAssetExtraction, type ScriptAssetExtractionDependencies } from "../src/script/assetExtractionReplacement";
 import {
   ASSET_IDENTITY_SCHEMA_VERSION,
   createDefaultBaseAssetSkillFileLoader,
-  executeScriptAssetExtraction,
   mergeBaseAssetCandidates,
   parseBaseAssetIdentityRecord,
   persistBaseAssetExtraction,
@@ -95,7 +95,7 @@ function fakeTextCall(
 }
 
 interface Harness {
-  deps: (overrides?: Partial<BaseAssetExtractionDependencies>) => BaseAssetExtractionDependencies;
+  deps: (overrides?: Partial<ScriptAssetExtractionDependencies>) => ScriptAssetExtractionDependencies;
   knex: Knex;
   cleanup: () => Promise<void>;
 }
@@ -117,7 +117,7 @@ async function createHarness(): Promise<Harness> {
   ]);
   const work = workOf(knex);
   const logs: Record<string, unknown>[] = [];
-  const base: BaseAssetExtractionDependencies = {
+  const base: ScriptAssetExtractionDependencies = {
     work,
     openTextCall: fakeTextCall(
       () => ({ assets: [] }),
@@ -126,6 +126,7 @@ async function createHarness(): Promise<Harness> {
     loadSkillFile: createDefaultBaseAssetSkillFileLoader(),
     now: () => 1700000000000,
     log: (entry) => logs.push(entry),
+    deleteMediaFile: async () => {},
   };
   return {
     deps: (overrides) => ({ ...base, ...overrides }),
