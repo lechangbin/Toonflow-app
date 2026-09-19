@@ -10,6 +10,7 @@ import {
   BaseAssetExtractionFailure,
   claimScriptAssetExtraction,
   createDefaultBaseAssetExtractionDependencies,
+  parseBaseAssetIdentityRecord,
   persistStagedBaseAssets,
   runBaseAssetExtractionWithScripts,
   type BaseAssetExtractionDependencies,
@@ -117,6 +118,12 @@ export async function replaceScriptAssetExtraction(
           const remaining = await trx("o_scriptAssets").whereIn("assetId", previousAssetIds).select("assetId");
           stillLinked = new Set(remaining.map((link) => link.assetId));
         }
+        await removeSelectedScriptIdentityEvidence(
+          trx,
+          previousAssetIds.filter((id) => !reused.has(id) && stillLinked.has(id)),
+          new Set(staged.scriptIds),
+          dependencies.now(),
+        );
         const baseOrphans = previousAssetIds.filter((id) => !reused.has(id) && !stillLinked.has(id));
 
         // 4. 孤儿的全部 Derived children 一并删除（无论创建来源）。
@@ -164,6 +171,48 @@ export async function replaceScriptAssetExtraction(
     }
   }
   return result;
+}
+
+/**
+ * 局部重提没有复用一个共享 Asset 时，数据库关联已经不再包含本次所选 Script，
+ * 身份记录也必须同步移除这些 Script 的归属与证据。否则后续提取会把陈旧证据当成
+ * 身份链接，错误复用仍由未选 Script 使用的同名 Asset。
+ */
+async function removeSelectedScriptIdentityEvidence(
+  trx: Knex,
+  retainedSharedAssetIds: number[],
+  selectedScriptIds: ReadonlySet<number>,
+  updateTime: number,
+): Promise<void> {
+  if (!retainedSharedAssetIds.length) return;
+
+  const rows = await trx("o_assetIdentity")
+    .whereIn("assetsId", retainedSharedAssetIds)
+    .select("assetsId", "identity");
+  for (const row of rows) {
+    let identity;
+    try {
+      identity = parseBaseAssetIdentityRecord(row.identity);
+    } catch {
+      // 损坏的身份记录本来就不能作为自动复用证据；保留原始数据供诊断。
+      continue;
+    }
+    const scriptIds = identity.scriptIds.filter((scriptId) => !selectedScriptIds.has(scriptId));
+    const evidence = identity.evidence.filter((item) => !selectedScriptIds.has(item.scriptId));
+    if (!scriptIds.length || !evidence.length) {
+      // 无法为剩余关联保留完整证据时，删除派生身份记录比保留陈旧证据更安全；
+      // Asset 及其未选 Script 关联保持不变。
+      await trx("o_assetIdentity").where("assetsId", row.assetsId).delete();
+      continue;
+    }
+    const baseline = selectedScriptIds.has(identity.baseline.scriptId) ? evidence[0] : identity.baseline;
+    await trx("o_assetIdentity")
+      .where("assetsId", row.assetsId)
+      .update({
+        identity: JSON.stringify({ ...identity, scriptIds, evidence, baseline }),
+        updateTime,
+      });
+  }
 }
 
 /** 递归收集孤儿 Base Asset 的全部 Derived children。 */

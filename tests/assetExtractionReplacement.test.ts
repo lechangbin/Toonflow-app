@@ -667,6 +667,95 @@ test("共享资产复用时保留未选剧本的身份与证据", async () => {
   }
 });
 
+test("共享资产未复用时移除已选剧本旧证据，避免后续同名身份误复用", async () => {
+  const harness = await createHarness();
+  try {
+    await runFirstExtraction(
+      harness,
+      [
+        candidate({
+          canonicalName: "胡亥",
+          scriptIds: [1, 2],
+          identityFacts: { occupation: "秦二世" },
+          evidence: [
+            {
+              scriptId: 1,
+              excerpt: "章台宫内，年轻的秦二世胡亥面对堆叠奏牍",
+              locator: "第1场",
+            },
+            {
+              scriptId: 2,
+              excerpt: "大泽乡戍卒营地，连日暴雨",
+              locator: "第1场",
+            },
+          ],
+        }),
+      ],
+      [1, 2],
+    );
+    const originalId = (await assetIdByName(harness, "胡亥"))!;
+
+    const removeFromScript2 = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({ assets: [candidate({ canonicalName: "陈胜", scriptIds: [2] })] }),
+        EMPTY_AUDIT,
+      ),
+    });
+    assert.equal(
+      (
+        await executeScriptAssetExtraction(removeFromScript2, {
+          projectId: 7,
+          scriptIds: [2],
+          replaceExisting: true,
+        })
+      ).ok,
+      true,
+    );
+
+    const retainedRow = await harness.knex("o_assetIdentity").where("assetsId", originalId).first();
+    const retainedIdentity = JSON.parse(retainedRow.identity) as {
+      scriptIds: number[];
+      evidence: Array<{ scriptId: number }>;
+    };
+    assert.deepEqual(retainedIdentity.scriptIds, [1], "移除本次已替换 Script 的旧身份归属");
+    assert.deepEqual(
+      retainedIdentity.evidence.map((item) => item.scriptId),
+      [1],
+      "只保留未选 Script 的身份证据",
+    );
+
+    const distinctSameName = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({
+          assets: [
+            candidate({
+              canonicalName: "胡亥",
+              scriptIds: [2],
+              identityFacts: { occupation: "戍卒" },
+            }),
+          ],
+        }),
+        EMPTY_AUDIT,
+      ),
+    });
+    assert.equal(
+      (
+        await executeScriptAssetExtraction(distinctSameName, {
+          projectId: 7,
+          scriptIds: [2],
+          replaceExisting: true,
+        })
+      ).ok,
+      true,
+    );
+    const sameNameRows = await harness.knex("o_assets").where({ projectId: 7, name: "胡亥" }).select("id").orderBy("id");
+    assert.equal(sameNameRows.length, 2, "同名但稳定事实冲突的后续身份保持独立");
+    assert.equal(sameNameRows[0].id, originalId, "未选 Script 的原共享 Asset 保留");
+  } finally {
+    await harness.cleanup();
+  }
+});
+
 test("同名但身份证据不足的资产不误合并，各自保持独立", async () => {
   const harness = await createHarness();
   try {

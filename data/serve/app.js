@@ -259225,6 +259225,12 @@ async function replaceScriptAssetExtraction(dependencies, staged) {
           const remaining = await trx("o_scriptAssets").whereIn("assetId", previousAssetIds).select("assetId");
           stillLinked = new Set(remaining.map((link) => link.assetId));
         }
+        await removeSelectedScriptIdentityEvidence(
+          trx,
+          previousAssetIds.filter((id) => !reused.has(id) && stillLinked.has(id)),
+          new Set(staged.scriptIds),
+          dependencies.now()
+        );
         const baseOrphans = previousAssetIds.filter((id) => !reused.has(id) && !stillLinked.has(id));
         const deletedAssetIds = await expandDerivedChildren(trx, baseOrphans);
         const { affectedStoryboardIds, staleVideoTrackIds } = await cascadeDeleteOrphanedAssets(
@@ -259262,6 +259268,29 @@ async function replaceScriptAssetExtraction(dependencies, staged) {
     }
   }
   return result;
+}
+async function removeSelectedScriptIdentityEvidence(trx, retainedSharedAssetIds, selectedScriptIds, updateTime) {
+  if (!retainedSharedAssetIds.length) return;
+  const rows = await trx("o_assetIdentity").whereIn("assetsId", retainedSharedAssetIds).select("assetsId", "identity");
+  for (const row of rows) {
+    let identity2;
+    try {
+      identity2 = parseBaseAssetIdentityRecord(row.identity);
+    } catch {
+      continue;
+    }
+    const scriptIds = identity2.scriptIds.filter((scriptId) => !selectedScriptIds.has(scriptId));
+    const evidence = identity2.evidence.filter((item) => !selectedScriptIds.has(item.scriptId));
+    if (!scriptIds.length || !evidence.length) {
+      await trx("o_assetIdentity").where("assetsId", row.assetsId).delete();
+      continue;
+    }
+    const baseline = selectedScriptIds.has(identity2.baseline.scriptId) ? evidence[0] : identity2.baseline;
+    await trx("o_assetIdentity").where("assetsId", row.assetsId).update({
+      identity: JSON.stringify({ ...identity2, scriptIds, evidence, baseline }),
+      updateTime
+    });
+  }
 }
 async function expandDerivedChildren(trx, baseOrphans) {
   const all3 = new Set(baseOrphans);
