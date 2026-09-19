@@ -258694,6 +258694,7 @@ async function persistStagedBaseAssets(trx, dependencies, staged) {
   const reusedAssetIds = [];
   const createdAssetIds = [];
   const consumedAssetIds = /* @__PURE__ */ new Set();
+  const selectedScriptIds = new Set(staged.scriptIds);
   for (const candidate of staged.candidates) {
     const matched = existingAssets.find((asset) => {
       if (consumedAssetIds.has(asset.id)) return false;
@@ -258719,10 +258720,15 @@ async function persistStagedBaseAssets(trx, dependencies, staged) {
     }
     if (matched) {
       consumedAssetIds.add(matched.id);
-      if (identityByAssetId.has(matched.id)) {
+      const existingIdentity = identityByAssetId.get(matched.id);
+      const sharedWithUnselectedScript = existingIdentity.scriptIds.some(
+        (scriptId) => !selectedScriptIds.has(scriptId)
+      );
+      const identityToPersist = mergeUnselectedScriptIdentity(existingIdentity, candidate, selectedScriptIds);
+      if (identityByAssetId.has(matched.id) && !sharedWithUnselectedScript) {
         await trx("o_assets").where("id", matched.id).update({ describe: candidate.describe });
       }
-      await upsertAssetIdentity(trx, dependencies, matched.id, staged.projectId, candidate);
+      await upsertAssetIdentity(trx, dependencies, matched.id, staged.projectId, identityToPersist);
       assetIds.push(matched.id);
       reusedAssetIds.push(matched.id);
       continue;
@@ -258755,6 +258761,8 @@ async function claimScriptAssetExtraction(dependencies, input) {
   const scriptIds = scripts.map((script) => script.id);
   const claim = await dependencies.work(
     (db) => db.transaction(async (trx) => {
+      const running = await trx("o_script").whereIn("id", scriptIds).where("extractState", 0).first("id");
+      if (running) throw new ExtractionClaimConflict();
       if (!input.replaceExisting) {
         const linked = await trx("o_scriptAssets").whereIn("scriptId", scriptIds).select("scriptId");
         if (linked.length) throw new ReextractConfirmationRequired();
@@ -258824,6 +258832,31 @@ function identitiesAreLinked(existing, candidate) {
   const sharedKeys = Object.keys(existingFacts).filter((key) => candidateFacts[key] !== void 0);
   if (sharedKeys.some((key) => existingFacts[key] !== candidateFacts[key])) return false;
   return sharedKeys.some((key) => existingFacts[key] === candidateFacts[key]);
+}
+function mergeUnselectedScriptIdentity(existing, candidate, selectedScriptIds) {
+  const retainedScriptIds = existing.scriptIds.filter((scriptId) => !selectedScriptIds.has(scriptId));
+  if (!retainedScriptIds.length) return candidate;
+  const retained = new Set(retainedScriptIds);
+  const evidence = dedupeEvidence([
+    ...existing.evidence.filter((item) => retained.has(item.scriptId)),
+    ...candidate.evidence
+  ]).sort((a, b) => a.scriptId - b.scriptId);
+  const aliases = /* @__PURE__ */ new Set([...existing.aliases ?? [], ...candidate.aliases]);
+  if (existing.canonicalName !== candidate.canonicalName) aliases.add(existing.canonicalName);
+  aliases.delete(candidate.canonicalName);
+  const identityFacts = normalizeIdentityFacts(candidate.type, {
+    ...existing.identityFacts ?? {},
+    ...candidate.identityFacts ?? {}
+  });
+  return {
+    ...candidate,
+    aliases: [...aliases].sort(compareCodePoints),
+    summary: existing.summary || candidate.summary,
+    scriptIds: [.../* @__PURE__ */ new Set([...retainedScriptIds, ...candidate.scriptIds])].sort((a, b) => a - b),
+    evidence,
+    ...identityFacts ? { identityFacts } : { identityFacts: void 0 },
+    baseline: evidence[0]
+  };
 }
 async function upsertAssetIdentity(db, dependencies, assetsId, projectId, candidate) {
   const record3 = {
@@ -259200,6 +259233,7 @@ async function replaceScriptAssetExtraction(dependencies, staged) {
           deletedAssetIds,
           mediaPaths
         );
+        await trx("o_script").whereIn("id", staged.scriptIds).update({ extractState: 1, errorReason: null });
         return {
           reusedAssetIds: persisted.reusedAssetIds,
           createdAssetIds: persisted.createdAssetIds,
@@ -259263,6 +259297,7 @@ async function cascadeDeleteOrphanedAssets(trx, dependencies, deletedAssetIds, m
   const affectedStoryboardIds = [...new Set(storyboardLinkRows.map((row) => row.storyboardId))];
   await trx("o_assets2Storyboard").whereIn("assetId", deletedAssetIds).delete();
   await trx("o_scriptAssets").whereIn("assetId", deletedAssetIds).delete();
+  await trx("o_assetsRole2Audio").whereIn("assetsRoleId", deletedAssetIds).orWhereIn("assetsAudioId", deletedAssetIds).delete();
   await trx("o_assetIdentity").whereIn("assetsId", deletedAssetIds).delete();
   await trx("o_assets").whereIn("id", deletedAssetIds).delete();
   let staleVideoTrackIds = [];
@@ -259302,9 +259337,6 @@ async function runClaimedScriptAssetExtraction(dependencies, scripts) {
   try {
     const staged = await runBaseAssetExtractionWithScripts(dependencies, scripts);
     const result = await replaceScriptAssetExtraction(dependencies, staged);
-    await dependencies.work(
-      (db) => db("o_script").whereIn("id", resolvedIds).update({ extractState: 1, errorReason: null })
-    );
     dependencies.log({
       requestId,
       stage: "persist",

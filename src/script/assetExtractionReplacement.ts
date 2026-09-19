@@ -130,6 +130,10 @@ export async function replaceScriptAssetExtraction(
           mediaPaths,
         );
 
+        // 成功状态与资产替换必须原子提交。若该写入失败，事务回滚全部新关系、
+        // 级联删除与失效标记，调用方随后只记录稳定失败状态。
+        await trx("o_script").whereIn("id", staged.scriptIds).update({ extractState: 1, errorReason: null });
+
         return {
           reusedAssetIds: persisted.reusedAssetIds,
           createdAssetIds: persisted.createdAssetIds,
@@ -226,6 +230,10 @@ async function cascadeDeleteOrphanedAssets(
 
   // 脚本关联、身份记录与资产行本身。
   await trx("o_scriptAssets").whereIn("assetId", deletedAssetIds).delete();
+  await trx("o_assetsRole2Audio")
+    .whereIn("assetsRoleId", deletedAssetIds)
+    .orWhereIn("assetsAudioId", deletedAssetIds)
+    .delete();
   await trx("o_assetIdentity").whereIn("assetsId", deletedAssetIds).delete();
   await trx("o_assets").whereIn("id", deletedAssetIds).delete();
 
@@ -285,9 +293,6 @@ export async function runClaimedScriptAssetExtraction(
   try {
     const staged = await runBaseAssetExtractionWithScripts(dependencies, scripts);
     const result = await replaceScriptAssetExtraction(dependencies, staged);
-    await dependencies.work((db) =>
-      db("o_script").whereIn("id", resolvedIds).update({ extractState: 1, errorReason: null }),
-    );
     dependencies.log({
       requestId,
       stage: "persist",

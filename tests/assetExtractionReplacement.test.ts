@@ -291,6 +291,27 @@ test("已有资产的剧本在缺少 replaceExisting 时拒绝提取且零模型
   }
 });
 
+test("已有资产且提取运行中时优先返回稳定的 extractionInProgress", async () => {
+  const harness = await createHarness();
+  try {
+    await runFirstExtraction(harness, [candidate({ canonicalName: "胡亥" })], [1]);
+    await harness.knex("o_script").where("id", 1).update({ extractState: 0 });
+    const counters = { opened: 0, invoked: 0 };
+    const deps = harness.deps({
+      openTextCall: fakeTextCall(() => ({ assets: [] }), EMPTY_AUDIT, counters),
+    });
+
+    const outcome = await executeScriptAssetExtraction(deps, { projectId: 7, scriptIds: [1] });
+
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.error, "extractionInProgress");
+    assert.equal(counters.opened, 0);
+    assert.equal(counters.invoked, 0);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
 test("显式 replaceExisting 时正常执行替换", async () => {
   const harness = await createHarness();
   try {
@@ -448,6 +469,78 @@ test("替换事务中途失败时回滚全部写入，旧数据完整保留", as
   }
 });
 
+test("成功状态写入失败时与资产替换一并回滚", async () => {
+  const harness = await createHarness();
+  try {
+    await runFirstExtraction(harness, [candidate({ canonicalName: "胡亥" })], [1]);
+    const huId = (await assetIdByName(harness, "胡亥"))!;
+    const assetsBefore = await harness.knex("o_assets").where("projectId", 7).select("id", "name").orderBy("id");
+    const linksBefore = await harness.knex("o_scriptAssets").select("scriptId", "assetId").orderBy(["scriptId", "assetId"]);
+
+    const deps = harness.deps({
+      work: workWithTrxTableFailure(harness.knex, "o_script", 3),
+      openTextCall: fakeTextCall(() => ({ assets: [candidate({ canonicalName: "赵高" })] }), EMPTY_AUDIT),
+    });
+    const outcome = await executeScriptAssetExtraction(deps, {
+      projectId: 7,
+      scriptIds: [1],
+      replaceExisting: true,
+    });
+
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.error, "persistenceFailed");
+    assert.deepEqual(
+      await harness.knex("o_assets").where("projectId", 7).select("id", "name").orderBy("id"),
+      assetsBefore,
+      "成功状态必须与替换结果在同一事务中提交",
+    );
+    assert.deepEqual(
+      await harness.knex("o_scriptAssets").select("scriptId", "assetId").orderBy(["scriptId", "assetId"]),
+      linksBefore,
+      "成功状态写入失败不得留下新关联",
+    );
+    assert.ok(await harness.knex("o_assets").where("id", huId).first(), "旧资产仍保留");
+    assert.equal(await assetIdByName(harness, "赵高"), undefined, "新资产已回滚");
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test("混选新剧本与已有资产剧本时统一确认并在确认后原子提取", async () => {
+  const harness = await createHarness();
+  try {
+    await runFirstExtraction(harness, [candidate({ canonicalName: "胡亥" })], [1]);
+    const counters = { opened: 0, invoked: 0 };
+    const deps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({
+          assets: [
+            candidate({ canonicalName: "胡亥", scriptIds: [1] }),
+            candidate({ canonicalName: "陈胜", scriptIds: [2] }),
+          ],
+        }),
+        EMPTY_AUDIT,
+        counters,
+      ),
+    });
+
+    const rejected = await executeScriptAssetExtraction(deps, { projectId: 7, scriptIds: [1, 2] });
+    assert.equal(rejected.error, "reextractConfirmationRequired");
+    assert.equal(counters.invoked, 0, "混选时未确认不得调用模型");
+
+    const accepted = await executeScriptAssetExtraction(deps, {
+      projectId: 7,
+      scriptIds: [1, 2],
+      replaceExisting: true,
+    });
+    assert.equal(accepted.ok, true);
+    assert.ok(await harness.knex("o_scriptAssets").where({ scriptId: 1 }).first());
+    assert.ok(await harness.knex("o_scriptAssets").where({ scriptId: 2 }).first());
+  } finally {
+    await harness.cleanup();
+  }
+});
+
 // ---------------------------------------------------------------------------
 // 6/7/8/9 混合新旧资产、共享资产、同名身份、人工孤儿
 // ---------------------------------------------------------------------------
@@ -516,6 +609,59 @@ test("被未选剧本使用的共享资产保留且在新结果命中同一身�
       (await harness.knex("o_scriptAssets").where({ scriptId: 1, assetId: huId })).length > 0,
       "未选剧本的关联保留",
     );
+  } finally {
+    await harness.cleanup();
+  }
+});
+
+test("共享资产复用时保留未选剧本的身份与证据", async () => {
+  const harness = await createHarness();
+  try {
+    await runFirstExtraction(
+      harness,
+      [candidate({ canonicalName: "胡亥", identityFacts: { occupation: "秦二世" } })],
+      [1],
+    );
+    const huId = (await assetIdByName(harness, "胡亥"))!;
+    await harness.knex("o_scriptAssets").insert({ scriptId: 2, assetId: huId });
+
+    const deps = harness.deps({
+      openTextCall: fakeTextCall(
+        () => ({
+          assets: [
+            candidate({
+              canonicalName: "胡亥",
+              scriptIds: [2],
+              identityFacts: { occupation: "秦二世" },
+            }),
+          ],
+        }),
+        EMPTY_AUDIT,
+      ),
+    });
+    const outcome = await executeScriptAssetExtraction(deps, {
+      projectId: 7,
+      scriptIds: [2],
+      replaceExisting: true,
+    });
+
+    assert.equal(outcome.ok, true);
+    assert.equal(await assetIdByName(harness, "胡亥"), huId, "同一证据身份复用原 Asset");
+    assert.ok(await harness.knex("o_scriptAssets").where({ scriptId: 1, assetId: huId }).first());
+    assert.ok(await harness.knex("o_scriptAssets").where({ scriptId: 2, assetId: huId }).first());
+    const row = await harness.knex("o_assetIdentity").where("assetsId", huId).first();
+    const identity = JSON.parse(row.identity) as {
+      scriptIds: number[];
+      evidence: Array<{ scriptId: number }>;
+      baseline: { scriptId: number };
+    };
+    assert.deepEqual(identity.scriptIds, [1, 2], "身份保留未选剧本并加入本次剧本");
+    assert.deepEqual(
+      [...new Set(identity.evidence.map((item) => item.scriptId))].sort(),
+      [1, 2],
+      "身份同时保留两条剧本证据",
+    );
+    assert.equal(identity.baseline.scriptId, 1, "跨剧本 baseline 仍取最早证据");
   } finally {
     await harness.cleanup();
   }
@@ -656,6 +802,16 @@ test("references/images/prompts/image-flow/change instructions 全部清理并�
       imageFlow: true,
     });
     const flowRow = await harness.knex("o_assets").where("id", huId).first();
+    const [survivingAssetId] = await harness.knex("o_assets").insert({
+      name: "旁白音色",
+      type: "audio",
+      projectId: 7,
+      startTime: 1,
+    });
+    await harness.knex("o_assetsRole2Audio").insert([
+      { assetsRoleId: huId, assetsAudioId: survivingAssetId },
+      { assetsRoleId: survivingAssetId, assetsAudioId: huId },
+    ]);
 
     const deps = harness.deps({
       openTextCall: fakeTextCall(() => ({ assets: [candidate({ canonicalName: "赵高" })] }), EMPTY_AUDIT),
@@ -668,6 +824,15 @@ test("references/images/prompts/image-flow/change instructions 全部清理并�
     assert.equal(await harness.knex("o_derivedChangeInstruction").where("assetsId", huId).first(), undefined);
     assert.equal(await harness.knex("o_image").where("assetsId", huId).first(), undefined);
     assert.equal(await harness.knex("o_imageFlow").where("id", flowRow.flowId).first(), undefined, "图片工作流记录删除");
+    assert.equal(
+      await harness
+        .knex("o_assetsRole2Audio")
+        .where("assetsRoleId", huId)
+        .orWhere("assetsAudioId", huId)
+        .first(),
+      undefined,
+      "角色端或音频端引用孤儿资产的绑定全部删除",
+    );
     assert.deepEqual(
       harness.deletedMediaPaths.sort(),
       [`/7/assetReferences/${huId}.png`, `/7/assets/${huId}.jpg`].sort(),

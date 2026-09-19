@@ -417,6 +417,7 @@ export async function persistStagedBaseAssets(
   const reusedAssetIds: number[] = [];
   const createdAssetIds: number[] = [];
   const consumedAssetIds = new Set<number>();
+  const selectedScriptIds = new Set(staged.scriptIds);
   for (const candidate of staged.candidates) {
     const matched = existingAssets.find((asset) => {
       if (consumedAssetIds.has(asset.id)) return false;
@@ -446,12 +447,18 @@ export async function persistStagedBaseAssets(
     }
     if (matched) {
       consumedAssetIds.add(matched.id);
+      const existingIdentity = identityByAssetId.get(matched.id)!;
+      const sharedWithUnselectedScript = existingIdentity.scriptIds.some(
+        (scriptId) => !selectedScriptIds.has(scriptId),
+      );
+      const identityToPersist = mergeUnselectedScriptIdentity(existingIdentity, candidate, selectedScriptIds);
       // 提取管理的资产（已有身份记录）刷新确定性编译摘要；人工创建或
-      // 修改过的资产（无身份记录）保持原 describe，只补写身份记录。
-      if (identityByAssetId.has(matched.id)) {
+      // 修改过的资产（无身份记录）保持原 describe，只补写身份记录。共享资产
+      // 仍服务于未选剧本时也保持展示摘要不变，避免局部重提覆盖其公共身份。
+      if (identityByAssetId.has(matched.id) && !sharedWithUnselectedScript) {
         await trx("o_assets").where("id", matched.id).update({ describe: candidate.describe });
       }
-      await upsertAssetIdentity(trx, dependencies, matched.id, staged.projectId, candidate);
+      await upsertAssetIdentity(trx, dependencies, matched.id, staged.projectId, identityToPersist);
       assetIds.push(matched.id);
       reusedAssetIds.push(matched.id);
       continue;
@@ -530,6 +537,8 @@ export async function claimScriptAssetExtraction(
   const claim = await dependencies.work((db) =>
     db
       .transaction(async (trx): Promise<ClaimOutcome> => {
+        const running = await trx("o_script").whereIn("id", scriptIds).where("extractState", 0).first("id");
+        if (running) throw new ExtractionClaimConflict();
         if (!input.replaceExisting) {
           const linked = await trx("o_scriptAssets").whereIn("scriptId", scriptIds).select("scriptId");
           if (linked.length) throw new ReextractConfirmationRequired();
@@ -638,6 +647,42 @@ function identitiesAreLinked(existing: BaseAssetIdentityRecord, candidate: Stage
   const sharedKeys = Object.keys(existingFacts).filter((key) => candidateFacts[key] !== undefined);
   if (sharedKeys.some((key) => existingFacts[key] !== candidateFacts[key])) return false;
   return sharedKeys.some((key) => existingFacts[key] === candidateFacts[key]);
+}
+
+/**
+ * 局部重提复用共享 Asset 时，只替换已选 Script 的身份证据；未选 Script 的证
+ * 据、稳定事实与 baseline 必须继续属于同一个规范身份。
+ */
+function mergeUnselectedScriptIdentity(
+  existing: BaseAssetIdentityRecord,
+  candidate: StagedBaseAsset,
+  selectedScriptIds: ReadonlySet<number>,
+): StagedBaseAsset {
+  const retainedScriptIds = existing.scriptIds.filter((scriptId) => !selectedScriptIds.has(scriptId));
+  if (!retainedScriptIds.length) return candidate;
+
+  const retained = new Set(retainedScriptIds);
+  const evidence = dedupeEvidence([
+    ...existing.evidence.filter((item) => retained.has(item.scriptId)),
+    ...candidate.evidence,
+  ]).sort((a, b) => a.scriptId - b.scriptId);
+  const aliases = new Set([...(existing.aliases ?? []), ...candidate.aliases]);
+  if (existing.canonicalName !== candidate.canonicalName) aliases.add(existing.canonicalName);
+  aliases.delete(candidate.canonicalName);
+  const identityFacts = normalizeIdentityFacts(candidate.type, {
+    ...(existing.identityFacts ?? {}),
+    ...(candidate.identityFacts ?? {}),
+  });
+
+  return {
+    ...candidate,
+    aliases: [...aliases].sort(compareCodePoints),
+    summary: existing.summary || candidate.summary,
+    scriptIds: [...new Set([...retainedScriptIds, ...candidate.scriptIds])].sort((a, b) => a - b),
+    evidence,
+    ...(identityFacts ? { identityFacts } : { identityFacts: undefined }),
+    baseline: evidence[0],
+  };
 }
 
 async function upsertAssetIdentity(
