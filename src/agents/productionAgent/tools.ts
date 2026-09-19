@@ -29,7 +29,7 @@ const deriveAssetSchema = z.object({
   name: z.string().describe("衍生资产名称"),
   desc: z.string().describe("衍生资产描述"),
   src: z.string().nullable().describe("衍生资产资源路径"),
-  state: z.enum(["未生成", "生成中", "已完成", "生成失败"]).describe("衍生资产生成状态"),
+  state: z.literal("未生成").describe("衍生资产初始状态固定为“未生成”；生成生命周期只能由后端生成编排写入"),
   type: z.enum(["role", "tool", "scene", "clip"]).describe("衍生资产类型"),
 });
 export const assetItemSchema = z.object({

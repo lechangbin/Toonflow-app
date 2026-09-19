@@ -20936,16 +20936,16 @@ var require_router = __commonJS({
         return new Router(options);
       }
       const opts = options || {};
-      function router176(req, res, next) {
-        router176.handle(req, res, next);
+      function router172(req, res, next) {
+        router172.handle(req, res, next);
       }
-      Object.setPrototypeOf(router176, this);
-      router176.caseSensitive = opts.caseSensitive;
-      router176.mergeParams = opts.mergeParams;
-      router176.params = {};
-      router176.strict = opts.strict;
-      router176.stack = [];
-      return router176;
+      Object.setPrototypeOf(router172, this);
+      router172.caseSensitive = opts.caseSensitive;
+      router172.mergeParams = opts.mergeParams;
+      router172.params = {};
+      router172.strict = opts.strict;
+      router172.stack = [];
+      return router172;
     }
     Router.prototype = function() {
     };
@@ -21333,7 +21333,7 @@ var require_application = __commonJS({
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router176 = null;
+      var router172 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -21342,13 +21342,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router176 === null) {
-            router176 = new Router({
+          if (router172 === null) {
+            router172 = new Router({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router176;
+          return router172;
         }
       });
     };
@@ -21419,15 +21419,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router176 = this.router;
+      var router172 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router176.use(path34, fn2);
+          return router172.use(path34, fn2);
         }
         debug(".use app under %s", path34);
         fn2.mountpath = path34;
         fn2.parent = this;
-        router176.use(path34, function mounted_app(req, res, next) {
+        router172.use(path34, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -48834,8 +48834,8 @@ var require_lib4 = __commonJS({
         getWss: function getWss() {
           return wsServer;
         },
-        applyTo: function applyTo(router176) {
-          (0, _addWsMethod2.default)(router176);
+        applyTo: function applyTo(router172) {
+          (0, _addWsMethod2.default)(router172);
         }
       };
     }
@@ -57746,7 +57746,7 @@ var vendor_default;
 var init_vendor = __esm({
   "src/lib/vendor.json"() {
     vendor_default = {
-      "agnes.ts": '/**\n * ToonFlow Agnes AI \u4F9B\u5E94\u5546\u9002\u914D\u5668\n * @version 2.5\n * @see https://www.agnes-ai.com/zh-Hans/docs/overview\n */\n\n// ============================================================\n// \u7C7B\u578B\u5B9A\u4E49\n// ============================================================\n\ninterface TextModel {\n  name: string;\n  modelName: string;\n  type: "text";\n  think: boolean;\n}\n\ninterface ImageModel {\n  name: string;\n  modelName: string;\n  type: "image";\n  mode: ("text" | "singleImage" | "multiReference")[];\n  associationSkills?: string;\n  maxReferenceImages?: number;\n}\n\ninterface VideoModel {\n  name: string;\n  modelName: string;\n  type: "video";\n  associationSkills?: string;\n  capabilities: {\n    id: "text-to-video" | "image-to-video" | "keyframe-to-video";\n    promptProfileId: string;\n    inputs: { role: "source-image" | "first-frame" | "intermediate-keyframe" | "last-frame"; mediaType: "image"; required: boolean }[];\n    transitions?: { kind: "adjacent-keyframes" };\n    audio: { generation: "native"; policy: "always" };\n    outputPresets: {\n      id: string;\n      resolution: string;\n      durations: { kind: "integer-range"; min: number; max: number; step: number };\n      aspectRatios: ("16:9" | "9:16")[];\n    }[];\n  }[];\n}\n\ninterface TTSModel {\n  name: string;\n  modelName: string;\n  type: "tts";\n  voices: { title: string; voice: string }[];\n}\n\ninterface VendorConfig {\n  id: string;\n  version: string;\n  name: string;\n  author: string;\n  description?: string;\n  icon?: string;\n  inputs: { key: string; label: string; type: "text" | "password" | "url"; required: boolean; placeholder?: string }[];\n  inputValues: Record<string, string>;\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\n}\n\ntype ReferenceList =\n  | { type: "image"; sourceType: "base64"; base64: string }\n  | { type: "audio"; sourceType: "base64"; base64: string }\n  | { type: "video"; sourceType: "base64"; base64: string };\n\ninterface ImageConfig {\n  prompt: string;\n  referenceList?: Extract<ReferenceList, { type: "image" }>[];\n  size: "1K" | "2K" | "4K";\n  aspectRatio: `${number}:${number}`;\n}\n\ninterface ResolvedImage {\n  mediaType: "image";\n  base64: string;\n}\n\ninterface VideoCommandBase {\n  modelId: string;\n  prompt: string;\n  output: {\n    presetId: string;\n    duration: number;\n    resolution: string;\n    aspectRatio: "16:9" | "9:16";\n  };\n  audio: { generation: "native"; enabled: true };\n  resumeTask?: {\n    videoId?: string;\n    taskId?: string;\n    retry?: number;\n  };\n  onTaskCheckpoint?: (checkpoint: VideoTaskCheckpoint) => Promise<void> | void;\n}\n\ntype VideoGenerationCommand =\n  | (VideoCommandBase & { capabilityId: "text-to-video" })\n  | (VideoCommandBase & { capabilityId: "image-to-video"; sourceImage: ResolvedImage })\n  | (VideoCommandBase & {\n      capabilityId: "keyframe-to-video";\n      firstFrame: ResolvedImage;\n      intermediateKeyframe?: ResolvedImage;\n      lastFrame: ResolvedImage;\n    });\n\ninterface VideoTaskCheckpoint {\n  vendorId: "agnes";\n  modelName: string;\n  videoId?: string;\n  taskId?: string;\n  stage: "poll" | "download" | "completed" | "failed";\n  retry: number;\n}\n\ninterface TTSConfig {\n  text: string;\n  voice: string;\n  speechRate: number;\n  pitchRate: number;\n  volume: number;\n  referenceList?: Extract<ReferenceList, { type: "audio" }>[];\n}\n\ninterface PollResult {\n  completed: boolean;\n  data?: string;\n  error?: string;\n}\n\n// ============================================================\n// \u5168\u5C40\u58F0\u660E\n// ============================================================\n\ndeclare const axios: any;\ndeclare const fetch: any;\ndeclare const logger: (msg: string) => void;\ndeclare const jsonwebtoken: any;\ndeclare const zipImage: (base64: string, size: number) => Promise<string>;\ndeclare const zipImageResolution: (base64: string, w: number, h: number) => Promise<string>;\ndeclare const mergeImages: (base64Arr: string[], maxSize?: string) => Promise<string>;\ndeclare const urlToBase64: (url: string, config?: any) => Promise<string>;\ndeclare const sleep: (milliseconds: number) => Promise<void>;\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>;\ndeclare const createOpenAI: any;\ndeclare const createDeepSeek: any;\ndeclare const createZhipu: any;\ndeclare const createQwen: any;\ndeclare const createAnthropic: any;\ndeclare const createOpenAICompatible: any;\ndeclare const createXai: any;\ndeclare const createMinimax: any;\ndeclare const createGoogleGenerativeAI: any;\ndeclare const exports: {\n  vendor: VendorConfig;\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;\n  videoRequest: (c: VideoGenerationCommand, m: VideoModel) => Promise<string>;\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;\n  checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;\n  updateVendor?: () => Promise<string>;\n};\n\n// ============================================================\n// \u4F9B\u5E94\u5546\u914D\u7F6E\n// ============================================================\n\nconst vendor: VendorConfig = {\n  id: "agnes",\n  version: "2.5",\n  author: "Agnes AI",\n  name: "Agnes AI",\n  description:\n    "Agnes AI \u5B98\u65B9\u5168\u6A21\u6001 API \u9002\u914D\u3002\u652F\u6301 Agnes 2.0/2.5 Flash\u3001Agnes 2.5 Pro/Pro Alpha \u6587\u672C\u4E0E\u89C6\u89C9\u8BED\u8A00\u6A21\u578B\uFF0CImage 2.0/2.1 Flash \u56FE\u50CF\u751F\u6210\u4E0E\u7F16\u8F91\uFF0C\u4EE5\u53CA Video V2.0 \u89C6\u9891\u751F\u6210\u3002",\n  inputs: [\n    { key: "apiKey", label: "API Key", type: "password", required: true, placeholder: "Agnes AI API Key" },\n    {\n      key: "baseUrl",\n      label: "API \u5730\u5740",\n      type: "url",\n      required: true,\n      placeholder: "https://apihub.agnes-ai.com",\n    },\n  ],\n  inputValues: {\n    apiKey: "",\n    baseUrl: "https://apihub.agnes-ai.com",\n  },\n  models: [\n    {\n      name: "Agnes 2.5 Flash",\n      modelName: "agnes-2.5-flash",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.0 Flash",\n      modelName: "agnes-2.0-flash",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.5 Pro\uFF08\u4ED8\u8D39\uFF09",\n      modelName: "agnes-2.5-pro",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.5 Pro Alpha\uFF08\u4ED8\u8D39\uFF09",\n      modelName: "agnes-2.5-pro-alpha",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes Image 2.1 Flash",\n      modelName: "agnes-image-2.1-flash",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n      maxReferenceImages: 6,\n      associationSkills: "\u9AD8\u4FE1\u606F\u5BC6\u5EA6\u56FE\u50CF\u3001\u590D\u6742\u6784\u56FE\u3001\u6587\u751F\u56FE\u3001\u56FE\u50CF\u7F16\u8F91\u548C\u591A\u56FE\u5408\u6210\uFF1B\u652F\u6301 1K/2K/4K \u4E0E\u591A\u79CD\u5BBD\u9AD8\u6BD4\u3002",\n    },\n    {\n      name: "Agnes Image 2.0 Flash",\n      modelName: "agnes-image-2.0-flash",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n      maxReferenceImages: 6,\n      associationSkills: "\u5FEB\u901F\u6587\u751F\u56FE\u3001\u56FE\u50CF\u7F16\u8F91\u548C\u591A\u56FE\u5408\u6210\u3002",\n    },\n    {\n      name: "Agnes Video V2.0",\n      modelName: "agnes-video-v2.0",\n      type: "video",\n      associationSkills: "\u5F02\u6B65\u6587\u751F\u89C6\u9891\u3001\u5355\u56FE\u751F\u89C6\u9891\u4E0E\u663E\u5F0F\u9996\u5E27/\u4E2D\u95F4\u5173\u952E\u5E27/\u5C3E\u5E27\u52A8\u753B\uFF1B\u539F\u751F\u97F3\u9891\u59CB\u7EC8\u5F00\u542F\u3002",\n      capabilities: [\n        {\n          id: "text-to-video",\n          promptProfileId: "agnes/text-v1",\n          inputs: [],\n          audio: { generation: "native", policy: "always" },\n          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({\n            id: resolution,\n            resolution,\n            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },\n            aspectRatios: ["16:9" as const, "9:16" as const],\n          })),\n        },\n        {\n          id: "image-to-video",\n          promptProfileId: "agnes/image-v1",\n          inputs: [{ role: "source-image", mediaType: "image", required: true }],\n          audio: { generation: "native", policy: "always" },\n          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({\n            id: resolution,\n            resolution,\n            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },\n            aspectRatios: ["16:9" as const, "9:16" as const],\n          })),\n        },\n        {\n          id: "keyframe-to-video",\n          promptProfileId: "agnes/keyframe-v1",\n          inputs: [\n            { role: "first-frame", mediaType: "image", required: true },\n            { role: "intermediate-keyframe", mediaType: "image", required: false },\n            { role: "last-frame", mediaType: "image", required: true },\n          ],\n          transitions: { kind: "adjacent-keyframes" },\n          audio: { generation: "native", policy: "always" },\n          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({\n            id: resolution,\n            resolution,\n            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },\n            aspectRatios: ["16:9" as const, "9:16" as const],\n          })),\n        },\n      ],\n    },\n  ],\n};\n\n// ============================================================\n// \u8F85\u52A9\u5DE5\u5177\n// ============================================================\n\nconst getBaseUrl = (): string => {\n  const configured = (vendor.inputValues.baseUrl || "https://apihub.agnes-ai.com")\n    .trim()\n    .replace(/^http:\\/\\/apihub\\.agnes-ai\\.com(?::443)?/i, "https://apihub.agnes-ai.com")\n    .replace(/\\/+$/, "");\n  return configured.replace(/\\/v1$/i, "");\n};\n\nconst getOpenAIBaseUrl = (): string => `${getBaseUrl()}/v1`;\n\nconst getHeaders = () => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11 Agnes AI API Key");\n  return {\n    Authorization: `Bearer ${vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "")}`,\n    "Content-Type": "application/json",\n  };\n};\n\nconst getErrorMessage = (error: any, fallback: string): string => {\n  const data = error?.response?.data;\n  const message =\n    data?.error?.message ||\n    data?.error ||\n    data?.detail ||\n    data?.message ||\n    data?.msg ||\n    (typeof data === "string" ? data : undefined) ||\n    (data && typeof data === "object" ? JSON.stringify(data) : undefined) ||\n    error?.message;\n  const status = error?.response?.status;\n  const statusText = status ? `\uFF08HTTP ${status}\uFF09` : "";\n  return message\n    ? `${fallback}${statusText}\uFF1A${typeof message === "string" ? message : JSON.stringify(message)}`\n    : `${fallback}${statusText}`;\n};\n\ntype VideoStage = "submit" | "poll" | "download";\n\nconst formatUnknownError = (value: any, fallback = "unknown error"): string => {\n  if (typeof value === "string") return value;\n  if (value && typeof value === "object") {\n    const safeDetails = ["stage", "code", "status", "name"]\n      .flatMap((key) => {\n        const field = value[key];\n        return typeof field === "string" || typeof field === "number" ? [`${key}=${field}`] : [];\n      })\n      .join(" ");\n    return safeDetails || fallback;\n  }\n  return value == null ? fallback : String(value);\n};\n\nconst getProviderErrorDetails = (error: any) => {\n  const data = error?.response?.data;\n  const rawMessage =\n    data?.error?.message ||\n    data?.detail ||\n    data?.message ||\n    data?.msg ||\n    (typeof data === "string" ? data : undefined) ||\n    error?.message ||\n    formatUnknownError(error);\n  return {\n    httpStatus: Number(error?.response?.status || 0) || undefined,\n    providerCode: data?.error?.code || data?.code || error?.code,\n    message: formatUnknownError(rawMessage),\n  };\n};\n\nconst formatVideoError = (\n  stage: VideoStage,\n  error: any,\n  ids: { videoId?: string; taskId?: string },\n  retry: number,\n): string => {\n  const details = getProviderErrorDetails(error);\n  return [\n    "[Agnes Video]",\n    `stage=${stage}`,\n    `httpStatus=${details.httpStatus ?? "none"}`,\n    `providerCode=${details.providerCode ?? "none"}`,\n    `video_id=${ids.videoId ?? "none"}`,\n    `task_id=${ids.taskId ?? "none"}`,\n    `retry=${retry}`,\n    `message=${details.message}`,\n  ].join(" ");\n};\n\nconst isRetryableVideoTransportError = (error: any): boolean => {\n  const details = getProviderErrorDetails(error);\n  const httpStatus = details.httpStatus || 0;\n  if (httpStatus === 408 || httpStatus === 429 || (httpStatus >= 500 && httpStatus <= 599)) return true;\n  return /ECONNRESET|ECONNREFUSED|ETIMEDOUT|ECONNABORTED|EAI_AGAIN|ENOTFOUND|EHOSTUNREACH|socket hang up|timeout/i.test(\n    `${details.providerCode || ""} ${details.message}`,\n  );\n};\n\nconst getVideoRetryBackoffMs = (retry: number): number => {\n  const exponential = Math.min(60000, 1000 * 2 ** Math.max(0, retry - 1));\n  const jitter = Math.floor(Math.random() * Math.max(250, exponential * 0.25));\n  return exponential + jitter;\n};\n\nconst isExplicitQueueFullError = (error: any): boolean => {\n  const details = getProviderErrorDetails(error);\n  return (\n    /video_queue_full|queue[_ -]?full/i.test(String(details.providerCode || "")) ||\n    /video queue is full|queue capacity|\u961F\u5217.*\u6EE1/i.test(details.message)\n  );\n};\n\nconst getSubmitQueueBackoffMs = (retry: number): number => {\n  const exponential = Math.min(60000, 10000 * 2 ** Math.max(0, retry - 1));\n  const jitter = Math.floor(Math.random() * Math.max(1000, exponential * 0.2));\n  return exponential + jitter;\n};\n\nlet imageRequestQueue: Promise<void> = Promise.resolve();\n\nconst runImageRequestSerially = async <T>(task: () => Promise<T>): Promise<T> => {\n  const previous = imageRequestQueue;\n  let release = () => {};\n  imageRequestQueue = new Promise<void>((resolve) => {\n    release = resolve;\n  });\n\n  await previous;\n  try {\n    return await task();\n  } finally {\n    release();\n  }\n};\n\nconst waitWithPollTask = async (waitMs: number): Promise<void> => {\n  const startedAt = Date.now();\n  const result = await pollTask(\n    async (): Promise<PollResult> => ({ completed: Date.now() - startedAt >= waitMs }),\n    Math.min(500, Math.max(100, waitMs)),\n    waitMs + 5000,\n  );\n\n  if (result.error) throw new Error(`\u7B49\u5F85\u91CD\u8BD5\u5931\u8D25\uFF1A${result.error}`);\n};\n\nconst postImageWithRetry = async (url: string, body: any, headers: any): Promise<any> => {\n  let lastError: any;\n\n  for (let attempt = 1; attempt <= 3; attempt += 1) {\n    try {\n      return await axios.post(url, body, { headers, timeout: 360000, proxy: false });\n    } catch (error: any) {\n      lastError = error;\n      const status = Number(error?.response?.status || 0);\n      const responseValue =\n        error?.response?.data?.error?.message ||\n          error?.response?.data?.message ||\n          error?.response?.data?.detail ||\n          error?.response?.data ||\n          error?.message ||\n          "";\n      const responseText =\n        typeof responseValue === "string" ? responseValue : JSON.stringify(responseValue);\n      const isNetworkError = /ECONNRESET|ETIMEDOUT|ECONNABORTED|EAI_AGAIN|ENOTFOUND|socket hang up|timeout/i.test(\n        responseText,\n      );\n      const isRetryableStatus = [408, 409, 429, 500, 502, 503, 504, 520, 522, 524].includes(status);\n      const isBusy400 = status === 400 && /busy|queue|concurr|rate|limit|frequent|\u9891\u7E41|\u5E76\u53D1|\u7A0D\u540E/i.test(responseText);\n\n      if (attempt >= 3 || (!isNetworkError && !isRetryableStatus && !isBusy400)) throw error;\n\n      const waitMs = attempt * 3000;\n      logger(`[Agnes \u56FE\u7247] \u8BF7\u6C42\u6682\u65F6\u5931\u8D25\uFF0C\u5C06\u5728 ${waitMs / 1000} \u79D2\u540E\u91CD\u8BD5\uFF08${attempt}/3\uFF09`);\n      await waitWithPollTask(waitMs);\n    }\n  }\n\n  throw lastError;\n};\n\nconst normalizeImageRatio = (ratio: string): string => {\n  const supported = ["1:1", "3:4", "4:3", "16:9", "9:16", "2:3", "3:2", "21:9"];\n  return supported.includes(ratio) ? ratio : "1:1";\n};\n\nconst getImage20Size = (size: ImageConfig["size"], ratio: string): string => {\n  const dimensions: Record<string, Record<ImageConfig["size"], string>> = {\n    "1:1": { "1K": "1024x1024", "2K": "2048x2048", "4K": "4096x4096" },\n    "3:4": { "1K": "864x1152", "2K": "1728x2304", "4K": "3456x4608" },\n    "4:3": { "1K": "1152x864", "2K": "2304x1728", "4K": "4608x3456" },\n    "16:9": { "1K": "1312x736", "2K": "2624x1472", "4K": "5248x2944" },\n    "9:16": { "1K": "736x1312", "2K": "1472x2624", "4K": "2944x5248" },\n    "2:3": { "1K": "832x1248", "2K": "1664x2496", "4K": "3328x4992" },\n    "3:2": { "1K": "1248x832", "2K": "2496x1664", "4K": "4992x3328" },\n    "21:9": { "1K": "1568x672", "2K": "3136x1344", "4K": "6272x2688" },\n  };\n  return dimensions[ratio]?.[size] || dimensions["1:1"][size] || "1024x1024";\n};\n\nconst ensureImageDataUri = (value: string): string => {\n  if (value.startsWith("data:")) return value;\n  return `data:image/png;base64,${value}`;\n};\n\nconst getVideoDimensions = (resolution: string, ratio: "16:9" | "9:16"): { width: number; height: number } => {\n  const normalized = String(resolution || "720p").toLowerCase();\n  const landscape = normalized.includes("1080")\n    ? { width: 1920, height: 1088 }\n    : normalized.includes("480")\n      ? { width: 832, height: 448 }\n      : { width: 1280, height: 704 };\n  return ratio === "9:16" ? { width: landscape.height, height: landscape.width } : landscape;\n};\n\nconst getVideoFrames = (duration: number): number => {\n  const seconds = Math.max(1, Math.min(18, Math.round(Number(duration) || 5)));\n  const frameRate = 24;\n  const n = Math.max(1, Math.min(55, Math.round((seconds * frameRate - 1) / 8)));\n  return Math.min(441, n * 8 + 1);\n};\n\nconst unwrapVideoData = (payload: any): any => {\n  if (payload?.data && !Array.isArray(payload.data)) return payload.data;\n  return payload;\n};\n\nconst extractVideoUrl = (payload: any): string | undefined => {\n  const data = unwrapVideoData(payload);\n  return data?.metadata?.url || data?.url || data?.video_url || data?.output?.url;\n};\n\nconst extractTaskError = (payload: any): string | undefined => {\n  const data = unwrapVideoData(payload);\n  const error = data?.error?.message || data?.error || data?.message || data?.msg;\n  return error ? (typeof error === "string" ? error : JSON.stringify(error)) : undefined;\n};\n\n// ============================================================\n// \u9002\u914D\u5668\u51FD\u6570\n// ============================================================\n\nconst textRequest = (model: TextModel, think: boolean, _thinkLevel: 0 | 1 | 2 | 3) => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11 Agnes AI API Key");\n\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\n\n  return createOpenAICompatible({\n    name: "agnes",\n    baseURL: getOpenAIBaseUrl(),\n    apiKey,\n    fetch: async (url: string, options?: any) => {\n      if (!options?.body || typeof options.body !== "string") {\n        return await fetch(url, options);\n      }\n\n      let rawBody: any;\n      try {\n        rawBody = JSON.parse(options.body);\n      } catch {\n        return await fetch(url, options);\n      }\n\n      const body = think\n        ? {\n            ...rawBody,\n            chat_template_kwargs: {\n              ...(rawBody.chat_template_kwargs || {}),\n              enable_thinking: true,\n            },\n          }\n        : rawBody;\n\n      return await fetch(url, {\n        ...options,\n        body: JSON.stringify(body),\n      });\n    },\n  }).chatModel(model.modelName);\n};\n\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\n  const headers = getHeaders();\n  const baseUrl = getBaseUrl();\n  const ratio = normalizeImageRatio(config.aspectRatio || "1:1");\n  const rawImageRefs = (config.referenceList || [])\n    .map((item) => item.base64)\n    .filter(Boolean)\n    .map(ensureImageDataUri);\n  const configuredLimit = Number(model.maxReferenceImages);\n  const maxReferenceImages = Number.isInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : rawImageRefs.length;\n  const imageRefs = rawImageRefs.slice(0, maxReferenceImages);\n  const isImage21 = model.modelName === "agnes-image-2.1-flash";\n  const body: any = {\n    model: model.modelName,\n    prompt: config.prompt || "",\n    size: isImage21 ? config.size || "1K" : getImage20Size(config.size || "1K", ratio),\n    return_base64: true,\n    extra_body: {\n      response_format: "b64_json",\n    },\n  };\n\n  if (isImage21) body.ratio = ratio;\n  if (imageRefs.length > 0) body.extra_body.image = imageRefs;\n\n  const referenceCount = imageRefs.length === rawImageRefs.length ? `${imageRefs.length}` : `${imageRefs.length}/${rawImageRefs.length}`;\n  logger(`[Agnes \u56FE\u7247] \u63D0\u4EA4 ${model.modelName}\uFF0C\u53C2\u8003\u56FE ${referenceCount} \u5F20\uFF0C\u5C3A\u5BF8 ${body.size}\uFF0C\u6BD4\u4F8B ${ratio}`);\n\n  return await runImageRequestSerially(async (): Promise<string> => {\n    logger(`[Agnes \u56FE\u7247] \u5DF2\u8FDB\u5165\u751F\u6210\u961F\u5217\uFF1A${model.modelName}`);\n    try {\n      const response = await postImageWithRetry(`${baseUrl}/v1/images/generations`, body, headers);\n      const payload = response?.data;\n      const item = Array.isArray(payload?.data) ? payload.data[0] : payload?.data?.[0] || payload;\n      const b64 = item?.b64_json || payload?.b64_json;\n      const url = item?.url || payload?.url;\n\n      if (b64) return ensureImageDataUri(b64);\n      if (url) return await urlToBase64(url);\n      throw new Error(`\u54CD\u5E94\u4E2D\u6CA1\u6709\u56FE\u7247\u6570\u636E\uFF1A${JSON.stringify(payload).slice(0, 500)}`);\n    } catch (error: any) {\n      throw new Error(getErrorMessage(error, "Agnes \u56FE\u7247\u751F\u6210\u5931\u8D25"));\n    }\n  });\n};\n\nconst videoRequest = async (config: VideoGenerationCommand, model: VideoModel): Promise<string> => {\n  const headers = getHeaders();\n  const baseUrl = getBaseUrl();\n  const dimensions = getVideoDimensions(config.output.resolution, config.output.aspectRatio);\n  const body: any = {\n    model: model.modelName,\n    prompt: config.prompt,\n    width: dimensions.width,\n    height: dimensions.height,\n    num_frames: getVideoFrames(config.output.duration),\n    frame_rate: 24,\n  };\n\n  if (config.capabilityId === "keyframe-to-video") {\n    const keyframes = [config.firstFrame, config.intermediateKeyframe, config.lastFrame]\n      .filter((image): image is ResolvedImage => !!image)\n      .map((image) => ensureImageDataUri(image.base64));\n    body.extra_body = {\n      image: keyframes,\n      mode: "keyframes",\n    };\n  } else if (config.capabilityId === "image-to-video") {\n    body.image = ensureImageDataUri(config.sourceImage.base64);\n  }\n\n  let videoId = config.resumeTask?.videoId;\n  let taskId = config.resumeTask?.taskId;\n  let submitData: any;\n\n  const checkpoint = async (stage: VideoTaskCheckpoint["stage"], retry: number): Promise<void> => {\n    if (!config.onTaskCheckpoint) return;\n    await config.onTaskCheckpoint({\n      vendorId: "agnes",\n      modelName: model.modelName,\n      videoId,\n      taskId,\n      stage,\n      retry,\n    });\n  };\n\n  const downloadResult = async (resultUrl: string, retry: number): Promise<string> => {\n    const maxDownloadRetries = 2;\n    let downloadRetryCount = 0;\n\n    while (true) {\n      const currentRetry = retry + downloadRetryCount;\n      await checkpoint("download", currentRetry);\n      try {\n        return await urlToBase64(resultUrl, { proxy: false, timeout: 120000 });\n      } catch (error: any) {\n        const message = formatVideoError("download", error, { videoId, taskId }, currentRetry);\n        if (!isRetryableVideoTransportError(error) || downloadRetryCount >= maxDownloadRetries) {\n          logger(message);\n          throw new Error(message);\n        }\n        downloadRetryCount += 1;\n        const waitMs = getVideoRetryBackoffMs(downloadRetryCount);\n        logger(`${message} backoffMs=${waitMs}`);\n        await sleep(waitMs);\n      }\n    }\n  };\n\n  if (!videoId && !taskId) {\n    logger(\n      `[Agnes \u89C6\u9891] \u63D0\u4EA4 ${config.capabilityId === "keyframe-to-video" ? "\u5173\u952E\u5E27" : config.capabilityId === "image-to-video" ? "\u56FE\u751F\u89C6\u9891" : "\u6587\u751F\u89C6\u9891"}\u4EFB\u52A1\uFF0C${dimensions.width}x${dimensions.height}\uFF0C${body.num_frames} \u5E27`,\n    );\n\n    const maxQueueRetries = 4;\n    let submitRetry = 0;\n    while (true) {\n      try {\n        const submitResponse = await axios.post(`${baseUrl}/v1/videos`, body, {\n          headers,\n          timeout: 120000,\n          proxy: false,\n        });\n        submitData = unwrapVideoData(submitResponse?.data);\n        break;\n      } catch (error: any) {\n        if (!isExplicitQueueFullError(error) || submitRetry >= maxQueueRetries) {\n          const message = formatVideoError("submit", error, {}, submitRetry);\n          logger(message);\n          throw new Error(message);\n        }\n        submitRetry += 1;\n        const waitMs = getSubmitQueueBackoffMs(submitRetry);\n        const message = formatVideoError("submit", error, {}, submitRetry);\n        logger(`${message} backoffMs=${waitMs}`);\n        await sleep(waitMs);\n      }\n    }\n\n    videoId = submitData?.video_id;\n    taskId = submitData?.task_id || submitData?.id;\n    const directUrl = extractVideoUrl(submitData);\n    if (directUrl && String(submitData?.status || "").toLowerCase() === "completed") {\n      return await downloadResult(directUrl, 0);\n    }\n    if (!videoId && !taskId) {\n      const message = formatVideoError(\n        "submit",\n        { message: `\u672A\u8FD4\u56DE video_id \u6216 task_id\u3002\u539F\u59CB\u54CD\u5E94\uFF1A${JSON.stringify(submitData).slice(0, 500)}` },\n        {},\n        0,\n      );\n      logger(message);\n      throw new Error(message);\n    }\n    logger(`[Agnes \u89C6\u9891] \u4EFB\u52A1\u5DF2\u521B\u5EFA\uFF1A${videoId || taskId}`);\n  } else {\n    logger(`[Agnes \u89C6\u9891] \u6062\u590D\u5DF2\u6709\u4EFB\u52A1\uFF1A${videoId || taskId}`);\n  }\n\n  let pollRetryCount = Math.max(0, Number(config.resumeTask?.retry || 0));\n  await checkpoint("poll", pollRetryCount);\n\n  let consecutivePollRetries = 0;\n  const maxPollRetries = 8;\n\n  const queryTask = async (): Promise<any> => {\n    if (videoId) {\n      const query = `video_id=${encodeURIComponent(videoId)}&model_name=${encodeURIComponent(model.modelName)}`;\n      try {\n        const response = await axios.get(`${baseUrl}/agnesapi?${query}`, {\n          headers,\n          timeout: 60000,\n          proxy: false,\n        });\n        return response?.data;\n      } catch (error: any) {\n        if (!taskId || error?.response?.status !== 404) throw error;\n      }\n    }\n    const response = await axios.get(`${baseUrl}/v1/videos/${encodeURIComponent(taskId)}`, {\n      headers,\n      timeout: 60000,\n      proxy: false,\n    });\n    return response?.data;\n  };\n\n  const pollResult = await pollTask(\n    async (): Promise<PollResult> => {\n      let payload: any;\n\n      while (true) {\n        try {\n          payload = await queryTask();\n          consecutivePollRetries = 0;\n          break;\n        } catch (error: any) {\n          if (!isRetryableVideoTransportError(error) || pollRetryCount >= maxPollRetries) {\n            const message = formatVideoError("poll", error, { videoId, taskId }, pollRetryCount);\n            logger(message);\n            throw new Error(message);\n          }\n          pollRetryCount += 1;\n          consecutivePollRetries += 1;\n          const waitMs = getVideoRetryBackoffMs(consecutivePollRetries);\n          const message = formatVideoError("poll", error, { videoId, taskId }, pollRetryCount);\n          logger(`${message} backoffMs=${waitMs}`);\n          await checkpoint("poll", pollRetryCount);\n          await sleep(waitMs);\n        }\n      }\n\n      const data = unwrapVideoData(payload);\n      const status = String(data?.status || data?.state || "").toLowerCase();\n      const url = extractVideoUrl(data);\n\n      if (["completed", "succeeded", "success", "done"].includes(status)) {\n        return url\n          ? { completed: true, data: url }\n          : {\n              completed: true,\n              error: formatVideoError(\n                "poll",\n                { message: "Agnes \u89C6\u9891\u4EFB\u52A1\u5DF2\u5B8C\u6210\uFF0C\u4F46\u54CD\u5E94\u4E2D\u6CA1\u6709 metadata.url" },\n                { videoId, taskId },\n                pollRetryCount,\n              ),\n            };\n      }\n      if (["failed", "error", "cancelled", "canceled", "expired"].includes(status)) {\n        await checkpoint("failed", pollRetryCount);\n        return {\n          completed: true,\n          error: formatVideoError(\n            "poll",\n            { message: extractTaskError(data) || "Agnes \u89C6\u9891\u751F\u6210\u5931\u8D25", response: { data } },\n            { videoId, taskId },\n            pollRetryCount,\n          ),\n        };\n      }\n      if (url && !status) return { completed: true, data: url };\n      return { completed: false };\n    },\n    5000,\n    1800000,\n  );\n\n  if (pollResult.error) {\n    throw new Error(\n      pollResult.error.startsWith("[Agnes Video]")\n        ? pollResult.error\n        : formatVideoError("poll", { message: pollResult.error }, { videoId, taskId }, pollRetryCount),\n    );\n  }\n  if (!pollResult.data) {\n    throw new Error(\n      formatVideoError("poll", { message: "\u8F6E\u8BE2\u7ED3\u675F\u4F46\u6CA1\u6709\u8FD4\u56DE\u89C6\u9891\u5730\u5740" }, { videoId, taskId }, pollRetryCount),\n    );\n  }\n  return await downloadResult(pollResult.data, pollRetryCount);\n};\n\nconst ttsRequest = async (_config: TTSConfig, _model: TTSModel): Promise<string> => {\n  return "";\n};\n\nconst checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {\n  return {\n    hasUpdate: false,\n    latestVersion: vendor.version,\n    notice:\n      "Agnes AI ToonFlow \u4F9B\u5E94\u5546\u9002\u914D\u5668 2.5\uFF1A\u4FDD\u7559\u89C6\u9891\u63D0\u793A\u8BCD\u8DEF\u7531\uFF0C\u65B0\u589E Agnes Video \u4E32\u884C\u961F\u5217\u3001503 \u9000\u907F\u91CD\u8BD5\u3001\u4EFB\u52A1\u6062\u590D\u3001\u5206\u9636\u6BB5\u9519\u8BEF\u548C\u65E0\u4EE3\u7406\u7ED3\u679C\u4E0B\u8F7D\u3002",\n  };\n};\n\nconst updateVendor = async (): Promise<string> => {\n  return "";\n};\n\n// ============================================================\n// \u5BFC\u51FA\n// ============================================================\n\nexports.vendor = vendor;\nexports.textRequest = textRequest;\nexports.imageRequest = imageRequest;\nexports.videoRequest = videoRequest;\nexports.ttsRequest = ttsRequest;\nexports.checkForUpdates = checkForUpdates;\nexports.updateVendor = updateVendor;\n\nexport {};\n',
+      "agnes.ts": '/**\n * ToonFlow Agnes AI \u4F9B\u5E94\u5546\u9002\u914D\u5668\n * @version 2.5\n * @see https://www.agnes-ai.com/zh-Hans/docs/overview\n */\n\n// ============================================================\n// \u7C7B\u578B\u5B9A\u4E49\n// ============================================================\n\ninterface TextModel {\n  name: string;\n  modelName: string;\n  type: "text";\n  think: boolean;\n}\n\ninterface ImageModel {\n  name: string;\n  modelName: string;\n  type: "image";\n  mode: ("text" | "singleImage" | "multiReference")[];\n  associationSkills?: string;\n  maxReferenceImages?: number;\n}\n\ninterface VideoModel {\n  name: string;\n  modelName: string;\n  type: "video";\n  associationSkills?: string;\n  capabilities: {\n    id: "text-to-video" | "image-to-video" | "keyframe-to-video";\n    promptProfileId: string;\n    inputs: { role: "source-image" | "first-frame" | "intermediate-keyframe" | "last-frame"; mediaType: "image"; required: boolean }[];\n    transitions?: { kind: "adjacent-keyframes" };\n    audio: { generation: "native"; policy: "always" };\n    outputPresets: {\n      id: string;\n      resolution: string;\n      durations: { kind: "integer-range"; min: number; max: number; step: number };\n      aspectRatios: ("16:9" | "9:16")[];\n    }[];\n  }[];\n}\n\ninterface TTSModel {\n  name: string;\n  modelName: string;\n  type: "tts";\n  voices: { title: string; voice: string }[];\n}\n\ninterface VendorConfig {\n  id: string;\n  version: string;\n  name: string;\n  author: string;\n  description?: string;\n  icon?: string;\n  inputs: { key: string; label: string; type: "text" | "password" | "url"; required: boolean; placeholder?: string }[];\n  inputValues: Record<string, string>;\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\n}\n\ntype ReferenceList =\n  | { type: "image"; sourceType: "base64"; base64: string }\n  | { type: "audio"; sourceType: "base64"; base64: string }\n  | { type: "video"; sourceType: "base64"; base64: string };\n\ninterface ImageConfig {\n  prompt: string;\n  referenceList?: Extract<ReferenceList, { type: "image" }>[];\n  size: "1K" | "2K" | "4K";\n  aspectRatio: `${number}:${number}`;\n  /** Issue #39\uFF1A\u4F9B\u5E94\u5546\u83B7\u5F97\u6267\u884C\u69FD\u4EE5\u53CA URL \u5A92\u4F53\u4E0B\u8F7D\u8FB9\u754C\u7684\u4E8B\u5B9E\u56DE\u8C03\u3002 */\n  onStage?: (stage: "generating" | "downloading" | "downloaded") => void | Promise<void>;\n}\n\ninterface ResolvedImage {\n  mediaType: "image";\n  base64: string;\n}\n\ninterface VideoCommandBase {\n  modelId: string;\n  prompt: string;\n  output: {\n    presetId: string;\n    duration: number;\n    resolution: string;\n    aspectRatio: "16:9" | "9:16";\n  };\n  audio: { generation: "native"; enabled: true };\n  resumeTask?: {\n    videoId?: string;\n    taskId?: string;\n    retry?: number;\n  };\n  onTaskCheckpoint?: (checkpoint: VideoTaskCheckpoint) => Promise<void> | void;\n}\n\ntype VideoGenerationCommand =\n  | (VideoCommandBase & { capabilityId: "text-to-video" })\n  | (VideoCommandBase & { capabilityId: "image-to-video"; sourceImage: ResolvedImage })\n  | (VideoCommandBase & {\n      capabilityId: "keyframe-to-video";\n      firstFrame: ResolvedImage;\n      intermediateKeyframe?: ResolvedImage;\n      lastFrame: ResolvedImage;\n    });\n\ninterface VideoTaskCheckpoint {\n  vendorId: "agnes";\n  modelName: string;\n  videoId?: string;\n  taskId?: string;\n  stage: "poll" | "download" | "completed" | "failed";\n  retry: number;\n}\n\ninterface TTSConfig {\n  text: string;\n  voice: string;\n  speechRate: number;\n  pitchRate: number;\n  volume: number;\n  referenceList?: Extract<ReferenceList, { type: "audio" }>[];\n}\n\ninterface PollResult {\n  completed: boolean;\n  data?: string;\n  error?: string;\n}\n\n// ============================================================\n// \u5168\u5C40\u58F0\u660E\n// ============================================================\n\ndeclare const axios: any;\ndeclare const fetch: any;\ndeclare const logger: (msg: string) => void;\ndeclare const jsonwebtoken: any;\ndeclare const zipImage: (base64: string, size: number) => Promise<string>;\ndeclare const zipImageResolution: (base64: string, w: number, h: number) => Promise<string>;\ndeclare const mergeImages: (base64Arr: string[], maxSize?: string) => Promise<string>;\ndeclare const urlToBase64: (url: string, config?: any) => Promise<string>;\ndeclare const sleep: (milliseconds: number) => Promise<void>;\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>;\ndeclare const createOpenAI: any;\ndeclare const createDeepSeek: any;\ndeclare const createZhipu: any;\ndeclare const createQwen: any;\ndeclare const createAnthropic: any;\ndeclare const createOpenAICompatible: any;\ndeclare const createXai: any;\ndeclare const createMinimax: any;\ndeclare const createGoogleGenerativeAI: any;\ndeclare const exports: {\n  vendor: VendorConfig;\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;\n  videoRequest: (c: VideoGenerationCommand, m: VideoModel) => Promise<string>;\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;\n  checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;\n  updateVendor?: () => Promise<string>;\n};\n\n// ============================================================\n// \u4F9B\u5E94\u5546\u914D\u7F6E\n// ============================================================\n\nconst vendor: VendorConfig = {\n  id: "agnes",\n  version: "2.5",\n  author: "Agnes AI",\n  name: "Agnes AI",\n  description:\n    "Agnes AI \u5B98\u65B9\u5168\u6A21\u6001 API \u9002\u914D\u3002\u652F\u6301 Agnes 2.0/2.5 Flash\u3001Agnes 2.5 Pro/Pro Alpha \u6587\u672C\u4E0E\u89C6\u89C9\u8BED\u8A00\u6A21\u578B\uFF0CImage 2.0/2.1 Flash \u56FE\u50CF\u751F\u6210\u4E0E\u7F16\u8F91\uFF0C\u4EE5\u53CA Video V2.0 \u89C6\u9891\u751F\u6210\u3002",\n  inputs: [\n    { key: "apiKey", label: "API Key", type: "password", required: true, placeholder: "Agnes AI API Key" },\n    {\n      key: "baseUrl",\n      label: "API \u5730\u5740",\n      type: "url",\n      required: true,\n      placeholder: "https://apihub.agnes-ai.com",\n    },\n  ],\n  inputValues: {\n    apiKey: "",\n    baseUrl: "https://apihub.agnes-ai.com",\n  },\n  models: [\n    {\n      name: "Agnes 2.5 Flash",\n      modelName: "agnes-2.5-flash",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.0 Flash",\n      modelName: "agnes-2.0-flash",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.5 Pro\uFF08\u4ED8\u8D39\uFF09",\n      modelName: "agnes-2.5-pro",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes 2.5 Pro Alpha\uFF08\u4ED8\u8D39\uFF09",\n      modelName: "agnes-2.5-pro-alpha",\n      type: "text",\n      think: true,\n    },\n    {\n      name: "Agnes Image 2.1 Flash",\n      modelName: "agnes-image-2.1-flash",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n      maxReferenceImages: 6,\n      associationSkills: "\u9AD8\u4FE1\u606F\u5BC6\u5EA6\u56FE\u50CF\u3001\u590D\u6742\u6784\u56FE\u3001\u6587\u751F\u56FE\u3001\u56FE\u50CF\u7F16\u8F91\u548C\u591A\u56FE\u5408\u6210\uFF1B\u652F\u6301 1K/2K/4K \u4E0E\u591A\u79CD\u5BBD\u9AD8\u6BD4\u3002",\n    },\n    {\n      name: "Agnes Image 2.0 Flash",\n      modelName: "agnes-image-2.0-flash",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n      maxReferenceImages: 6,\n      associationSkills: "\u5FEB\u901F\u6587\u751F\u56FE\u3001\u56FE\u50CF\u7F16\u8F91\u548C\u591A\u56FE\u5408\u6210\u3002",\n    },\n    {\n      name: "Agnes Video V2.0",\n      modelName: "agnes-video-v2.0",\n      type: "video",\n      associationSkills: "\u5F02\u6B65\u6587\u751F\u89C6\u9891\u3001\u5355\u56FE\u751F\u89C6\u9891\u4E0E\u663E\u5F0F\u9996\u5E27/\u4E2D\u95F4\u5173\u952E\u5E27/\u5C3E\u5E27\u52A8\u753B\uFF1B\u539F\u751F\u97F3\u9891\u59CB\u7EC8\u5F00\u542F\u3002",\n      capabilities: [\n        {\n          id: "text-to-video",\n          promptProfileId: "agnes/text-v1",\n          inputs: [],\n          audio: { generation: "native", policy: "always" },\n          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({\n            id: resolution,\n            resolution,\n            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },\n            aspectRatios: ["16:9" as const, "9:16" as const],\n          })),\n        },\n        {\n          id: "image-to-video",\n          promptProfileId: "agnes/image-v1",\n          inputs: [{ role: "source-image", mediaType: "image", required: true }],\n          audio: { generation: "native", policy: "always" },\n          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({\n            id: resolution,\n            resolution,\n            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },\n            aspectRatios: ["16:9" as const, "9:16" as const],\n          })),\n        },\n        {\n          id: "keyframe-to-video",\n          promptProfileId: "agnes/keyframe-v1",\n          inputs: [\n            { role: "first-frame", mediaType: "image", required: true },\n            { role: "intermediate-keyframe", mediaType: "image", required: false },\n            { role: "last-frame", mediaType: "image", required: true },\n          ],\n          transitions: { kind: "adjacent-keyframes" },\n          audio: { generation: "native", policy: "always" },\n          outputPresets: ["480p", "720p", "1080p"].map((resolution) => ({\n            id: resolution,\n            resolution,\n            durations: { kind: "integer-range" as const, min: 1, max: 18, step: 1 },\n            aspectRatios: ["16:9" as const, "9:16" as const],\n          })),\n        },\n      ],\n    },\n  ],\n};\n\n// ============================================================\n// \u8F85\u52A9\u5DE5\u5177\n// ============================================================\n\nconst getBaseUrl = (): string => {\n  const configured = (vendor.inputValues.baseUrl || "https://apihub.agnes-ai.com")\n    .trim()\n    .replace(/^http:\\/\\/apihub\\.agnes-ai\\.com(?::443)?/i, "https://apihub.agnes-ai.com")\n    .replace(/\\/+$/, "");\n  return configured.replace(/\\/v1$/i, "");\n};\n\nconst getOpenAIBaseUrl = (): string => `${getBaseUrl()}/v1`;\n\nconst getHeaders = () => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11 Agnes AI API Key");\n  return {\n    Authorization: `Bearer ${vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "")}`,\n    "Content-Type": "application/json",\n  };\n};\n\nconst getErrorMessage = (error: any, fallback: string): string => {\n  const data = error?.response?.data;\n  const message =\n    data?.error?.message ||\n    data?.error ||\n    data?.detail ||\n    data?.message ||\n    data?.msg ||\n    (typeof data === "string" ? data : undefined) ||\n    (data && typeof data === "object" ? JSON.stringify(data) : undefined) ||\n    error?.message;\n  const status = error?.response?.status;\n  const statusText = status ? `\uFF08HTTP ${status}\uFF09` : "";\n  return message\n    ? `${fallback}${statusText}\uFF1A${typeof message === "string" ? message : JSON.stringify(message)}`\n    : `${fallback}${statusText}`;\n};\n\ntype VideoStage = "submit" | "poll" | "download";\n\nconst formatUnknownError = (value: any, fallback = "unknown error"): string => {\n  if (typeof value === "string") return value;\n  if (value && typeof value === "object") {\n    const safeDetails = ["stage", "code", "status", "name"]\n      .flatMap((key) => {\n        const field = value[key];\n        return typeof field === "string" || typeof field === "number" ? [`${key}=${field}`] : [];\n      })\n      .join(" ");\n    return safeDetails || fallback;\n  }\n  return value == null ? fallback : String(value);\n};\n\nconst getProviderErrorDetails = (error: any) => {\n  const data = error?.response?.data;\n  const rawMessage =\n    data?.error?.message ||\n    data?.detail ||\n    data?.message ||\n    data?.msg ||\n    (typeof data === "string" ? data : undefined) ||\n    error?.message ||\n    formatUnknownError(error);\n  return {\n    httpStatus: Number(error?.response?.status || 0) || undefined,\n    providerCode: data?.error?.code || data?.code || error?.code,\n    message: formatUnknownError(rawMessage),\n  };\n};\n\nconst formatVideoError = (\n  stage: VideoStage,\n  error: any,\n  ids: { videoId?: string; taskId?: string },\n  retry: number,\n): string => {\n  const details = getProviderErrorDetails(error);\n  return [\n    "[Agnes Video]",\n    `stage=${stage}`,\n    `httpStatus=${details.httpStatus ?? "none"}`,\n    `providerCode=${details.providerCode ?? "none"}`,\n    `video_id=${ids.videoId ?? "none"}`,\n    `task_id=${ids.taskId ?? "none"}`,\n    `retry=${retry}`,\n    `message=${details.message}`,\n  ].join(" ");\n};\n\nconst isRetryableVideoTransportError = (error: any): boolean => {\n  const details = getProviderErrorDetails(error);\n  const httpStatus = details.httpStatus || 0;\n  if (httpStatus === 408 || httpStatus === 429 || (httpStatus >= 500 && httpStatus <= 599)) return true;\n  return /ECONNRESET|ECONNREFUSED|ETIMEDOUT|ECONNABORTED|EAI_AGAIN|ENOTFOUND|EHOSTUNREACH|socket hang up|timeout/i.test(\n    `${details.providerCode || ""} ${details.message}`,\n  );\n};\n\nconst getVideoRetryBackoffMs = (retry: number): number => {\n  const exponential = Math.min(60000, 1000 * 2 ** Math.max(0, retry - 1));\n  const jitter = Math.floor(Math.random() * Math.max(250, exponential * 0.25));\n  return exponential + jitter;\n};\n\nconst isExplicitQueueFullError = (error: any): boolean => {\n  const details = getProviderErrorDetails(error);\n  return (\n    /video_queue_full|queue[_ -]?full/i.test(String(details.providerCode || "")) ||\n    /video queue is full|queue capacity|\u961F\u5217.*\u6EE1/i.test(details.message)\n  );\n};\n\nconst getSubmitQueueBackoffMs = (retry: number): number => {\n  const exponential = Math.min(60000, 10000 * 2 ** Math.max(0, retry - 1));\n  const jitter = Math.floor(Math.random() * Math.max(1000, exponential * 0.2));\n  return exponential + jitter;\n};\n\nlet imageRequestQueue: Promise<void> = Promise.resolve();\n\nconst runImageRequestSerially = async <T>(task: () => Promise<T>): Promise<T> => {\n  const previous = imageRequestQueue;\n  let release = () => {};\n  imageRequestQueue = new Promise<void>((resolve) => {\n    release = resolve;\n  });\n\n  await previous;\n  try {\n    return await task();\n  } finally {\n    release();\n  }\n};\n\nconst waitWithPollTask = async (waitMs: number): Promise<void> => {\n  const startedAt = Date.now();\n  const result = await pollTask(\n    async (): Promise<PollResult> => ({ completed: Date.now() - startedAt >= waitMs }),\n    Math.min(500, Math.max(100, waitMs)),\n    waitMs + 5000,\n  );\n\n  if (result.error) throw new Error(`\u7B49\u5F85\u91CD\u8BD5\u5931\u8D25\uFF1A${result.error}`);\n};\n\n// ============================================================\n// \u56FE\u7247\u5931\u8D25\u8BCA\u65AD\uFF08Issue #39\uFF09\n// ============================================================\n\ntype ImageFailureKind = "timeout" | "transport" | "httpError" | "noImageData" | "downloadFailed";\n\ninterface ImageFailureDiagnostics {\n  kind: ImageFailureKind;\n  stage: "generation" | "download";\n  attempt: number;\n  elapsedMs?: number;\n  transportCode?: string;\n  httpStatus?: number;\n  providerRequestId?: string;\n}\n\nconst getImageResponseText = (error: any): string => {\n  const data = error?.response?.data;\n  const responseValue =\n    data?.error?.message || data?.message || data?.detail || data?.msg ||\n    (typeof data === "string" ? data : undefined) ||\n    error?.message || "";\n  return typeof responseValue === "string" ? responseValue : JSON.stringify(responseValue);\n};\n\nconst getProviderRequestId = (error: any): string | undefined => {\n  const headers = error?.response?.headers || {};\n  for (const key of ["x-request-id", "request-id", "x-trace-id"]) {\n    const value = headers[key];\n    if (typeof value === "string") {\n      const normalized = value.trim().slice(0, 128);\n      if (/^[A-Za-z0-9._:-]+$/.test(normalized)) return normalized;\n    }\n  }\n  return undefined;\n};\n\nconst classifyImageRequestError = (error: any): "timeout" | "transport" | "httpError" => {\n  const status = Number(error?.response?.status || 0);\n  if (status > 0) return "httpError";\n  const code = String(error?.code || "");\n  const message = String(error?.message || "");\n  if (code === "ECONNABORTED" || code === "ETIMEDOUT" || /timeout of \\d+ms exceeded/i.test(message)) return "timeout";\n  return "transport";\n};\n\n/**\n * \u6784\u9020\u5E26\u767D\u540D\u5355\u8BCA\u65AD\u7684\u56FE\u7247\u5931\u8D25\u9519\u8BEF\uFF1A\u8BCA\u65AD\u901A\u8FC7 error.imageFailure \u4F20\u56DE\u9886\u57DF\u5C42\u3002\n * \u53EA\u5305\u542B\u9636\u6BB5/\u5C1D\u8BD5\u6B21\u6570/\u8017\u65F6/\u4F20\u8F93\u7801/HTTP \u72B6\u6001/\u6E05\u7406\u540E\u7684\u8BF7\u6C42 ID \u4E0E\u8131\u654F\u6D88\u606F\uFF1B\n * \u7EDD\u4E0D\u5305\u542B API Key\u3001Authorization\u3001\u63D0\u793A\u8BCD\u3001\u53C2\u8003\u56FE\u6216\u7ED3\u679C Base64\u3001\u7B7E\u540D URL\u3002\n */\nconst buildImageFailure = (\n  kind: ImageFailureKind,\n  stage: "generation" | "download",\n  error: any,\n  attempt: number,\n  startedAt: number,\n): Error => {\n  const elapsedMs = Math.max(0, Date.now() - startedAt);\n  const transportCode = error?.code ? String(error.code).slice(0, 64) : undefined;\n  const httpStatus = Number(error?.response?.status || 0) || undefined;\n  const providerRequestId = getProviderRequestId(error);\n  const failure: any = new Error(`Agnes \u56FE\u7247\u751F\u6210\u5931\u8D25 kind=${kind} stage=${stage} attempt=${attempt}`);\n  failure.imageFailure = {\n    kind,\n    stage,\n    attempt,\n    elapsedMs,\n    ...(transportCode ? { transportCode } : {}),\n    ...(httpStatus ? { httpStatus } : {}),\n    ...(providerRequestId ? { providerRequestId } : {}),\n  } as ImageFailureDiagnostics;\n  return failure;\n};\n\n/**\n * \u660E\u786E\u6536\u5230\u3001\u5B89\u5168\u4E14\u6587\u6863\u5316\u7684\u4E34\u65F6\u62D2\u7EDD\u624D\u5141\u8BB8\u6709\u9650\u91CD\u8BD5\uFF1A\n * HTTP 429\uFF08\u9650\u6D41\uFF09\u4E0E\u201C\u961F\u5217\u5DF2\u6EE1/\u7E41\u5FD9\u201D\u8BED\u4E49\u7684 400\u3002\u8D85\u65F6\u3001\u8FDE\u63A5\u91CD\u7F6E\u30015xx \u7B49\n * \u4F9B\u5E94\u5546\u53EF\u80FD\u5DF2\u6536\u5230\u5E76\u5904\u7406\u8BF7\u6C42\u7684\u4E0D\u786E\u5B9A\u7ED3\u679C\u7EDD\u4E0D\u81EA\u52A8\u91CD\u653E POST\uFF08Issue #39\uFF09\u3002\n */\nconst isExplicitSafeTemporaryRejection = (error: any): boolean => {\n  const status = Number(error?.response?.status || 0);\n  if (status === 429) return true;\n  if (status === 400) {\n    return /busy|queue|concurr|rate|limit|frequent|\u9891\u7E41|\u5E76\u53D1|\u7A0D\u540E/i.test(getImageResponseText(error));\n  }\n  return false;\n};\n\nconst postImageWithSafeRetry = async (url: string, body: any, headers: any): Promise<any> => {\n  const startedAt = Date.now();\n  let lastError: any;\n\n  for (let attempt = 1; attempt <= 3; attempt += 1) {\n    try {\n      return await axios.post(url, body, { headers, timeout: 360000, proxy: false });\n    } catch (error: any) {\n      lastError = error;\n      if (attempt >= 3 || !isExplicitSafeTemporaryRejection(error)) {\n        throw buildImageFailure(classifyImageRequestError(error), "generation", error, attempt, startedAt);\n      }\n      const waitMs = attempt * 3000;\n      const status = Number(error?.response?.status || 0);\n      logger(`[Agnes \u56FE\u7247] \u4F9B\u5E94\u5546\u660E\u786E\u4E34\u65F6\u62D2\u7EDD\uFF08HTTP ${status}\uFF09\uFF0C\u5C06\u5728 ${waitMs / 1000} \u79D2\u540E\u91CD\u8BD5\uFF08${attempt}/3\uFF09`);\n      await waitWithPollTask(waitMs);\n    }\n  }\n\n  throw lastError;\n};\n\nconst normalizeImageRatio = (ratio: string): string => {\n  const supported = ["1:1", "3:4", "4:3", "16:9", "9:16", "2:3", "3:2", "21:9"];\n  return supported.includes(ratio) ? ratio : "1:1";\n};\n\nconst getImage20Size = (size: ImageConfig["size"], ratio: string): string => {\n  const dimensions: Record<string, Record<ImageConfig["size"], string>> = {\n    "1:1": { "1K": "1024x1024", "2K": "2048x2048", "4K": "4096x4096" },\n    "3:4": { "1K": "864x1152", "2K": "1728x2304", "4K": "3456x4608" },\n    "4:3": { "1K": "1152x864", "2K": "2304x1728", "4K": "4608x3456" },\n    "16:9": { "1K": "1312x736", "2K": "2624x1472", "4K": "5248x2944" },\n    "9:16": { "1K": "736x1312", "2K": "1472x2624", "4K": "2944x5248" },\n    "2:3": { "1K": "832x1248", "2K": "1664x2496", "4K": "3328x4992" },\n    "3:2": { "1K": "1248x832", "2K": "2496x1664", "4K": "4992x3328" },\n    "21:9": { "1K": "1568x672", "2K": "3136x1344", "4K": "6272x2688" },\n  };\n  return dimensions[ratio]?.[size] || dimensions["1:1"][size] || "1024x1024";\n};\n\nconst ensureImageDataUri = (value: string): string => {\n  if (value.startsWith("data:")) return value;\n  return `data:image/png;base64,${value}`;\n};\n\nconst getVideoDimensions = (resolution: string, ratio: "16:9" | "9:16"): { width: number; height: number } => {\n  const normalized = String(resolution || "720p").toLowerCase();\n  const landscape = normalized.includes("1080")\n    ? { width: 1920, height: 1088 }\n    : normalized.includes("480")\n      ? { width: 832, height: 448 }\n      : { width: 1280, height: 704 };\n  return ratio === "9:16" ? { width: landscape.height, height: landscape.width } : landscape;\n};\n\nconst getVideoFrames = (duration: number): number => {\n  const seconds = Math.max(1, Math.min(18, Math.round(Number(duration) || 5)));\n  const frameRate = 24;\n  const n = Math.max(1, Math.min(55, Math.round((seconds * frameRate - 1) / 8)));\n  return Math.min(441, n * 8 + 1);\n};\n\nconst unwrapVideoData = (payload: any): any => {\n  if (payload?.data && !Array.isArray(payload.data)) return payload.data;\n  return payload;\n};\n\nconst extractVideoUrl = (payload: any): string | undefined => {\n  const data = unwrapVideoData(payload);\n  return data?.metadata?.url || data?.url || data?.video_url || data?.output?.url;\n};\n\nconst extractTaskError = (payload: any): string | undefined => {\n  const data = unwrapVideoData(payload);\n  const error = data?.error?.message || data?.error || data?.message || data?.msg;\n  return error ? (typeof error === "string" ? error : JSON.stringify(error)) : undefined;\n};\n\n// ============================================================\n// \u9002\u914D\u5668\u51FD\u6570\n// ============================================================\n\nconst textRequest = (model: TextModel, think: boolean, _thinkLevel: 0 | 1 | 2 | 3) => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11 Agnes AI API Key");\n\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\n\n  return createOpenAICompatible({\n    name: "agnes",\n    baseURL: getOpenAIBaseUrl(),\n    apiKey,\n    fetch: async (url: string, options?: any) => {\n      if (!options?.body || typeof options.body !== "string") {\n        return await fetch(url, options);\n      }\n\n      let rawBody: any;\n      try {\n        rawBody = JSON.parse(options.body);\n      } catch {\n        return await fetch(url, options);\n      }\n\n      const body = think\n        ? {\n            ...rawBody,\n            chat_template_kwargs: {\n              ...(rawBody.chat_template_kwargs || {}),\n              enable_thinking: true,\n            },\n          }\n        : rawBody;\n\n      return await fetch(url, {\n        ...options,\n        body: JSON.stringify(body),\n      });\n    },\n  }).chatModel(model.modelName);\n};\n\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\n  const headers = getHeaders();\n  const baseUrl = getBaseUrl();\n  const ratio = normalizeImageRatio(config.aspectRatio || "1:1");\n  const rawImageRefs = (config.referenceList || [])\n    .map((item) => item.base64)\n    .filter(Boolean)\n    .map(ensureImageDataUri);\n  const configuredLimit = Number(model.maxReferenceImages);\n  const maxReferenceImages = Number.isInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : rawImageRefs.length;\n  const imageRefs = rawImageRefs.slice(0, maxReferenceImages);\n  const isImage21 = model.modelName === "agnes-image-2.1-flash";\n  const body: any = {\n    model: model.modelName,\n    prompt: config.prompt || "",\n    size: isImage21 ? config.size || "1K" : getImage20Size(config.size || "1K", ratio),\n    return_base64: true,\n    extra_body: {\n      response_format: "b64_json",\n    },\n  };\n\n  if (isImage21) body.ratio = ratio;\n  if (imageRefs.length > 0) body.extra_body.image = imageRefs;\n\n  const referenceCount = imageRefs.length === rawImageRefs.length ? `${imageRefs.length}` : `${imageRefs.length}/${rawImageRefs.length}`;\n  logger(`[Agnes \u56FE\u7247] \u63D0\u4EA4 ${model.modelName}\uFF0C\u53C2\u8003\u56FE ${referenceCount} \u5F20\uFF0C\u5C3A\u5BF8 ${body.size}\uFF0C\u6BD4\u4F8B ${ratio}`);\n\n  return await runImageRequestSerially(async (): Promise<string> => {\n    // \u53EA\u6709\u83B7\u5F97\u672C\u5730\u4E32\u884C\u6267\u884C\u69FD\u540E\u624D\u5BA3\u544A generating\uFF1B\u4ECD\u5728\u961F\u5217\u4E2D\u7684\u8BF7\u6C42\u4FDD\u6301\u7B49\u5F85\u4E2D\u3002\n    if (config.onStage) await config.onStage("generating");\n    // \u672C\u5730\u65E5\u5FD7\u53EA\u63CF\u8FF0\u672C\u5730\u4E8B\u5B9E\uFF1A\u8BF7\u6C42\u5373\u5C06\u4ECE\u8FD9\u91CC\u53D1\u51FA\uFF0C\u4E0D\u4EE3\u8868 Agnes \u4E91\u7AEF\u5DF2\u63A5\u53D7\n    logger(`[Agnes \u56FE\u7247] \u5F00\u59CB\u672C\u5730\u4F9B\u5E94\u5546\u8BF7\u6C42\uFF1A${model.modelName}`);\n    const requestStartedAt = Date.now();\n    let response: any;\n    try {\n      response = await postImageWithSafeRetry(`${baseUrl}/v1/images/generations`, body, headers);\n    } catch (error: any) {\n      // \u5DF2\u643A\u5E26\u7ED3\u6784\u5316\u8BCA\u65AD\u7684\u5931\u8D25\uFF08\u542B\u5B89\u5168\u91CD\u8BD5\u8017\u5C3D\uFF09\u539F\u6837\u4E0A\u629B\n      if (error?.imageFailure) throw error;\n      throw buildImageFailure(classifyImageRequestError(error), "generation", error, 1, requestStartedAt);\n    }\n    const payload = response?.data;\n    const item = Array.isArray(payload?.data) ? payload.data[0] : payload?.data?.[0] || payload;\n    const b64 = item?.b64_json || payload?.b64_json;\n    const url = item?.url || payload?.url;\n\n    try {\n      if (b64) return ensureImageDataUri(b64);\n      if (url) {\n        // \u4F9B\u5E94\u5546\u8FD4\u56DE URL\uFF1A\u5A92\u4F53\u7F51\u7EDC\u4E0B\u8F7D\u5F00\u59CB\uFF0C\u901A\u77E5\u8C03\u7528\u65B9\u8FDB\u5165\u201C\u4E0B\u8F7D\u4E2D\u201D\n        if (config.onStage) await config.onStage("downloading");\n        try {\n          const downloaded = await urlToBase64(url);\n          if (config.onStage) await config.onStage("downloaded");\n          return downloaded;\n        } catch (error: any) {\n          throw buildImageFailure("downloadFailed", "download", error, 1, requestStartedAt);\n        }\n      }\n      throw buildImageFailure(\n        "noImageData",\n        "generation",\n        new Error(`\u54CD\u5E94\u4E2D\u6CA1\u6709\u56FE\u7247\u6570\u636E\uFF1A${JSON.stringify(payload).slice(0, 200)}`),\n        1,\n        requestStartedAt,\n      );\n    } catch (error: any) {\n      if (error?.imageFailure) throw error;\n      throw buildImageFailure("transport", "generation", error, 1, requestStartedAt);\n    }\n  });\n};\n\nconst videoRequest = async (config: VideoGenerationCommand, model: VideoModel): Promise<string> => {\n  const headers = getHeaders();\n  const baseUrl = getBaseUrl();\n  const dimensions = getVideoDimensions(config.output.resolution, config.output.aspectRatio);\n  const body: any = {\n    model: model.modelName,\n    prompt: config.prompt,\n    width: dimensions.width,\n    height: dimensions.height,\n    num_frames: getVideoFrames(config.output.duration),\n    frame_rate: 24,\n  };\n\n  if (config.capabilityId === "keyframe-to-video") {\n    const keyframes = [config.firstFrame, config.intermediateKeyframe, config.lastFrame]\n      .filter((image): image is ResolvedImage => !!image)\n      .map((image) => ensureImageDataUri(image.base64));\n    body.extra_body = {\n      image: keyframes,\n      mode: "keyframes",\n    };\n  } else if (config.capabilityId === "image-to-video") {\n    body.image = ensureImageDataUri(config.sourceImage.base64);\n  }\n\n  let videoId = config.resumeTask?.videoId;\n  let taskId = config.resumeTask?.taskId;\n  let submitData: any;\n\n  const checkpoint = async (stage: VideoTaskCheckpoint["stage"], retry: number): Promise<void> => {\n    if (!config.onTaskCheckpoint) return;\n    await config.onTaskCheckpoint({\n      vendorId: "agnes",\n      modelName: model.modelName,\n      videoId,\n      taskId,\n      stage,\n      retry,\n    });\n  };\n\n  const downloadResult = async (resultUrl: string, retry: number): Promise<string> => {\n    const maxDownloadRetries = 2;\n    let downloadRetryCount = 0;\n\n    while (true) {\n      const currentRetry = retry + downloadRetryCount;\n      await checkpoint("download", currentRetry);\n      try {\n        return await urlToBase64(resultUrl, { proxy: false, timeout: 120000 });\n      } catch (error: any) {\n        const message = formatVideoError("download", error, { videoId, taskId }, currentRetry);\n        if (!isRetryableVideoTransportError(error) || downloadRetryCount >= maxDownloadRetries) {\n          logger(message);\n          throw new Error(message);\n        }\n        downloadRetryCount += 1;\n        const waitMs = getVideoRetryBackoffMs(downloadRetryCount);\n        logger(`${message} backoffMs=${waitMs}`);\n        await sleep(waitMs);\n      }\n    }\n  };\n\n  if (!videoId && !taskId) {\n    logger(\n      `[Agnes \u89C6\u9891] \u63D0\u4EA4 ${config.capabilityId === "keyframe-to-video" ? "\u5173\u952E\u5E27" : config.capabilityId === "image-to-video" ? "\u56FE\u751F\u89C6\u9891" : "\u6587\u751F\u89C6\u9891"}\u4EFB\u52A1\uFF0C${dimensions.width}x${dimensions.height}\uFF0C${body.num_frames} \u5E27`,\n    );\n\n    const maxQueueRetries = 4;\n    let submitRetry = 0;\n    while (true) {\n      try {\n        const submitResponse = await axios.post(`${baseUrl}/v1/videos`, body, {\n          headers,\n          timeout: 120000,\n          proxy: false,\n        });\n        submitData = unwrapVideoData(submitResponse?.data);\n        break;\n      } catch (error: any) {\n        if (!isExplicitQueueFullError(error) || submitRetry >= maxQueueRetries) {\n          const message = formatVideoError("submit", error, {}, submitRetry);\n          logger(message);\n          throw new Error(message);\n        }\n        submitRetry += 1;\n        const waitMs = getSubmitQueueBackoffMs(submitRetry);\n        const message = formatVideoError("submit", error, {}, submitRetry);\n        logger(`${message} backoffMs=${waitMs}`);\n        await sleep(waitMs);\n      }\n    }\n\n    videoId = submitData?.video_id;\n    taskId = submitData?.task_id || submitData?.id;\n    const directUrl = extractVideoUrl(submitData);\n    if (directUrl && String(submitData?.status || "").toLowerCase() === "completed") {\n      return await downloadResult(directUrl, 0);\n    }\n    if (!videoId && !taskId) {\n      const message = formatVideoError(\n        "submit",\n        { message: `\u672A\u8FD4\u56DE video_id \u6216 task_id\u3002\u539F\u59CB\u54CD\u5E94\uFF1A${JSON.stringify(submitData).slice(0, 500)}` },\n        {},\n        0,\n      );\n      logger(message);\n      throw new Error(message);\n    }\n    logger(`[Agnes \u89C6\u9891] \u4EFB\u52A1\u5DF2\u521B\u5EFA\uFF1A${videoId || taskId}`);\n  } else {\n    logger(`[Agnes \u89C6\u9891] \u6062\u590D\u5DF2\u6709\u4EFB\u52A1\uFF1A${videoId || taskId}`);\n  }\n\n  let pollRetryCount = Math.max(0, Number(config.resumeTask?.retry || 0));\n  await checkpoint("poll", pollRetryCount);\n\n  let consecutivePollRetries = 0;\n  const maxPollRetries = 8;\n\n  const queryTask = async (): Promise<any> => {\n    if (videoId) {\n      const query = `video_id=${encodeURIComponent(videoId)}&model_name=${encodeURIComponent(model.modelName)}`;\n      try {\n        const response = await axios.get(`${baseUrl}/agnesapi?${query}`, {\n          headers,\n          timeout: 60000,\n          proxy: false,\n        });\n        return response?.data;\n      } catch (error: any) {\n        if (!taskId || error?.response?.status !== 404) throw error;\n      }\n    }\n    const response = await axios.get(`${baseUrl}/v1/videos/${encodeURIComponent(taskId)}`, {\n      headers,\n      timeout: 60000,\n      proxy: false,\n    });\n    return response?.data;\n  };\n\n  const pollResult = await pollTask(\n    async (): Promise<PollResult> => {\n      let payload: any;\n\n      while (true) {\n        try {\n          payload = await queryTask();\n          consecutivePollRetries = 0;\n          break;\n        } catch (error: any) {\n          if (!isRetryableVideoTransportError(error) || pollRetryCount >= maxPollRetries) {\n            const message = formatVideoError("poll", error, { videoId, taskId }, pollRetryCount);\n            logger(message);\n            throw new Error(message);\n          }\n          pollRetryCount += 1;\n          consecutivePollRetries += 1;\n          const waitMs = getVideoRetryBackoffMs(consecutivePollRetries);\n          const message = formatVideoError("poll", error, { videoId, taskId }, pollRetryCount);\n          logger(`${message} backoffMs=${waitMs}`);\n          await checkpoint("poll", pollRetryCount);\n          await sleep(waitMs);\n        }\n      }\n\n      const data = unwrapVideoData(payload);\n      const status = String(data?.status || data?.state || "").toLowerCase();\n      const url = extractVideoUrl(data);\n\n      if (["completed", "succeeded", "success", "done"].includes(status)) {\n        return url\n          ? { completed: true, data: url }\n          : {\n              completed: true,\n              error: formatVideoError(\n                "poll",\n                { message: "Agnes \u89C6\u9891\u4EFB\u52A1\u5DF2\u5B8C\u6210\uFF0C\u4F46\u54CD\u5E94\u4E2D\u6CA1\u6709 metadata.url" },\n                { videoId, taskId },\n                pollRetryCount,\n              ),\n            };\n      }\n      if (["failed", "error", "cancelled", "canceled", "expired"].includes(status)) {\n        await checkpoint("failed", pollRetryCount);\n        return {\n          completed: true,\n          error: formatVideoError(\n            "poll",\n            { message: extractTaskError(data) || "Agnes \u89C6\u9891\u751F\u6210\u5931\u8D25", response: { data } },\n            { videoId, taskId },\n            pollRetryCount,\n          ),\n        };\n      }\n      if (url && !status) return { completed: true, data: url };\n      return { completed: false };\n    },\n    5000,\n    1800000,\n  );\n\n  if (pollResult.error) {\n    throw new Error(\n      pollResult.error.startsWith("[Agnes Video]")\n        ? pollResult.error\n        : formatVideoError("poll", { message: pollResult.error }, { videoId, taskId }, pollRetryCount),\n    );\n  }\n  if (!pollResult.data) {\n    throw new Error(\n      formatVideoError("poll", { message: "\u8F6E\u8BE2\u7ED3\u675F\u4F46\u6CA1\u6709\u8FD4\u56DE\u89C6\u9891\u5730\u5740" }, { videoId, taskId }, pollRetryCount),\n    );\n  }\n  return await downloadResult(pollResult.data, pollRetryCount);\n};\n\nconst ttsRequest = async (_config: TTSConfig, _model: TTSModel): Promise<string> => {\n  return "";\n};\n\nconst checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {\n  return {\n    hasUpdate: false,\n    latestVersion: vendor.version,\n    notice:\n      "Agnes AI ToonFlow \u4F9B\u5E94\u5546\u9002\u914D\u5668 2.5\uFF1A\u4FDD\u7559\u89C6\u9891\u63D0\u793A\u8BCD\u8DEF\u7531\uFF0C\u65B0\u589E Agnes Video \u4E32\u884C\u961F\u5217\u3001503 \u9000\u907F\u91CD\u8BD5\u3001\u4EFB\u52A1\u6062\u590D\u3001\u5206\u9636\u6BB5\u9519\u8BEF\u548C\u65E0\u4EE3\u7406\u7ED3\u679C\u4E0B\u8F7D\u3002",\n  };\n};\n\nconst updateVendor = async (): Promise<string> => {\n  return "";\n};\n\n// ============================================================\n// \u5BFC\u51FA\n// ============================================================\n\nexports.vendor = vendor;\nexports.textRequest = textRequest;\nexports.imageRequest = imageRequest;\nexports.videoRequest = videoRequest;\nexports.ttsRequest = ttsRequest;\nexports.checkForUpdates = checkForUpdates;\nexports.updateVendor = updateVendor;\n\nexport {};\n',
       "deepseek.ts": '/**\n * Toonflow AI\u4F9B\u5E94\u5546\u6A21\u677F - DeepSeek\n * @version 2.1\n */\n\n// ============================================================\n// \u7C7B\u578B\u5B9A\u4E49\n// ============================================================\n\ntype VideoMode =\n  | "singleImage"\n  | "startEndRequired"\n  | "endFrameOptional"\n  | "startFrameOptional"\n  | "text"\n  | (`videoReference:${number}` | `imageReference:${number}` | `audioReference:${number}`)[];\n\ninterface TextModel {\n  name: string;\n  modelName: string;\n  type: "text";\n  think: boolean;\n}\n\ninterface ImageModel {\n  name: string;\n  modelName: string;\n  type: "image";\n  mode: ("text" | "singleImage" | "multiReference")[];\n  associationSkills?: string;\n}\n\ninterface VideoModel {\n  name: string;\n  modelName: string;\n  type: "video";\n  mode: VideoMode[];\n  associationSkills?: string;\n  audio: "optional" | false | true;\n  durationResolutionMap: { duration: number[]; resolution: string[] }[];\n}\n\ninterface TTSModel {\n  name: string;\n  modelName: string;\n  type: "tts";\n  voices: { title: string; voice: string }[];\n}\n\ninterface VendorConfig {\n  id: string;\n  version: string;\n  name: string;\n  author: string;\n  description?: string;\n  icon?: string;\n  inputs: { key: string; label: string; type: "text" | "password" | "url"; required: boolean; placeholder?: string }[];\n  inputValues: Record<string, string>;\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\n}\n\ninterface ImageConfig {\n  prompt: string;\n  imageBase64: string[];\n  size: "1K" | "2K" | "4K";\n  aspectRatio: `${number}:${number}`;\n}\n\ninterface VideoConfig {\n  duration: number;\n  resolution: string;\n  aspectRatio: "16:9" | "9:16";\n  prompt: string;\n  imageBase64?: string[];\n  audio?: boolean;\n  mode: VideoMode[];\n}\n\ninterface TTSConfig {\n  text: string;\n  voice: string;\n  speechRate: number;\n  pitchRate: number;\n  volume: number;\n}\n\ninterface PollResult {\n  completed: boolean;\n  data?: string;\n  error?: string;\n}\n\n// ============================================================\n// \u5168\u5C40\u58F0\u660E\n// ============================================================\n\ndeclare const axios: any;\ndeclare const logger: (msg: string) => void;\ndeclare const jsonwebtoken: any;\ndeclare const zipImage: (base64: string, size: number) => Promise<string>;\ndeclare const zipImageResolution: (base64: string, w: number, h: number) => Promise<string>;\ndeclare const mergeImages: (base64Arr: string[], maxSize?: string) => Promise<string>;\ndeclare const urlToBase64: (url: string) => Promise<string>;\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>;\ndeclare const createOpenAI: any;\ndeclare const createDeepSeek: any;\ndeclare const createZhipu: any;\ndeclare const createQwen: any;\ndeclare const createAnthropic: any;\ndeclare const createOpenAICompatible: any;\ndeclare const createXai: any;\ndeclare const createMinimax: any;\ndeclare const createGoogleGenerativeAI: any;\ndeclare const exports: {\n  vendor: VendorConfig;\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;\n  videoRequest: (c: VideoConfig, m: VideoModel) => Promise<string>;\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;\n  checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;\n  updateVendor?: () => Promise<string>;\n};\n\n// ============================================================\n// \u4F9B\u5E94\u5546\u914D\u7F6E\n// ============================================================\n\nconst vendor: VendorConfig = {\n  id: "deepseek",\n  version: "2.1",\n  author: "Toonflow",\n  name: "DeepSeek",\n  description:\n    "DeepSeek \u5B98\u65B9\u63A5\u53E3\u9002\u914D\uFF0C\u652F\u6301 V4 \u7CFB\u5217\u6A21\u578B\u4E0E\u601D\u8003\u6A21\u5F0F\uFF08\u601D\u7EF4\u94FE\u8F93\u51FA\uFF09\u3002\\n\\n[\u524D\u5F80\u5E73\u53F0](https://platform.deepseek.com/)",\n  icon: "",\n  inputs: [\n    { key: "apiKey", label: "API\u5BC6\u94A5", type: "password", required: true },\n    { key: "baseUrl", label: "\u8BF7\u6C42\u5730\u5740", type: "url", required: true, placeholder: "\u793A\u4F8B\uFF1Ahttps://api.deepseek.com" },\n  ],\n  inputValues: {\n    apiKey: "",\n    baseUrl: "https://api.deepseek.com/v1",\n  },\n  models: [\n    { name: "DeepSeek V4 Pro", modelName: "deepseek-v4-pro", type: "text", think: true },\n    { name: "DeepSeek V4 Flash", modelName: "deepseek-v4-flash", type: "text", think: true },\n  ],\n};\n\n// ============================================================\n// \u9002\u914D\u5668\u51FD\u6570\n// ============================================================\n\nconst textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\n\n  // DeepSeek \u601D\u8003\u5F3A\u5EA6\u4EC5\u652F\u6301 high / max\uFF08low\u3001medium \u4F1A\u88AB\u6620\u5C04\u4E3A high\uFF0Cxhigh \u4F1A\u88AB\u6620\u5C04\u4E3A max\uFF09\n  // thinkLevel: 0/1/2 \u2192 high, 3 \u2192 max\n  const effortMap: Record<0 | 1 | 2 | 3, "high" | "max"> = {\n    0: "high",\n    1: "high",\n    2: "high",\n    3: "max",\n  };\n\n  const enableThinking = model.think && think;\n  const extraBody: Record<string, any> = {\n    thinking: { type: enableThinking ? "enabled" : "disabled" },\n  };\n  if (enableThinking) {\n    extraBody.reasoning_effort = effortMap[thinkLevel];\n  }\n\n  return createOpenAICompatible({\n    baseURL: vendor.inputValues.baseUrl,\n    apiKey,\n    fetch: async (url: string, options?: RequestInit) => {\n      const rawBody = JSON.parse((options?.body as string) ?? "{}");\n      const modifiedBody = {\n        ...rawBody,\n        ...extraBody\n      };\n      return await fetch(url, {\n        ...options,\n        body: JSON.stringify(modifiedBody),\n      });\n    },\n  }).chatModel(model.modelName);\n};\n\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\n  return "";\n};\n\nconst videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {\n  return "";\n};\n\nconst ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> => {\n  return "";\n};\n\nconst checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {\n  return { hasUpdate: false, latestVersion: "2.0", notice: "" };\n};\n\nconst updateVendor = async (): Promise<string> => {\n  return "";\n};\n\n// ============================================================\n// \u5BFC\u51FA\n// ============================================================\n\nexports.vendor = vendor;\nexports.textRequest = textRequest;\nexports.imageRequest = imageRequest;\nexports.videoRequest = videoRequest;\nexports.ttsRequest = ttsRequest;\nexports.checkForUpdates = checkForUpdates;\nexports.updateVendor = updateVendor;\n\nexport { };\n',
       "minimax.ts": '/**\n * Toonflow AI\u4F9B\u5E94\u5546\u6A21\u677F - MiniMax(\u6D77\u87BAAI)\n * @version 2.0\n */\n\n// ============================================================\n// \u7C7B\u578B\u5B9A\u4E49\n// ============================================================\n\ninterface TextModel {\n  name: string;\n  modelName: string;\n  type: "text";\n  think: boolean;\n}\n\ninterface ImageModel {\n  name: string;\n  modelName: string;\n  type: "image";\n  mode: ("text" | "singleImage" | "multiReference")[];\n  associationSkills?: string;\n}\n\ninterface VideoModel {\n  name: string;\n  modelName: string;\n  type: "video";\n  associationSkills?: string;\n  capabilities: {\n    id: "text-to-video" | "image-to-video" | "first-last-frame";\n    promptProfileId: string;\n    inputs: { role: "source-image" | "first-frame" | "last-frame"; mediaType: "image"; required: true }[];\n    audio: { generation: "none"; policy: "none" };\n    outputPresets: {\n      id: string;\n      resolution: string;\n      durations: { kind: "values"; values: number[] };\n      aspectRatios: ("16:9" | "9:16")[];\n    }[];\n  }[];\n}\n\ninterface TTSModel {\n  name: string;\n  modelName: string;\n  type: "tts";\n  voices: { title: string; voice: string }[];\n}\n\ninterface VendorConfig {\n  id: string;\n  version: string;\n  name: string;\n  author: string;\n  description?: string;\n  icon?: string;\n  inputs: { key: string; label: string; type: "text" | "password" | "url"; required: boolean; placeholder?: string }[];\n  inputValues: Record<string, string>;\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\n}\n\ntype ReferenceList =\n  | { type: "image"; sourceType: "base64"; base64: string }\n  | { type: "audio"; sourceType: "base64"; base64: string }\n  | { type: "video"; sourceType: "base64"; base64: string };\n\ninterface ImageConfig {\n  prompt: string;\n  referenceList?: Extract<ReferenceList, { type: "image" }>[];\n  size: "1K" | "2K" | "4K";\n  aspectRatio: `${number}:${number}`;\n}\n\ninterface VideoCommandBase {\n  modelId: string;\n  prompt: string;\n  output: { presetId: string; duration: number; resolution: string; aspectRatio: "16:9" | "9:16" };\n  audio: { generation: "none" };\n}\n\ntype VideoGenerationCommand =\n  | (VideoCommandBase & { capabilityId: "text-to-video" })\n  | (VideoCommandBase & { capabilityId: "image-to-video"; sourceImage: { mediaType: "image"; base64: string } })\n  | (VideoCommandBase & {\n      capabilityId: "first-last-frame";\n      firstFrame: { mediaType: "image"; base64: string };\n      lastFrame: { mediaType: "image"; base64: string };\n    });\n\ninterface TTSConfig {\n  text: string;\n  voice: string;\n  speechRate: number;\n  pitchRate: number;\n  volume: number;\n  referenceList?: Extract<ReferenceList, { type: "audio" }>[];\n}\n\ninterface PollResult {\n  completed: boolean;\n  data?: string;\n  error?: string;\n}\n\n// ============================================================\n// \u5168\u5C40\u58F0\u660E\n// ============================================================\n\ndeclare const axios: any;\ndeclare const logger: (msg: string) => void;\ndeclare const jsonwebtoken: any;\ndeclare const zipImage: (base64: string, size: number) => Promise<string>;\ndeclare const zipImageResolution: (base64: string, w: number, h: number) => Promise<string>;\ndeclare const mergeImages: (base64Arr: string[], maxSize?: string) => Promise<string>;\ndeclare const urlToBase64: (url: string) => Promise<string>;\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>;\ndeclare const createOpenAI: any;\ndeclare const createDeepSeek: any;\ndeclare const createZhipu: any;\ndeclare const createQwen: any;\ndeclare const createAnthropic: any;\ndeclare const createOpenAICompatible: any;\ndeclare const createXai: any;\ndeclare const createMinimax: any;\ndeclare const createGoogleGenerativeAI: any;\ndeclare const exports: {\n  vendor: VendorConfig;\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;\n  uploadReference: (base64: string, fileType: "image" | "audio" | "video") => Promise<ReferenceList>;\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;\n  videoRequest: (c: VideoGenerationCommand, m: VideoModel) => Promise<string>;\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;\n  checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;\n  updateVendor?: () => Promise<string>;\n};\n\n// ============================================================\n// \u4F9B\u5E94\u5546\u914D\u7F6E\n// ============================================================\n\nconst vendor: VendorConfig = {\n  id: "minimax",\n  version: "2.1",\n  author: "Toonflow",\n  name: "MiniMax(\u6D77\u87BAAI)",\n  description: "MiniMax\u5B98\u65B9\u63A5\u53E3\u9002\u914D\uFF0C\u652F\u6301M\u7CFB\u5217\u63A8\u7406\u6587\u672C\u6A21\u578B\u3001\u6587\u751F\u56FE/\u56FE\u751F\u56FE\u3001\u89C6\u9891\u751F\u6210\uFF08\u6587\u751F\u89C6\u9891\u3001\u56FE\u751F\u89C6\u9891\u3001\u9996\u5C3E\u5E27\u751F\u6210\uFF09\u80FD\u529B \\n [\u524D\u5F80\u5E73\u53F0](https://minimaxi.com/)",\n  inputs: [\n    { key: "apiKey", label: "API\u5BC6\u94A5", type: "password", required: true },\n    { key: "baseUrl", label: "\u8BF7\u6C42\u5730\u5740", type: "url", required: true, placeholder: "\u793A\u4F8B\uFF1Ahttps://api.minimaxi.com" },\n  ],\n  inputValues: { apiKey: "", baseUrl: "https://api.minimaxi.com" },\n  models: [\n    // \u6587\u672C\u6A21\u578B\n    { name: "MiniMax-M2.7 (\u63A8\u7406\u7248)", modelName: "MiniMax-M2.7", type: "text", think: true },\n    { name: "MiniMax-M2.7 \u6781\u901F\u7248 (\u63A8\u7406\u7248)", modelName: "MiniMax-M2.7-highspeed", type: "text", think: true },\n    { name: "MiniMax-M2.5 (\u63A8\u7406\u7248)", modelName: "MiniMax-M2.5", type: "text", think: true },\n    { name: "MiniMax-M2.5 \u6781\u901F\u7248 (\u63A8\u7406\u7248)", modelName: "MiniMax-M2.5-highspeed", type: "text", think: true },\n    { name: "MiniMax-M2.1 (\u7F16\u7A0B\u7248)", modelName: "MiniMax-M2.1", type: "text", think: true },\n    { name: "MiniMax-M2.1 \u6781\u901F\u7248 (\u7F16\u7A0B\u7248)", modelName: "MiniMax-M2.1-highspeed", type: "text", think: true },\n    { name: "MiniMax-M2 (Agent\u7248)", modelName: "MiniMax-M2", type: "text", think: false },\n    // \u56FE\u7247\u6A21\u578B\n    { name: "\u6D77\u87BA\u56FE\u50CFV1", modelName: "image-01", type: "image", mode: ["text", "singleImage"] },\n    { name: "\u6D77\u87BA\u56FE\u50CFV1 Live\u7248", modelName: "image-01-live", type: "image", mode: ["text", "singleImage"], associationSkills: "\u652F\u6301\u81EA\u5B9A\u4E49\u753B\u98CE" },\n    // \u89C6\u9891\u6A21\u578B\n    {\n      name: "\u6D77\u87BA2.3",\n      modelName: "MiniMax-Hailuo-2.3",\n      type: "video",\n      capabilities: [\n        {\n          id: "text-to-video",\n          promptProfileId: "minimax/text-v1",\n          inputs: [],\n          audio: { generation: "none", policy: "none" },\n          outputPresets: [\n            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },\n          ],\n        },\n        {\n          id: "image-to-video",\n          promptProfileId: "minimax/image-v1",\n          inputs: [{ role: "source-image", mediaType: "image", required: true }],\n          audio: { generation: "none", policy: "none" },\n          outputPresets: [\n            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },\n          ],\n        },\n      ],\n    },\n    {\n      name: "\u6D77\u87BA2.3\u6781\u901F\u7248",\n      modelName: "MiniMax-Hailuo-2.3-Fast",\n      type: "video",\n      capabilities: [\n        {\n          id: "text-to-video",\n          promptProfileId: "minimax/text-v1",\n          inputs: [],\n          audio: { generation: "none", policy: "none" },\n          outputPresets: [\n            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },\n          ],\n        },\n        {\n          id: "image-to-video",\n          promptProfileId: "minimax/image-v1",\n          inputs: [{ role: "source-image", mediaType: "image", required: true }],\n          audio: { generation: "none", policy: "none" },\n          outputPresets: [\n            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },\n          ],\n        },\n      ],\n    },\n    {\n      name: "\u6D77\u87BA02",\n      modelName: "MiniMax-Hailuo-02",\n      type: "video",\n      capabilities: [\n        {\n          id: "text-to-video",\n          promptProfileId: "minimax/text-v1",\n          inputs: [],\n          audio: { generation: "none", policy: "none" },\n          outputPresets: [\n            { id: "512p", resolution: "512p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },\n          ],\n        },\n        {\n          id: "image-to-video",\n          promptProfileId: "minimax/image-v1",\n          inputs: [{ role: "source-image", mediaType: "image", required: true }],\n          audio: { generation: "none", policy: "none" },\n          outputPresets: [\n            { id: "512p", resolution: "512p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },\n          ],\n        },\n        {\n          id: "first-last-frame",\n          promptProfileId: "minimax/first-last-v1",\n          inputs: [\n            { role: "first-frame", mediaType: "image", required: true },\n            { role: "last-frame", mediaType: "image", required: true },\n          ],\n          audio: { generation: "none", policy: "none" },\n          outputPresets: [\n            { id: "512p", resolution: "512p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "768p", resolution: "768p", durations: { kind: "values", values: [6, 10] }, aspectRatios: ["16:9", "9:16"] },\n            { id: "1080p", resolution: "1080p", durations: { kind: "values", values: [6] }, aspectRatios: ["16:9", "9:16"] },\n          ],\n        },\n      ],\n    },\n  ],\n};\n\n// ============================================================\n// \u8F85\u52A9\u5DE5\u5177\n// ============================================================\n\n/**\n * \u83B7\u53D6\u8BF7\u6C42\u5934\n */\nconst getHeaders = (): Record<string, string> => {\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\n  return {\n    Authorization: `Bearer ${apiKey}`,\n    "Content-Type": "application/json",\n  };\n};\n\n/**\n * \u83B7\u53D6\u57FA\u7840\u8BF7\u6C42\u5730\u5740\n */\nconst getBaseUrl = (): string => {\n  return vendor.inputValues.baseUrl.replace(/\\/$/, "");\n};\n\n/**\n * \u4ECE ReferenceList \u6761\u76EE\u4E2D\u63D0\u53D6\u6709\u5934 base64 \u5B57\u7B26\u4E32\n */\nconst extractBase64WithHead = (ref: { base64: string }): string => {\n  return ref.base64.startsWith("data:") ? ref.base64 : `data:image/png;base64,${ref.base64}`;\n};\n\n// ============================================================\n// \u9002\u914D\u5668\u51FD\u6570\n// ============================================================\n\nconst textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\n  const baseUrl = getBaseUrl();\n\n  const openaiBaseUrl = `${baseUrl}/v1`;\n  const extraBody = model.think ? { reasoning_split: true } : {};\n  return createOpenAI({ baseURL: openaiBaseUrl, apiKey, extraBody }).chat(model.modelName);\n};\n\nconst uploadReference = async (base64: string, fileType: "image" | "audio" | "video"): Promise<ReferenceList> => {\n  // MiniMax\u7684\u56FE\u7247\u63A5\u53E3\u76F4\u63A5\u63A5\u53D7 base64\uFF0C\u538B\u7F29\u540E\u539F\u6837\u8FD4\u56DE\n  if (fileType === "image") {\n    const compressed = await zipImage(base64, 10 * 1024);\n    return { type: "image", sourceType: "base64", base64: compressed };\n  }\n  // \u89C6\u9891\u63A5\u53E3\u7684\u56FE\u7247\u53C2\u6570\u4E5F\u662F base64\uFF0C\u538B\u7F29\u523020MB\n  return { type: fileType, sourceType: "base64", base64 } as ReferenceList;\n};\n\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\n  const baseUrl = getBaseUrl();\n  const headers = getHeaders();\n\n  const reqBody: any = {\n    model: model.modelName,\n    prompt: config.prompt,\n    aspect_ratio: config.aspectRatio,\n    response_format: "base64",\n    n: 1,\n    prompt_optimizer: true,\n    aigc_watermark: false,\n  };\n\n  // \u5904\u7406\u56FE\u751F\u56FE\u53C2\u8003\n  const imageRefs = config.referenceList || [];\n  if (imageRefs.length > 0) {\n    const refBase64 = extractBase64WithHead(imageRefs[0]);\n    reqBody.subject_reference = [{ type: "character", image_file: refBase64 }];\n  }\n\n  logger("\u5F00\u59CB\u63D0\u4EA4MiniMax\u56FE\u50CF\u751F\u6210\u4EFB\u52A1");\n  const resp = await axios.post(`${baseUrl}/v1/image_generation`, reqBody, { headers });\n  if (resp.data.base_resp.status_code !== 0) {\n    throw new Error(`\u56FE\u50CF\u751F\u6210\u5931\u8D25\uFF1A${resp.data.base_resp.status_msg}`);\n  }\n  if (resp.data.metadata.success_count === 0) {\n    throw new Error("\u56FE\u50CF\u751F\u6210\u88AB\u5B89\u5168\u7B56\u7565\u62E6\u622A\uFF0C\u8BF7\u8C03\u6574prompt\u6216\u53C2\u8003\u56FE");\n  }\n\n  const imgBase64 = resp.data.data.image_base64[0];\n  return imgBase64.startsWith("data:") ? imgBase64 : `data:image/png;base64,${imgBase64}`;\n};\n\nconst videoRequest = async (config: VideoGenerationCommand, model: VideoModel): Promise<string> => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\n  const baseUrl = getBaseUrl();\n  const headers = getHeaders();\n\n  const reqBody: any = {\n    model: model.modelName,\n    prompt: config.prompt,\n    duration: config.output.duration,\n    resolution: config.output.resolution.toUpperCase(),\n    aigc_watermark: false,\n    prompt_optimizer: true,\n  };\n\n  if (config.capabilityId === "image-to-video") {\n    reqBody.first_frame_image = await zipImage(extractBase64WithHead(config.sourceImage), 20 * 1024);\n  } else if (config.capabilityId === "first-last-frame") {\n    reqBody.first_frame_image = await zipImage(extractBase64WithHead(config.firstFrame), 20 * 1024);\n    reqBody.last_frame_image = await zipImage(extractBase64WithHead(config.lastFrame), 20 * 1024);\n  }\n\n  logger("\u5F00\u59CB\u63D0\u4EA4MiniMax\u89C6\u9891\u751F\u6210\u4EFB\u52A1");\n  const submitResp = await axios.post(`${baseUrl}/v1/video_generation`, reqBody, { headers });\n  if (submitResp.data.base_resp.status_code !== 0) {\n    throw new Error(`\u4EFB\u52A1\u63D0\u4EA4\u5931\u8D25\uFF1A${submitResp.data.base_resp.status_msg}`);\n  }\n  const taskId = submitResp.data.task_id;\n  logger(`\u89C6\u9891\u4EFB\u52A1\u63D0\u4EA4\u6210\u529F\uFF0C\u4EFB\u52A1ID: ${taskId}`);\n\n  // \u8F6E\u8BE2\u4EFB\u52A1\u72B6\u6001\n  const pollResult = await pollTask(\n    async () => {\n      const queryResp = await axios.get(`${baseUrl}/v1/query/video_generation`, {\n        headers: getHeaders(),\n        params: { task_id: taskId },\n      });\n      if (queryResp.data.base_resp.status_code !== 0) {\n        return { completed: true, error: queryResp.data.base_resp.status_msg };\n      }\n      const status = queryResp.data.status;\n      if (status === "Success") {\n        return { completed: true, data: queryResp.data.file_id };\n      }\n      if (status === "Fail") {\n        return { completed: true, error: "\u89C6\u9891\u751F\u6210\u5931\u8D25" };\n      }\n      logger(`\u89C6\u9891\u4EFB\u52A1\u751F\u6210\u4E2D\uFF0C\u5F53\u524D\u72B6\u6001\uFF1A${status}`);\n      return { completed: false };\n    },\n    5000,\n    600000,\n  );\n\n  if (pollResult.error) throw new Error(pollResult.error);\n  const fileId = pollResult.data!;\n  logger(`\u89C6\u9891\u4EFB\u52A1\u751F\u6210\u6210\u529F\uFF0C\u6587\u4EF6ID: ${fileId}`);\n\n  // \u83B7\u53D6\u4E0B\u8F7D\u5730\u5740\n  const fileResp = await axios.get(`${baseUrl}/v1/files/retrieve`, {\n    headers: getHeaders(),\n    params: { file_id: fileId },\n  });\n  if (fileResp.data.base_resp.status_code !== 0) {\n    throw new Error(`\u83B7\u53D6\u6587\u4EF6\u5730\u5740\u5931\u8D25\uFF1A${fileResp.data.base_resp.status_msg}`);\n  }\n  const downloadUrl = fileResp.data.file.download_url;\n  logger(`\u89C6\u9891\u4E0B\u8F7D\u5730\u5740\u83B7\u53D6\u6210\u529F\uFF0C\u5F00\u59CB\u8F6CBase64`);\n\n  return await urlToBase64(downloadUrl);\n};\n\nconst ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> => {\n  return "";\n};\n\nconst checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {\n  return {\n    hasUpdate: false,\n    latestVersion: "2.0",\n    notice:\n      "## \u65B0\u7248\u672C\u66F4\u65B0\u516C\u544A\\n1. \u9002\u914D\u65B0\u7248\u6A21\u677F\u67B6\u6784\uFF0C\u652F\u6301 ReferenceList \u7EDF\u4E00\u5F15\u7528\u7C7B\u578B\\n2. \u65B0\u589E uploadReference \u524D\u7F6E\u5904\u7406\u5668\\n3. \u4F18\u5316\u56FE\u7247\u538B\u7F29\u548C\u5F15\u7528\u63D0\u53D6\u903B\u8F91",\n  };\n};\n\nconst updateVendor = async (): Promise<string> => {\n  return "";\n};\n\n// ============================================================\n// \u5BFC\u51FA\n// ============================================================\n\nexports.vendor = vendor;\nexports.textRequest = textRequest;\nexports.uploadReference = uploadReference;\nexports.imageRequest = imageRequest;\nexports.videoRequest = videoRequest;\nexports.ttsRequest = ttsRequest;\nexports.checkForUpdates = checkForUpdates;\nexports.updateVendor = updateVendor;\n\n// \u8FD9\u884C\u4EE3\u7801\u7528\u4E8E\u786E\u4FDD\u5F53\u524D\u6587\u4EF6\u88AB\u8BC6\u522B\u4E3A\u6A21\u5757\uFF0C\u907F\u514D\u5168\u5C40\u53D8\u91CF\u51B2\u7A81\nexport {};\n',
       "volcengine.ts": '/**\n * Toonflow AI\u4F9B\u5E94\u5546\u6A21\u677F - \u706B\u5C71\u5F15\u64CE(\u8C46\u5305)\n * @version 2.0\n */\n\n// ============================================================\n// \u7C7B\u578B\u5B9A\u4E49\n// ============================================================\n\ninterface TextModel {\n  name: string;\n  modelName: string;\n  type: "text";\n  think: boolean;\n}\n\ninterface ImageModel {\n  name: string;\n  modelName: string;\n  type: "image";\n  mode: ("text" | "singleImage" | "multiReference")[];\n  associationSkills?: string;\n}\n\ninterface VideoModel {\n  name: string;\n  modelName: string;\n  type: "video";\n  associationSkills?: string;\n  capabilities: {\n    id: "text-to-video" | "image-to-video";\n    promptProfileId: string;\n    inputs: { role: "source-image"; mediaType: "image"; required: true }[];\n    audio: { generation: "native"; policy: "optional" };\n    outputPresets: {\n      id: string;\n      resolution: string;\n      durations: { kind: "values"; values: number[] };\n      aspectRatios: ("16:9" | "9:16")[];\n    }[];\n  }[];\n}\n\ninterface TTSModel {\n  name: string;\n  modelName: string;\n  type: "tts";\n  voices: { title: string; voice: string }[];\n}\n\ninterface VendorConfig {\n  id: string;\n  version: string;\n  name: string;\n  author: string;\n  description?: string;\n  icon?: string;\n  inputs: { key: string; label: string; type: "text" | "password" | "url"; required: boolean; placeholder?: string }[];\n  inputValues: Record<string, string>;\n  models: (TextModel | ImageModel | VideoModel | TTSModel)[];\n}\n\ntype ReferenceList =\n  | { type: "image"; sourceType: "base64"; base64: string }\n  | { type: "audio"; sourceType: "base64"; base64: string }\n  | { type: "video"; sourceType: "base64"; base64: string };\n\ninterface ImageConfig {\n  prompt: string;\n  referenceList?: Extract<ReferenceList, { type: "image" }>[];\n  size: "1K" | "2K" | "4K";\n  aspectRatio: `${number}:${number}`;\n}\n\ninterface VideoCommandBase {\n  modelId: string;\n  prompt: string;\n  output: { presetId: string; duration: number; resolution: string; aspectRatio: "16:9" | "9:16" };\n  audio: { generation: "native"; enabled: boolean };\n}\n\ntype VideoGenerationCommand =\n  | (VideoCommandBase & { capabilityId: "text-to-video" })\n  | (VideoCommandBase & { capabilityId: "image-to-video"; sourceImage: { mediaType: "image"; base64: string } });\n\ninterface TTSConfig {\n  text: string;\n  voice: string;\n  speechRate: number;\n  pitchRate: number;\n  volume: number;\n  referenceList?: Extract<ReferenceList, { type: "audio" }>[];\n}\n\ninterface PollResult {\n  completed: boolean;\n  data?: string;\n  error?: string;\n}\n\n// ============================================================\n// \u5168\u5C40\u58F0\u660E\n// ============================================================\n\ndeclare const axios: any;\ndeclare const logger: (msg: string) => void;\ndeclare const jsonwebtoken: any;\ndeclare const zipImage: (base64: string, size: number) => Promise<string>;\ndeclare const zipImageResolution: (base64: string, w: number, h: number) => Promise<string>;\ndeclare const mergeImages: (base64Arr: string[], maxSize?: string) => Promise<string>;\ndeclare const urlToBase64: (url: string) => Promise<string>;\ndeclare const pollTask: (fn: () => Promise<PollResult>, interval?: number, timeout?: number) => Promise<PollResult>;\ndeclare const createOpenAI: any;\ndeclare const createDeepSeek: any;\ndeclare const createZhipu: any;\ndeclare const createQwen: any;\ndeclare const createAnthropic: any;\ndeclare const createOpenAICompatible: any;\ndeclare const createXai: any;\ndeclare const createMinimax: any;\ndeclare const createGoogleGenerativeAI: any;\ndeclare const exports: {\n  vendor: VendorConfig;\n  textRequest: (m: TextModel, t: boolean, tl: 0 | 1 | 2 | 3) => any;\n  imageRequest: (c: ImageConfig, m: ImageModel) => Promise<string>;\n  videoRequest: (c: VideoGenerationCommand, m: VideoModel) => Promise<string>;\n  ttsRequest: (c: TTSConfig, m: TTSModel) => Promise<string>;\n  checkForUpdates?: () => Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }>;\n  updateVendor?: () => Promise<string>;\n};\n\n// ============================================================\n// \u4F9B\u5E94\u5546\u914D\u7F6E\n// ============================================================\n\nconst vendor: VendorConfig = {\n  id: "volcengine",\n  version: "2.4",\n  author: "leeqi",\n  name: "\u706B\u5C71\u5F15\u64CE(\u8C46\u5305)",\n  description: "\u706B\u5C71\u5F15\u64CE\u8C46\u5305\u5927\u6A21\u578B\uFF0C\u652F\u6301\u6587\u672C\u3001\u56FE\u7247\u751F\u6210\u3001\u89C6\u9891\u751F\u6210\u7B49\u80FD\u529B\u3002\\n\\n\u9700\u8981\u5728[\u706B\u5C71\u5F15\u64CE\u63A7\u5236\u53F0](https://console.volcengine.com/ark)\u83B7\u53D6API\u5BC6\u94A5\u3002",\n  icon: "",\n  inputs: [\n    { key: "apiKey", label: "API\u5BC6\u94A5", type: "password", required: true, placeholder: "\u706B\u5C71\u5F15\u64CEAPI Key" },\n    { key: "baseUrl", label: "\u8BF7\u6C42\u5730\u5740", type: "url", required: true, placeholder: "\u4EE5v3\u7ED3\u675F\uFF0C\u793A\u4F8B\uFF1Ahttps://ark.cn-beijing.volces.com/api/v3" },\n  ],\n  inputValues: {\n    apiKey: "",\n    baseUrl: "https://ark.cn-beijing.volces.com/api/v3",\n  },\n  models: [\n    // ===================== \u6587\u672C\u6A21\u578B - \u63A8\u8350 =====================\n    { name: "Doubao-Seed-2.0-Pro", modelName: "doubao-seed-2-0-pro-260215", type: "text", think: true },\n    { name: "Doubao-Seed-2.0-Lite", modelName: "doubao-seed-2-0-lite-260215", type: "text", think: true },\n    { name: "Doubao-Seed-2.0-Mini", modelName: "doubao-seed-2-0-mini-260215", type: "text", think: true },\n    { name: "Doubao-Seed-2.0-Code-Preview", modelName: "doubao-seed-2-0-code-preview-260215", type: "text", think: true },\n    { name: "Doubao-Seed-Character", modelName: "doubao-seed-character-251128", type: "text", think: false },\n    // ===================== \u6587\u672C\u6A21\u578B - \u5F80\u671F =====================\n    { name: "Doubao-Seed-1.8", modelName: "doubao-seed-1-8-251228", type: "text", think: true },\n    { name: "Doubao-Seed-Code-Preview", modelName: "doubao-seed-code-preview-251028", type: "text", think: true },\n    { name: "Doubao-Seed-1.6-Lite", modelName: "doubao-seed-1-6-lite-251015", type: "text", think: true },\n    { name: "Doubao-Seed-1.6-Flash(0828)", modelName: "doubao-seed-1-6-flash-250828", type: "text", think: true },\n    { name: "Doubao-Seed-1.6-Vision", modelName: "doubao-seed-1-6-vision-250815", type: "text", think: true },\n    { name: "Doubao-Seed-1.6(1015)", modelName: "doubao-seed-1-6-251015", type: "text", think: true },\n    { name: "Doubao-Seed-1.6(0615)", modelName: "doubao-seed-1-6-250615", type: "text", think: true },\n    { name: "Doubao-Seed-1.6-Flash(0615)", modelName: "doubao-seed-1-6-flash-250615", type: "text", think: true },\n    { name: "Doubao-Seed-Translation", modelName: "doubao-seed-translation-250915", type: "text", think: false },\n    { name: "Doubao-1.5-Pro-32K", modelName: "doubao-1-5-pro-32k-250115", type: "text", think: false },\n    { name: "Doubao-1.5-Pro-32K-Character(0715)", modelName: "doubao-1-5-pro-32k-character-250715", type: "text", think: false },\n    { name: "Doubao-1.5-Pro-32K-Character(0228)", modelName: "doubao-1-5-pro-32k-character-250228", type: "text", think: false },\n    { name: "Doubao-1.5-Lite-32K", modelName: "doubao-1-5-lite-32k-250115", type: "text", think: false },\n    { name: "Doubao-1.5-Vision-Pro-32K", modelName: "doubao-1-5-vision-pro-32k-250115", type: "text", think: false },\n    // ===================== \u6587\u672C\u6A21\u578B - \u7B2C\u4E09\u65B9(\u706B\u5C71\u5F15\u64CE\u6258\u7BA1) =====================\n    { name: "GLM-4-7", modelName: "glm-4-7-251222", type: "text", think: true },\n    { name: "DeepSeek-V3-2", modelName: "deepseek-v3-2-251201", type: "text", think: true },\n    { name: "DeepSeek-V3-1-Terminus", modelName: "deepseek-v3-1-terminus", type: "text", think: true },\n    { name: "DeepSeek-V3(0324)", modelName: "deepseek-v3-250324", type: "text", think: false },\n    { name: "DeepSeek-R1(0528)", modelName: "deepseek-r1-250528", type: "text", think: true },\n    { name: "Qwen3-32B", modelName: "qwen3-32b-20250429", type: "text", think: false },\n    { name: "Qwen3-14B", modelName: "qwen3-14b-20250429", type: "text", think: false },\n    { name: "Qwen3-8B", modelName: "qwen3-8b-20250429", type: "text", think: false },\n    { name: "Qwen3-0.6B", modelName: "qwen3-0-6b-20250429", type: "text", think: false },\n    { name: "Qwen2.5-72B", modelName: "qwen2-5-72b-20240919", type: "text", think: false },\n    { name: "GLM-4.5-Air", modelName: "glm-4-5-air", type: "text", think: false },\n    // ===================== \u56FE\u7247\u751F\u6210\u6A21\u578B =====================\n    {\n      name: "Seedream-5.0",\n      modelName: "doubao-seedream-5-0-260128",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n    },\n    {\n      name: "Seedream-5.0-Lite",\n      modelName: "doubao-seedream-5-0-lite-260128",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n    },\n    {\n      name: "Seedream-4.5",\n      modelName: "doubao-seedream-4-5-251128",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n    },\n    {\n      name: "Seedream-4.0",\n      modelName: "doubao-seedream-4-0-250828",\n      type: "image",\n      mode: ["text", "singleImage", "multiReference"],\n    },\n    {\n      name: "Seedream-3.0-T2I",\n      modelName: "doubao-seedream-3-0-t2i-250415",\n      type: "image",\n      mode: ["text"],\n    },\n    // ===================== \u89C6\u9891\u751F\u6210\u6A21\u578B =====================\n    {\n      name: "Seedance-2.0(\u97F3\u753B\u540C\u751F)",\n      modelName: "doubao-seedance-2-0-260128",\n      type: "video",\n      associationSkills: "Seedance 2.0 \u5B98\u65B9\u6587\u751F\u89C6\u9891\u4E0E\u5355\u56FE\u751F\u89C6\u9891\uFF1B\u591A\u53C2\u8003\u56FE\u80FD\u529B\u6682\u4E0D\u5F00\u653E\u3002",\n      capabilities: ["text-to-video", "image-to-video"].map((id) => ({\n        id,\n        promptProfileId: id === "text-to-video" ? "seedance/text-v1" : "seedance/image-v1",\n        inputs: id === "text-to-video" ? [] : [{ role: "source-image" as const, mediaType: "image" as const, required: true as const }],\n        audio: { generation: "native" as const, policy: "optional" as const },\n        outputPresets: ["480p", "720p"].map((resolution) => ({\n          id: resolution,\n          resolution,\n          durations: { kind: "values" as const, values: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] },\n          aspectRatios: ["16:9" as const, "9:16" as const],\n        })),\n      })) as VideoModel["capabilities"],\n    },\n    {\n      name: "Seedance-2.0-Fast(\u97F3\u753B\u540C\u751F)",\n      modelName: "doubao-seedance-2-0-fast-260128",\n      type: "video",\n      associationSkills: "Seedance 2.0 Fast \u5B98\u65B9\u6587\u751F\u89C6\u9891\u4E0E\u5355\u56FE\u751F\u89C6\u9891\uFF1B\u591A\u53C2\u8003\u56FE\u80FD\u529B\u6682\u4E0D\u5F00\u653E\u3002",\n      capabilities: ["text-to-video", "image-to-video"].map((id) => ({\n        id,\n        promptProfileId: id === "text-to-video" ? "seedance/text-v1" : "seedance/image-v1",\n        inputs: id === "text-to-video" ? [] : [{ role: "source-image" as const, mediaType: "image" as const, required: true as const }],\n        audio: { generation: "native" as const, policy: "optional" as const },\n        outputPresets: ["480p", "720p"].map((resolution) => ({\n          id: resolution,\n          resolution,\n          durations: { kind: "values" as const, values: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] },\n          aspectRatios: ["16:9" as const, "9:16" as const],\n        })),\n      })) as VideoModel["capabilities"],\n    },\n  ],\n};\n\n// ============================================================\n// \u8F85\u52A9\u5DE5\u5177\n// ============================================================\n\nconst getHeaders = () => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\n  return {\n    "Content-Type": "application/json",\n    Authorization: `Bearer ${vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "")}`,\n  };\n};\n\nconst getBaseUrl = () => vendor.inputValues.baseUrl.replace(/\\/+$/, "");\n\n// ============================================================\n// \u9002\u914D\u5668\u51FD\u6570\n// ============================================================\n\nconst textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {\n  if (!vendor.inputValues.apiKey) throw new Error("\u7F3A\u5C11API Key");\n  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\\s+/i, "");\n\n  const effortMap: Record<number, string> = {\n    0: "minimal",\n    1: "low",\n    2: "medium",\n    3: "high",\n  };\n\n  return createOpenAICompatible({\n    name: "volcengine",\n    baseURL: getBaseUrl(),\n    apiKey,\n    fetch: async (url: string, options?: RequestInit) => {\n      const rawBody = JSON.parse((options?.body as string) ?? "{}");\n      const modifiedBody = {\n        ...rawBody,\n        thinking: {\n          type: "enabled",\n        },\n        reasoning_effort: effortMap[thinkLevel],\n      };\n      return await fetch(url, {\n        ...options,\n        body: JSON.stringify(modifiedBody),\n      });\n    },\n  }).chatModel(model.modelName);\n};\n\nconst imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {\n  const baseUrl = getBaseUrl();\n  const headers = getHeaders();\n\n  const body: any = {\n    model: model.modelName,\n    prompt: config.prompt || "",\n    response_format: "url",\n    watermark: false,\n  };\n\n  const isOldModel = model.modelName.includes("seedream-3-0");\n  const is5Lite = model.modelName.includes("seedream-5-0-lite");\n\n  // sequential_image_generation \u4EC5 seedream 5.0-lite/4.5/4.0 \u652F\u6301\n  if (!isOldModel) {\n    body.sequential_image_generation = "disabled";\n  }\n\n  // \u53C2\u8003\u56FE\u7247\uFF1A\u5355\u56FE\u4E3A string\uFF0C\u591A\u56FE\u4E3A array\uFF08seedream-3.0-t2i \u4E0D\u652F\u6301 image \u53C2\u6570\uFF09\n  if (!isOldModel && config.referenceList && config.referenceList.length > 0) {\n    const images = config.referenceList.map((ref) => ref.base64);\n    body.image = images.length === 1 ? images[0] : images;\n  }\n\n  // \u5C3A\u5BF8\u5904\u7406\uFF1A\u4F18\u5148\u4F7F\u7528\u63A8\u8350\u50CF\u7D20\u503C\uFF0C\u672A\u5339\u914D\u5219\u76F4\u63A5\u4F20\u5206\u8FA8\u7387\u5B57\u7B26\u4E32\u8BA9\u6A21\u578B\u81EA\u884C\u51B3\u5B9A\n  const [w, h] = config.aspectRatio.split(":").map(Number);\n  const sizeTable: Record<string, Record<string, string>> = {\n    "1K": {\n      "1:1": "1024x1024",\n      "4:3": "1152x864",\n      "3:4": "864x1152",\n      "16:9": "1280x720",\n      "9:16": "720x1280",\n      "3:2": "1248x832",\n      "2:3": "832x1248",\n      "21:9": "1512x648",\n    },\n    "2K": {\n      "1:1": "2048x2048",\n      "4:3": "2304x1728",\n      "3:4": "1728x2304",\n      "16:9": "2848x1600",\n      "9:16": "1600x2848",\n      "3:2": "2496x1664",\n      "2:3": "1664x2496",\n      "21:9": "3136x1344",\n    },\n    "4K": {\n      "1:1": "4096x4096",\n      "4:3": "4704x3520",\n      "3:4": "3520x4704",\n      "16:9": "5504x3040",\n      "9:16": "3040x5504",\n      "3:2": "4992x3328",\n      "2:3": "3328x4992",\n      "21:9": "6240x2656",\n    },\n  };\n\n  const sizeKey = config.size || "2K";\n  const ratioKey = config.aspectRatio;\n  const table = sizeTable[sizeKey];\n\n  if (table && table[ratioKey]) {\n    // \u63A8\u8350\u50CF\u7D20\u503C\u5339\u914D\u5230\u4E86\uFF0C\u4F46\u9700\u8981\u68C0\u67E5\u662F\u5426\u6EE1\u8DB3\u6A21\u578B\u6700\u4F4E\u50CF\u7D20\u8981\u6C42\n    const [pw, ph] = table[ratioKey].split("x").map(Number);\n    const totalPixels = pw * ph;\n    if (isOldModel) {\n      // seedream-3.0-t2i: \u50CF\u7D20\u8303\u56F4 [512x512, 2048x2048]\n      body.size = table[ratioKey];\n    } else if (totalPixels < 3686400) {\n      // 1K \u50CF\u7D20\u503C\u4E0D\u6EE1\u8DB3\u65B0\u6A21\u578B\u6700\u4F4E\u8981\u6C42\uFF0C\u76F4\u63A5\u4F20 "2K" \u8BA9\u6A21\u578B\u81EA\u884C\u51B3\u5B9A\n      body.size = "2K";\n    } else if (is5Lite && totalPixels > 10404496) {\n      // seedream-5.0-lite \u6700\u9AD8 10404496\uFF0C4K \u8D85\u9650\uFF0C\u56DE\u9000\u4F20 "2K"\n      body.size = "2K";\n    } else {\n      body.size = table[ratioKey];\n    }\n  } else if (isOldModel) {\n    // seedream-3.0-t2i: \u50CF\u7D20\u8303\u56F4 [512x512, 2048x2048]\uFF0C\u76F4\u63A5\u6309\u6BD4\u4F8B\u8BA1\u7B97\n    const base = sizeKey === "1K" ? 1024 : 2048;\n    const calcW = Math.min(2048, Math.round(base * Math.sqrt(w / h)));\n    const calcH = Math.min(2048, Math.round(base * Math.sqrt(h / w)));\n    body.size = `${Math.max(512, calcW)}x${Math.max(512, calcH)}`;\n  } else {\n    // \u65B0\u6A21\u578B\u672A\u5339\u914D\u63A8\u8350\u503C\u65F6\uFF0C\u76F4\u63A5\u4F20\u5206\u8FA8\u7387\u5B57\u7B26\u4E32\uFF08\u65B9\u5F0F1\uFF09\uFF0C\u7531\u6A21\u578B\u6839\u636E prompt \u81EA\u884C\u51B3\u5B9A\u5C3A\u5BF8\n    // seedream 5.0-lite \u652F\u6301 "2K"/"3K"\uFF0Cseedream 4.5 \u652F\u6301 "2K"/"4K"\uFF0Cseedream 4.0 \u652F\u6301 "1K"/"2K"/"4K"\n    if (is5Lite) {\n      body.size = sizeKey === "4K" ? "3K" : sizeKey === "1K" ? "2K" : sizeKey;\n    } else {\n      body.size = sizeKey === "1K" ? "2K" : sizeKey;\n    }\n  }\n\n  logger(`[\u56FE\u7247\u751F\u6210] \u8BF7\u6C42\u6A21\u578B: ${model.modelName}, \u5C3A\u5BF8: ${body.size}`);\n  const res = await fetch(`${baseUrl}/images/generations`, {\n    method: "POST",\n    headers,\n    body: JSON.stringify(body),\n  });\n  if (!res.ok) {\n    const errorText = await res.text();\n    throw new Error(`\u56FE\u7247\u751F\u6210\u8BF7\u6C42\u5931\u8D25: ${errorText}`);\n  }\n  const response = await res.json();\n  logger(response);\n\n  if (response?.error) {\n    throw new Error(`\u56FE\u7247\u751F\u6210\u5931\u8D25\uFF1A${response.error.message || response.error.code}`);\n  }\n\n  // \u4ECE data \u6570\u7EC4\u4E2D\u63D0\u53D6\u7B2C\u4E00\u5F20\u6210\u529F\u7684\u56FE\u7247\n  if (response?.data && response.data.length > 0) {\n    for (const item of response.data) {\n      if (item.url) {\n        return await urlToBase64(item.url);\n      }\n      if (item.b64_json) {\n        return item.b64_json;\n      }\n      if (item.error) {\n        throw new Error(`\u56FE\u7247\u751F\u6210\u5931\u8D25\uFF1A${item.error.message || item.error.code}`);\n      }\n    }\n  }\n\n  throw new Error("\u56FE\u7247\u751F\u6210\u5931\u8D25\uFF1A\u672A\u8FD4\u56DE\u6709\u6548\u7ED3\u679C");\n};\n\nconst videoRequest = async (config: VideoGenerationCommand, model: VideoModel): Promise<string> => {\n  const baseUrl = getBaseUrl();\n  const headers = getHeaders();\n\n  const content: any[] = [];\n\n  content.push({ type: "text", text: config.prompt });\n  if (config.capabilityId === "image-to-video") {\n    content.push({\n      type: "image_url",\n      image_url: { url: config.sourceImage.base64 },\n      role: "first_frame",\n    });\n  }\n\n  const body: any = {\n    model: model.modelName,\n    content,\n    ratio: config.output.aspectRatio,\n    duration: config.output.duration,\n    resolution: config.output.resolution,\n    watermark: false,\n    generate_audio: config.audio.enabled,\n  };\n\n  logger(`[\u89C6\u9891\u751F\u6210] \u63D0\u4EA4\u4EFB\u52A1, \u6A21\u578B: ${model.modelName}, \u65F6\u957F: ${config.output.duration}s, \u5206\u8FA8\u7387: ${config.output.resolution}`);\n  const res = await fetch(`${baseUrl}/contents/generations/tasks`, {\n    method: "POST",\n    headers,\n    body: JSON.stringify(body),\n  });\n\n  if (!res.ok) {\n    const errorText = await res.text();\n    throw new Error(`\u89C6\u9891\u751F\u6210\u4EFB\u52A1\u521B\u5EFA\u5931\u8D25: ${errorText}`);\n  }\n  const createResponse = await res.json();\n  logger(createResponse);\n  const taskId = createResponse?.id;\n\n  if (!taskId) {\n    throw new Error("\u89C6\u9891\u751F\u6210\u4EFB\u52A1\u521B\u5EFA\u5931\u8D25\uFF1A\u672A\u8FD4\u56DE\u4EFB\u52A1ID");\n  }\n\n  logger(`[\u89C6\u9891\u751F\u6210] \u4EFB\u52A1\u5DF2\u521B\u5EFA, ID: ${taskId}`);\n\n  const result = await pollTask(\n    async (): Promise<PollResult> => {\n      const queryRes = await fetch(`${baseUrl}/contents/generations/tasks/${taskId}`, {\n        method: "GET",\n        headers,\n      });\n      if (!queryRes.ok) {\n        const errorText = await queryRes.text();\n        throw new Error(`\u67E5\u8BE2\u89C6\u9891\u751F\u6210\u4EFB\u52A1\u72B6\u6001\u5931\u8D25: ${errorText}`);\n      }\n      const task = await queryRes.json();\n\n      logger(`[\u89C6\u9891\u751F\u6210] \u4EFB\u52A1\u72B6\u6001: ${JSON.stringify(task)}`);\n\n      switch (task.status) {\n        case "succeeded":\n          if (task.content?.video_url) {\n            return { completed: true, data: task.content.video_url };\n          }\n          return { completed: true, error: "\u4EFB\u52A1\u6210\u529F\u4F46\u672A\u8FD4\u56DE\u89C6\u9891URL" };\n        case "failed":\n          return { completed: true, error: task.error?.message || "\u89C6\u9891\u751F\u6210\u5931\u8D25" };\n        case "expired":\n          return { completed: true, error: "\u89C6\u9891\u751F\u6210\u4EFB\u52A1\u8D85\u65F6" };\n        case "cancelled":\n          return { completed: true, error: "\u89C6\u9891\u751F\u6210\u4EFB\u52A1\u5DF2\u53D6\u6D88" };\n        default:\n          return { completed: false };\n      }\n    },\n    10000,\n    600000 * 3,\n  );\n\n  if (result.error) {\n    throw new Error(result.error);\n  }\n\n  return result.data!;\n};\n\nconst ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> => {\n  return "";\n};\n\nconst checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {\n  return { hasUpdate: false, latestVersion: "2.0", notice: "" };\n};\n\nconst updateVendor = async (): Promise<string> => {\n  return "";\n};\n\n// ============================================================\n// \u5BFC\u51FA\n// ============================================================\n\nexports.vendor = vendor;\nexports.textRequest = textRequest;\nexports.imageRequest = imageRequest;\nexports.videoRequest = videoRequest;\nexports.ttsRequest = ttsRequest;\nexports.checkForUpdates = checkForUpdates;\nexports.updateVendor = updateVendor;\n\nexport {};\n',
@@ -57781,6 +57781,105 @@ var init_recovery = __esm({
   "src/video/recovery.ts"() {
     "use strict";
     interruptionReason = "\u8F6F\u4EF6\u9000\u51FA\u5BFC\u81F4\u5931\u8D25";
+  }
+});
+
+// src/assets/imageGenerationLifecycle.ts
+function sanitizeDiagnosticIdentifier(value, limit) {
+  if (typeof value !== "string") return void 0;
+  const normalized = value.trim().slice(0, limit);
+  return normalized && SAFE_DIAGNOSTIC_IDENTIFIER.test(normalized) ? normalized : void 0;
+}
+function sanitizeVendorImageFailureDiagnostics(diagnostics) {
+  const attempt = Number.isFinite(diagnostics?.attempt) ? Math.max(1, Math.floor(Number(diagnostics.attempt))) : 1;
+  const httpStatus = Number.isInteger(diagnostics?.httpStatus) && Number(diagnostics.httpStatus) > 0 ? Number(diagnostics.httpStatus) : void 0;
+  const elapsedMs = Number.isFinite(diagnostics?.elapsedMs) && Number(diagnostics.elapsedMs) >= 0 ? Math.floor(Number(diagnostics.elapsedMs)) : void 0;
+  const stage = diagnostics?.stage === "download" ? "download" : "generation";
+  const kind = ["timeout", "transport", "httpError", "noImageData", "downloadFailed"].includes(diagnostics?.kind) ? diagnostics.kind : "transport";
+  return {
+    kind,
+    stage,
+    attempt,
+    ...elapsedMs !== void 0 ? { elapsedMs } : {},
+    ...sanitizeDiagnosticIdentifier(diagnostics?.transportCode, 64) ? { transportCode: sanitizeDiagnosticIdentifier(diagnostics.transportCode, 64) } : {},
+    ...httpStatus !== void 0 ? { httpStatus } : {},
+    ...sanitizeDiagnosticIdentifier(diagnostics?.providerRequestId, 128) ? { providerRequestId: sanitizeDiagnosticIdentifier(diagnostics.providerRequestId, 128) } : {}
+  };
+}
+async function cancelImageGeneration(db, imageId) {
+  const updated = await db("o_image").where("id", imageId).whereIn("state", [...IMAGE_GENERATION_ACTIVE_STATES]).update({ state: "\u5DF2\u53D6\u6D88" });
+  return Number(updated) > 0;
+}
+function isTimeoutLikeError(error67) {
+  if (!error67 || typeof error67 !== "object") return false;
+  const anyError = error67;
+  if (anyError.code === "ETIMEDOUT" || anyError.code === "ECONNABORTED") return true;
+  return typeof anyError.message === "string" && TIMEOUT_MESSAGE_PATTERN.test(anyError.message);
+}
+function extractVendorImageFailure(error67) {
+  if (error67 instanceof VendorImageGenerationError) return error67.diagnostics;
+  if (!error67 || typeof error67 !== "object") return null;
+  const candidate = error67.imageFailure;
+  if (!candidate || typeof candidate !== "object") return null;
+  const raw = candidate;
+  if (typeof raw.kind !== "string") return null;
+  return sanitizeVendorImageFailureDiagnostics(raw);
+}
+function classifyVendorImageFailure(error67) {
+  const diagnostics = extractVendorImageFailure(error67);
+  if (diagnostics) {
+    if (diagnostics.kind === "timeout") return "imageGenerationTimeout";
+    if (diagnostics.kind === "downloadFailed") return "imageDownloadFailed";
+    return "imageGenerationFailed";
+  }
+  return isTimeoutLikeError(error67) ? "imageGenerationTimeout" : "imageGenerationFailed";
+}
+async function failInterruptedImageGenerations(db) {
+  await db("o_image").whereIn("state", [...IMAGE_GENERATION_ACTIVE_STATES]).update({
+    state: "\u751F\u6210\u5931\u8D25",
+    errorReason: INTERRUPTED_IMAGE_REASON
+  });
+}
+function imageFailureKindFromStoredReason(reason) {
+  if (typeof reason !== "string" || !reason) return null;
+  const match = /^([a-zA-Z]+):/.exec(reason);
+  return match ? match[1] : null;
+}
+async function readImageGenerationPollingRows(db, ids) {
+  const rows = await db("o_assets").leftJoin("o_image", "o_assets.imageId", "o_image.id").whereIn("o_assets.id", [...ids]).select("o_assets.id", "o_assets.prompt", "o_image.state", "o_image.filePath", "o_image.errorReason");
+  const byAssetId = new Map(rows.map((row) => [Number(row.id), row]));
+  const result = /* @__PURE__ */ new Map();
+  for (const id of ids) {
+    const row = byAssetId.get(id);
+    result.set(id, {
+      state: row?.state ?? null,
+      filePath: row?.filePath ?? null,
+      prompt: row?.prompt ?? null,
+      errorKind: imageFailureKindFromStoredReason(row?.errorReason)
+    });
+  }
+  return result;
+}
+var IMAGE_GENERATION_ACTIVE_STATES, VendorImageGenerationError, SAFE_DIAGNOSTIC_IDENTIFIER, TIMEOUT_MESSAGE_PATTERN, INTERRUPTED_IMAGE_REASON;
+var init_imageGenerationLifecycle = __esm({
+  "src/assets/imageGenerationLifecycle.ts"() {
+    "use strict";
+    IMAGE_GENERATION_ACTIVE_STATES = [
+      "\u7B49\u5F85\u4E2D",
+      "\u751F\u6210\u4E2D",
+      "\u4E0B\u8F7D\u4E2D"
+    ];
+    VendorImageGenerationError = class extends Error {
+      diagnostics;
+      constructor(diagnostics) {
+        super(`\u4F9B\u5E94\u5546\u56FE\u7247\u751F\u6210\u5931\u8D25 kind=${diagnostics.kind} stage=${diagnostics.stage}`);
+        this.name = "VendorImageGenerationError";
+        this.diagnostics = sanitizeVendorImageFailureDiagnostics(diagnostics);
+      }
+    };
+    SAFE_DIAGNOSTIC_IDENTIFIER = /^[A-Za-z0-9._:-]+$/;
+    TIMEOUT_MESSAGE_PATTERN = /timeout of \d+ms exceeded|request timed ?out|ETIMEDOUT|ECONNABORTED/i;
+    INTERRUPTED_IMAGE_REASON = "\u8F6F\u4EF6\u9000\u51FA\u5BFC\u81F4\u5931\u8D25";
   }
 });
 
@@ -57912,6 +58011,7 @@ var init_fixDB = __esm({
     init_vendor();
     init_vendorRegistry();
     init_recovery();
+    init_imageGenerationLifecycle();
     init_runtime();
     vendorData = vendor_default;
     legacyDroppedColumns = {
@@ -57953,10 +58053,7 @@ var init_fixDB = __esm({
         promptState: "\u751F\u6210\u5931\u8D25",
         promptErrorReason: "\u8F6F\u4EF6\u9000\u51FA\u5BFC\u81F4\u5931\u8D25"
       });
-      await knex2("o_image").where("state", "\u751F\u6210\u4E2D").update({
-        state: "\u751F\u6210\u5931\u8D25",
-        errorReason: "\u8F6F\u4EF6\u9000\u51FA\u5BFC\u81F4\u5931\u8D25"
-      });
+      await failInterruptedImageGenerations(knex2);
       await knex2("o_storyboard").where("state", "\u751F\u6210\u4E2D").update({
         state: "\u751F\u6210\u5931\u8D25",
         reason: "\u8F6F\u4EF6\u9000\u51FA\u5BFC\u81F4\u5931\u8D25"
@@ -189259,13 +189356,13 @@ var require_dist9 = __commonJS({
       };
     }
     var import_provider_utils210 = require_dist8();
-    var import_zod165 = require_zod();
-    var qwenErrorDataSchema = import_zod165.z.object({
-      object: import_zod165.z.literal("error"),
-      message: import_zod165.z.string(),
-      type: import_zod165.z.string(),
-      param: import_zod165.z.string().nullable(),
-      code: import_zod165.z.string().nullable()
+    var import_zod166 = require_zod();
+    var qwenErrorDataSchema = import_zod166.z.object({
+      object: import_zod166.z.literal("error"),
+      message: import_zod166.z.string(),
+      type: import_zod166.z.string(),
+      param: import_zod166.z.string().nullable(),
+      code: import_zod166.z.string().nullable()
     });
     var qwenFailedResponseHandler = (0, import_provider_utils210.createJsonErrorResponseHandler)({
       errorSchema: qwenErrorDataSchema,
@@ -240086,7 +240183,8 @@ function assetPromptErrorEnvelope(failure2) {
       code: envelope.status,
       data: null,
       message: envelope.message,
-      error: failure2.kind
+      error: failure2.kind,
+      ...failure2.affectedAssets ? { affectedAssets: failure2.affectedAssets } : {}
     }
   };
 }
@@ -240545,6 +240643,8 @@ async function resolveAssetGenerationInputs(dependencies, input) {
   const records = await dependencies.work((db) => db("o_assetPromptRecord").whereIn("assetsId", assetsIds).select());
   const recordByAsset = new Map(records.map((record3) => [record3.assetsId, record3]));
   const entries = [];
+  const staleAssets = [];
+  const missingAssets = [];
   for (const assetsId of assetsIds) {
     const asset = assetById.get(assetsId);
     if (asset.assetsId != null) {
@@ -240570,10 +240670,8 @@ async function resolveAssetGenerationInputs(dependencies, input) {
     }
     const record3 = recordByAsset.get(assetsId);
     if (!record3) {
-      return {
-        ok: false,
-        failure: assetPromptFailure("promptNotGenerated", `\u8D44\u4EA7 ${assetsId} \u5C1A\u672A\u751F\u6210\u63D0\u793A\u8BCD\uFF0C\u8BF7\u5148\u751F\u6210\u63D0\u793A\u8BCD`)
-      };
+      missingAssets.push({ id: assetsId, name: asset.name ?? `Asset ${assetsId}` });
+      continue;
     }
     const otherTextPrompt = normalizeOtherTextPrompt(record3.additionalRequirements);
     const contextHash = computeAssetContextHash({
@@ -240584,22 +240682,15 @@ async function resolveAssetGenerationInputs(dependencies, input) {
     });
     const referenceHash = computeAssetReferenceHash(asset, context2);
     if (!isReusableRecord(record3, { templateHash, contextHash, referenceHash, modelProfileJson })) {
-      return {
-        ok: false,
-        failure: assetPromptFailure(
-          "stalePromptRecord",
-          `\u8D44\u4EA7 ${assetsId} \u7684\u63D0\u793A\u8BCD\u8BB0\u5F55\u5DF2\u8FC7\u671F\uFF08Script/\u6A21\u677F/\u8D44\u4EA7\u4E8B\u5B9E/\u89C6\u89C9\u624B\u518C\u6216\u53C2\u8003\u5951\u7EA6\u5DF2\u53D8\u5316\uFF09\uFF0C\u8BF7\u91CD\u65B0\u751F\u6210\u63D0\u793A\u8BCD`
-        )
-      };
+      staleAssets.push({ id: assetsId, name: asset.name ?? `Asset ${assetsId}` });
+      continue;
     }
     let brief;
     try {
       brief = JSON.parse(record3.assetBrief);
     } catch {
-      return {
-        ok: false,
-        failure: assetPromptFailure("stalePromptRecord", `\u8D44\u4EA7 ${assetsId} \u7684\u63D0\u793A\u8BCD\u8BB0\u5F55\u5DF2\u635F\u574F\uFF0C\u8BF7\u91CD\u65B0\u751F\u6210\u63D0\u793A\u8BCD`)
-      };
+      staleAssets.push({ id: assetsId, name: asset.name ?? `Asset ${assetsId}` });
+      continue;
     }
     const compile = compileAssetGenerationPrompt({
       brief,
@@ -240627,6 +240718,12 @@ async function resolveAssetGenerationInputs(dependencies, input) {
       references,
       selectedReferenceIds
     });
+  }
+  if (staleAssets.length) {
+    return { ok: false, failure: { ...assetPromptFailure("stalePromptRecord", "\u8D44\u4EA7\u63D0\u793A\u8BCD\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u65B0\u751F\u6210\u63D0\u793A\u8BCD"), affectedAssets: staleAssets } };
+  }
+  if (missingAssets.length) {
+    return { ok: false, failure: { ...assetPromptFailure("promptNotGenerated", "\u8D44\u4EA7\u5C1A\u672A\u751F\u6210\u63D0\u793A\u8BCD"), affectedAssets: missingAssets } };
   }
   return { ok: true, value: entries };
 }
@@ -241558,6 +241655,60 @@ var init_delImage = __esm({
 });
 
 // src/routes/assets/getAssetsApi.ts
+function createGetAssetsRouter(resolveWork = () => getDatabaseRuntime().work) {
+  const router172 = import_express19.default.Router();
+  router172.post(
+    "/",
+    validateFields({
+      projectId: external_exports.number(),
+      type: external_exports.string(),
+      name: external_exports.string().optional(),
+      page: external_exports.number(),
+      limit: external_exports.number()
+    }),
+    async (req, res) => {
+      const { projectId, type, name: name28, page = 1, limit = 10 } = req.body;
+      const offset = (page - 1) * limit;
+      const parentAssets = await resolveWork()((db) => {
+        let query = db("o_assets").leftJoin("o_image", "o_assets.imageId", "o_image.id").select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason").where("o_assets.projectId", projectId).andWhere("o_assets.type", type);
+        if (name28) {
+          query = query.andWhere("name", "like", `%${name28}%`);
+        }
+        return query.where("o_assets.assetsId", null).offset(offset).limit(limit);
+      });
+      const childAssets = await resolveWork()((db) => {
+        let childQuery = db("o_assets").leftJoin("o_image", "o_assets.imageId", "o_image.id").select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason").where("o_assets.projectId", projectId).andWhere("o_assets.type", type).whereNotNull("o_assets.assetsId");
+        if (name28) {
+          childQuery = childQuery.andWhere("o_assets.name", "like", `%${name28}%`);
+        }
+        return childQuery;
+      });
+      const childAssetsWithSrc = await Promise.all(
+        childAssets.map(async (child) => ({
+          ...child,
+          src: child.filePath && await filterTypeGetFileUrl(child.filePath, child.type)
+        }))
+      );
+      const result = await Promise.all(
+        parentAssets.map(async (parent) => ({
+          ...parent,
+          sonAssets: childAssetsWithSrc.filter((child) => child.assetsId === parent.id),
+          src: parent.filePath && await filterTypeGetFileUrl(parent.filePath, parent.type),
+          ...parent.type == "audio" ? { sex: parent.describe?.split("|")[0], describe: parent.describe?.split("|")[1] } : {}
+        }))
+      );
+      const totalQuery = await resolveWork()(
+        (db) => db("o_assets").where("projectId", projectId).andWhere("type", type).andWhere("assetsId", null).andWhere((qb) => {
+          if (name28) {
+            qb.andWhere("name", "like", `%${name28}%`);
+          }
+        }).count("* as total").first()
+      );
+      res.status(200).send(success3({ data: result, total: totalQuery?.total }));
+    }
+  );
+  return router172;
+}
 async function filterTypeGetFileUrl(url4, type) {
   if (type == "role" || type == "tool" || type == "scene") {
     return await utils_default2.oss.getSmallImageUrl(url4);
@@ -241565,7 +241716,7 @@ async function filterTypeGetFileUrl(url4, type) {
     return await utils_default2.oss.getFileUrl(url4);
   }
 }
-var import_express19, router18, getAssetsApi_default;
+var import_express19, getAssetsApi_default;
 var init_getAssetsApi = __esm({
   "src/routes/assets/getAssetsApi.ts"() {
     "use strict";
@@ -241575,60 +241726,12 @@ var init_getAssetsApi = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router18 = import_express19.default.Router();
-    getAssetsApi_default = router18.post(
-      "/",
-      validateFields({
-        projectId: external_exports.number(),
-        type: external_exports.string(),
-        name: external_exports.string().optional(),
-        page: external_exports.number(),
-        limit: external_exports.number()
-      }),
-      async (req, res) => {
-        const { projectId, type, name: name28, page = 1, limit = 10 } = req.body;
-        const offset = (page - 1) * limit;
-        const parentAssets = await getDatabaseRuntime().work((db) => {
-          let query = db("o_assets").leftJoin("o_image", "o_assets.imageId", "o_image.id").select("o_assets.*", "o_image.filePath", "o_image.state").where("o_assets.projectId", projectId).andWhere("o_assets.type", type);
-          if (name28) {
-            query = query.andWhere("name", "like", `%${name28}%`);
-          }
-          return query.where("o_assets.assetsId", null).offset(offset).limit(limit);
-        });
-        const childAssets = await getDatabaseRuntime().work((db) => {
-          let childQuery = db("o_assets").leftJoin("o_image", "o_assets.imageId", "o_image.id").select("o_assets.*", "o_image.filePath", "o_image.state", "o_image.errorReason").where("o_assets.projectId", projectId).andWhere("o_assets.type", type).whereNotNull("o_assets.assetsId");
-          if (name28) {
-            childQuery = childQuery.andWhere("o_assets.name", "like", `%${name28}%`);
-          }
-          return childQuery;
-        });
-        const childAssetsWithSrc = await Promise.all(
-          childAssets.map(async (child) => ({
-            ...child,
-            src: child.filePath && await filterTypeGetFileUrl(child.filePath, child.type)
-          }))
-        );
-        const result = await Promise.all(
-          parentAssets.map(async (parent) => ({
-            ...parent,
-            sonAssets: childAssetsWithSrc.filter((child) => child.assetsId === parent.id),
-            src: parent.filePath && await filterTypeGetFileUrl(parent.filePath, parent.type),
-            ...parent.type == "audio" ? { sex: parent.describe?.split("|")[0], describe: parent.describe?.split("|")[1] } : {}
-          }))
-        );
-        const totalQuery = await getDatabaseRuntime().work((db) => db("o_assets").where("projectId", projectId).andWhere("type", type).andWhere("assetsId", null).andWhere((qb) => {
-          if (name28) {
-            qb.andWhere("name", "like", `%${name28}%`);
-          }
-        }).count("* as total").first());
-        res.status(200).send(success3({ data: result, total: totalQuery?.total }));
-      }
-    );
+    getAssetsApi_default = createGetAssetsRouter();
   }
 });
 
 // src/routes/assets/getImage.ts
-var import_express20, router19, getImage_default;
+var import_express20, router18, getImage_default;
 var init_getImage = __esm({
   "src/routes/assets/getImage.ts"() {
     "use strict";
@@ -241638,8 +241741,8 @@ var init_getImage = __esm({
     init_responseFormat();
     init_zod();
     init_middleware();
-    router19 = import_express20.default.Router();
-    getImage_default = router19.post(
+    router18 = import_express20.default.Router();
+    getImage_default = router18.post(
       "/",
       validateFields({
         assetsId: external_exports.number()
@@ -241670,7 +241773,7 @@ var init_getImage = __esm({
 });
 
 // src/routes/assets/getMaterialData.ts
-var import_express21, router20, getMaterialData_default;
+var import_express21, router19, getMaterialData_default;
 var init_getMaterialData = __esm({
   "src/routes/assets/getMaterialData.ts"() {
     "use strict";
@@ -241680,8 +241783,8 @@ var init_getMaterialData = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router20 = import_express21.default.Router();
-    getMaterialData_default = router20.post(
+    router19 = import_express21.default.Router();
+    getMaterialData_default = router19.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -241734,7 +241837,33 @@ var init_getMaterialData = __esm({
 });
 
 // src/routes/assets/pollingImageAssets.ts
-var import_express22, router21, pollingImageAssets_default;
+function createPollingImageAssetsRouter(resolveWork = () => getDatabaseRuntime().work) {
+  const router172 = import_express22.default.Router();
+  router172.post(
+    "/",
+    validateFields({
+      ids: external_exports.array(external_exports.number())
+    }),
+    async (req, res) => {
+      const { ids } = req.body;
+      const rows = await resolveWork()((db) => readImageGenerationPollingRows(db, ids));
+      const result = await Promise.all(
+        ids.map(async (id) => {
+          const row = rows.get(id);
+          return {
+            id,
+            state: row.state,
+            filePath: row.filePath ? await utils_default2.oss.getSmallImageUrl(row.filePath) : null,
+            errorKind: row.errorKind
+          };
+        })
+      );
+      res.status(200).send(success3(result));
+    }
+  );
+  return router172;
+}
+var import_express22, pollingImageAssets_default;
 var init_pollingImageAssets = __esm({
   "src/routes/assets/pollingImageAssets.ts"() {
     "use strict";
@@ -241744,29 +241873,13 @@ var init_pollingImageAssets = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router21 = import_express22.default.Router();
-    pollingImageAssets_default = router21.post(
-      "/",
-      validateFields({
-        ids: external_exports.array(external_exports.number())
-      }),
-      async (req, res) => {
-        const { ids } = req.body;
-        const data = await getDatabaseRuntime().work((db) => db("o_assets").leftJoin("o_image", "o_assets.imageId", "o_image.id").whereIn("o_assets.id", ids).whereNot("o_image.state", "\u751F\u6210\u4E2D").select("o_image.state", "o_assets.id", "o_image.filePath"));
-        const result = await Promise.all(
-          data.map(async (item) => ({
-            ...item,
-            filePath: item.filePath ? await utils_default2.oss.getSmallImageUrl(item.filePath) : null
-          }))
-        );
-        res.status(200).send(success3(result));
-      }
-    );
+    init_imageGenerationLifecycle();
+    pollingImageAssets_default = createPollingImageAssetsRouter();
   }
 });
 
 // src/routes/assets/pollingPromptAssets.ts
-var import_express23, router22, pollingPromptAssets_default;
+var import_express23, router20, pollingPromptAssets_default;
 var init_pollingPromptAssets = __esm({
   "src/routes/assets/pollingPromptAssets.ts"() {
     "use strict";
@@ -241775,8 +241888,8 @@ var init_pollingPromptAssets = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router22 = import_express23.default.Router();
-    pollingPromptAssets_default = router22.post(
+    router20 = import_express23.default.Router();
+    pollingPromptAssets_default = router20.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number())
@@ -241793,7 +241906,7 @@ var init_pollingPromptAssets = __esm({
 });
 
 // src/routes/assets/saveAssets.ts
-var import_express24, router23, saveAssets_default;
+var import_express24, router21, saveAssets_default;
 var init_saveAssets = __esm({
   "src/routes/assets/saveAssets.ts"() {
     "use strict";
@@ -241804,8 +241917,8 @@ var init_saveAssets = __esm({
     init_dist_node();
     init_responseFormat();
     init_middleware();
-    router23 = import_express24.default.Router();
-    saveAssets_default = router23.post(
+    router21 = import_express24.default.Router();
+    saveAssets_default = router21.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -241849,7 +241962,7 @@ var init_saveAssets = __esm({
 });
 
 // src/routes/assets/updateAssets.ts
-var import_express25, router24, updateAssets_default;
+var import_express25, router22, updateAssets_default;
 var init_updateAssets = __esm({
   "src/routes/assets/updateAssets.ts"() {
     "use strict";
@@ -241858,8 +241971,8 @@ var init_updateAssets = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router24 = import_express25.default.Router();
-    updateAssets_default = router24.post(
+    router22 = import_express25.default.Router();
+    updateAssets_default = router22.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -241885,7 +241998,7 @@ var init_updateAssets = __esm({
 });
 
 // src/routes/assets/updateAudioAssets.ts
-var import_express26, router25, updateAudioAssets_default;
+var import_express26, router23, updateAudioAssets_default;
 var init_updateAudioAssets = __esm({
   "src/routes/assets/updateAudioAssets.ts"() {
     "use strict";
@@ -241895,8 +242008,8 @@ var init_updateAudioAssets = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router25 = import_express26.default.Router();
-    updateAudioAssets_default = router25.post(
+    router23 = import_express26.default.Router();
+    updateAudioAssets_default = router23.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -242020,7 +242133,7 @@ function getExtFromBase64(base64Data) {
   };
   return mimeMap[mime] ?? "bin";
 }
-var import_express27, router26, uploadClip_default;
+var import_express27, router24, uploadClip_default;
 var init_uploadClip = __esm({
   "src/routes/assets/uploadClip.ts"() {
     "use strict";
@@ -242031,8 +242144,8 @@ var init_uploadClip = __esm({
     init_middleware();
     init_zod();
     init_dist_node();
-    router26 = import_express27.default.Router();
-    uploadClip_default = router26.post(
+    router24 = import_express27.default.Router();
+    uploadClip_default = router24.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -242276,7 +242389,8 @@ function assetImageGenerationErrorEnvelope(failure2) {
       code: envelope.status,
       data: null,
       message: envelope.message,
-      error: failure2.kind
+      error: failure2.kind,
+      ...failure2.affectedAssets ? { affectedAssets: failure2.affectedAssets } : {}
     }
   };
 }
@@ -242310,7 +242424,9 @@ function parseBatchAssetsIds(value) {
   return ids;
 }
 async function markImageFailed(dependencies, imageId, reason) {
-  await dependencies.work((db) => db("o_image").where("id", imageId).update({ state: "\u751F\u6210\u5931\u8D25", errorReason: reason })).catch(() => void 0);
+  await dependencies.work(
+    (db) => db("o_image").where("id", imageId).whereIn("state", [...IMAGE_GENERATION_ACTIVE_STATES]).update({ state: "\u751F\u6210\u5931\u8D25", errorReason: reason })
+  ).catch(() => void 0);
 }
 function failureHashFromStoredReason(reason) {
   const value = String(reason ?? "");
@@ -242416,7 +242532,9 @@ async function generateAssetImage(dependencies, input) {
     const providedImageId = input.imageId;
     const placeholder = await dependencies.work((db) => db("o_image").where("id", providedImageId).first());
     if (!placeholder) return { ok: false, failure: imageFailure("assetNotFound", "\u56FE\u7247\u8BB0\u5F55\u4E0D\u5B58\u5728") };
-    if (placeholder.state === "\u751F\u6210\u5931\u8D25") return { ok: false, failure: imageFailure("cancelled", "\u751F\u6210\u5DF2\u53D6\u6D88") };
+    if (placeholder.state === "\u751F\u6210\u5931\u8D25" || placeholder.state === "\u5DF2\u53D6\u6D88") {
+      return { ok: false, failure: imageFailure("cancelled", "\u751F\u6210\u5DF2\u53D6\u6D88") };
+    }
     imageId = providedImageId;
   }
   if (input.generationInput && input.generationInput.assetsId !== assetsId) {
@@ -242452,7 +242570,7 @@ async function generateAssetImage(dependencies, input) {
     imageRecordId = await dependencies.work(async (db) => {
       const [insertedId] = await db("o_image").insert({
         type: entry.assetRawType,
-        state: "\u751F\u6210\u4E2D",
+        state: "\u7B49\u5F85\u4E2D",
         assetsId,
         model: target.modelId,
         resolution
@@ -242490,6 +242608,23 @@ async function generateAssetImage(dependencies, input) {
   const describe4 = entry.derived ? `\u751F\u6210${typeConfig.label}\u884D\u751F\u56FE\uFF0C\u540D\u79F0\uFF1A${entry.name}\uFF0C\u7236\u8D44\u4EA7\u951A\u70B9 1 \u5F20` : `\u751F\u6210${typeConfig.label}\u56FE\uFF0C\u540D\u79F0\uFF1A${entry.name}\uFF0C\u53C2\u8003\u56FE ${preparedMedia.value.length} \u5F20`;
   let result;
   let taskDone;
+  class VendorInvocationCancelled extends Error {
+  }
+  const onStage = async (stage) => {
+    if (stage === "generating") {
+      const updated = await dependencies.work(
+        (db) => db("o_image").where("id", imageRecordId).where("state", "\u7B49\u5F85\u4E2D").update({ state: "\u751F\u6210\u4E2D" })
+      );
+      if (!updated) throw new VendorInvocationCancelled("\u56FE\u7247\u751F\u6210\u5728\u4F9B\u5E94\u5546\u8C03\u7528\u524D\u5DF2\u53D6\u6D88");
+      return;
+    }
+    await dependencies.work((db) => {
+      if (stage === "downloading") {
+        return db("o_image").where("id", imageRecordId).whereIn("state", ["\u7B49\u5F85\u4E2D", "\u751F\u6210\u4E2D"]).update({ state: "\u4E0B\u8F7D\u4E2D" });
+      }
+      return db("o_image").where("id", imageRecordId).where("state", "\u4E0B\u8F7D\u4E2D").update({ state: "\u751F\u6210\u4E2D" });
+    }).catch(() => void 0);
+  };
   try {
     taskDone = await dependencies.recordGenerationTask({
       projectId,
@@ -242499,32 +242634,56 @@ async function generateAssetImage(dependencies, input) {
       content: snapshotContent
     });
     try {
-      result = await dependencies.generateImage({
-        target,
-        input: buildImageGenerationInput(entry, preparedMedia.value, resolution, parentAnchorBase64)
-      });
+      result = await dependencies.generateImage(
+        {
+          target,
+          input: buildImageGenerationInput(entry, preparedMedia.value, resolution, parentAnchorBase64)
+        },
+        onStage
+      );
     } catch (error67) {
+      if (error67 instanceof VendorInvocationCancelled) {
+        await taskDone(-1, "cancelled", JSON.stringify({ ...snapshot, failureEvidence: { kind: "cancelled" } }));
+        return { ok: false, failure: imageFailure("cancelled", "\u751F\u6210\u5DF2\u53D6\u6D88") };
+      }
+      const kind = classifyVendorImageFailure(error67);
+      const diagnostics = extractVendorImageFailure(error67) ?? void 0;
       const reason = error_default(error67).message;
       const failureEvidence = {
-        kind: "imageGenerationFailed",
-        failureReasonHash: sha256(reason)
+        kind,
+        failureReasonHash: sha256(reason),
+        ...diagnostics ? { diagnostics } : {}
       };
       const sanitizedReason = `${failureEvidence.kind}:${failureEvidence.failureReasonHash}`;
       await taskDone(-1, sanitizedReason, JSON.stringify({ ...snapshot, failureEvidence }));
       await markImageFailed(dependencies, imageRecordId, sanitizedReason);
-      return { ok: false, failure: imageFailure("imageGenerationFailed", "\u56FE\u7247\u751F\u6210\u8C03\u7528\u5931\u8D25") };
+      const envelope = FAILURE_ENVELOPE[kind];
+      return { ok: false, failure: imageFailure(kind, envelope.message) };
     }
   } catch (error67) {
     await markImageFailed(dependencies, imageRecordId, error_default(error67).message);
     return { ok: false, failure: imageFailure("imageGenerationFailed", "\u56FE\u7247\u751F\u6210\u8C03\u7528\u5931\u8D25") };
   }
-  const failRecordedTask = async (kind, reason) => {
+  const failRecordedTask = async (kind, reason, options) => {
     const failureEvidence = { kind, failureReasonHash: sha256(reason) };
     const sanitizedReason = `${failureEvidence.kind}:${failureEvidence.failureReasonHash}`;
     await taskDone(-1, sanitizedReason, JSON.stringify({ ...snapshot, failureEvidence })).catch(() => void 0);
-    await markImageFailed(dependencies, imageRecordId, sanitizedReason);
+    if (options?.force) {
+      await dependencies.work((db) => db("o_image").where("id", imageRecordId).update({ state: "\u751F\u6210\u5931\u8D25", errorReason: sanitizedReason })).catch(() => void 0);
+    } else {
+      await markImageFailed(dependencies, imageRecordId, sanitizedReason);
+    }
     return sanitizedReason;
   };
+  const imageRowAfterVendor = await dependencies.work((db) => db("o_image").where("id", imageRecordId).first());
+  if (!imageRowAfterVendor) {
+    await failRecordedTask("assetNotFound", "\u8D44\u4EA7\u5728\u56FE\u7247\u751F\u6210\u671F\u95F4\u88AB\u5220\u9664");
+    return { ok: false, failure: imageFailure("assetNotFound", "\u8D44\u4EA7\u5DF2\u88AB\u5220\u9664") };
+  }
+  if (imageRowAfterVendor.state === "\u751F\u6210\u5931\u8D25" || imageRowAfterVendor.state === "\u5DF2\u53D6\u6D88") {
+    await failRecordedTask("cancelled", "\u56FE\u7247\u751F\u6210\u5DF2\u53D6\u6D88");
+    return { ok: false, failure: imageFailure("cancelled", "\u751F\u6210\u5DF2\u53D6\u6D88") };
+  }
   const imagePath = `/${projectId}/${typeConfig.dir}/${v4_default()}.jpg`;
   try {
     await dependencies.writeGeneratedImage(imagePath, result);
@@ -242532,19 +242691,10 @@ async function generateAssetImage(dependencies, input) {
     await failRecordedTask("imagePersistenceFailed", error_default(error67).message);
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "\u751F\u6210\u56FE\u7247\u5199\u5165\u5B58\u50A8\u5931\u8D25") };
   }
-  const imageRow = await dependencies.work((db) => db("o_image").where("id", imageRecordId).first());
-  if (!imageRow) {
-    await failRecordedTask("assetNotFound", "\u8D44\u4EA7\u5728\u56FE\u7247\u751F\u6210\u671F\u95F4\u88AB\u5220\u9664");
-    return { ok: false, failure: imageFailure("assetNotFound", "\u8D44\u4EA7\u5DF2\u88AB\u5220\u9664") };
-  }
-  if (imageRow.state === "\u751F\u6210\u5931\u8D25") {
-    await failRecordedTask("cancelled", "\u56FE\u7247\u751F\u6210\u5DF2\u53D6\u6D88");
-    return { ok: false, failure: imageFailure("cancelled", "\u751F\u6210\u5DF2\u53D6\u6D88") };
-  }
   let imageUrl;
   try {
-    await dependencies.work(
-      (db) => db("o_image").where("id", imageRecordId).update({
+    const completed = await dependencies.work(
+      (db) => db("o_image").where("id", imageRecordId).whereIn("state", [...IMAGE_GENERATION_ACTIVE_STATES]).update({
         state: "\u5DF2\u5B8C\u6210",
         filePath: imagePath,
         type: entry.assetRawType,
@@ -242552,6 +242702,10 @@ async function generateAssetImage(dependencies, input) {
         resolution
       })
     );
+    if (!completed) {
+      await failRecordedTask("cancelled", "\u56FE\u7247\u751F\u6210\u5DF2\u53D6\u6D88");
+      return { ok: false, failure: imageFailure("cancelled", "\u751F\u6210\u5DF2\u53D6\u6D88") };
+    }
     await dependencies.work((db) => db("o_assets").where("id", assetsId).update({ imageId: imageRecordId }));
     imageUrl = await dependencies.getImageUrl(imagePath);
   } catch (error67) {
@@ -242561,7 +242715,7 @@ async function generateAssetImage(dependencies, input) {
   try {
     await taskDone(1);
   } catch (error67) {
-    await failRecordedTask("imagePersistenceFailed", error_default(error67).message);
+    await failRecordedTask("imagePersistenceFailed", error_default(error67).message, { force: true });
     return { ok: false, failure: imageFailure("imagePersistenceFailed", "\u751F\u6210\u4EFB\u52A1\u5B8C\u6210\u72B6\u6001\u5199\u5165\u5931\u8D25") };
   }
   return { ok: true, value: { assetsId, imageId: imageRecordId, imagePath, imageUrl } };
@@ -242601,7 +242755,7 @@ async function prepareBatchAssetImages(dependencies, input) {
     for (const assetsId of assetsIds) {
       const [imageId] = await db("o_image").insert({
         type: typeById.get(assetsId) ?? null,
-        state: "\u751F\u6210\u4E2D",
+        state: "\u7B49\u5F85\u4E2D",
         assetsId,
         model: target.modelId,
         resolution
@@ -242618,12 +242772,36 @@ function createDefaultAssetImageGenerationDependencies() {
     work: promptDependencies.work,
     resolveGenerationInputs: (input) => resolveAssetGenerationInputs(promptDependencies, input),
     readReferenceMedia: (mediaPath) => oss_default.getFile(mediaPath),
-    generateImage: async (request) => {
+    generateImage: async (request, onStage) => {
       const vendor = getDefaultConfiguredVendor();
       const { version: version3 } = await vendor.inspectVendor(request.target.vendorId);
       const input = applyLegacyImageReferenceConversion(version3, request.input);
-      const result = await vendor.generateImage({ target: request.target, input });
-      return normalizeHttpResult(result);
+      let result;
+      try {
+        result = await vendor.generateImage({
+          target: request.target,
+          // 阶段回调注入供应商输入：适配器开始下载 URL 结果媒体时通知领域
+          input: onStage ? { ...input, onStage } : input
+        });
+      } catch (error67) {
+        const diagnostics = extractVendorImageFailure(error67);
+        throw diagnostics ? new VendorImageGenerationError(diagnostics) : error67;
+      }
+      if (typeof result === "string" && result.startsWith("http")) {
+        await onStage?.("downloading");
+        try {
+          const downloaded = await normalizeHttpResult(result);
+          await onStage?.("downloaded");
+          return downloaded;
+        } catch (error67) {
+          throw new VendorImageGenerationError({
+            kind: "downloadFailed",
+            stage: "download",
+            attempt: 1
+          });
+        }
+      }
+      return result;
     },
     recordGenerationTask: (input) => taskRecord(input.projectId, input.taskClass, input.modelId, {
       describe: input.describe,
@@ -242646,11 +242824,17 @@ var init_assetImageGeneration = __esm({
     init_assetReferenceMedia();
     init_contentHash();
     init_assetPromptOrchestration();
+    init_imageGenerationLifecycle();
     FAILURE_ENVELOPE = {
       ...ASSET_PROMPT_FAILURE_ENVELOPE,
       referenceMediaUnreadable: { status: 500, message: "\u53C2\u8003\u56FE\u5A92\u4F53\u6587\u4EF6\u7F3A\u5931\u6216\u65E0\u6CD5\u8BFB\u53D6" },
       referenceMediaInvalid: { status: 500, message: "\u53C2\u8003\u56FE\u5A92\u4F53\u5185\u5BB9\u4E0D\u662F\u53D7\u652F\u6301\u7684\u56FE\u7247" },
       imageGenerationFailed: { status: 502, message: "\u56FE\u7247\u751F\u6210\u8C03\u7528\u5931\u8D25" },
+      imageGenerationTimeout: {
+        status: 504,
+        message: "\u56FE\u7247\u751F\u6210\u8BF7\u6C42\u8D85\u65F6\uFF1A\u4F9B\u5E94\u5546\u7ED3\u679C\u4E0D\u786E\u5B9A\uFF0C\u5DF2\u505C\u6B62\u81EA\u52A8\u91CD\u8BD5\uFF0C\u8BF7\u7A0D\u540E\u624B\u52A8\u91CD\u8BD5"
+      },
+      imageDownloadFailed: { status: 502, message: "\u751F\u6210\u56FE\u7247\u4E0B\u8F7D\u5931\u8D25" },
       imagePersistenceFailed: { status: 500, message: "\u751F\u6210\u56FE\u7247\u5199\u5165\u5B58\u50A8\u5931\u8D25" },
       cancelled: { status: 400, message: "\u751F\u6210\u5DF2\u53D6\u6D88" }
     };
@@ -242664,8 +242848,8 @@ var init_assetImageGeneration = __esm({
 
 // src/routes/assetsGenerate/batchGenerateImageAssets.ts
 function createBatchGenerateImageAssetsRouter(dependencies = createDefaultAssetImageGenerationDependencies) {
-  const router176 = import_express28.default.Router();
-  router176.post(
+  const router172 = import_express28.default.Router();
+  router172.post(
     "/",
     validateFields({
       projectId: external_exports.number(),
@@ -242704,7 +242888,7 @@ function createBatchGenerateImageAssetsRouter(dependencies = createDefaultAssetI
       return res.status(200).send(success3({ total: items.length }));
     }
   );
-  return router176;
+  return router172;
 }
 var import_express28, batchGenerateImageAssets_default;
 var init_batchGenerateImageAssets = __esm({
@@ -242721,7 +242905,7 @@ var init_batchGenerateImageAssets = __esm({
 });
 
 // src/routes/assetsGenerate/batchPolishAssetsPrompt.ts
-var import_express29, router27, batchPolishAssetsPrompt_default;
+var import_express29, router25, batchPolishAssetsPrompt_default;
 var init_batchPolishAssetsPrompt = __esm({
   "src/routes/assetsGenerate/batchPolishAssetsPrompt.ts"() {
     "use strict";
@@ -242730,8 +242914,8 @@ var init_batchPolishAssetsPrompt = __esm({
     init_responseFormat();
     init_middleware();
     init_assetPromptOrchestration();
-    router27 = import_express29.default.Router();
-    batchPolishAssetsPrompt_default = router27.post(
+    router25 = import_express29.default.Router();
+    batchPolishAssetsPrompt_default = router25.post(
       "/",
       validateFields({
         items: array(
@@ -242762,7 +242946,22 @@ var init_batchPolishAssetsPrompt = __esm({
 });
 
 // src/routes/assetsGenerate/cancelGenerate.ts
-var import_express30, router28, cancelGenerate_default;
+function createCancelGenerateRouter(resolveWork = () => getDatabaseRuntime().work) {
+  const router172 = import_express30.default.Router();
+  router172.post(
+    "/",
+    validateFields({
+      id: external_exports.number()
+    }),
+    async (req, res) => {
+      const { id } = req.body;
+      await resolveWork()((db) => cancelImageGeneration(db, id));
+      res.status(200).send(success3({ message: "\u53D6\u6D88\u6210\u529F" }));
+    }
+  );
+  return router172;
+}
+var import_express30, cancelGenerate_default;
 var init_cancelGenerate = __esm({
   "src/routes/assetsGenerate/cancelGenerate.ts"() {
     "use strict";
@@ -242771,29 +242970,15 @@ var init_cancelGenerate = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router28 = import_express30.default.Router();
-    cancelGenerate_default = router28.post(
-      "/",
-      validateFields({
-        id: external_exports.number()
-      }),
-      async (req, res) => {
-        const { id } = req.body;
-        await getDatabaseRuntime().work(async (db) => {
-          await db("o_image").where("id", id).update({
-            state: "\u751F\u6210\u5931\u8D25"
-          });
-        });
-        res.status(200).send(success3({ message: "\u53D6\u6D88\u6210\u529F" }));
-      }
-    );
+    init_imageGenerationLifecycle();
+    cancelGenerate_default = createCancelGenerateRouter();
   }
 });
 
 // src/routes/assetsGenerate/generateAssets.ts
 function createGenerateAssetsRouter(dependencies = createDefaultAssetImageGenerationDependencies) {
-  const router176 = import_express31.default.Router();
-  router176.post(
+  const router172 = import_express31.default.Router();
+  router172.post(
     "/",
     validateFields({
       projectId: external_exports.number(),
@@ -242816,7 +243001,7 @@ function createGenerateAssetsRouter(dependencies = createDefaultAssetImageGenera
       return res.status(200).send(success3({ path: result.value.imageUrl, assetsId: id }));
     }
   );
-  return router176;
+  return router172;
 }
 var import_express31, generateAssets_default;
 var init_generateAssets = __esm({
@@ -242832,7 +243017,7 @@ var init_generateAssets = __esm({
 });
 
 // src/routes/assetsGenerate/polishAssetsPrompt.ts
-var import_express32, router29, polishAssetsPrompt_default;
+var import_express32, router26, polishAssetsPrompt_default;
 var init_polishAssetsPrompt = __esm({
   "src/routes/assetsGenerate/polishAssetsPrompt.ts"() {
     "use strict";
@@ -242841,8 +243026,8 @@ var init_polishAssetsPrompt = __esm({
     init_responseFormat();
     init_middleware();
     init_assetPromptOrchestration();
-    router29 = import_express32.default.Router();
-    polishAssetsPrompt_default = router29.post(
+    router26 = import_express32.default.Router();
+    polishAssetsPrompt_default = router26.post(
       "/",
       validateFields({
         assetsId: number2(),
@@ -242867,7 +243052,7 @@ var init_polishAssetsPrompt = __esm({
 });
 
 // src/routes/common/getBigImage.ts
-var import_express33, router30, getBigImage_default;
+var import_express33, router27, getBigImage_default;
 var init_getBigImage = __esm({
   "src/routes/common/getBigImage.ts"() {
     "use strict";
@@ -242876,8 +243061,8 @@ var init_getBigImage = __esm({
     init_responseFormat();
     init_zod();
     init_middleware();
-    router30 = import_express33.default.Router();
-    getBigImage_default = router30.post(
+    router27 = import_express33.default.Router();
+    getBigImage_default = router27.post(
       "/",
       validateFields({
         url: external_exports.string()
@@ -242895,7 +243080,7 @@ var init_getBigImage = __esm({
 });
 
 // src/routes/cornerScape/batchBindAudio.ts
-var import_express34, router31, batchBindAudio_default;
+var import_express34, router28, batchBindAudio_default;
 var init_batchBindAudio = __esm({
   "src/routes/cornerScape/batchBindAudio.ts"() {
     "use strict";
@@ -242907,8 +243092,8 @@ var init_batchBindAudio = __esm({
     init_middleware();
     init_dist23();
     init_runtime();
-    router31 = import_express34.default.Router();
-    batchBindAudio_default = router31.post(
+    router28 = import_express34.default.Router();
+    batchBindAudio_default = router28.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -242994,7 +243179,7 @@ var init_batchBindAudio = __esm({
 });
 
 // src/routes/cornerScape/getAllAssets.ts
-var import_express35, router32, getAllAssets_default;
+var import_express35, router29, getAllAssets_default;
 var init_getAllAssets = __esm({
   "src/routes/cornerScape/getAllAssets.ts"() {
     "use strict";
@@ -243004,8 +243189,8 @@ var init_getAllAssets = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router32 = import_express35.default.Router();
-    getAllAssets_default = router32.post(
+    router29 = import_express35.default.Router();
+    getAllAssets_default = router29.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -243062,7 +243247,7 @@ var init_getAllAssets = __esm({
 });
 
 // src/routes/cornerScape/pollingAudio.ts
-var import_express36, router33, pollingAudio_default;
+var import_express36, router30, pollingAudio_default;
 var init_pollingAudio = __esm({
   "src/routes/cornerScape/pollingAudio.ts"() {
     "use strict";
@@ -243071,8 +243256,8 @@ var init_pollingAudio = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router33 = import_express36.default.Router();
-    pollingAudio_default = router33.post(
+    router30 = import_express36.default.Router();
+    pollingAudio_default = router30.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number())
@@ -243089,7 +243274,7 @@ var init_pollingAudio = __esm({
 });
 
 // src/routes/cornerScape/updateAssetsAudio.ts
-var import_express37, router34, updateAssetsAudio_default;
+var import_express37, router31, updateAssetsAudio_default;
 var init_updateAssetsAudio = __esm({
   "src/routes/cornerScape/updateAssetsAudio.ts"() {
     "use strict";
@@ -243098,8 +243283,8 @@ var init_updateAssetsAudio = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router34 = import_express37.default.Router();
-    updateAssetsAudio_default = router34.post(
+    router31 = import_express37.default.Router();
+    updateAssetsAudio_default = router31.post(
       "/",
       validateFields({
         assetsId: external_exports.number(),
@@ -243121,7 +243306,7 @@ var init_updateAssetsAudio = __esm({
 });
 
 // src/routes/general/generalStatistics.ts
-var import_express38, router35, generalStatistics_default;
+var import_express38, router32, generalStatistics_default;
 var init_generalStatistics = __esm({
   "src/routes/general/generalStatistics.ts"() {
     "use strict";
@@ -243130,8 +243315,8 @@ var init_generalStatistics = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router35 = import_express38.default.Router();
-    generalStatistics_default = router35.post(
+    router32 = import_express38.default.Router();
+    generalStatistics_default = router32.post(
       "/",
       validateFields({
         projectId: external_exports.number()
@@ -243159,7 +243344,7 @@ var init_generalStatistics = __esm({
 });
 
 // src/routes/general/getSingleProject.ts
-var import_express39, router36, getSingleProject_default;
+var import_express39, router33, getSingleProject_default;
 var init_getSingleProject = __esm({
   "src/routes/general/getSingleProject.ts"() {
     "use strict";
@@ -243168,8 +243353,8 @@ var init_getSingleProject = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router36 = import_express39.default.Router();
-    getSingleProject_default = router36.post(
+    router33 = import_express39.default.Router();
+    getSingleProject_default = router33.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -243186,7 +243371,7 @@ var init_getSingleProject = __esm({
 });
 
 // src/routes/general/updateProject.ts
-var import_express40, router37, updateProject_default;
+var import_express40, router34, updateProject_default;
 var init_updateProject = __esm({
   "src/routes/general/updateProject.ts"() {
     "use strict";
@@ -243195,8 +243380,8 @@ var init_updateProject = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router37 = import_express40.default.Router();
-    updateProject_default = router37.post(
+    router34 = import_express40.default.Router();
+    updateProject_default = router34.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -243230,7 +243415,7 @@ function setToken(payload, expiresIn, secret) {
   }
   return import_jsonwebtoken4.default.sign(payload, secret, { expiresIn });
 }
-var import_express41, import_jsonwebtoken4, router38, login_default;
+var import_express41, import_jsonwebtoken4, router35, login_default;
 var init_login = __esm({
   "src/routes/login/login.ts"() {
     "use strict";
@@ -243240,8 +243425,8 @@ var init_login = __esm({
     init_responseFormat();
     init_middleware();
     init_zod();
-    router38 = import_express41.default.Router();
-    login_default = router38.post(
+    router35 = import_express41.default.Router();
+    login_default = router35.post(
       "/",
       validateFields({
         username: external_exports.string(),
@@ -243272,7 +243457,7 @@ var init_login = __esm({
 });
 
 // src/routes/modelSelect/getModelDetail.ts
-var import_express42, router39, getModelDetail_default;
+var import_express42, router36, getModelDetail_default;
 var init_getModelDetail = __esm({
   "src/routes/modelSelect/getModelDetail.ts"() {
     "use strict";
@@ -243281,8 +243466,8 @@ var init_getModelDetail = __esm({
     init_responseFormat();
     init_middleware();
     init_vendor2();
-    router39 = import_express42.default.Router();
-    getModelDetail_default = router39.post(
+    router36 = import_express42.default.Router();
+    getModelDetail_default = router36.post(
       "/",
       validateFields({
         modelId: external_exports.string()
@@ -243299,7 +243484,7 @@ var init_getModelDetail = __esm({
 });
 
 // src/routes/modelSelect/getModelList.ts
-var import_express43, router40, getModelList_default;
+var import_express43, router37, getModelList_default;
 var init_getModelList = __esm({
   "src/routes/modelSelect/getModelList.ts"() {
     "use strict";
@@ -243309,8 +243494,8 @@ var init_getModelList = __esm({
     init_middleware();
     init_database();
     init_vendor2();
-    router40 = import_express43.default.Router();
-    getModelList_default = router40.post(
+    router37 = import_express43.default.Router();
+    getModelList_default = router37.post(
       "/",
       validateFields({
         type: external_exports.enum(["text", "image", "video", "all"])
@@ -243365,7 +243550,7 @@ var init_capabilityCatalog = __esm({
 });
 
 // src/routes/modelSelect/getVideoCapabilityCatalog.ts
-var import_express44, router41, getVideoCapabilityCatalog_default;
+var import_express44, router38, getVideoCapabilityCatalog_default;
 var init_getVideoCapabilityCatalog = __esm({
   "src/routes/modelSelect/getVideoCapabilityCatalog.ts"() {
     "use strict";
@@ -243374,8 +243559,8 @@ var init_getVideoCapabilityCatalog = __esm({
     init_responseFormat();
     init_vendor2();
     init_capabilityCatalog();
-    router41 = import_express44.default.Router();
-    getVideoCapabilityCatalog_default = router41.post("/", async (_req, res, next) => {
+    router38 = import_express44.default.Router();
+    getVideoCapabilityCatalog_default = router38.post("/", async (_req, res, next) => {
       try {
         const vendor = getDefaultConfiguredVendor();
         const catalog = await listEnabledVideoCapabilities({
@@ -243392,7 +243577,7 @@ var init_getVideoCapabilityCatalog = __esm({
 });
 
 // src/routes/novel/addNovel.ts
-var import_express45, router42, addNovel_default;
+var import_express45, router39, addNovel_default;
 var init_addNovel = __esm({
   "src/routes/novel/addNovel.ts"() {
     "use strict";
@@ -243402,8 +243587,8 @@ var init_addNovel = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router42 = import_express45.default.Router();
-    addNovel_default = router42.post(
+    router39 = import_express45.default.Router();
+    addNovel_default = router39.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -243457,7 +243642,7 @@ var init_addNovel = __esm({
 });
 
 // src/routes/novel/batchDeleteNovel.ts
-var import_express46, router43, batchDeleteNovel_default;
+var import_express46, router40, batchDeleteNovel_default;
 var init_batchDeleteNovel = __esm({
   "src/routes/novel/batchDeleteNovel.ts"() {
     "use strict";
@@ -243466,8 +243651,8 @@ var init_batchDeleteNovel = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router43 = import_express46.default.Router();
-    batchDeleteNovel_default = router43.post(
+    router40 = import_express46.default.Router();
+    batchDeleteNovel_default = router40.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number())
@@ -243491,7 +243676,7 @@ var init_batchDeleteNovel = __esm({
 });
 
 // src/routes/novel/delNovel.ts
-var import_express47, router44, delNovel_default;
+var import_express47, router41, delNovel_default;
 var init_delNovel = __esm({
   "src/routes/novel/delNovel.ts"() {
     "use strict";
@@ -243500,8 +243685,8 @@ var init_delNovel = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router44 = import_express47.default.Router();
-    delNovel_default = router44.post(
+    router41 = import_express47.default.Router();
+    delNovel_default = router41.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -243522,7 +243707,7 @@ var init_delNovel = __esm({
 });
 
 // src/routes/novel/event/batchDeleteEvent.ts
-var import_express48, router45, batchDeleteEvent_default;
+var import_express48, router42, batchDeleteEvent_default;
 var init_batchDeleteEvent = __esm({
   "src/routes/novel/event/batchDeleteEvent.ts"() {
     "use strict";
@@ -243531,8 +243716,8 @@ var init_batchDeleteEvent = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router45 = import_express48.default.Router();
-    batchDeleteEvent_default = router45.post(
+    router42 = import_express48.default.Router();
+    batchDeleteEvent_default = router42.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number())
@@ -243550,7 +243735,7 @@ var init_batchDeleteEvent = __esm({
 });
 
 // src/routes/novel/event/deletEvent.ts
-var import_express49, router46, deletEvent_default;
+var import_express49, router43, deletEvent_default;
 var init_deletEvent = __esm({
   "src/routes/novel/event/deletEvent.ts"() {
     "use strict";
@@ -243559,8 +243744,8 @@ var init_deletEvent = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router46 = import_express49.default.Router();
-    deletEvent_default = router46.post(
+    router43 = import_express49.default.Router();
+    deletEvent_default = router43.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -243578,7 +243763,7 @@ var init_deletEvent = __esm({
 });
 
 // src/routes/novel/event/generateEvents.ts
-var import_express50, router47, generateEvents_default;
+var import_express50, router44, generateEvents_default;
 var init_generateEvents = __esm({
   "src/routes/novel/event/generateEvents.ts"() {
     "use strict";
@@ -243588,8 +243773,8 @@ var init_generateEvents = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router47 = import_express50.default.Router();
-    generateEvents_default = router47.post(
+    router44 = import_express50.default.Router();
+    generateEvents_default = router44.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -243623,7 +243808,7 @@ var init_generateEvents = __esm({
 });
 
 // src/routes/novel/event/getEvent.ts
-var import_express51, router48, getEvent_default;
+var import_express51, router45, getEvent_default;
 var init_getEvent = __esm({
   "src/routes/novel/event/getEvent.ts"() {
     "use strict";
@@ -243632,8 +243817,8 @@ var init_getEvent = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router48 = import_express51.default.Router();
-    getEvent_default = router48.post(
+    router45 = import_express51.default.Router();
+    getEvent_default = router45.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -243670,7 +243855,7 @@ var init_getEvent = __esm({
 });
 
 // src/routes/novel/getNovel.ts
-var import_express52, router49, getNovel_default;
+var import_express52, router46, getNovel_default;
 var init_getNovel = __esm({
   "src/routes/novel/getNovel.ts"() {
     "use strict";
@@ -243679,8 +243864,8 @@ var init_getNovel = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router49 = import_express52.default.Router();
-    getNovel_default = router49.post(
+    router46 = import_express52.default.Router();
+    getNovel_default = router46.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -243708,7 +243893,7 @@ var init_getNovel = __esm({
 });
 
 // src/routes/novel/getNovelData.ts
-var import_express53, router50, getNovelData_default;
+var import_express53, router47, getNovelData_default;
 var init_getNovelData = __esm({
   "src/routes/novel/getNovelData.ts"() {
     "use strict";
@@ -243717,8 +243902,8 @@ var init_getNovelData = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router50 = import_express53.default.Router();
-    getNovelData_default = router50.post(
+    router47 = import_express53.default.Router();
+    getNovelData_default = router47.post(
       "/",
       validateFields({
         projectId: external_exports.number()
@@ -243735,7 +243920,7 @@ var init_getNovelData = __esm({
 });
 
 // src/routes/novel/getNovelEventState.ts
-var import_express54, router51, getNovelEventState_default;
+var import_express54, router48, getNovelEventState_default;
 var init_getNovelEventState = __esm({
   "src/routes/novel/getNovelEventState.ts"() {
     "use strict";
@@ -243744,8 +243929,8 @@ var init_getNovelEventState = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router51 = import_express54.default.Router();
-    getNovelEventState_default = router51.post(
+    router48 = import_express54.default.Router();
+    getNovelEventState_default = router48.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number())
@@ -243762,7 +243947,7 @@ var init_getNovelEventState = __esm({
 });
 
 // src/routes/novel/getNovelIndex.ts
-var import_express55, router52, getNovelIndex_default;
+var import_express55, router49, getNovelIndex_default;
 var init_getNovelIndex = __esm({
   "src/routes/novel/getNovelIndex.ts"() {
     "use strict";
@@ -243771,8 +243956,8 @@ var init_getNovelIndex = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router52 = import_express55.default.Router();
-    getNovelIndex_default = router52.post(
+    router49 = import_express55.default.Router();
+    getNovelIndex_default = router49.post(
       "/",
       validateFields({
         projectId: external_exports.number()
@@ -243789,7 +243974,7 @@ var init_getNovelIndex = __esm({
 });
 
 // src/routes/novel/updateNovel.ts
-var import_express56, router53, updateNovel_default;
+var import_express56, router50, updateNovel_default;
 var init_updateNovel = __esm({
   "src/routes/novel/updateNovel.ts"() {
     "use strict";
@@ -243798,8 +243983,8 @@ var init_updateNovel = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router53 = import_express56.default.Router();
-    updateNovel_default = router53.post(
+    router50 = import_express56.default.Router();
+    updateNovel_default = router50.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -243827,15 +244012,15 @@ var init_updateNovel = __esm({
 });
 
 // src/routes/other/deleteAllData.ts
-var import_express57, router54, deleteAllData_default;
+var import_express57, router51, deleteAllData_default;
 var init_deleteAllData = __esm({
   "src/routes/other/deleteAllData.ts"() {
     "use strict";
     import_express57 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router54 = import_express57.default.Router();
-    deleteAllData_default = router54.post("/", async (req, res) => {
+    router51 = import_express57.default.Router();
+    deleteAllData_default = router51.post("/", async (req, res) => {
       try {
         await getDatabaseRuntime().maintenance({ kind: "reset" });
         res.status(200).send(success3({ message: "\u6E05\u7A7A\u6570\u636E\u8868\u6210\u529F" }));
@@ -243847,15 +244032,15 @@ var init_deleteAllData = __esm({
 });
 
 // src/routes/other/getVersion.ts
-var import_express58, router55, getVersion_default;
+var import_express58, router52, getVersion_default;
 var init_getVersion = __esm({
   "src/routes/other/getVersion.ts"() {
     "use strict";
     import_express58 = __toESM(require_express2());
     init_responseFormat();
     init_writeVersion();
-    router55 = import_express58.default.Router();
-    getVersion_default = router55.get("/", async (req, res) => {
+    router52 = import_express58.default.Router();
+    getVersion_default = router52.get("/", async (req, res) => {
       const version3 = await getVersion();
       res.status(200).send(success3(version3));
     });
@@ -243864,8 +244049,8 @@ var init_getVersion = __esm({
 
 // src/routes/production/assets/batchGenerateAssetsImage.ts
 function createBatchGenerateAssetsImageRouter(dependencies = createDefaultAssetImageGenerationDependencies) {
-  const router176 = import_express59.default.Router();
-  router176.post(
+  const router172 = import_express59.default.Router();
+  router172.post(
     "/",
     validateFields({
       assetIds: external_exports.array(external_exports.number()),
@@ -243918,7 +244103,7 @@ function createBatchGenerateAssetsImageRouter(dependencies = createDefaultAssetI
       return res.status(200).send(success3("\u5F00\u59CB\u751F\u6210\u8D44\u4EA7\u56FE\u7247"));
     }
   );
-  return router176;
+  return router172;
 }
 var import_express59, batchGenerateAssetsImage_default;
 var init_batchGenerateAssetsImage = __esm({
@@ -243935,7 +244120,7 @@ var init_batchGenerateAssetsImage = __esm({
 });
 
 // src/routes/production/assets/deleteAssetsDireve.ts
-var import_express60, router56, deleteAssetsDireve_default;
+var import_express60, router53, deleteAssetsDireve_default;
 var init_deleteAssetsDireve = __esm({
   "src/routes/production/assets/deleteAssetsDireve.ts"() {
     "use strict";
@@ -243945,8 +244130,8 @@ var init_deleteAssetsDireve = __esm({
     init_responseFormat();
     init_middleware();
     init_derivedAssetDeletion();
-    router56 = import_express60.default.Router();
-    deleteAssetsDireve_default = router56.post(
+    router53 = import_express60.default.Router();
+    deleteAssetsDireve_default = router53.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -243965,7 +244150,34 @@ var init_deleteAssetsDireve = __esm({
 });
 
 // src/routes/production/assets/pollingImage.ts
-var import_express61, router57, pollingImage_default;
+function createProductionPollingImageRouter(resolveWork = () => getDatabaseRuntime().work) {
+  const router172 = import_express61.default.Router();
+  router172.post(
+    "/",
+    validateFields({
+      ids: external_exports.array(external_exports.number())
+    }),
+    async (req, res) => {
+      const { ids } = req.body;
+      const rows = await resolveWork()((db) => readImageGenerationPollingRows(db, ids));
+      const result = await Promise.all(
+        ids.map(async (id) => {
+          const row = rows.get(id);
+          return {
+            id,
+            state: row.state,
+            src: row.filePath ? await utils_default2.oss.getSmallImageUrl(row.filePath) : null,
+            errorKind: row.errorKind,
+            prompt: row.prompt
+          };
+        })
+      );
+      res.status(200).send(success3(result));
+    }
+  );
+  return router172;
+}
+var import_express61, pollingImage_default;
 var init_pollingImage = __esm({
   "src/routes/production/assets/pollingImage.ts"() {
     "use strict";
@@ -243975,29 +244187,13 @@ var init_pollingImage = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router57 = import_express61.default.Router();
-    pollingImage_default = router57.post(
-      "/",
-      validateFields({
-        ids: external_exports.array(external_exports.number())
-      }),
-      async (req, res) => {
-        const { ids } = req.body;
-        const data = await getDatabaseRuntime().work((db) => db("o_assets").leftJoin("o_image", "o_assets.imageId", "o_image.id").whereIn("o_assets.id", ids).whereNot("o_image.state", "\u751F\u6210\u4E2D").select("o_image.state", "o_assets.id", "o_image.filePath", "o_image.errorReason", "o_assets.prompt"));
-        const result = await Promise.all(
-          data.map(async (item) => ({
-            ...item,
-            src: item.filePath ? await utils_default2.oss.getSmallImageUrl(item.filePath) : null
-          }))
-        );
-        res.status(200).send(success3(result));
-      }
-    );
+    init_imageGenerationLifecycle();
+    pollingImage_default = createProductionPollingImageRouter();
   }
 });
 
 // src/routes/production/assets/updateAssetsUrl.ts
-var import_express62, router58, updateAssetsUrl_default;
+var import_express62, router54, updateAssetsUrl_default;
 var init_updateAssetsUrl = __esm({
   "src/routes/production/assets/updateAssetsUrl.ts"() {
     "use strict";
@@ -244007,8 +244203,8 @@ var init_updateAssetsUrl = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router58 = import_express62.default.Router();
-    updateAssetsUrl_default = router58.post(
+    router54 = import_express62.default.Router();
+    updateAssetsUrl_default = router54.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -244042,7 +244238,7 @@ async function urlToBase643(imageUrl) {
   const base644 = Buffer.from(response.data, "binary").toString("base64");
   return `data:${contentType};base64,${base644}`;
 }
-var import_express63, router59, generateFlowImage_default;
+var import_express63, router55, generateFlowImage_default;
 var init_generateFlowImage = __esm({
   "src/routes/production/editImage/generateFlowImage.ts"() {
     "use strict";
@@ -244055,8 +244251,8 @@ var init_generateFlowImage = __esm({
     init_vendor2();
     init_vendor2();
     init_imageGeneration();
-    router59 = import_express63.default.Router();
-    generateFlowImage_default = router59.post(
+    router55 = import_express63.default.Router();
+    generateFlowImage_default = router55.post(
       "/",
       validateFields({
         model: external_exports.string(),
@@ -244110,7 +244306,7 @@ var init_generateFlowImage = __esm({
 });
 
 // src/routes/production/editImage/getImageDefaultModle.ts
-var import_express64, router60, getImageDefaultModle_default;
+var import_express64, router56, getImageDefaultModle_default;
 var init_getImageDefaultModle = __esm({
   "src/routes/production/editImage/getImageDefaultModle.ts"() {
     "use strict";
@@ -244119,8 +244315,8 @@ var init_getImageDefaultModle = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router60 = import_express64.default.Router();
-    getImageDefaultModle_default = router60.post(
+    router56 = import_express64.default.Router();
+    getImageDefaultModle_default = router56.post(
       "/",
       validateFields({
         projectId: external_exports.number()
@@ -244137,7 +244333,7 @@ var init_getImageDefaultModle = __esm({
 });
 
 // src/routes/production/editImage/getImageFlow.ts
-var import_express65, router61, getImageFlow_default;
+var import_express65, router57, getImageFlow_default;
 var init_getImageFlow = __esm({
   "src/routes/production/editImage/getImageFlow.ts"() {
     "use strict";
@@ -244147,8 +244343,8 @@ var init_getImageFlow = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router61 = import_express65.default.Router();
-    getImageFlow_default = router61.post(
+    router57 = import_express65.default.Router();
+    getImageFlow_default = router57.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -244181,7 +244377,7 @@ var init_getImageFlow = __esm({
 });
 
 // src/routes/production/editImage/saveImageFlow.ts
-var import_express66, router62, saveImageFlow_default;
+var import_express66, router58, saveImageFlow_default;
 var init_saveImageFlow = __esm({
   "src/routes/production/editImage/saveImageFlow.ts"() {
     "use strict";
@@ -244191,8 +244387,8 @@ var init_saveImageFlow = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router62 = import_express66.default.Router();
-    saveImageFlow_default = router62.post(
+    router58 = import_express66.default.Router();
+    saveImageFlow_default = router58.post(
       "/",
       validateFields({
         edges: external_exports.any(),
@@ -244223,7 +244419,7 @@ var init_saveImageFlow = __esm({
 });
 
 // src/routes/production/editImage/updateImageFlow.ts
-var import_express67, router63, updateImageFlow_default;
+var import_express67, router59, updateImageFlow_default;
 var init_updateImageFlow = __esm({
   "src/routes/production/editImage/updateImageFlow.ts"() {
     "use strict";
@@ -244233,8 +244429,8 @@ var init_updateImageFlow = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router63 = import_express67.default.Router();
-    updateImageFlow_default = router63.post(
+    router59 = import_express67.default.Router();
+    updateImageFlow_default = router59.post(
       "/",
       validateFields({
         edges: external_exports.any(),
@@ -244264,7 +244460,7 @@ var init_updateImageFlow = __esm({
 });
 
 // src/routes/production/editImage/uploadImage.ts
-var import_express68, router64, uploadImage_default;
+var import_express68, router60, uploadImage_default;
 var init_uploadImage = __esm({
   "src/routes/production/editImage/uploadImage.ts"() {
     "use strict";
@@ -244274,8 +244470,8 @@ var init_uploadImage = __esm({
     init_middleware();
     init_zod();
     init_dist_node();
-    router64 = import_express68.default.Router();
-    uploadImage_default = router64.post(
+    router60 = import_express68.default.Router();
+    uploadImage_default = router60.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -244315,7 +244511,7 @@ var init_uploadImage = __esm({
 });
 
 // src/routes/production/getFlowData.ts
-var import_express69, router65, getFlowData_default;
+var import_express69, router61, getFlowData_default;
 var init_getFlowData = __esm({
   "src/routes/production/getFlowData.ts"() {
     "use strict";
@@ -244325,8 +244521,8 @@ var init_getFlowData = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router65 = import_express69.default.Router();
-    getFlowData_default = router65.post(
+    router61 = import_express69.default.Router();
+    getFlowData_default = router61.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -244466,7 +244662,7 @@ var init_getFlowData = __esm({
 });
 
 // src/routes/production/getStoryboardData.ts
-var import_express70, router66, getStoryboardData_default;
+var import_express70, router62, getStoryboardData_default;
 var init_getStoryboardData = __esm({
   "src/routes/production/getStoryboardData.ts"() {
     "use strict";
@@ -244476,8 +244672,8 @@ var init_getStoryboardData = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router66 = import_express70.default.Router();
-    getStoryboardData_default = router66.post(
+    router62 = import_express70.default.Router();
+    getStoryboardData_default = router62.post(
       "/",
       validateFields({
         scriptId: external_exports.number(),
@@ -244545,7 +244741,7 @@ var init_getStoryboardData = __esm({
 });
 
 // src/routes/production/saveFlowData.ts
-var import_express71, router67, saveFlowData_default;
+var import_express71, router63, saveFlowData_default;
 var init_saveFlowData = __esm({
   "src/routes/production/saveFlowData.ts"() {
     "use strict";
@@ -244554,8 +244750,8 @@ var init_saveFlowData = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router67 = import_express71.default.Router();
-    saveFlowData_default = router67.post(
+    router63 = import_express71.default.Router();
+    saveFlowData_default = router63.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -244679,7 +244875,7 @@ var init_trackCreation = __esm({
 });
 
 // src/routes/production/storyboard/addStoryboard.ts
-var import_express72, router68, addStoryboard_default;
+var import_express72, router64, addStoryboard_default;
 var init_addStoryboard = __esm({
   "src/routes/production/storyboard/addStoryboard.ts"() {
     "use strict";
@@ -244691,8 +244887,8 @@ var init_addStoryboard = __esm({
     init_responseFormat();
     init_middleware();
     init_trackCreation();
-    router68 = import_express72.default.Router();
-    addStoryboard_default = router68.post(
+    router64 = import_express72.default.Router();
+    addStoryboard_default = router64.post(
       "/",
       validateFields({
         prompt: external_exports.string(),
@@ -244734,7 +244930,7 @@ var init_addStoryboard = __esm({
 });
 
 // src/routes/production/storyboard/batchAddStoryboardInfo.ts
-var import_express73, router69, batchAddStoryboardInfo_default;
+var import_express73, router65, batchAddStoryboardInfo_default;
 var init_batchAddStoryboardInfo = __esm({
   "src/routes/production/storyboard/batchAddStoryboardInfo.ts"() {
     "use strict";
@@ -244746,8 +244942,8 @@ var init_batchAddStoryboardInfo = __esm({
     init_responseFormat();
     init_middleware();
     init_trackCreation();
-    router69 = import_express73.default.Router();
-    batchAddStoryboardInfo_default = router69.post(
+    router65 = import_express73.default.Router();
+    batchAddStoryboardInfo_default = router65.post(
       "/",
       validateFields({
         data: external_exports.array(
@@ -244851,7 +245047,7 @@ var init_batchAddStoryboardInfo = __esm({
 });
 
 // src/routes/production/storyboard/batchDelete.ts
-var import_express74, router70, batchDelete_default2;
+var import_express74, router66, batchDelete_default2;
 var init_batchDelete2 = __esm({
   "src/routes/production/storyboard/batchDelete.ts"() {
     "use strict";
@@ -244860,8 +245056,8 @@ var init_batchDelete2 = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router70 = import_express74.default.Router();
-    batchDelete_default2 = router70.post(
+    router66 = import_express74.default.Router();
+    batchDelete_default2 = router66.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number()),
@@ -244912,7 +245108,7 @@ async function getAssetsImageBase64(imageIds) {
   );
   return imageUrls.filter(Boolean).map((url4) => ({ type: "image", base64: url4 }));
 }
-var import_express75, router71, batchGenerateImage_default;
+var import_express75, router67, batchGenerateImage_default;
 var init_batchGenerateImage = __esm({
   "src/routes/production/storyboard/batchGenerateImage.ts"() {
     "use strict";
@@ -244925,8 +245121,8 @@ var init_batchGenerateImage = __esm({
     init_vendor2();
     init_vendor2();
     init_imageGeneration();
-    router71 = import_express75.default.Router();
-    batchGenerateImage_default = router71.post(
+    router67 = import_express75.default.Router();
+    batchGenerateImage_default = router67.post(
       "/",
       validateFields({
         storyboardIds: external_exports.array(external_exports.number()),
@@ -245065,7 +245261,7 @@ var init_batchGenerateImage = __esm({
 });
 
 // src/routes/production/storyboard/downPreviewImage.ts
-var import_express76, import_sharp3, router72, downPreviewImage_default;
+var import_express76, import_sharp3, router68, downPreviewImage_default;
 var init_downPreviewImage = __esm({
   "src/routes/production/storyboard/downPreviewImage.ts"() {
     "use strict";
@@ -245075,8 +245271,8 @@ var init_downPreviewImage = __esm({
     init_database();
     import_sharp3 = __toESM(require("sharp"));
     init_middleware();
-    router72 = import_express76.default.Router();
-    downPreviewImage_default = router72.post(
+    router68 = import_express76.default.Router();
+    downPreviewImage_default = router68.post(
       "/",
       validateFields({
         storyboardIds: external_exports.array(external_exports.number())
@@ -245164,7 +245360,7 @@ var init_downPreviewImage = __esm({
 });
 
 // src/routes/production/storyboard/editStoryboardInfo.ts
-var import_express77, router73, editStoryboardInfo_default;
+var import_express77, router69, editStoryboardInfo_default;
 var init_editStoryboardInfo = __esm({
   "src/routes/production/storyboard/editStoryboardInfo.ts"() {
     "use strict";
@@ -245173,8 +245369,8 @@ var init_editStoryboardInfo = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router73 = import_express77.default.Router();
-    editStoryboardInfo_default = router73.post(
+    router69 = import_express77.default.Router();
+    editStoryboardInfo_default = router69.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -245196,7 +245392,7 @@ var init_editStoryboardInfo = __esm({
 });
 
 // src/routes/production/storyboard/getStoryboardData.ts
-var import_express78, router74, getStoryboardData_default2;
+var import_express78, router70, getStoryboardData_default2;
 var init_getStoryboardData2 = __esm({
   "src/routes/production/storyboard/getStoryboardData.ts"() {
     "use strict";
@@ -245206,8 +245402,8 @@ var init_getStoryboardData2 = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router74 = import_express78.default.Router();
-    getStoryboardData_default2 = router74.post(
+    router70 = import_express78.default.Router();
+    getStoryboardData_default2 = router70.post(
       "/",
       validateFields({
         scriptId: external_exports.number(),
@@ -245245,7 +245441,7 @@ var init_getStoryboardData2 = __esm({
 });
 
 // src/routes/production/storyboard/pollingImage.ts
-var import_express79, router75, pollingImage_default2;
+var import_express79, router71, pollingImage_default2;
 var init_pollingImage2 = __esm({
   "src/routes/production/storyboard/pollingImage.ts"() {
     "use strict";
@@ -245255,8 +245451,8 @@ var init_pollingImage2 = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router75 = import_express79.default.Router();
-    pollingImage_default2 = router75.post(
+    router71 = import_express79.default.Router();
+    pollingImage_default2 = router71.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number())
@@ -245279,7 +245475,7 @@ var init_pollingImage2 = __esm({
 });
 
 // src/routes/production/storyboard/previewImage.ts
-var import_express80, import_sharp4, router76, previewImage_default;
+var import_express80, import_sharp4, router72, previewImage_default;
 var init_previewImage = __esm({
   "src/routes/production/storyboard/previewImage.ts"() {
     "use strict";
@@ -245290,8 +245486,8 @@ var init_previewImage = __esm({
     import_sharp4 = __toESM(require("sharp"));
     init_responseFormat();
     init_middleware();
-    router76 = import_express80.default.Router();
-    previewImage_default = router76.post(
+    router72 = import_express80.default.Router();
+    previewImage_default = router72.post(
       "/",
       validateFields({
         storyboardIds: external_exports.array(external_exports.number())
@@ -245390,7 +245586,7 @@ var init_previewImage = __esm({
 });
 
 // src/routes/production/storyboard/removeFrame.ts
-var import_express81, router77, removeFrame_default;
+var import_express81, router73, removeFrame_default;
 var init_removeFrame = __esm({
   "src/routes/production/storyboard/removeFrame.ts"() {
     "use strict";
@@ -245399,8 +245595,8 @@ var init_removeFrame = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router77 = import_express81.default.Router();
-    removeFrame_default = router77.post(
+    router73 = import_express81.default.Router();
+    removeFrame_default = router73.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -245427,7 +245623,7 @@ var init_removeFrame = __esm({
 });
 
 // src/routes/production/storyboard/updateStoryboardUrl.ts
-var import_express82, router78, updateStoryboardUrl_default;
+var import_express82, router74, updateStoryboardUrl_default;
 var init_updateStoryboardUrl = __esm({
   "src/routes/production/storyboard/updateStoryboardUrl.ts"() {
     "use strict";
@@ -245437,8 +245633,8 @@ var init_updateStoryboardUrl = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router78 = import_express82.default.Router();
-    updateStoryboardUrl_default = router78.post(
+    router74 = import_express82.default.Router();
+    updateStoryboardUrl_default = router74.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -245460,7 +245656,7 @@ var init_updateStoryboardUrl = __esm({
 });
 
 // src/routes/production/workbench/addTrack.ts
-var import_express83, router79, addTrack_default;
+var import_express83, router75, addTrack_default;
 var init_addTrack = __esm({
   "src/routes/production/workbench/addTrack.ts"() {
     "use strict";
@@ -245471,8 +245667,8 @@ var init_addTrack = __esm({
     init_responseFormat();
     init_middleware();
     init_trackCreation();
-    router79 = import_express83.default.Router();
-    addTrack_default = router79.post(
+    router75 = import_express83.default.Router();
+    addTrack_default = router75.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -245758,7 +245954,7 @@ var init_promptGeneration = __esm({
 });
 
 // src/routes/production/workbench/batchGeneratePrompt.ts
-var import_express84, router80, batchSchema, batchGeneratePrompt_default;
+var import_express84, router76, batchSchema, batchGeneratePrompt_default;
 var init_batchGeneratePrompt = __esm({
   "src/routes/production/workbench/batchGeneratePrompt.ts"() {
     "use strict";
@@ -245767,12 +245963,12 @@ var init_batchGeneratePrompt = __esm({
     init_zod();
     init_responseFormat();
     init_promptGeneration();
-    router80 = import_express84.default.Router();
+    router76 = import_express84.default.Router();
     batchSchema = external_exports.object({
       items: external_exports.array(generateVideoPromptRequestSchema).nonempty(),
       concurrentCount: external_exports.number().int().min(1).max(10).default(5)
     }).strict();
-    batchGeneratePrompt_default = router80.post("/", async (req, res, next) => {
+    batchGeneratePrompt_default = router76.post("/", async (req, res, next) => {
       try {
         const input = batchSchema.parse(req.body);
         const limit = pLimit(input.concurrentCount);
@@ -246075,15 +246271,15 @@ var init_production = __esm({
 });
 
 // src/routes/production/workbench/batchGenerateVideo.ts
-var import_express85, router81, batchGenerateVideo_default;
+var import_express85, router77, batchGenerateVideo_default;
 var init_batchGenerateVideo = __esm({
   "src/routes/production/workbench/batchGenerateVideo.ts"() {
     "use strict";
     import_express85 = __toESM(require_express2());
     init_responseFormat();
     init_production();
-    router81 = import_express85.default.Router();
-    batchGenerateVideo_default = router81.post("/", async (req, res, next) => {
+    router77 = import_express85.default.Router();
+    batchGenerateVideo_default = router77.post("/", async (req, res, next) => {
       try {
         const request = videoGenerationBatchRequestSchema.parse(req.body);
         const started = await startVideoGenerationBatch(request);
@@ -246133,8 +246329,8 @@ var init_promptStatus = __esm({
 
 // src/routes/production/workbench/checkVideoPromptRouter.ts
 function createCheckVideoPromptRouter(db) {
-  const router176 = import_express86.default.Router();
-  return router176.post(
+  const router172 = import_express86.default.Router();
+  return router172.post(
     "/",
     validateFields({
       projectId: external_exports.number(),
@@ -246171,7 +246367,7 @@ var init_checkVideoPrompt = __esm({
 });
 
 // src/routes/production/workbench/checkVideoStateList.ts
-var import_express87, router82, checkVideoStateList_default;
+var import_express87, router78, checkVideoStateList_default;
 var init_checkVideoStateList = __esm({
   "src/routes/production/workbench/checkVideoStateList.ts"() {
     "use strict";
@@ -246181,8 +246377,8 @@ var init_checkVideoStateList = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router82 = import_express87.default.Router();
-    checkVideoStateList_default = router82.post(
+    router78 = import_express87.default.Router();
+    checkVideoStateList_default = router78.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -246208,7 +246404,7 @@ var init_checkVideoStateList = __esm({
 });
 
 // src/routes/production/workbench/deleteTrack.ts
-var import_express88, router83, deleteTrack_default;
+var import_express88, router79, deleteTrack_default;
 var init_deleteTrack = __esm({
   "src/routes/production/workbench/deleteTrack.ts"() {
     "use strict";
@@ -246217,8 +246413,8 @@ var init_deleteTrack = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router83 = import_express88.default.Router();
-    deleteTrack_default = router83.post(
+    router79 = import_express88.default.Router();
+    deleteTrack_default = router79.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -246238,7 +246434,7 @@ var init_deleteTrack = __esm({
 });
 
 // src/routes/production/workbench/delVideo.ts
-var import_express89, router84, delVideo_default;
+var import_express89, router80, delVideo_default;
 var init_delVideo = __esm({
   "src/routes/production/workbench/delVideo.ts"() {
     "use strict";
@@ -246247,8 +246443,8 @@ var init_delVideo = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router84 = import_express89.default.Router();
-    delVideo_default = router84.post(
+    router80 = import_express89.default.Router();
+    delVideo_default = router80.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -246268,7 +246464,7 @@ var init_delVideo = __esm({
 });
 
 // src/routes/production/workbench/generateVideo.ts
-var import_express90, router85, requestSchema, generateVideo_default;
+var import_express90, router81, requestSchema, generateVideo_default;
 var init_generateVideo = __esm({
   "src/routes/production/workbench/generateVideo.ts"() {
     "use strict";
@@ -246276,14 +246472,14 @@ var init_generateVideo = __esm({
     init_zod();
     init_responseFormat();
     init_production();
-    router85 = import_express90.default.Router();
+    router81 = import_express90.default.Router();
     requestSchema = external_exports.object({
       projectId: external_exports.number().int().positive(),
       scriptId: external_exports.number().int().positive(),
       requestedBy: external_exports.enum(["user", "project-agent"]).default("user"),
       item: videoGenerationItemSchema
     }).strict();
-    generateVideo_default = router85.post("/", async (req, res, next) => {
+    generateVideo_default = router81.post("/", async (req, res, next) => {
       try {
         const request = requestSchema.parse(req.body);
         const started = await startVideoGenerationBatch({
@@ -246302,15 +246498,15 @@ var init_generateVideo = __esm({
 });
 
 // src/routes/production/workbench/generateVideoPrompt.ts
-var import_express91, router86, generateVideoPrompt_default;
+var import_express91, router82, generateVideoPrompt_default;
 var init_generateVideoPrompt = __esm({
   "src/routes/production/workbench/generateVideoPrompt.ts"() {
     "use strict";
     import_express91 = __toESM(require_express2());
     init_responseFormat();
     init_promptGeneration();
-    router86 = import_express91.default.Router();
-    generateVideoPrompt_default = router86.post("/", async (req, res, next) => {
+    router82 = import_express91.default.Router();
+    generateVideoPrompt_default = router82.post("/", async (req, res, next) => {
       try {
         const input = generateVideoPromptRequestSchema.parse(req.body);
         res.status(200).send(success3(await generateVideoPromptRevision(input)));
@@ -246322,7 +246518,7 @@ var init_generateVideoPrompt = __esm({
 });
 
 // src/routes/production/workbench/getAudioBindAssetsList.ts
-var import_express92, router87, getAudioBindAssetsList_default;
+var import_express92, router83, getAudioBindAssetsList_default;
 var init_getAudioBindAssetsList = __esm({
   "src/routes/production/workbench/getAudioBindAssetsList.ts"() {
     "use strict";
@@ -246332,8 +246528,8 @@ var init_getAudioBindAssetsList = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router87 = import_express92.default.Router();
-    getAudioBindAssetsList_default = router87.post(
+    router83 = import_express92.default.Router();
+    getAudioBindAssetsList_default = router83.post(
       "/",
       validateFields({
         assetsIds: external_exports.array(external_exports.number())
@@ -246371,7 +246567,7 @@ var init_getAudioBindAssetsList = __esm({
 });
 
 // src/routes/production/workbench/getFileUrl.ts
-var import_express93, router88, getFileUrl_default;
+var import_express93, router84, getFileUrl_default;
 var init_getFileUrl = __esm({
   "src/routes/production/workbench/getFileUrl.ts"() {
     "use strict";
@@ -246381,8 +246577,8 @@ var init_getFileUrl = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router88 = import_express93.default.Router();
-    getFileUrl_default = router88.post(
+    router84 = import_express93.default.Router();
+    getFileUrl_default = router84.post(
       "/",
       validateFields({
         items: external_exports.array(external_exports.object({
@@ -246633,8 +246829,8 @@ var init_workbenchReadModel = __esm({
 
 // src/routes/production/workbench/getGenerateDataRouter.ts
 function createGetGenerateDataRouter(dependencies) {
-  const router176 = import_express94.default.Router();
-  return router176.post(
+  const router172 = import_express94.default.Router();
+  return router172.post(
     "/",
     validateFields({
       projectId: external_exports.number(),
@@ -246814,7 +247010,7 @@ var init_getGenerateData = __esm({
 });
 
 // src/routes/production/workbench/getVideoList.ts
-var import_express95, router89, getVideoList_default;
+var import_express95, router85, getVideoList_default;
 var init_getVideoList = __esm({
   "src/routes/production/workbench/getVideoList.ts"() {
     "use strict";
@@ -246824,8 +247020,8 @@ var init_getVideoList = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router89 = import_express95.default.Router();
-    getVideoList_default = router89.post(
+    router85 = import_express95.default.Router();
+    getVideoList_default = router85.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -246858,7 +247054,7 @@ var init_getVideoList = __esm({
 });
 
 // src/routes/production/workbench/selectVideo.ts
-var import_express96, router90, selectVideo_default;
+var import_express96, router86, selectVideo_default;
 var init_selectVideo = __esm({
   "src/routes/production/workbench/selectVideo.ts"() {
     "use strict";
@@ -246867,8 +247063,8 @@ var init_selectVideo = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router90 = import_express96.default.Router();
-    selectVideo_default = router90.post(
+    router86 = import_express96.default.Router();
+    selectVideo_default = router86.post(
       "/",
       validateFields({
         trackId: external_exports.number(),
@@ -246894,7 +247090,7 @@ var init_selectVideo = __esm({
 });
 
 // src/routes/production/workbench/updateVideoDuration.ts
-var import_express97, router91, updateVideoDuration_default;
+var import_express97, router87, updateVideoDuration_default;
 var init_updateVideoDuration = __esm({
   "src/routes/production/workbench/updateVideoDuration.ts"() {
     "use strict";
@@ -246903,8 +247099,8 @@ var init_updateVideoDuration = __esm({
     init_database();
     init_responseFormat();
     init_middleware();
-    router91 = import_express97.default.Router();
-    updateVideoDuration_default = router91.post(
+    router87 = import_express97.default.Router();
+    updateVideoDuration_default = router87.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -246924,15 +247120,15 @@ var init_updateVideoDuration = __esm({
 });
 
 // src/routes/production/workbench/updateVideoPrompt.ts
-var import_express98, router92, updateVideoPrompt_default;
+var import_express98, router88, updateVideoPrompt_default;
 var init_updateVideoPrompt = __esm({
   "src/routes/production/workbench/updateVideoPrompt.ts"() {
     "use strict";
     import_express98 = __toESM(require_express2());
     init_responseFormat();
     init_promptGeneration();
-    router92 = import_express98.default.Router();
-    updateVideoPrompt_default = router92.post("/", async (req, res, next) => {
+    router88 = import_express98.default.Router();
+    updateVideoPrompt_default = router88.post("/", async (req, res, next) => {
       try {
         const input = customVideoPromptRevisionSchema.parse(req.body);
         res.status(200).send(success3(await createCustomVideoPromptRevision(input)));
@@ -246988,7 +247184,7 @@ var init_inputUpload = __esm({
 });
 
 // src/routes/production/workbench/uploadVideoInputImage.ts
-var import_express99, router93, uploadVideoInputImage_default;
+var import_express99, router89, uploadVideoInputImage_default;
 var init_uploadVideoInputImage = __esm({
   "src/routes/production/workbench/uploadVideoInputImage.ts"() {
     "use strict";
@@ -247000,8 +247196,8 @@ var init_uploadVideoInputImage = __esm({
     init_middleware();
     init_utils3();
     init_inputUpload();
-    router93 = import_express99.default.Router();
-    uploadVideoInputImage_default = router93.post(
+    router89 = import_express99.default.Router();
+    uploadVideoInputImage_default = router89.post(
       "/",
       validateFields({
         projectId: external_exports.number().int().positive(),
@@ -247029,7 +247225,7 @@ var init_uploadVideoInputImage = __esm({
 });
 
 // src/routes/project/addDirectorManual.ts
-var import_express100, import_fs6, import_path10, router94, addDirectorManual_default;
+var import_express100, import_fs6, import_path10, router90, addDirectorManual_default;
 var init_addDirectorManual = __esm({
   "src/routes/project/addDirectorManual.ts"() {
     "use strict";
@@ -247040,8 +247236,8 @@ var init_addDirectorManual = __esm({
     import_path10 = __toESM(require("path"));
     init_middleware();
     init_zod();
-    router94 = import_express100.default.Router();
-    addDirectorManual_default = router94.post(
+    router90 = import_express100.default.Router();
+    addDirectorManual_default = router90.post(
       "/",
       validateFields({
         name: external_exports.string(),
@@ -247119,7 +247315,7 @@ var init_addDirectorManual = __esm({
 });
 
 // src/routes/project/addProject.ts
-var import_express101, router95, addProject_default;
+var import_express101, router91, addProject_default;
 var init_addProject = __esm({
   "src/routes/project/addProject.ts"() {
     "use strict";
@@ -247129,8 +247325,8 @@ var init_addProject = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router95 = import_express101.default.Router();
-    addProject_default = router95.post(
+    router91 = import_express101.default.Router();
+    addProject_default = router91.post(
       "/",
       validateFields({
         projectType: external_exports.string(),
@@ -247199,7 +247395,7 @@ var init_addProject = __esm({
 });
 
 // src/routes/project/addVisualManual.ts
-var import_express102, import_fs7, import_path11, router96, addVisualManual_default;
+var import_express102, import_fs7, import_path11, router92, addVisualManual_default;
 var init_addVisualManual = __esm({
   "src/routes/project/addVisualManual.ts"() {
     "use strict";
@@ -247210,8 +247406,8 @@ var init_addVisualManual = __esm({
     import_path11 = __toESM(require("path"));
     init_middleware();
     init_zod();
-    router96 = import_express102.default.Router();
-    addVisualManual_default = router96.post(
+    router92 = import_express102.default.Router();
+    addVisualManual_default = router92.post(
       "/",
       validateFields({
         name: external_exports.string(),
@@ -247298,7 +247494,7 @@ var init_addVisualManual = __esm({
 });
 
 // src/routes/project/deleteDirectorManual.ts
-var import_express103, import_promises5, router97, deleteDirectorManual_default;
+var import_express103, import_promises5, router93, deleteDirectorManual_default;
 var init_deleteDirectorManual = __esm({
   "src/routes/project/deleteDirectorManual.ts"() {
     "use strict";
@@ -247308,8 +247504,8 @@ var init_deleteDirectorManual = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router97 = import_express103.default.Router();
-    deleteDirectorManual_default = router97.post(
+    router93 = import_express103.default.Router();
+    deleteDirectorManual_default = router93.post(
       "/",
       validateFields({
         name: external_exports.string()
@@ -247341,7 +247537,7 @@ var init_deleteDirectorManual = __esm({
 });
 
 // src/routes/project/deleteVisualManual.ts
-var import_express104, import_promises6, router98, deleteVisualManual_default;
+var import_express104, import_promises6, router94, deleteVisualManual_default;
 var init_deleteVisualManual = __esm({
   "src/routes/project/deleteVisualManual.ts"() {
     "use strict";
@@ -247351,8 +247547,8 @@ var init_deleteVisualManual = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router98 = import_express104.default.Router();
-    deleteVisualManual_default = router98.post(
+    router94 = import_express104.default.Router();
+    deleteVisualManual_default = router94.post(
       "/",
       validateFields({
         name: external_exports.string()
@@ -247384,7 +247580,7 @@ var init_deleteVisualManual = __esm({
 });
 
 // src/routes/project/delProject.ts
-var import_express105, router99, delProject_default;
+var import_express105, router95, delProject_default;
 var init_delProject = __esm({
   "src/routes/project/delProject.ts"() {
     "use strict";
@@ -247394,8 +247590,8 @@ var init_delProject = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router99 = import_express105.default.Router();
-    delProject_default = router99.post(
+    router95 = import_express105.default.Router();
+    delProject_default = router95.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -247443,7 +247639,7 @@ var init_delProject = __esm({
 });
 
 // src/routes/project/editDirectorlManual.ts
-var import_express106, import_fs8, import_path12, router100, editDirectorlManual_default;
+var import_express106, import_fs8, import_path12, router96, editDirectorlManual_default;
 var init_editDirectorlManual = __esm({
   "src/routes/project/editDirectorlManual.ts"() {
     "use strict";
@@ -247454,8 +247650,8 @@ var init_editDirectorlManual = __esm({
     import_path12 = __toESM(require("path"));
     init_middleware();
     init_zod();
-    router100 = import_express106.default.Router();
-    editDirectorlManual_default = router100.post(
+    router96 = import_express106.default.Router();
+    editDirectorlManual_default = router96.post(
       "/",
       validateFields({
         name: external_exports.string(),
@@ -247535,7 +247731,7 @@ ${item.data}` : item.data;
 });
 
 // src/routes/project/editProject.ts
-var import_express107, router101, editProject_default;
+var import_express107, router97, editProject_default;
 var init_editProject = __esm({
   "src/routes/project/editProject.ts"() {
     "use strict";
@@ -247545,8 +247741,8 @@ var init_editProject = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
-    router101 = import_express107.default.Router();
-    editProject_default = router101.post(
+    router97 = import_express107.default.Router();
+    editProject_default = router97.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -247614,7 +247810,7 @@ var init_editProject = __esm({
 });
 
 // src/routes/project/editVisualManual.ts
-var import_express108, import_fs9, import_path13, router102, editVisualManual_default;
+var import_express108, import_fs9, import_path13, router98, editVisualManual_default;
 var init_editVisualManual = __esm({
   "src/routes/project/editVisualManual.ts"() {
     "use strict";
@@ -247625,8 +247821,8 @@ var init_editVisualManual = __esm({
     import_path13 = __toESM(require("path"));
     init_middleware();
     init_zod();
-    router102 = import_express108.default.Router();
-    editVisualManual_default = router102.post(
+    router98 = import_express108.default.Router();
+    editVisualManual_default = router98.post(
       "/",
       validateFields({
         name: external_exports.string(),
@@ -247715,7 +247911,7 @@ ${item.data}` : item.data;
 });
 
 // src/routes/project/getModelDetails.ts
-var import_express109, router103, getModelDetails_default;
+var import_express109, router99, getModelDetails_default;
 var init_getModelDetails = __esm({
   "src/routes/project/getModelDetails.ts"() {
     "use strict";
@@ -247725,8 +247921,8 @@ var init_getModelDetails = __esm({
     init_vendor2();
     init_zod();
     init_middleware();
-    router103 = import_express109.default.Router();
-    getModelDetails_default = router103.post(
+    router99 = import_express109.default.Router();
+    getModelDetails_default = router99.post(
       "/",
       validateFields({
         key: external_exports.enum(["scriptAgent", "productionAgent"])
@@ -247747,15 +247943,15 @@ var init_getModelDetails = __esm({
 });
 
 // src/routes/project/getProject.ts
-var import_express110, router104, getProject_default;
+var import_express110, router100, getProject_default;
 var init_getProject = __esm({
   "src/routes/project/getProject.ts"() {
     "use strict";
     import_express110 = __toESM(require_express2());
     init_database();
     init_responseFormat();
-    router104 = import_express110.default.Router();
-    getProject_default = router104.post("/", async (req, res) => {
+    router100 = import_express110.default.Router();
+    getProject_default = router100.post("/", async (req, res) => {
       const data = await getDatabaseRuntime().work(async (db) => {
         return await db("o_project").select("*");
       });
@@ -247786,7 +247982,7 @@ async function readAllImages(imagesDir) {
     return [];
   }
 }
-var import_express111, import_fs10, import_path14, router105, DATA_MAP, getVisualManual_default;
+var import_express111, import_fs10, import_path14, router101, DATA_MAP, getVisualManual_default;
 var init_getVisualManual = __esm({
   "src/routes/project/getVisualManual.ts"() {
     "use strict";
@@ -247795,7 +247991,7 @@ var init_getVisualManual = __esm({
     init_responseFormat();
     import_fs10 = __toESM(require("fs"));
     import_path14 = __toESM(require("path"));
-    router105 = import_express111.default.Router();
+    router101 = import_express111.default.Router();
     DATA_MAP = [
       { label: "README", value: "README" },
       { label: "\u524D\u7F00", value: "prefix" },
@@ -247810,7 +248006,7 @@ var init_getVisualManual = __esm({
       { label: "\u6280\u6CD5-\u5BFC\u6F14\u89C4\u5212", value: "director_planning_style", subDir: "driector_skills" },
       { label: "\u6280\u6CD5-\u5206\u955C\u8868\u8BBE\u8BA1", value: "director_storyboard_table_style", subDir: "driector_skills" }
     ];
-    getVisualManual_default = router105.post("/", async (req, res) => {
+    getVisualManual_default = router101.post("/", async (req, res) => {
       try {
         const artPromptsDir = utils_default2.getPath(["skills", "art_skills"]);
         const styleDirs = import_fs10.default.readdirSync(artPromptsDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
@@ -247872,7 +248068,7 @@ async function readAllImages2(imagesDir) {
     return [];
   }
 }
-var import_express112, import_fs11, import_path15, router106, DATA_MAP2, queryDirectorManual_default;
+var import_express112, import_fs11, import_path15, router102, DATA_MAP2, queryDirectorManual_default;
 var init_queryDirectorManual = __esm({
   "src/routes/project/queryDirectorManual.ts"() {
     "use strict";
@@ -247881,13 +248077,13 @@ var init_queryDirectorManual = __esm({
     init_responseFormat();
     import_fs11 = __toESM(require("fs"));
     import_path15 = __toESM(require("path"));
-    router106 = import_express112.default.Router();
+    router102 = import_express112.default.Router();
     DATA_MAP2 = [
       { label: "README", value: "README" },
       { label: "\u5BFC\u6F14\u89C4\u5212", value: "director_planning_narrative", subDir: "driector_skills" },
       { label: "\u5206\u955C\u8868", value: "director_storyboard_table_narrative", subDir: "driector_skills" }
     ];
-    queryDirectorManual_default = router106.post("/", async (req, res) => {
+    queryDirectorManual_default = router102.post("/", async (req, res) => {
       try {
         const artPromptsDir = utils_default2.getPath(["skills", "story_skills"]);
         const styleDirs = import_fs11.default.readdirSync(artPromptsDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
@@ -247927,20 +248123,54 @@ var init_queryDirectorManual = __esm({
   }
 });
 
+// src/routes/project/setImageModel.ts
+function createSetImageModelRouter(work = (operation) => getDatabaseRuntime().work(operation), inspect = (vendorId) => getDefaultConfiguredVendor().inspectVendor(vendorId)) {
+  const router172 = import_express113.default.Router();
+  router172.post("/", validateFields({ projectId: external_exports.number().int().positive(), imageModel: external_exports.string().min(1) }), async (req, res) => {
+    const { projectId, imageModel } = req.body;
+    try {
+      const { vendorId, modelId } = parseVendorModelName(imageModel);
+      const vendor = await inspect(vendorId);
+      if (!vendor.models.some((model) => model.type === "image" && model.modelName === modelId)) {
+        return res.status(400).send({ code: 400, data: null, message: "\u8BF7\u9009\u62E9\u6709\u6548\u7684\u56FE\u50CF\u6A21\u578B" });
+      }
+    } catch {
+      return res.status(400).send({ code: 400, data: null, message: "\u56FE\u50CF\u6A21\u578B\u914D\u7F6E\u4E0D\u53EF\u7528" });
+    }
+    const changed = await work((db) => db("o_project").where("id", projectId).update({ imageModel }));
+    if (!changed) return res.status(404).send({ code: 404, data: null, message: "\u9879\u76EE\u4E0D\u5B58\u5728" });
+    return res.send(success3({ imageModel }));
+  });
+  return router172;
+}
+var import_express113, setImageModel_default;
+var init_setImageModel = __esm({
+  "src/routes/project/setImageModel.ts"() {
+    "use strict";
+    import_express113 = __toESM(require_express2());
+    init_zod();
+    init_database();
+    init_vendor2();
+    init_middleware();
+    init_responseFormat();
+    setImageModel_default = createSetImageModelRouter();
+  }
+});
+
 // src/routes/project/visualManual.ts
-var import_express113, import_fs12, import_path16, router107, visualManual_default;
+var import_express114, import_fs12, import_path16, router103, visualManual_default;
 var init_visualManual = __esm({
   "src/routes/project/visualManual.ts"() {
     "use strict";
-    import_express113 = __toESM(require_express2());
+    import_express114 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_getPath();
     import_fs12 = __toESM(require("fs"));
     import_path16 = __toESM(require("path"));
-    router107 = import_express113.default.Router();
-    visualManual_default = router107.post(
+    router103 = import_express114.default.Router();
+    visualManual_default = router103.post(
       "/",
       validateFields({
         type: external_exports.string()
@@ -247974,17 +248204,17 @@ var init_visualManual = __esm({
 });
 
 // src/routes/script/addScript.ts
-var import_express114, router108, addScript_default;
+var import_express115, router104, addScript_default;
 var init_addScript = __esm({
   "src/routes/script/addScript.ts"() {
     "use strict";
-    import_express114 = __toESM(require_express2());
+    import_express115 = __toESM(require_express2());
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router108 = import_express114.default.Router();
-    addScript_default = router108.post(
+    router104 = import_express115.default.Router();
+    addScript_default = router104.post(
       "/",
       validateFields({
         name: external_exports.string(),
@@ -248022,17 +248252,17 @@ var init_addScript = __esm({
 });
 
 // src/routes/script/batchAddScript.ts
-var import_express115, router109, batchAddScript_default;
+var import_express116, router105, batchAddScript_default;
 var init_batchAddScript = __esm({
   "src/routes/script/batchAddScript.ts"() {
     "use strict";
-    import_express115 = __toESM(require_express2());
+    import_express116 = __toESM(require_express2());
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router109 = import_express115.default.Router();
-    batchAddScript_default = router109.post(
+    router105 = import_express116.default.Router();
+    batchAddScript_default = router105.post(
       "/",
       validateFields({
         data: external_exports.array(
@@ -248064,18 +248294,18 @@ var init_batchAddScript = __esm({
 });
 
 // src/routes/script/delScript.ts
-var import_express116, router110, delScript_default;
+var import_express117, router106, delScript_default;
 var init_delScript = __esm({
   "src/routes/script/delScript.ts"() {
     "use strict";
-    import_express116 = __toESM(require_express2());
+    import_express117 = __toESM(require_express2());
     init_utils3();
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router110 = import_express116.default.Router();
-    delScript_default = router110.post(
+    router106 = import_express117.default.Router();
+    delScript_default = router106.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number())
@@ -258288,17 +258518,17 @@ var require_compressing = __commonJS({
 });
 
 // src/routes/script/exportScript.ts
-var import_express117, import_compressing, router111, exportScript_default;
+var import_express118, import_compressing, router107, exportScript_default;
 var init_exportScript = __esm({
   "src/routes/script/exportScript.ts"() {
     "use strict";
-    import_express117 = __toESM(require_express2());
+    import_express118 = __toESM(require_express2());
     init_database();
     init_zod();
     import_compressing = __toESM(require_compressing());
     init_middleware();
-    router111 = import_express117.default.Router();
-    exportScript_default = router111.post(
+    router107 = import_express118.default.Router();
+    exportScript_default = router107.post(
       "/",
       validateFields({
         id: external_exports.array(external_exports.number())
@@ -259432,17 +259662,17 @@ var init_assetExtractionReplacement = __esm({
 });
 
 // src/routes/script/extractAssets.ts
-var import_express118, router112, extractAssets_default;
+var import_express119, router108, extractAssets_default;
 var init_extractAssets = __esm({
   "src/routes/script/extractAssets.ts"() {
     "use strict";
-    import_express118 = __toESM(require_express2());
+    import_express119 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_assetExtractionReplacement();
-    router112 = import_express118.default.Router();
-    extractAssets_default = router112.post(
+    router108 = import_express119.default.Router();
+    extractAssets_default = router108.post(
       "/",
       validateFields({
         scriptIds: external_exports.array(external_exports.number()),
@@ -259536,11 +259766,11 @@ var init_regexAnalysis = __esm({
 });
 
 // src/routes/script/getAiRegex.ts
-var import_express119, router113, getAiRegex_default;
+var import_express120, router109, getAiRegex_default;
 var init_getAiRegex = __esm({
   "src/routes/script/getAiRegex.ts"() {
     "use strict";
-    import_express119 = __toESM(require_express2());
+    import_express120 = __toESM(require_express2());
     init_utils3();
     init_vendor2();
     init_zod();
@@ -259549,8 +259779,8 @@ var init_getAiRegex = __esm({
     init_runtime();
     init_database();
     init_regexAnalysis();
-    router113 = import_express119.default.Router();
-    getAiRegex_default = router113.post(
+    router109 = import_express120.default.Router();
+    getAiRegex_default = router109.post(
       "/",
       validateFields({
         content: external_exports.string()
@@ -259580,17 +259810,17 @@ var init_getAiRegex = __esm({
 });
 
 // src/routes/script/getScrptApi.ts
-var import_express120, router114, getScrptApi_default;
+var import_express121, router110, getScrptApi_default;
 var init_getScrptApi = __esm({
   "src/routes/script/getScrptApi.ts"() {
     "use strict";
-    import_express120 = __toESM(require_express2());
+    import_express121 = __toESM(require_express2());
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router114 = import_express120.default.Router();
-    getScrptApi_default = router114.post(
+    router110 = import_express121.default.Router();
+    getScrptApi_default = router110.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -259633,17 +259863,17 @@ var init_getScrptApi = __esm({
 });
 
 // src/routes/script/pollScriptAssets.ts
-var import_express121, router115, pollScriptAssets_default;
+var import_express122, router111, pollScriptAssets_default;
 var init_pollScriptAssets = __esm({
   "src/routes/script/pollScriptAssets.ts"() {
     "use strict";
-    import_express121 = __toESM(require_express2());
+    import_express122 = __toESM(require_express2());
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router115 = import_express121.default.Router();
-    pollScriptAssets_default = router115.post(
+    router111 = import_express122.default.Router();
+    pollScriptAssets_default = router111.post(
       "/",
       validateFields({
         ids: external_exports.array(external_exports.number())
@@ -259660,17 +259890,17 @@ var init_pollScriptAssets = __esm({
 });
 
 // src/routes/script/updateScript.ts
-var import_express122, router116, updateScript_default;
+var import_express123, router112, updateScript_default;
 var init_updateScript = __esm({
   "src/routes/script/updateScript.ts"() {
     "use strict";
-    import_express122 = __toESM(require_express2());
+    import_express123 = __toESM(require_express2());
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router116 = import_express122.default.Router();
-    updateScript_default = router116.post(
+    router112 = import_express123.default.Router();
+    updateScript_default = router112.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -259706,17 +259936,17 @@ var init_updateScript = __esm({
 });
 
 // src/routes/scriptAgent/getPlanData.ts
-var import_express123, router117, getPlanData_default;
+var import_express124, router113, getPlanData_default;
 var init_getPlanData = __esm({
   "src/routes/scriptAgent/getPlanData.ts"() {
     "use strict";
-    import_express123 = __toESM(require_express2());
+    import_express124 = __toESM(require_express2());
     init_responseFormat();
     init_zod();
     init_middleware();
     init_database();
-    router117 = import_express123.default.Router();
-    getPlanData_default = router117.post(
+    router113 = import_express124.default.Router();
+    getPlanData_default = router113.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -259753,17 +259983,17 @@ var init_getPlanData = __esm({
 });
 
 // src/routes/scriptAgent/setPlanData.ts
-var import_express124, router118, setPlanData_default;
+var import_express125, router114, setPlanData_default;
 var init_setPlanData = __esm({
   "src/routes/scriptAgent/setPlanData.ts"() {
     "use strict";
-    import_express124 = __toESM(require_express2());
+    import_express125 = __toESM(require_express2());
     init_responseFormat();
     init_zod();
     init_middleware();
     init_database();
-    router118 = import_express124.default.Router();
-    setPlanData_default = router118.post(
+    router114 = import_express125.default.Router();
+    setPlanData_default = router114.post(
       "/",
       validateFields({
         projectId: external_exports.number(),
@@ -259796,17 +260026,17 @@ var init_setPlanData = __esm({
 });
 
 // src/routes/scriptAgent/updateData.ts
-var import_express125, router119, updateData_default;
+var import_express126, router115, updateData_default;
 var init_updateData = __esm({
   "src/routes/scriptAgent/updateData.ts"() {
     "use strict";
-    import_express125 = __toESM(require_express2());
+    import_express126 = __toESM(require_express2());
     init_responseFormat();
     init_database();
     init_zod();
     init_middleware();
-    router119 = import_express125.default.Router();
-    updateData_default = router119.post(
+    router115 = import_express126.default.Router();
+    updateData_default = router115.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -259833,17 +260063,17 @@ var init_updateData = __esm({
 });
 
 // src/routes/setting/about/checkUpdate.ts
-var import_express126, import_fs13, import_path17, router120, APP_VERSION2, checkUpdate_default;
+var import_express127, import_fs13, import_path17, router116, APP_VERSION2, checkUpdate_default;
 var init_checkUpdate = __esm({
   "src/routes/setting/about/checkUpdate.ts"() {
     "use strict";
-    import_express126 = __toESM(require_express2());
+    import_express127 = __toESM(require_express2());
     init_responseFormat();
     init_middleware();
     init_zod();
     import_fs13 = __toESM(require("fs"));
     import_path17 = __toESM(require("path"));
-    router120 = import_express126.default.Router();
+    router116 = import_express127.default.Router();
     APP_VERSION2 = (() => {
       if (true) {
         return "1.1.8";
@@ -259852,7 +260082,7 @@ var init_checkUpdate = __esm({
       const pkg = JSON.parse(import_fs13.default.readFileSync(pkgPath, "utf8"));
       return pkg.version;
     })();
-    checkUpdate_default = router120.post(
+    checkUpdate_default = router116.post(
       "/",
       validateFields({
         source: external_exports.enum(["toonflow", "github", "gitee", "atomgit"]),
@@ -259894,11 +260124,11 @@ var init_checkUpdate = __esm({
 });
 
 // src/routes/setting/about/downloadApp.ts
-var import_express127, import_fs14, import_compressing2, router121, downloadApp_default;
+var import_express128, import_fs14, import_compressing2, router117, downloadApp_default;
 var init_downloadApp = __esm({
   "src/routes/setting/about/downloadApp.ts"() {
     "use strict";
-    import_express127 = __toESM(require_express2());
+    import_express128 = __toESM(require_express2());
     init_zod();
     init_middleware();
     init_utils3();
@@ -259906,8 +260136,8 @@ var init_downloadApp = __esm({
     init_axios2();
     import_compressing2 = __toESM(require_compressing());
     init_responseFormat();
-    router121 = import_express127.default.Router();
-    downloadApp_default = router121.post(
+    router117 = import_express128.default.Router();
+    downloadApp_default = router117.post(
       "/",
       validateFields({
         url: zod_default.url(),
@@ -259935,18 +260165,18 @@ var init_downloadApp = __esm({
 });
 
 // src/routes/setting/agentDeploy/agentSetKey.ts
-var import_express128, router122, agentSetKey_default;
+var import_express129, router118, agentSetKey_default;
 var init_agentSetKey = __esm({
   "src/routes/setting/agentDeploy/agentSetKey.ts"() {
     "use strict";
-    import_express128 = __toESM(require_express2());
+    import_express129 = __toESM(require_express2());
     init_responseFormat();
     init_vendor2();
     init_zod();
     init_middleware();
     init_database();
-    router122 = import_express128.default.Router();
-    agentSetKey_default = router122.post(
+    router118 = import_express129.default.Router();
+    agentSetKey_default = router118.post(
       "/",
       validateFields({
         key: external_exports.string().optional()
@@ -259998,18 +260228,18 @@ var init_agentSetKey = __esm({
 });
 
 // src/routes/setting/agentDeploy/deployAgentModel.ts
-var import_express129, router123, deployAgentModel_default;
+var import_express130, router119, deployAgentModel_default;
 var init_deployAgentModel = __esm({
   "src/routes/setting/agentDeploy/deployAgentModel.ts"() {
     "use strict";
-    import_express129 = __toESM(require_express2());
+    import_express130 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
-    router123 = import_express129.default.Router();
-    deployAgentModel_default = router123.post(
+    router119 = import_express130.default.Router();
+    deployAgentModel_default = router119.post(
       "/",
       validateFields({
         items: external_exports.array(
@@ -260039,15 +260269,15 @@ var init_deployAgentModel = __esm({
 });
 
 // src/routes/setting/agentDeploy/getAgentDeploy.ts
-var import_express130, router124, getAgentDeploy_default;
+var import_express131, router120, getAgentDeploy_default;
 var init_getAgentDeploy = __esm({
   "src/routes/setting/agentDeploy/getAgentDeploy.ts"() {
     "use strict";
-    import_express130 = __toESM(require_express2());
+    import_express131 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router124 = import_express130.default.Router();
-    getAgentDeploy_default = router124.post("/", async (req, res) => {
+    router120 = import_express131.default.Router();
+    getAgentDeploy_default = router120.post("/", async (req, res) => {
       const allData = await getDatabaseRuntime().work((db) => db("o_agentDeploy").leftJoin("o_vendorConfig", "o_vendorConfig.id", "o_agentDeploy.vendorId").select("o_agentDeploy.*"));
       const qrdinaryData = allData.filter((item) => !item.key?.includes(":"));
       const advancedData = allData.filter((item) => item.key?.includes(":") || item.key == "universalAi");
@@ -260057,15 +260287,15 @@ var init_getAgentDeploy = __esm({
 });
 
 // src/routes/setting/agentDeploy/getAgentUseMode.ts
-var import_express131, router125, getAgentUseMode_default;
+var import_express132, router121, getAgentUseMode_default;
 var init_getAgentUseMode = __esm({
   "src/routes/setting/agentDeploy/getAgentUseMode.ts"() {
     "use strict";
-    import_express131 = __toESM(require_express2());
+    import_express132 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router125 = import_express131.default.Router();
-    getAgentUseMode_default = router125.get("/", async (req, res) => {
+    router121 = import_express132.default.Router();
+    getAgentUseMode_default = router121.get("/", async (req, res) => {
       const useMode = await getDatabaseRuntime().work((db) => db("o_setting").where("key", "agentUseMode").first());
       console.log("%c Line:9 \u{1F353} useMode", "background:#33a5ff", useMode);
       res.status(200).send(success3(useMode?.value || "0"));
@@ -260074,18 +260304,18 @@ var init_getAgentUseMode = __esm({
 });
 
 // src/routes/setting/agentDeploy/updateAgentModel.ts
-var import_express132, router126, updateAgentModel_default;
+var import_express133, router122, updateAgentModel_default;
 var init_updateAgentModel = __esm({
   "src/routes/setting/agentDeploy/updateAgentModel.ts"() {
     "use strict";
-    import_express132 = __toESM(require_express2());
+    import_express133 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
-    router126 = import_express132.default.Router();
-    updateAgentModel_default = router126.post(
+    router122 = import_express133.default.Router();
+    updateAgentModel_default = router122.post(
       "/",
       validateFields({
         id: external_exports.number(),
@@ -260114,18 +260344,18 @@ var init_updateAgentModel = __esm({
 });
 
 // src/routes/setting/agentDeploy/updateUseMode.ts
-var import_express133, router127, updateUseMode_default;
+var import_express134, router123, updateUseMode_default;
 var init_updateUseMode = __esm({
   "src/routes/setting/agentDeploy/updateUseMode.ts"() {
     "use strict";
-    import_express133 = __toESM(require_express2());
+    import_express134 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
-    router127 = import_express133.default.Router();
-    updateUseMode_default = router127.post(
+    router123 = import_express134.default.Router();
+    updateUseMode_default = router123.post(
       "/",
       validateFields({
         agentUseMode: external_exports.string()
@@ -260147,15 +260377,15 @@ var init_updateUseMode = __esm({
 });
 
 // src/routes/setting/dbConfig/clearData.ts
-var import_express134, router128, clearData_default;
+var import_express135, router124, clearData_default;
 var init_clearData = __esm({
   "src/routes/setting/dbConfig/clearData.ts"() {
     "use strict";
-    import_express134 = __toESM(require_express2());
+    import_express135 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router128 = import_express134.default.Router();
-    clearData_default = router128.get("/", async (req, res) => {
+    router124 = import_express135.default.Router();
+    clearData_default = router124.get("/", async (req, res) => {
       try {
         await getDatabaseRuntime().maintenance({ kind: "reset" });
         res.status(200).send(success3("\u6570\u636E\u5E93\u5DF2\u6E05\u7A7A\u5E76\u91CD\u65B0\u521D\u59CB\u5316"));
@@ -260167,15 +260397,15 @@ var init_clearData = __esm({
 });
 
 // src/routes/setting/dbConfig/clearTable.ts
-var import_express135, router129, clearTable_default;
+var import_express136, router125, clearTable_default;
 var init_clearTable = __esm({
   "src/routes/setting/dbConfig/clearTable.ts"() {
     "use strict";
-    import_express135 = __toESM(require_express2());
+    import_express136 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router129 = import_express135.default.Router();
-    clearTable_default = router129.post("/", async (req, res) => {
+    router125 = import_express136.default.Router();
+    clearTable_default = router125.post("/", async (req, res) => {
       try {
         const result = await getDatabaseRuntime().maintenance({ kind: "clearTable", tableName: req.body?.tableName });
         res.status(200).send(success3(`\u8868 ${result.clearedTable} \u5DF2\u6E05\u7A7A`));
@@ -260190,15 +260420,15 @@ var init_clearTable = __esm({
 });
 
 // src/routes/setting/dbConfig/dbInfo.ts
-var import_express136, router130, dbInfo_default;
+var import_express137, router126, dbInfo_default;
 var init_dbInfo = __esm({
   "src/routes/setting/dbConfig/dbInfo.ts"() {
     "use strict";
-    import_express136 = __toESM(require_express2());
+    import_express137 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router130 = import_express136.default.Router();
-    dbInfo_default = router130.get("/", async (req, res) => {
+    router126 = import_express137.default.Router();
+    dbInfo_default = router126.get("/", async (req, res) => {
       try {
         const tableInfo = await getDatabaseRuntime().work(async (db) => {
           const tables = await db.raw(
@@ -260223,15 +260453,15 @@ var init_dbInfo = __esm({
 });
 
 // src/routes/setting/dbConfig/exportData.ts
-var import_express137, router131, exportData_default;
+var import_express138, router127, exportData_default;
 var init_exportData = __esm({
   "src/routes/setting/dbConfig/exportData.ts"() {
     "use strict";
-    import_express137 = __toESM(require_express2());
+    import_express138 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router131 = import_express137.default.Router();
-    exportData_default = router131.get("/", async (req, res) => {
+    router127 = import_express138.default.Router();
+    exportData_default = router127.get("/", async (req, res) => {
       try {
         const data = await getDatabaseRuntime().work(async (db) => {
           const tables = await db.raw(
@@ -260258,15 +260488,15 @@ var init_exportData = __esm({
 });
 
 // src/routes/setting/dbConfig/importData.ts
-var import_express138, router132, importData_default;
+var import_express139, router128, importData_default;
 var init_importData = __esm({
   "src/routes/setting/dbConfig/importData.ts"() {
     "use strict";
-    import_express138 = __toESM(require_express2());
+    import_express139 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router132 = import_express138.default.Router();
-    importData_default = router132.post("/", async (req, res) => {
+    router128 = import_express139.default.Router();
+    importData_default = router128.post("/", async (req, res) => {
       try {
         await getDatabaseRuntime().maintenance({ kind: "import", tables: req.body?.tables });
         res.status(200).send(success3("\u6570\u636E\u5E93\u5BFC\u5165\u6210\u529F"));
@@ -260281,15 +260511,15 @@ var init_importData = __esm({
 });
 
 // src/routes/setting/dev/getSwitchAiDevTool.ts
-var import_express139, router133, getSwitchAiDevTool_default;
+var import_express140, router129, getSwitchAiDevTool_default;
 var init_getSwitchAiDevTool = __esm({
   "src/routes/setting/dev/getSwitchAiDevTool.ts"() {
     "use strict";
-    import_express139 = __toESM(require_express2());
+    import_express140 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router133 = import_express139.default.Router();
-    getSwitchAiDevTool_default = router133.get("/", async (req, res) => {
+    router129 = import_express140.default.Router();
+    getSwitchAiDevTool_default = router129.get("/", async (req, res) => {
       const switchAiDevTool = await getDatabaseRuntime().work((db) => db("o_setting").where("key", "switchAiDevTool").first());
       res.status(200).send(success3(switchAiDevTool?.value || "0"));
     });
@@ -260297,17 +260527,17 @@ var init_getSwitchAiDevTool = __esm({
 });
 
 // src/routes/setting/dev/updateSwitchAiDevTool.ts
-var import_express140, router134, updateSwitchAiDevTool_default;
+var import_express141, router130, updateSwitchAiDevTool_default;
 var init_updateSwitchAiDevTool = __esm({
   "src/routes/setting/dev/updateSwitchAiDevTool.ts"() {
     "use strict";
-    import_express140 = __toESM(require_express2());
+    import_express141 = __toESM(require_express2());
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router134 = import_express140.default.Router();
-    updateSwitchAiDevTool_default = router134.post(
+    router130 = import_express141.default.Router();
+    updateSwitchAiDevTool_default = router130.post(
       "/",
       validateFields({
         switchAiDevTool: external_exports.string()
@@ -260322,19 +260552,19 @@ var init_updateSwitchAiDevTool = __esm({
 });
 
 // src/routes/setting/fileManagement/openFolder.ts
-var import_express141, import_child_process, router135, openFolder_default;
+var import_express142, import_child_process, router131, openFolder_default;
 var init_openFolder = __esm({
   "src/routes/setting/fileManagement/openFolder.ts"() {
     "use strict";
-    import_express141 = __toESM(require_express2());
+    import_express142 = __toESM(require_express2());
     init_zod();
     import_child_process = require("child_process");
     init_responseFormat();
     init_middleware();
     init_getPath();
     init_utils3();
-    router135 = import_express141.default.Router();
-    openFolder_default = router135.post(
+    router131 = import_express142.default.Router();
+    openFolder_default = router131.post(
       "/",
       validateFields({
         path: external_exports.string()
@@ -260359,14 +260589,14 @@ var init_openFolder = __esm({
 });
 
 // src/routes/setting/getTextModel.ts
-var import_express142, router136, getTextModel_default;
+var import_express143, router132, getTextModel_default;
 var init_getTextModel = __esm({
   "src/routes/setting/getTextModel.ts"() {
     "use strict";
-    import_express142 = __toESM(require_express2());
+    import_express143 = __toESM(require_express2());
     init_responseFormat();
-    router136 = import_express142.default.Router();
-    getTextModel_default = router136.post(
+    router132 = import_express143.default.Router();
+    getTextModel_default = router132.post(
       "/",
       async (req, res) => {
         res.status(200).send(success3("123"));
@@ -260376,15 +260606,15 @@ var init_getTextModel = __esm({
 });
 
 // src/routes/setting/loginConfig/getUser.ts
-var import_express143, router137, getUser_default;
+var import_express144, router133, getUser_default;
 var init_getUser = __esm({
   "src/routes/setting/loginConfig/getUser.ts"() {
     "use strict";
-    import_express143 = __toESM(require_express2());
+    import_express144 = __toESM(require_express2());
     init_database();
     init_responseFormat();
-    router137 = import_express143.default.Router();
-    getUser_default = router137.get("/", async (req, res) => {
+    router133 = import_express144.default.Router();
+    getUser_default = router133.get("/", async (req, res) => {
       const data = await getDatabaseRuntime().work(async (db) => db("o_user").select("*").first());
       res.status(200).send(success3(data));
     });
@@ -260392,17 +260622,17 @@ var init_getUser = __esm({
 });
 
 // src/routes/setting/loginConfig/updateUserPwd.ts
-var import_express144, router138, updateUserPwd_default;
+var import_express145, router134, updateUserPwd_default;
 var init_updateUserPwd = __esm({
   "src/routes/setting/loginConfig/updateUserPwd.ts"() {
     "use strict";
-    import_express144 = __toESM(require_express2());
+    import_express145 = __toESM(require_express2());
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router138 = import_express144.default.Router();
-    updateUserPwd_default = router138.post(
+    router134 = import_express145.default.Router();
+    updateUserPwd_default = router134.post(
       "/",
       validateFields({
         name: external_exports.string(),
@@ -260424,15 +260654,15 @@ var init_updateUserPwd = __esm({
 });
 
 // src/routes/setting/memoryConfig/delAllMemory.ts
-var import_express145, router139, delAllMemory_default;
+var import_express146, router135, delAllMemory_default;
 var init_delAllMemory = __esm({
   "src/routes/setting/memoryConfig/delAllMemory.ts"() {
     "use strict";
-    import_express145 = __toESM(require_express2());
+    import_express146 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router139 = import_express145.default.Router();
-    delAllMemory_default = router139.post("/", async (req, res) => {
+    router135 = import_express146.default.Router();
+    delAllMemory_default = router135.post("/", async (req, res) => {
       await getDatabaseRuntime().work((db) => db("memories").del());
       res.status(200).send(success3(true));
     });
@@ -260440,15 +260670,15 @@ var init_delAllMemory = __esm({
 });
 
 // src/routes/setting/memoryConfig/getMemory.ts
-var import_express146, router140, getMemory_default2;
+var import_express147, router136, getMemory_default2;
 var init_getMemory2 = __esm({
   "src/routes/setting/memoryConfig/getMemory.ts"() {
     "use strict";
-    import_express146 = __toESM(require_express2());
+    import_express147 = __toESM(require_express2());
     init_responseFormat();
     init_database();
-    router140 = import_express146.default.Router();
-    getMemory_default2 = router140.get("/", async (req, res) => {
+    router136 = import_express147.default.Router();
+    getMemory_default2 = router136.get("/", async (req, res) => {
       const settingData = await getDatabaseRuntime().work((db) => db("o_setting").whereIn("key", [
         "messagesPerSummary",
         "shortTermLimit",
@@ -260478,17 +260708,17 @@ var init_getMemory2 = __esm({
 });
 
 // src/routes/setting/memoryConfig/sureMemory.ts
-var import_express147, router141, sureMemory_default;
+var import_express148, router137, sureMemory_default;
 var init_sureMemory = __esm({
   "src/routes/setting/memoryConfig/sureMemory.ts"() {
     "use strict";
-    import_express147 = __toESM(require_express2());
+    import_express148 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_database();
-    router141 = import_express147.default.Router();
-    sureMemory_default = router141.post(
+    router137 = import_express148.default.Router();
+    sureMemory_default = router137.post(
       "/",
       validateFields({
         messagesPerSummary: external_exports.number(),
@@ -260525,17 +260755,17 @@ var init_sureMemory = __esm({
 });
 
 // src/routes/setting/modelMap/bindingPrompt.ts
-var import_express148, router142, bindingPrompt_default;
+var import_express149, router138, bindingPrompt_default;
 var init_bindingPrompt = __esm({
   "src/routes/setting/modelMap/bindingPrompt.ts"() {
     "use strict";
-    import_express148 = __toESM(require_express2());
+    import_express149 = __toESM(require_express2());
     init_responseFormat();
     init_zod();
     init_middleware();
     init_database();
-    router142 = import_express148.default.Router();
-    bindingPrompt_default = router142.post(
+    router138 = import_express149.default.Router();
+    bindingPrompt_default = router138.post(
       "/",
       validateFields({
         vendorId: external_exports.string(),
@@ -260559,19 +260789,19 @@ var init_bindingPrompt = __esm({
 });
 
 // src/routes/setting/modelMap/deletePrompt.ts
-var import_express149, import_promises7, import_path18, router143, deletePrompt_default;
+var import_express150, import_promises7, import_path18, router139, deletePrompt_default;
 var init_deletePrompt = __esm({
   "src/routes/setting/modelMap/deletePrompt.ts"() {
     "use strict";
-    import_express149 = __toESM(require_express2());
+    import_express150 = __toESM(require_express2());
     init_responseFormat();
     init_utils3();
     init_zod();
     init_middleware();
     import_promises7 = __toESM(require("fs/promises"));
     import_path18 = __toESM(require("path"));
-    router143 = import_express149.default.Router();
-    deletePrompt_default = router143.post(
+    router139 = import_express150.default.Router();
+    deletePrompt_default = router139.post(
       "/",
       validateFields({
         path: external_exports.string()
@@ -260597,16 +260827,16 @@ var init_deletePrompt = __esm({
 });
 
 // src/routes/setting/modelMap/getImageAndVideoModel.ts
-var import_express150, router144, getImageAndVideoModel_default;
+var import_express151, router140, getImageAndVideoModel_default;
 var init_getImageAndVideoModel = __esm({
   "src/routes/setting/modelMap/getImageAndVideoModel.ts"() {
     "use strict";
-    import_express150 = __toESM(require_express2());
+    import_express151 = __toESM(require_express2());
     init_responseFormat();
     init_database();
     init_vendor2();
-    router144 = import_express150.default.Router();
-    getImageAndVideoModel_default = router144.post("/", async (req, res) => {
+    router140 = import_express151.default.Router();
+    getImageAndVideoModel_default = router140.post("/", async (req, res) => {
       const dataList = await getDatabaseRuntime().work((db) => db("o_vendorConfig").select("id").where("enable", 1));
       if (!dataList || dataList.length === 0) {
         return res.status(404).send({ error: "\u6A21\u578B\u672A\u627E\u5230" });
@@ -260639,18 +260869,18 @@ var init_getImageAndVideoModel = __esm({
 });
 
 // src/routes/setting/modelMap/getPromptList.ts
-var import_express151, import_fast_glob3, import_promises8, import_path19, router145, getPromptList_default;
+var import_express152, import_fast_glob3, import_promises8, import_path19, router141, getPromptList_default;
 var init_getPromptList = __esm({
   "src/routes/setting/modelMap/getPromptList.ts"() {
     "use strict";
-    import_express151 = __toESM(require_express2());
+    import_express152 = __toESM(require_express2());
     init_responseFormat();
     init_utils3();
     import_fast_glob3 = __toESM(require_out4());
     import_promises8 = __toESM(require("fs/promises"));
     import_path19 = __toESM(require("path"));
-    router145 = import_express151.default.Router();
-    getPromptList_default = router145.get("/", async (req, res) => {
+    router141 = import_express152.default.Router();
+    getPromptList_default = router141.get("/", async (req, res) => {
       const modelPromptRoot = utils_default2.getPath(["modelPrompt"]);
       const entries = await (0, import_fast_glob3.default)("**/*.md", {
         cwd: modelPromptRoot.replace(/\\/g, "/"),
@@ -260671,19 +260901,19 @@ var init_getPromptList = __esm({
 });
 
 // src/routes/setting/modelMap/savePrompt.ts
-var import_express152, import_promises9, import_path20, router146, savePrompt_default;
+var import_express153, import_promises9, import_path20, router142, savePrompt_default;
 var init_savePrompt = __esm({
   "src/routes/setting/modelMap/savePrompt.ts"() {
     "use strict";
-    import_express152 = __toESM(require_express2());
+    import_express153 = __toESM(require_express2());
     init_responseFormat();
     init_utils3();
     init_zod();
     init_middleware();
     import_promises9 = __toESM(require("fs/promises"));
     import_path20 = __toESM(require("path"));
-    router146 = import_express152.default.Router();
-    savePrompt_default = router146.post(
+    router142 = import_express153.default.Router();
+    savePrompt_default = router142.post(
       "/",
       validateFields({
         name: external_exports.string().min(1),
@@ -260704,19 +260934,19 @@ var init_savePrompt = __esm({
 });
 
 // src/routes/setting/modelMap/updatePrompt.ts
-var import_express153, import_promises10, import_path21, router147, updatePrompt_default;
+var import_express154, import_promises10, import_path21, router143, updatePrompt_default;
 var init_updatePrompt = __esm({
   "src/routes/setting/modelMap/updatePrompt.ts"() {
     "use strict";
-    import_express153 = __toESM(require_express2());
+    import_express154 = __toESM(require_express2());
     init_responseFormat();
     init_utils3();
     init_zod();
     init_middleware();
     import_promises10 = __toESM(require("fs/promises"));
     import_path21 = __toESM(require("path"));
-    router147 = import_express153.default.Router();
-    updatePrompt_default = router147.post(
+    router143 = import_express154.default.Router();
+    updatePrompt_default = router143.post(
       "/",
       validateFields({
         name: external_exports.string().min(1),
@@ -260851,17 +261081,17 @@ var init_catalog = __esm({
 });
 
 // src/routes/setting/promptManage/getCatalog.ts
-var import_express154, router148, getCatalog_default;
+var import_express155, router144, getCatalog_default;
 var init_getCatalog = __esm({
   "src/routes/setting/promptManage/getCatalog.ts"() {
     "use strict";
-    import_express154 = __toESM(require_express2());
+    import_express155 = __toESM(require_express2());
     init_database();
     init_responseFormat();
     init_catalog();
     init_getPath();
-    router148 = import_express154.default.Router();
-    getCatalog_default = router148.post("/", async (_req, res) => {
+    router144 = import_express155.default.Router();
+    getCatalog_default = router144.post("/", async (_req, res) => {
       const entries = await getDatabaseRuntime().work((database) => listPromptCatalog(database, getPath_default()));
       res.status(200).send(success3(entries));
     });
@@ -260869,19 +261099,19 @@ var init_getCatalog = __esm({
 });
 
 // src/routes/setting/promptManage/getContent.ts
-var import_express155, router149, getContent_default;
+var import_express156, router145, getContent_default;
 var init_getContent = __esm({
   "src/routes/setting/promptManage/getContent.ts"() {
     "use strict";
-    import_express155 = __toESM(require_express2());
+    import_express156 = __toESM(require_express2());
     init_zod();
     init_database();
     init_responseFormat();
     init_middleware();
     init_catalog();
     init_getPath();
-    router149 = import_express155.default.Router();
-    getContent_default = router149.post("/", validateFields({ key: external_exports.string().min(1) }), async (req, res) => {
+    router145 = import_express156.default.Router();
+    getContent_default = router145.post("/", validateFields({ key: external_exports.string().min(1) }), async (req, res) => {
       const content = await getDatabaseRuntime().work((database) => readPromptCatalogEntry(database, getPath_default(), req.body.key));
       res.status(200).send(success3(content));
     });
@@ -260889,15 +261119,15 @@ var init_getContent = __esm({
 });
 
 // src/routes/setting/promptManage/getPrompt.ts
-var import_express156, router150, getPrompt_default;
+var import_express157, router146, getPrompt_default;
 var init_getPrompt = __esm({
   "src/routes/setting/promptManage/getPrompt.ts"() {
     "use strict";
-    import_express156 = __toESM(require_express2());
+    import_express157 = __toESM(require_express2());
     init_database();
     init_responseFormat();
-    router150 = import_express156.default.Router();
-    getPrompt_default = router150.post("/", async (req, res) => {
+    router146 = import_express157.default.Router();
+    getPrompt_default = router146.post("/", async (req, res) => {
       const list2 = await getDatabaseRuntime().work((db) => db("o_prompt").select("*"));
       const data = await Promise.all(
         list2.map(async (item) => {
@@ -260913,28 +261143,9 @@ var init_getPrompt = __esm({
 });
 
 // src/routes/setting/promptManage/resetContent.ts
-var import_express157, router151, resetContent_default;
+var import_express158, router147, resetContent_default;
 var init_resetContent = __esm({
   "src/routes/setting/promptManage/resetContent.ts"() {
-    "use strict";
-    import_express157 = __toESM(require_express2());
-    init_zod();
-    init_database();
-    init_responseFormat();
-    init_middleware();
-    init_catalog();
-    router151 = import_express157.default.Router();
-    resetContent_default = router151.post("/", validateFields({ key: external_exports.string().min(1) }), async (req, res) => {
-      await getDatabaseRuntime().work((database) => resetPromptCatalogEntry(database, req.body.key));
-      res.status(200).send(success3());
-    });
-  }
-});
-
-// src/routes/setting/promptManage/updateContent.ts
-var import_express158, router152, updateContent_default;
-var init_updateContent = __esm({
-  "src/routes/setting/promptManage/updateContent.ts"() {
     "use strict";
     import_express158 = __toESM(require_express2());
     init_zod();
@@ -260942,9 +261153,28 @@ var init_updateContent = __esm({
     init_responseFormat();
     init_middleware();
     init_catalog();
+    router147 = import_express158.default.Router();
+    resetContent_default = router147.post("/", validateFields({ key: external_exports.string().min(1) }), async (req, res) => {
+      await getDatabaseRuntime().work((database) => resetPromptCatalogEntry(database, req.body.key));
+      res.status(200).send(success3());
+    });
+  }
+});
+
+// src/routes/setting/promptManage/updateContent.ts
+var import_express159, router148, updateContent_default;
+var init_updateContent = __esm({
+  "src/routes/setting/promptManage/updateContent.ts"() {
+    "use strict";
+    import_express159 = __toESM(require_express2());
+    init_zod();
+    init_database();
+    init_responseFormat();
+    init_middleware();
+    init_catalog();
     init_getPath();
-    router152 = import_express158.default.Router();
-    updateContent_default = router152.post(
+    router148 = import_express159.default.Router();
+    updateContent_default = router148.post(
       "/",
       validateFields({ key: external_exports.string().min(1), content: external_exports.string().min(1) }),
       async (req, res) => {
@@ -260958,17 +261188,17 @@ var init_updateContent = __esm({
 });
 
 // src/routes/setting/promptManage/updatePrompt.ts
-var import_express159, router153, updatePrompt_default2;
+var import_express160, router149, updatePrompt_default2;
 var init_updatePrompt2 = __esm({
   "src/routes/setting/promptManage/updatePrompt.ts"() {
     "use strict";
-    import_express159 = __toESM(require_express2());
+    import_express160 = __toESM(require_express2());
     init_database();
     init_zod();
     init_responseFormat();
     init_middleware();
-    router153 = import_express159.default.Router();
-    updatePrompt_default2 = router153.post(
+    router149 = import_express160.default.Router();
+    updatePrompt_default2 = router149.post(
       "/",
       validateFields({
         id: external_exports.number()
@@ -260983,11 +261213,11 @@ var init_updatePrompt2 = __esm({
 });
 
 // src/routes/setting/skillManagement/getSkillContent.ts
-var import_express160, import_path22, fs34, router154, getSkillContent_default;
+var import_express161, import_path22, fs34, router150, getSkillContent_default;
 var init_getSkillContent = __esm({
   "src/routes/setting/skillManagement/getSkillContent.ts"() {
     "use strict";
-    import_express160 = __toESM(require_express2());
+    import_express161 = __toESM(require_express2());
     init_responseFormat();
     init_middleware();
     init_zod();
@@ -260995,8 +261225,8 @@ var init_getSkillContent = __esm({
     init_utils3();
     import_path22 = __toESM(require("path"));
     fs34 = __toESM(require("fs"));
-    router154 = import_express160.default.Router();
-    getSkillContent_default = router154.post(
+    router150 = import_express161.default.Router();
+    getSkillContent_default = router150.post(
       "/",
       validateFields({
         path: external_exports.string()
@@ -261016,16 +261246,16 @@ var init_getSkillContent = __esm({
 });
 
 // src/routes/setting/skillManagement/getSkillList.ts
-var import_express161, import_fast_glob5, router155, getSkillList_default;
+var import_express162, import_fast_glob5, router151, getSkillList_default;
 var init_getSkillList = __esm({
   "src/routes/setting/skillManagement/getSkillList.ts"() {
     "use strict";
-    import_express161 = __toESM(require_express2());
+    import_express162 = __toESM(require_express2());
     init_responseFormat();
     import_fast_glob5 = __toESM(require_out4());
     init_utils3();
-    router155 = import_express161.default.Router();
-    getSkillList_default = router155.post("/", async (req, res) => {
+    router151 = import_express162.default.Router();
+    getSkillList_default = router151.post("/", async (req, res) => {
       const skillsRoot = utils_default2.getPath(["skills"]);
       const entries = await (0, import_fast_glob5.default)("**/*.md", {
         cwd: skillsRoot.replace(/\\/g, "/"),
@@ -261037,11 +261267,11 @@ var init_getSkillList = __esm({
 });
 
 // src/routes/setting/skillManagement/saveSkillContent.ts
-var import_express162, import_path23, fs35, router156, saveSkillContent_default;
+var import_express163, import_path23, fs35, router152, saveSkillContent_default;
 var init_saveSkillContent = __esm({
   "src/routes/setting/skillManagement/saveSkillContent.ts"() {
     "use strict";
-    import_express162 = __toESM(require_express2());
+    import_express163 = __toESM(require_express2());
     init_responseFormat();
     init_middleware();
     init_zod();
@@ -261049,8 +261279,8 @@ var init_saveSkillContent = __esm({
     init_utils3();
     import_path23 = __toESM(require("path"));
     fs35 = __toESM(require("fs"));
-    router156 = import_express162.default.Router();
-    saveSkillContent_default = router156.post(
+    router152 = import_express163.default.Router();
+    saveSkillContent_default = router152.post(
       "/",
       validateFields({
         path: external_exports.string(),
@@ -261074,18 +261304,18 @@ var init_saveSkillContent = __esm({
 });
 
 // src/routes/setting/vendorConfig/addVendor.ts
-var import_express163, router157, addVendor_default;
+var import_express164, router153, addVendor_default;
 var init_addVendor = __esm({
   "src/routes/setting/vendorConfig/addVendor.ts"() {
     "use strict";
-    import_express163 = __toESM(require_express2());
+    import_express164 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_utils3();
     init_vendor2();
     init_errors4();
-    router157 = import_express163.default.Router();
-    addVendor_default = router157.post("/", async (req, res) => {
+    router153 = import_express164.default.Router();
+    addVendor_default = router153.post("/", async (req, res) => {
       try {
         const { tsCode } = external_exports.object({ tsCode: external_exports.string().min(1) }).strict().parse(req.body);
         const vendor = getDefaultConfiguredVendor();
@@ -261139,19 +261369,19 @@ var init_vendorModel = __esm({
 });
 
 // src/routes/setting/vendorConfig/addVendorModel.ts
-var import_express164, router158, addVendorModel_default;
+var import_express165, router154, addVendorModel_default;
 var init_addVendorModel = __esm({
   "src/routes/setting/vendorConfig/addVendorModel.ts"() {
     "use strict";
-    import_express164 = __toESM(require_express2());
+    import_express165 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
     init_vendorModel();
-    router158 = import_express164.default.Router();
-    addVendorModel_default = router158.post(
+    router154 = import_express165.default.Router();
+    addVendorModel_default = router154.post(
       "/",
       validateFields({
         id: external_exports.string(),
@@ -261171,18 +261401,18 @@ var init_addVendorModel = __esm({
 });
 
 // src/routes/setting/vendorConfig/deleteVendor.ts
-var import_express165, router159, deleteVendor_default;
+var import_express166, router155, deleteVendor_default;
 var init_deleteVendor = __esm({
   "src/routes/setting/vendorConfig/deleteVendor.ts"() {
     "use strict";
-    import_express165 = __toESM(require_express2());
+    import_express166 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
-    router159 = import_express165.default.Router();
-    deleteVendor_default = router159.post(
+    router155 = import_express166.default.Router();
+    deleteVendor_default = router155.post(
       "/",
       validateFields({
         id: external_exports.string()
@@ -261201,18 +261431,18 @@ var init_deleteVendor = __esm({
 });
 
 // src/routes/setting/vendorConfig/delVendorModel.ts
-var import_express166, router160, delVendorModel_default;
+var import_express167, router156, delVendorModel_default;
 var init_delVendorModel = __esm({
   "src/routes/setting/vendorConfig/delVendorModel.ts"() {
     "use strict";
-    import_express166 = __toESM(require_express2());
+    import_express167 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
-    router160 = import_express166.default.Router();
-    delVendorModel_default = router160.post(
+    router156 = import_express167.default.Router();
+    delVendorModel_default = router156.post(
       "/",
       validateFields({
         id: external_exports.string(),
@@ -261232,18 +261462,18 @@ var init_delVendorModel = __esm({
 });
 
 // src/routes/setting/vendorConfig/enableVendor.ts
-var import_express167, router161, enableVendor_default;
+var import_express168, router157, enableVendor_default;
 var init_enableVendor = __esm({
   "src/routes/setting/vendorConfig/enableVendor.ts"() {
     "use strict";
-    import_express167 = __toESM(require_express2());
+    import_express168 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
-    router161 = import_express167.default.Router();
-    enableVendor_default = router161.post(
+    router157 = import_express168.default.Router();
+    enableVendor_default = router157.post(
       "/",
       validateFields({
         id: external_exports.string(),
@@ -261263,16 +261493,16 @@ var init_enableVendor = __esm({
 });
 
 // src/routes/setting/vendorConfig/getCodeByLink.ts
-var import_express168, router162, getCodeByLink_default;
+var import_express169, router158, getCodeByLink_default;
 var init_getCodeByLink = __esm({
   "src/routes/setting/vendorConfig/getCodeByLink.ts"() {
     "use strict";
-    import_express168 = __toESM(require_express2());
+    import_express169 = __toESM(require_express2());
     init_responseFormat();
     init_middleware();
     init_zod();
-    router162 = import_express168.default.Router();
-    getCodeByLink_default = router162.post(
+    router158 = import_express169.default.Router();
+    getCodeByLink_default = router158.post(
       "/",
       validateFields({
         link: external_exports.string()
@@ -261287,16 +261517,16 @@ var init_getCodeByLink = __esm({
 });
 
 // src/routes/setting/vendorConfig/getVendorList.ts
-var import_express169, router163, getVendorList_default;
+var import_express170, router159, getVendorList_default;
 var init_getVendorList = __esm({
   "src/routes/setting/vendorConfig/getVendorList.ts"() {
     "use strict";
-    import_express169 = __toESM(require_express2());
+    import_express170 = __toESM(require_express2());
     init_responseFormat();
     init_database();
     init_vendor2();
-    router163 = import_express169.default.Router();
-    getVendorList_default = router163.post("/", async (req, res) => {
+    router159 = import_express170.default.Router();
+    getVendorList_default = router159.post("/", async (req, res) => {
       const data = await getDatabaseRuntime().work((db) => db("o_vendorConfig").select("*"));
       const vendorModule = getDefaultConfiguredVendor();
       const list2 = (await Promise.all(
@@ -261327,11 +261557,11 @@ var init_getVendorList = __esm({
 });
 
 // src/routes/setting/vendorConfig/modelTest.ts
-var import_express170, router164, modelTest_default;
+var import_express171, router160, modelTest_default;
 var init_modelTest = __esm({
   "src/routes/setting/vendorConfig/modelTest.ts"() {
     "use strict";
-    import_express170 = __toESM(require_express2());
+    import_express171 = __toESM(require_express2());
     init_responseFormat();
     init_middleware();
     init_utils3();
@@ -261340,8 +261570,8 @@ var init_modelTest = __esm({
     init_zod();
     init_dist23();
     init_database();
-    router164 = import_express170.default.Router();
-    modelTest_default = router164.post(
+    router160 = import_express171.default.Router();
+    modelTest_default = router160.post(
       "/",
       validateFields({
         modelName: external_exports.string(),
@@ -261453,11 +261683,11 @@ var init_modelTest = __esm({
 });
 
 // src/routes/setting/vendorConfig/modelTest/imageTest.ts
-var import_express171, router165, imageTest_default;
+var import_express172, router161, imageTest_default;
 var init_imageTest = __esm({
   "src/routes/setting/vendorConfig/modelTest/imageTest.ts"() {
     "use strict";
-    import_express171 = __toESM(require_express2());
+    import_express172 = __toESM(require_express2());
     init_responseFormat();
     init_middleware();
     init_utils3();
@@ -261465,8 +261695,8 @@ var init_imageTest = __esm({
     init_database();
     init_vendor2();
     init_imageGeneration();
-    router165 = import_express171.default.Router();
-    imageTest_default = router165.post(
+    router161 = import_express172.default.Router();
+    imageTest_default = router161.post(
       "/",
       validateFields({
         modelName: external_exports.string(),
@@ -261506,11 +261736,11 @@ var init_imageTest = __esm({
 });
 
 // src/routes/setting/vendorConfig/modelTest/textTest.ts
-var import_express172, router166, textTest_default;
+var import_express173, router162, textTest_default;
 var init_textTest = __esm({
   "src/routes/setting/vendorConfig/modelTest/textTest.ts"() {
     "use strict";
-    import_express172 = __toESM(require_express2());
+    import_express173 = __toESM(require_express2());
     init_responseFormat();
     init_middleware();
     init_utils3();
@@ -261518,8 +261748,8 @@ var init_textTest = __esm({
     init_zod();
     init_dist23();
     init_database();
-    router166 = import_express172.default.Router();
-    textTest_default = router166.post(
+    router162 = import_express173.default.Router();
+    textTest_default = router162.post(
       "/",
       validateFields({
         modelName: external_exports.string(),
@@ -261573,18 +261803,18 @@ var init_textTest = __esm({
 });
 
 // src/routes/setting/vendorConfig/modelTest/videoTest.ts
-var import_express173, router167, requestSchema2, videoTest_default;
+var import_express174, router163, requestSchema2, videoTest_default;
 var init_videoTest = __esm({
   "src/routes/setting/vendorConfig/modelTest/videoTest.ts"() {
     "use strict";
-    import_express173 = __toESM(require_express2());
+    import_express174 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_utils3();
     init_vendor2();
     init_imageGeneration();
     init_capability();
-    router167 = import_express173.default.Router();
+    router163 = import_express174.default.Router();
     requestSchema2 = external_exports.object({
       vendorId: external_exports.string().min(1),
       modelId: external_exports.string().min(1),
@@ -261599,7 +261829,7 @@ var init_videoTest = __esm({
         }).strict()
       )
     }).strict();
-    videoTest_default = router167.post("/", async (req, res) => {
+    videoTest_default = router163.post("/", async (req, res) => {
       try {
         const input = requestSchema2.parse(req.body);
         const vendor = getDefaultConfiguredVendor();
@@ -261636,18 +261866,18 @@ var init_videoTest = __esm({
 });
 
 // src/routes/setting/vendorConfig/updateCode.ts
-var import_express174, router168, updateCode_default;
+var import_express175, router164, updateCode_default;
 var init_updateCode = __esm({
   "src/routes/setting/vendorConfig/updateCode.ts"() {
     "use strict";
-    import_express174 = __toESM(require_express2());
+    import_express175 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_utils3();
     init_vendor2();
     init_errors4();
-    router168 = import_express174.default.Router();
-    updateCode_default = router168.post("/", async (req, res) => {
+    router164 = import_express175.default.Router();
+    updateCode_default = router164.post("/", async (req, res) => {
       try {
         const input = external_exports.object({ id: external_exports.string().min(1), tsCode: external_exports.string().min(1) }).strict().parse(req.body);
         const vendor = getDefaultConfiguredVendor();
@@ -261665,18 +261895,18 @@ var init_updateCode = __esm({
 });
 
 // src/routes/setting/vendorConfig/updateVendorInputs.ts
-var import_express175, router169, updateVendorInputs_default;
+var import_express176, router165, updateVendorInputs_default;
 var init_updateVendorInputs = __esm({
   "src/routes/setting/vendorConfig/updateVendorInputs.ts"() {
     "use strict";
-    import_express175 = __toESM(require_express2());
+    import_express176 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
-    router169 = import_express175.default.Router();
-    updateVendorInputs_default = router169.post(
+    router165 = import_express176.default.Router();
+    updateVendorInputs_default = router165.post(
       "/",
       validateFields({
         id: external_exports.string(),
@@ -261696,19 +261926,19 @@ var init_updateVendorInputs = __esm({
 });
 
 // src/routes/setting/vendorConfig/upVendorModel.ts
-var import_express176, router170, upVendorModel_default;
+var import_express177, router166, upVendorModel_default;
 var init_upVendorModel = __esm({
   "src/routes/setting/vendorConfig/upVendorModel.ts"() {
     "use strict";
-    import_express176 = __toESM(require_express2());
+    import_express177 = __toESM(require_express2());
     init_zod();
     init_responseFormat();
     init_middleware();
     init_utils3();
     init_vendor2();
     init_vendorModel();
-    router170 = import_express176.default.Router();
-    upVendorModel_default = router170.post(
+    router166 = import_express177.default.Router();
+    upVendorModel_default = router166.post(
       "/",
       validateFields({
         id: external_exports.string(),
@@ -261729,15 +261959,15 @@ var init_upVendorModel = __esm({
 });
 
 // src/routes/task/getProject.ts
-var import_express177, router171, getProject_default2;
+var import_express178, router167, getProject_default2;
 var init_getProject2 = __esm({
   "src/routes/task/getProject.ts"() {
     "use strict";
-    import_express177 = __toESM(require_express2());
+    import_express178 = __toESM(require_express2());
     init_database();
     init_responseFormat();
-    router171 = import_express177.default.Router();
-    getProject_default2 = router171.post("/", async (req, res) => {
+    router167 = import_express178.default.Router();
+    getProject_default2 = router167.post("/", async (req, res) => {
       const list2 = await getDatabaseRuntime().work(async (db) => {
         return await db("o_project").select("id", "name").groupBy("name");
       });
@@ -261748,17 +261978,17 @@ var init_getProject2 = __esm({
 });
 
 // src/routes/task/getTaskApi.ts
-var import_express178, router172, getTaskApi_default;
+var import_express179, router168, getTaskApi_default;
 var init_getTaskApi = __esm({
   "src/routes/task/getTaskApi.ts"() {
     "use strict";
-    import_express178 = __toESM(require_express2());
+    import_express179 = __toESM(require_express2());
     init_database();
     init_responseFormat();
     init_middleware();
     init_zod();
-    router172 = import_express178.default.Router();
-    getTaskApi_default = router172.post(
+    router168 = import_express179.default.Router();
+    getTaskApi_default = router168.post(
       "/",
       validateFields({
         state: external_exports.string().optional().nullable(),
@@ -261799,15 +262029,15 @@ var init_getTaskApi = __esm({
 });
 
 // src/routes/task/getTaskCategories.ts
-var import_express179, router173, getTaskCategories_default;
+var import_express180, router169, getTaskCategories_default;
 var init_getTaskCategories = __esm({
   "src/routes/task/getTaskCategories.ts"() {
     "use strict";
-    import_express179 = __toESM(require_express2());
+    import_express180 = __toESM(require_express2());
     init_database();
     init_responseFormat();
-    router173 = import_express179.default.Router();
-    getTaskCategories_default = router173.post("/", async (req, res) => {
+    router169 = import_express180.default.Router();
+    getTaskCategories_default = router169.post("/", async (req, res) => {
       const list2 = await getDatabaseRuntime().work(async (db) => {
         return await db("o_tasks").select("taskClass").groupBy("taskClass");
       });
@@ -261818,17 +262048,17 @@ var init_getTaskCategories = __esm({
 });
 
 // src/routes/task/taskDetails.ts
-var import_express180, router174, taskDetails_default;
+var import_express181, router170, taskDetails_default;
 var init_taskDetails = __esm({
   "src/routes/task/taskDetails.ts"() {
     "use strict";
-    import_express180 = __toESM(require_express2());
+    import_express181 = __toESM(require_express2());
     init_database();
     init_responseFormat();
     init_middleware();
     init_zod();
-    router174 = import_express180.default.Router();
-    taskDetails_default = router174.post(
+    router170 = import_express181.default.Router();
+    taskDetails_default = router170.post(
       "/",
       validateFields({
         taskId: external_exports.number()
@@ -261845,15 +262075,15 @@ var init_taskDetails = __esm({
 });
 
 // src/routes/test/test.ts
-var import_express181, import_fs15, router175, test_default;
+var import_express182, import_fs15, router171, test_default;
 var init_test = __esm({
   "src/routes/test/test.ts"() {
     "use strict";
-    import_express181 = __toESM(require_express2());
+    import_express182 = __toESM(require_express2());
     init_database();
     import_fs15 = __toESM(require("fs"));
-    router175 = import_express181.default.Router();
-    test_default = router175.get("/", async (req, res) => {
+    router171 = import_express182.default.Router();
+    test_default = router171.get("/", async (req, res) => {
       return res.send("ok");
       const test2 = await getDatabaseRuntime().work((db) => db("o_vendorConfig").select("*"));
       import_fs15.default.writeFileSync("test.json", JSON.stringify(test2, null, 2));
@@ -261982,6 +262212,7 @@ var init_router = __esm({
     init_getProject();
     init_getVisualManual();
     init_queryDirectorManual();
+    init_setImageModel();
     init_visualManual();
     init_addScript();
     init_batchAddScript();
@@ -262163,6 +262394,7 @@ var init_router = __esm({
       app2.use("/api/project/getProject", getProject_default);
       app2.use("/api/project/getVisualManual", getVisualManual_default);
       app2.use("/api/project/queryDirectorManual", queryDirectorManual_default);
+      app2.use("/api/project/setImageModel", setImageModel_default);
       app2.use("/api/project/visualManual", visualManual_default);
       app2.use("/api/script/addScript", addScript_default);
       app2.use("/api/script/batchAddScript", batchAddScript_default);
@@ -262287,7 +262519,7 @@ if (!env) {
 }
 
 // src/app.ts
-var import_express182 = __toESM(require_express2());
+var import_express183 = __toESM(require_express2());
 
 // node_modules/socket.io/wrapper.mjs
 var import_dist = __toESM(require_dist3(), 1);
@@ -262756,7 +262988,7 @@ var deriveAssetSchema = external_exports.object({
   name: external_exports.string().describe("\u884D\u751F\u8D44\u4EA7\u540D\u79F0"),
   desc: external_exports.string().describe("\u884D\u751F\u8D44\u4EA7\u63CF\u8FF0"),
   src: external_exports.string().nullable().describe("\u884D\u751F\u8D44\u4EA7\u8D44\u6E90\u8DEF\u5F84"),
-  state: external_exports.enum(["\u672A\u751F\u6210", "\u751F\u6210\u4E2D", "\u5DF2\u5B8C\u6210", "\u751F\u6210\u5931\u8D25"]).describe("\u884D\u751F\u8D44\u4EA7\u751F\u6210\u72B6\u6001"),
+  state: external_exports.literal("\u672A\u751F\u6210").describe("\u884D\u751F\u8D44\u4EA7\u521D\u59CB\u72B6\u6001\u56FA\u5B9A\u4E3A\u201C\u672A\u751F\u6210\u201D\uFF1B\u751F\u6210\u751F\u547D\u5468\u671F\u53EA\u80FD\u7531\u540E\u7AEF\u751F\u6210\u7F16\u6392\u5199\u5165"),
   type: external_exports.enum(["role", "tool", "scene", "clip"]).describe("\u884D\u751F\u8D44\u4EA7\u7C7B\u578B")
 });
 var assetItemSchema = external_exports.object({
@@ -264673,15 +264905,15 @@ function resolveServerConfig(environment = process.env) {
 // src/server/health.ts
 var import_express = __toESM(require_express2());
 function createHealthRouter() {
-  const router176 = import_express.default.Router();
-  router176.get("/health", (_request, response) => {
+  const router172 = import_express.default.Router();
+  router172.get("/health", (_request, response) => {
     response.status(200).json({ status: "ok" });
   });
-  return router176;
+  return router172;
 }
 
 // src/app.ts
-var app = (0, import_express182.default)();
+var app = (0, import_express183.default)();
 var server = import_node_http.default.createServer(app);
 async function checkPermissions() {
   if (!isEletron()) return true;
@@ -264719,8 +264951,8 @@ async function startServe(randomPort = false) {
   (0, import_express_ws.default)(app);
   app.use((0, import_morgan.default)("dev"));
   app.use((0, import_cors.default)({ origin: "*" }));
-  app.use(import_express182.default.json({ limit: "100mb" }));
-  app.use(import_express182.default.urlencoded({ extended: true, limit: "100mb" }));
+  app.use(import_express183.default.json({ limit: "100mb" }));
+  app.use(import_express183.default.urlencoded({ extended: true, limit: "100mb" }));
   const ossDir = utils_default2.getPath("oss");
   if (!import_fs16.default.existsSync(ossDir)) {
     import_fs16.default.mkdirSync(ossDir, { recursive: true });
@@ -264747,7 +264979,7 @@ async function startServe(randomPort = false) {
           sizeSubDir = `${percentMatch[1]}p`;
           sizeOpts = { type: "percentage", value: pct };
         } else {
-          import_express182.default.static(ossDir, { acceptRanges: false })(req, res, next);
+          import_express183.default.static(ossDir, { acceptRanges: false })(req, res, next);
           return;
         }
         const ext = import_path24.default.extname(req.path);
@@ -264758,14 +264990,14 @@ async function startServe(randomPort = false) {
           if (thumbnailPath) {
             res.sendFile(thumbnailPath);
           } else {
-            import_express182.default.static(ossDir, { acceptRanges: false })(req, res, next);
+            import_express183.default.static(ossDir, { acceptRanges: false })(req, res, next);
           }
         });
         return;
       }
       next();
     },
-    import_express182.default.static(ossDir, { acceptRanges: false })
+    import_express183.default.static(ossDir, { acceptRanges: false })
   );
   const skillsDir = utils_default2.getPath("skills");
   if (!import_fs16.default.existsSync(skillsDir)) {
@@ -264777,18 +265009,18 @@ async function startServe(randomPort = false) {
     (req, res, next) => {
       /\.(jpe?g|png|gif|webp|svg|ico|bmp)$/i.test(req.path) ? next() : res.status(403).end();
     },
-    import_express182.default.static(skillsDir, { acceptRanges: false })
+    import_express183.default.static(skillsDir, { acceptRanges: false })
   );
   const assetsDir = utils_default2.getPath("assets");
   if (!import_fs16.default.existsSync(assetsDir)) {
     import_fs16.default.mkdirSync(assetsDir, { recursive: true });
   }
   console.log("\u6587\u4EF6\u76EE\u5F55:", assetsDir);
-  app.use("/assets", import_express182.default.static(assetsDir, { acceptRanges: false }));
+  app.use("/assets", import_express183.default.static(assetsDir, { acceptRanges: false }));
   const webDir = utils_default2.getPath("web");
   if (import_fs16.default.existsSync(webDir)) {
     console.log("\u9759\u6001\u7F51\u7AD9\u76EE\u5F55:", webDir);
-    app.use(import_express182.default.static(webDir, { acceptRanges: false }));
+    app.use(import_express183.default.static(webDir, { acceptRanges: false }));
   } else {
     console.warn("\u9759\u6001\u7F51\u7AD9\u76EE\u5F55\u4E0D\u5B58\u5728:", webDir);
   }
@@ -264811,8 +265043,8 @@ async function startServe(randomPort = false) {
       return res.status(401).send({ message: "\u65E0\u6548\u7684token" });
     }
   });
-  const router176 = await Promise.resolve().then(() => (init_router(), router_exports));
-  await router176.default(app);
+  const router172 = await Promise.resolve().then(() => (init_router(), router_exports));
+  await router172.default(app);
   app.use((_, res, next) => {
     return res.status(404).send({ message: "API 404 Not Found" });
   });

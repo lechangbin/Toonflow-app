@@ -46,6 +46,7 @@ export type AssetPromptFailureKind =
 export interface AssetPromptFailure {
   kind: AssetPromptFailureKind;
   message: string;
+  affectedAssets?: { id: number; name: string }[];
 }
 
 export type AssetPromptResult<T> = { ok: true; value: T } | { ok: false; failure: AssetPromptFailure };

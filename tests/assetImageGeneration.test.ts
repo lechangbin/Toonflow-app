@@ -7,6 +7,7 @@ import test from "node:test";
 import knexFactory, { type Knex } from "knex";
 
 import initDB from "../src/lib/initDB";
+import u from "../src/utils";
 import { workOf } from "./databaseTestSupport";
 import {
   ASSET_PROMPTING_SKILL_VERSION,
@@ -27,6 +28,12 @@ import {
 } from "../src/assets/assetImageGeneration";
 import { createGenerateAssetsRouter } from "../src/routes/assetsGenerate/generateAssets";
 import { createBatchGenerateImageAssetsRouter } from "../src/routes/assetsGenerate/batchGenerateImageAssets";
+import { createPollingImageAssetsRouter } from "../src/routes/assets/pollingImageAssets";
+import { createGetAssetsRouter } from "../src/routes/assets/getAssetsApi";
+import { createProductionPollingImageRouter } from "../src/routes/production/assets/pollingImage";
+import { createBatchGenerateAssetsImageRouter } from "../src/routes/production/assets/batchGenerateAssetsImage";
+import { createCancelGenerateRouter } from "../src/routes/assetsGenerate/cancelGenerate";
+import { VendorImageGenerationError } from "../src/assets/imageGenerationLifecycle";
 
 const SKILL_ROOT = path.resolve(process.cwd(), "data", "skills", "asset-prompting");
 const SCRIPT_CONTENT = [
@@ -234,6 +241,28 @@ test("参考图契约变化后 resolve 返回 stalePromptRecord 而不是静默�
   }
 });
 
+test("stale generation errors identify every affected asset without making image calls", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-all-stale-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [101, 102]);
+    await knex("o_script").where("id", 11).update({ content: SCRIPT_CONTENT + " changed" });
+    const { dependencies } = promptHarness(knex, () => { throw new Error("No model calls"); });
+    const result = await resolveAssetGenerationInputs(dependencies, { projectId: 1, assetsIds: [102, 101] });
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failure.kind, "stalePromptRecord");
+    assert.deepEqual(assetImageGenerationErrorEnvelope(result.failure).body.affectedAssets, [
+      { id: 102, name: "吴广" }, { id: 101, name: "胡亥" },
+    ]);
+    assert.equal(await knex("o_image").count("* as n").first().then(row => Number(row?.n)), 0);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("Script 变化后 resolve 返回 stalePromptRecord", async () => {
   const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-stale-script-");
   try {
@@ -325,7 +354,10 @@ interface ImageHarness {
 function imageHarness(
   knex: Knex,
   options: {
-    generateImage?: (request: ImageGenerationRequest) => Promise<string>;
+    generateImage?: (
+      request: ImageGenerationRequest,
+      onStage?: (stage: "generating" | "downloading" | "downloaded") => void | Promise<void>,
+    ) => Promise<string>;
     writeGeneratedImage?: (imagePath: string, data: string) => Promise<void>;
     updateTask?: (state: 1 | -1, reason?: string, updatedContent?: string) => Promise<void>;
   } = {},
@@ -346,9 +378,9 @@ function imageHarness(
       if (!buffer) throw new Error(`ENOENT: ${mediaPath}`);
       return buffer;
     },
-    generateImage: async (request) => {
+    generateImage: async (request, onStage) => {
       vendorRequests.push(request);
-      return options.generateImage ? options.generateImage(request) : GENERATED_BASE64;
+      return options.generateImage ? options.generateImage(request, onStage) : GENERATED_BASE64;
     },
     recordGenerationTask: async (input) => {
       taskSnapshots.push({ describe: input.describe, content: input.content });
@@ -559,7 +591,7 @@ test("批量预置占位后生成复用占位记录", async () => {
     assert.equal(prepared.value.length, 2);
     const placeholders = await knex("o_image").select();
     assert.equal(placeholders.length, 2);
-    assert.ok(placeholders.every((row) => row.state === "生成中"), "预置占位必须是生成中状态");
+    assert.ok(placeholders.every((row) => row.state === "等待中"), "预置占位必须先持久化为等待中（未获得本地并发槽）");
 
     const target = prepared.value.find((entry) => entry.assetsId === 101)!;
     const result = await generateAssetImage(harness.deps, {
@@ -814,8 +846,8 @@ test("预置占位被取消后跳过外部调用", async () => {
       resolution: "1K",
     });
     if (!prepared.ok) throw new Error("预置失败");
-    // cancelGenerate 的语义：把占位记录置为生成失败
-    await knex("o_image").where("id", prepared.value[0].imageId).update({ state: "生成失败" });
+    // cancelGenerate 的新语义（Issue #39）：只在非终态上置为“已取消”
+    await knex("o_image").where("id", prepared.value[0].imageId).update({ state: "已取消" });
 
     const result = await generateAssetImage(harness.deps, {
       projectId: 1,
@@ -830,6 +862,296 @@ test("预置占位被取消后跳过外部调用", async () => {
     assert.equal(result.failure.kind, "cancelled");
     assert.equal(harness.vendorRequests.length, 0);
     assert.equal(harness.taskSnapshots.length, 0);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+// ─── 图片生成生命周期（Issue #39） ────────────────────────────────────────────
+
+test("批量占位只在供应商真正获得执行槽时从等待中迁移到生成中", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-waitgen-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [102]);
+    const observedStates: string[] = [];
+    const harness = imageHarness(knex, {
+      generateImage: async (_request, onStage) => {
+        observedStates.push((await knex("o_image").first()).state);
+        await onStage?.("generating");
+        observedStates.push((await knex("o_image").first()).state);
+        return GENERATED_BASE64;
+      },
+    });
+
+    const prepared = await prepareBatchAssetImages(harness.deps, {
+      projectId: 1,
+      assetsIds: [102],
+      model: MODEL,
+      resolution: "1K",
+    });
+    if (!prepared.ok) throw new Error("预置失败");
+    assert.equal((await knex("o_image").first()).state, "等待中", "预置后必须是等待中");
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+      imageId: prepared.value[0].imageId,
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(observedStates, ["等待中", "生成中"], "排队时保持等待中，获得执行槽后才进入生成中");
+    assert.equal((await knex("o_image").first()).state, "已完成");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("URL 响应只在供应商媒体下载期间进入下载中", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-urlstage-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [102]);
+    const observedStates: string[] = [];
+    const harness = imageHarness(knex, {
+      generateImage: async (_request, onStage) => {
+        await onStage?.("downloading");
+        observedStates.push((await knex("o_image").first()).state);
+        await onStage?.("downloaded");
+        observedStates.push((await knex("o_image").first()).state);
+        return GENERATED_BASE64;
+      },
+    });
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(observedStates, ["下载中", "生成中"], "下载完毕后必须退出下载中，OSS 写入不得被误标");
+    assert.equal((await knex("o_image").first()).state, "已完成");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Base64 响应跳过下载中直接完成", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-b64stage-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [102]);
+    const statesDuringVendor: string[] = [];
+    const harness = imageHarness(knex, {
+      // Base64 直接返回：适配器不触发 onStage，领域也不得自行伪造下载阶段
+      generateImage: async (_request, onStage) => {
+        await onStage?.("generating");
+        statesDuringVendor.push((await knex("o_image").first()).state);
+        return GENERATED_BASE64;
+      },
+    });
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(statesDuringVendor, ["生成中"], "Base64 结果必须全程停留在生成中");
+    assert.equal((await knex("o_image").first()).state, "已完成");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("资产列表刷新为父资产保留稳定失败指纹", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-parent-asset-failure-refresh-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await knex("o_image").insert({
+      id: 41,
+      type: "role",
+      state: "生成失败",
+      assetsId: 101,
+      errorReason: "imageGenerationTimeout:" + "c".repeat(64),
+      filePath: null,
+    });
+    await knex("o_assets").where("id", 101).update({ imageId: 41 });
+
+    await withTestServer(createGetAssetsRouter(() => workOf(knex)), async (url) => {
+      const response = await fetch(url + "/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: 1, type: "role", page: 1, limit: 10 }),
+      });
+      assert.equal(response.status, 200);
+      const body = (await response.json()) as {
+        code: number;
+        data: { data: Array<{ id: number; state: string; errorReason: string | null }> };
+      };
+      const parent = body.data.data.find((item) => item.id === 101);
+      assert.equal(parent?.state, "生成失败");
+      assert.equal(parent?.errorReason, "imageGenerationTimeout:" + "c".repeat(64));
+    });
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("供应商下载失败分类为 imageDownloadFailed 并保留脱敏诊断", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-dlfail-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [102]);
+    const harness = imageHarness(knex, {
+      generateImage: async (_request, onStage) => {
+        await onStage?.("downloading");
+        throw new VendorImageGenerationError({
+          kind: "downloadFailed",
+          stage: "download",
+          attempt: 1,
+          elapsedMs: 1234,
+          transportCode: "ECONNRESET",
+        });
+      },
+    });
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failure.kind, "imageDownloadFailed");
+    assert.equal(assetImageGenerationErrorEnvelope(result.failure).status, 502);
+    const image = await knex("o_image").first();
+    assert.equal(image.state, "生成失败");
+    assert.match(String(image.errorReason), /^imageDownloadFailed:[a-f0-9]{64}$/u);
+    const snapshot = JSON.parse(harness.taskSnapshots[0].content);
+    assert.equal(snapshot.failureEvidence.kind, "imageDownloadFailed");
+    assert.equal(snapshot.failureEvidence.diagnostics.kind, "downloadFailed");
+    assert.equal(snapshot.failureEvidence.diagnostics.stage, "download");
+    assert.ok(
+      !harness.taskSnapshots[0].content.includes("SECRET"),
+      "诊断不得包含签名 URL 的凭证",
+    );
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("供应商超时分类为 imageGenerationTimeout 且不自动重放", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-timeout-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [102]);
+    const harness = imageHarness(knex, {
+      generateImage: async () => {
+        throw new Error("Agnes 图片生成失败：timeout of 360000ms exceeded");
+      },
+    });
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failure.kind, "imageGenerationTimeout");
+    const envelope = assetImageGenerationErrorEnvelope(result.failure);
+    assert.equal(envelope.status, 504);
+    assert.equal(harness.vendorRequests.length, 1, "结果不确定的超时绝不自动重放 POST");
+    const image = await knex("o_image").first();
+    assert.equal(image.state, "生成失败");
+    assert.match(String(image.errorReason), /^imageGenerationTimeout:[a-f0-9]{64}$/u);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("生成中取消后供应商迟到成功不覆盖已取消", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-cancelgen-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [102]);
+    const harness = imageHarness(knex, {
+      generateImage: async () => {
+        // 供应商调用期间用户取消（cancelGenerate 语义：非终态 → 已取消）
+        await knex("o_image").update({ state: "已取消" });
+        return GENERATED_BASE64;
+      },
+    });
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failure.kind, "cancelled");
+    assert.equal((await knex("o_image").first()).state, "已取消", "迟到成功不得覆盖已取消");
+    assert.equal(harness.storage.size, 0, "已取消任务不得落盘媒体");
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("下载中取消后供应商迟到成功不覆盖已取消", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-canceldl-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [102]);
+    const harness = imageHarness(knex, {
+      generateImage: async (_request, onStage) => {
+        await onStage?.("downloading");
+        await knex("o_image").update({ state: "已取消" });
+        return GENERATED_BASE64;
+      },
+    });
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 102,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failure.kind, "cancelled");
+    assert.equal((await knex("o_image").first()).state, "已取消");
+    assert.equal(harness.storage.size, 0);
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });
@@ -997,9 +1319,10 @@ async function withTestServer(router: express.Router, handler: (url: string) => 
 }
 
 async function waitForImageStates(knex: Knex, count: number): Promise<void> {
+  const terminal = new Set(["已完成", "生成失败", "已取消"]);
   for (let attempt = 0; attempt < 200; attempt += 1) {
     const rows = await knex("o_image").select();
-    if (rows.length === count && rows.every((row) => row.state !== "生成中")) return;
+    if (rows.length === count && rows.every((row) => terminal.has(row.state))) return;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   throw new Error("等待图片状态回写超时");
@@ -1095,6 +1418,257 @@ test("批量生成路由预置占位并后台逐项完成", async () => {
     assert.equal(byPromptAsset.get(101)?.referenceList?.length, 1, "101 提交持久化参考图");
     assert.equal(byPromptAsset.get(102)?.referenceList, undefined, "102 是纯文本请求");
     assert.ok(images.every((image) => image.filePath));
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("批量队列并发槽外的任务保持等待中", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-queue-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [101, 102]);
+    let releaseFirst!: () => void;
+    const firstInFlight = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let vendorCalls = 0;
+    const harness = imageHarness(knex, {
+      generateImage: async (_request, onStage) => {
+        await onStage?.("generating");
+        vendorCalls += 1;
+        if (vendorCalls === 1) await firstInFlight;
+        return GENERATED_BASE64;
+      },
+    });
+
+    await withTestServer(createBatchGenerateImageAssetsRouter(() => harness.deps), async (url) => {
+      const response = await fetch(url + "/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: 1,
+          model: MODEL,
+          resolution: "1K",
+          concurrentCount: 1,
+          items: [{ id: 101 }, { id: 102 }],
+        }),
+      });
+      assert.equal(response.status, 200);
+
+      // 等待第一个任务获得执行槽（进入生成中并被 gate 阻塞）
+      for (let attempt = 0; attempt < 200; attempt += 1) {
+        if (vendorCalls === 1) break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      assert.equal(vendorCalls, 1, "并发上限 1 时只有一个任务获得执行槽");
+      const states = (await knex("o_image").select()).map((row) => row.state).sort();
+      assert.deepEqual(states, ["生成中", "等待中"], "槽内任务生成中，槽外任务必须保持等待中");
+
+      releaseFirst();
+    });
+
+    await waitForImageStates(knex, 2);
+    const images = await knex("o_image").select();
+    assert.ok(images.every((image) => image.state === "已完成"));
+    assert.equal(harness.vendorRequests.length, 2);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Production Agent 生成入口复用等待→生成→终态生命周期", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-production-generation-entry-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await knex("o_project").where("id", 1).update({ imageModel: MODEL, imageQuality: "1K" });
+    await generatePromptRecord(knex, [101, 102]);
+    let releaseFirst!: () => void;
+    const gate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    let calls = 0;
+    const harness = imageHarness(knex, {
+      generateImage: async (_request, onStage) => {
+        await onStage?.("generating");
+        calls += 1;
+        if (calls === 1) await gate;
+        return GENERATED_BASE64;
+      },
+    });
+
+    await withTestServer(createBatchGenerateAssetsImageRouter(() => harness.deps), async (url) => {
+      const response = await fetch(url + "/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetIds: [101, 102], projectId: 1, scriptId: 11, concurrentCount: 1 }),
+      });
+      assert.equal(response.status, 200);
+      for (let attempt = 0; attempt < 200 && calls === 0; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      assert.deepEqual(
+        (await knex("o_image").pluck("state")).sort(),
+        ["生成中", "等待中"],
+        "Production Agent 入口也必须让槽外任务保持等待中",
+      );
+      releaseFirst();
+    });
+    await waitForImageStates(knex, 2);
+    assert.deepEqual((await knex("o_image").pluck("state")).sort(), ["已完成", "已完成"]);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("取消 HTTP 入口覆盖等待中、生成中、下载中且不改写终态", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-image-cancel-route-");
+  try {
+    await prepareSchema(knex);
+    await knex("o_image").insert([
+      { id: 1, state: "等待中" },
+      { id: 2, state: "生成中" },
+      { id: 3, state: "下载中" },
+      { id: 4, state: "已完成" },
+    ]);
+    await withTestServer(createCancelGenerateRouter(() => workOf(knex)), async (url) => {
+      for (const id of [1, 2, 3, 4]) {
+        const response = await fetch(url + "/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        assert.equal(response.status, 200);
+      }
+    });
+    assert.deepEqual(await knex("o_image").orderBy("id").pluck("state"), ["已取消", "已取消", "已取消", "已完成"]);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("轮询接口为每个请求的资产返回权威状态（含缺失）", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-polling-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await knex("o_assets").insert(
+      [103, 104, 105, 106, 107].map((id) => ({
+        id,
+        name: "资产" + id,
+        type: "role",
+        describe: "轮询测试资产",
+        scriptId: 11,
+        projectId: 1,
+      })),
+    );
+    // 直接落库每个生命周期的 o_image 记录，验证刷新/重新读取语义
+    const seedImage = async (id: number, state: string, errorReason?: string, filePath?: string) => {
+      await knex("o_image").insert({
+        id,
+        type: "role",
+        state,
+        assetsId: 100 + id,
+        errorReason: errorReason ?? null,
+        filePath: filePath ?? null,
+      });
+      await knex("o_assets").where("id", 100 + id).update({ imageId: id });
+    };
+    await seedImage(1, "等待中");
+    await seedImage(2, "生成中");
+    await seedImage(3, "下载中");
+    await seedImage(4, "已完成", undefined, "/1/role/done.jpg");
+    await seedImage(5, "生成失败", "imageGenerationTimeout:" + "a".repeat(64));
+    await seedImage(6, "已取消");
+
+    const original = u.oss.getSmallImageUrl.bind(u.oss);
+    u.oss.getSmallImageUrl = async () => "/oss/fake.jpg?size=20";
+    try {
+      await withTestServer(createPollingImageAssetsRouter(() => workOf(knex)), async (url) => {
+        const response = await fetch(url + "/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: [101, 102, 103, 104, 105, 106, 107, 999] }),
+        });
+        assert.equal(response.status, 200);
+        const body = (await response.json()) as {
+          code: number;
+          data: { id: number; state: string | null; filePath: string | null; errorKind: string | null }[];
+        };
+        assert.equal(body.code, 200);
+        const byId = new Map(body.data.map((row) => [row.id, row]));
+        assert.equal(byId.get(101)?.state, "等待中");
+        assert.equal(byId.get(102)?.state, "生成中");
+        assert.equal(byId.get(103)?.state, "下载中");
+        assert.equal(byId.get(104)?.state, "已完成");
+        assert.equal(byId.get(104)?.filePath, "/oss/fake.jpg?size=20");
+        assert.equal(byId.get(105)?.state, "生成失败");
+        assert.equal(byId.get(105)?.errorKind, "imageGenerationTimeout");
+        assert.equal(byId.get(106)?.state, "已取消");
+        assert.equal(byId.get(107)?.state, null, "imageId 为空的资产返回 null 而不是被省略");
+        assert.equal(byId.get(999)?.state, null, "不存在的资产也必须返回一条结果，前端不得永久等待");
+        assert.equal(body.data.length, 8, "每个请求 id 恰好一条结果");
+      });
+    } finally {
+      u.oss.getSmallImageUrl = original;
+    }
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Production 轮询接口与资产页轮询共用同一生命周期契约", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-production-polling-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await knex("o_assets").insert([
+      { id: 201, name: "生产资产A", type: "role", describe: "d", scriptId: 11, projectId: 1, prompt: "提示词A" },
+      { id: 202, name: "生产资产B", type: "role", describe: "d", scriptId: 11, projectId: 1 },
+    ]);
+    await knex("o_image").insert({ id: 11, type: "role", state: "下载中", assetsId: 201, errorReason: null, filePath: null });
+    await knex("o_image").insert({
+      id: 12,
+      type: "role",
+      state: "生成失败",
+      assetsId: 202,
+      errorReason: "imageDownloadFailed:" + "b".repeat(64),
+      filePath: null,
+    });
+    await knex("o_assets").where("id", 201).update({ imageId: 11 });
+    await knex("o_assets").where("id", 202).update({ imageId: 12 });
+
+    const original = u.oss.getSmallImageUrl.bind(u.oss);
+    u.oss.getSmallImageUrl = async () => "/oss/fake.jpg?size=20";
+    try {
+      await withTestServer(createProductionPollingImageRouter(() => workOf(knex)), async (url) => {
+        const response = await fetch(url + "/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: [201, 202, 999] }),
+        });
+        assert.equal(response.status, 200);
+        const body = (await response.json()) as {
+          code: number;
+          data: { id: number; state: string | null; src: string | null; errorKind: string | null; prompt: string | null }[];
+        };
+        assert.equal(body.code, 200);
+        const byId = new Map(body.data.map((row) => [row.id, row]));
+        assert.equal(byId.get(201)?.state, "下载中");
+        assert.equal(byId.get(201)?.prompt, "提示词A");
+        assert.equal(byId.get(202)?.state, "生成失败");
+        assert.equal(byId.get(202)?.errorKind, "imageDownloadFailed");
+        assert.equal(byId.get(999)?.state, null, "缺失资产必须返回一条 null 记录，前端不得永久等待");
+        assert.equal(body.data.length, 3);
+      });
+    } finally {
+      u.oss.getSmallImageUrl = original;
+    }
   } finally {
     await knex.destroy();
     fs.rmSync(directory, { recursive: true, force: true });

@@ -95,11 +95,20 @@ export interface ImageReference {
   readonly base64: string;
 }
 
+/** 供应商图片生成阶段事件：描述真实 invocation 与 URL 媒体下载边界。 */
+export type ImageVendorStage = "generating" | "downloading" | "downloaded";
+
 export interface ImageGenerationInput {
   readonly prompt: string;
   readonly referenceList?: readonly ImageReference[];
   readonly size: "1K" | "2K" | "4K";
   readonly aspectRatio: `${number}:${number}`;
+  /**
+   * 可选阶段回调：适配器获得本地执行槽、即将发起供应商请求时发送
+   * generating；开始/结束下载 URL 结果媒体时发送 downloading/downloaded。
+   * Base64 结果只发送 generating。
+   */
+  readonly onStage?: (stage: ImageVendorStage) => void | Promise<void>;
 }
 
 export interface ImageGenerationRequest {

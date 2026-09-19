@@ -93,7 +93,7 @@ export const ASSET_PROMPT_FAILURE_ENVELOPE: Record<AssetPromptFailureKind, { sta
 
 export function assetPromptErrorEnvelope(failure: AssetPromptFailure): {
   status: number;
-  body: { code: number; data: null; message: string; error: AssetPromptFailureKind };
+  body: { code: number; data: null; message: string; error: AssetPromptFailureKind; affectedAssets?: { id: number; name: string }[] };
 } {
   const envelope = ASSET_PROMPT_FAILURE_ENVELOPE[failure.kind] ?? { status: 500, message: "资产提示词生成失败" };
   return {
@@ -103,6 +103,7 @@ export function assetPromptErrorEnvelope(failure: AssetPromptFailure): {
       data: null,
       message: envelope.message,
       error: failure.kind,
+      ...(failure.affectedAssets ? { affectedAssets: failure.affectedAssets } : {}),
     },
   };
 }
@@ -801,6 +802,8 @@ export async function resolveAssetGenerationInputs(
   const recordByAsset = new Map(records.map((record: Record<string, unknown>) => [record.assetsId as number, record]));
 
   const entries: ResolvedAssetGenerationInput[] = [];
+  const staleAssets: { id: number; name: string }[] = [];
+  const missingAssets: { id: number; name: string }[] = [];
   for (const assetsId of assetsIds) {
     const asset = assetById.get(assetsId)!;
     // 衍生资产：Parent Asset Anchor + Derived Change Instruction 确定性编译（Issue #37）
@@ -827,10 +830,8 @@ export async function resolveAssetGenerationInputs(
     }
     const record = recordByAsset.get(assetsId);
     if (!record) {
-      return {
-        ok: false,
-        failure: assetPromptFailure("promptNotGenerated", `资产 ${assetsId} 尚未生成提示词，请先生成提示词`),
-      };
+      missingAssets.push({ id: assetsId, name: asset.name ?? `Asset ${assetsId}` });
+      continue;
     }
     // 记录可能来自不同批次（不同 otherTextPrompt），按记录落库值复算该资产哈希
     const otherTextPrompt = normalizeOtherTextPrompt(record.additionalRequirements);
@@ -842,22 +843,15 @@ export async function resolveAssetGenerationInputs(
     });
     const referenceHash = computeAssetReferenceHash(asset, context);
     if (!isReusableRecord(record, { templateHash, contextHash, referenceHash, modelProfileJson })) {
-      return {
-        ok: false,
-        failure: assetPromptFailure(
-          "stalePromptRecord",
-          `资产 ${assetsId} 的提示词记录已过期（Script/模板/资产事实/视觉手册或参考契约已变化），请重新生成提示词`,
-        ),
-      };
+      staleAssets.push({ id: assetsId, name: asset.name ?? `Asset ${assetsId}` });
+      continue;
     }
     let brief: AssetBrief;
     try {
       brief = JSON.parse(record.assetBrief as string);
     } catch {
-      return {
-        ok: false,
-        failure: assetPromptFailure("stalePromptRecord", `资产 ${assetsId} 的提示词记录已损坏，请重新生成提示词`),
-      };
+      staleAssets.push({ id: assetsId, name: asset.name ?? `Asset ${assetsId}` });
+      continue;
     }
     const compile = compileAssetGenerationPrompt({
       brief,
@@ -890,6 +884,12 @@ export async function resolveAssetGenerationInputs(
       references,
       selectedReferenceIds,
     });
+  }
+  if (staleAssets.length) {
+    return { ok: false, failure: { ...assetPromptFailure("stalePromptRecord", "资产提示词已过期，请重新生成提示词"), affectedAssets: staleAssets } };
+  }
+  if (missingAssets.length) {
+    return { ok: false, failure: { ...assetPromptFailure("promptNotGenerated", "资产尚未生成提示词"), affectedAssets: missingAssets } };
   }
   return { ok: true, value: entries };
 }

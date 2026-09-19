@@ -73,6 +73,8 @@ interface ImageConfig {
   referenceList?: Extract<ReferenceList, { type: "image" }>[];
   size: "1K" | "2K" | "4K";
   aspectRatio: `${number}:${number}`;
+  /** Issue #39：供应商获得执行槽以及 URL 媒体下载边界的事实回调。 */
+  onStage?: (stage: "generating" | "downloading" | "downloaded") => void | Promise<void>;
 }
 
 interface ResolvedImage {
@@ -432,7 +434,97 @@ const waitWithPollTask = async (waitMs: number): Promise<void> => {
   if (result.error) throw new Error(`等待重试失败：${result.error}`);
 };
 
-const postImageWithRetry = async (url: string, body: any, headers: any): Promise<any> => {
+// ============================================================
+// 图片失败诊断（Issue #39）
+// ============================================================
+
+type ImageFailureKind = "timeout" | "transport" | "httpError" | "noImageData" | "downloadFailed";
+
+interface ImageFailureDiagnostics {
+  kind: ImageFailureKind;
+  stage: "generation" | "download";
+  attempt: number;
+  elapsedMs?: number;
+  transportCode?: string;
+  httpStatus?: number;
+  providerRequestId?: string;
+}
+
+const getImageResponseText = (error: any): string => {
+  const data = error?.response?.data;
+  const responseValue =
+    data?.error?.message || data?.message || data?.detail || data?.msg ||
+    (typeof data === "string" ? data : undefined) ||
+    error?.message || "";
+  return typeof responseValue === "string" ? responseValue : JSON.stringify(responseValue);
+};
+
+const getProviderRequestId = (error: any): string | undefined => {
+  const headers = error?.response?.headers || {};
+  for (const key of ["x-request-id", "request-id", "x-trace-id"]) {
+    const value = headers[key];
+    if (typeof value === "string") {
+      const normalized = value.trim().slice(0, 128);
+      if (/^[A-Za-z0-9._:-]+$/.test(normalized)) return normalized;
+    }
+  }
+  return undefined;
+};
+
+const classifyImageRequestError = (error: any): "timeout" | "transport" | "httpError" => {
+  const status = Number(error?.response?.status || 0);
+  if (status > 0) return "httpError";
+  const code = String(error?.code || "");
+  const message = String(error?.message || "");
+  if (code === "ECONNABORTED" || code === "ETIMEDOUT" || /timeout of \d+ms exceeded/i.test(message)) return "timeout";
+  return "transport";
+};
+
+/**
+ * 构造带白名单诊断的图片失败错误：诊断通过 error.imageFailure 传回领域层。
+ * 只包含阶段/尝试次数/耗时/传输码/HTTP 状态/清理后的请求 ID 与脱敏消息；
+ * 绝不包含 API Key、Authorization、提示词、参考图或结果 Base64、签名 URL。
+ */
+const buildImageFailure = (
+  kind: ImageFailureKind,
+  stage: "generation" | "download",
+  error: any,
+  attempt: number,
+  startedAt: number,
+): Error => {
+  const elapsedMs = Math.max(0, Date.now() - startedAt);
+  const transportCode = error?.code ? String(error.code).slice(0, 64) : undefined;
+  const httpStatus = Number(error?.response?.status || 0) || undefined;
+  const providerRequestId = getProviderRequestId(error);
+  const failure: any = new Error(`Agnes 图片生成失败 kind=${kind} stage=${stage} attempt=${attempt}`);
+  failure.imageFailure = {
+    kind,
+    stage,
+    attempt,
+    elapsedMs,
+    ...(transportCode ? { transportCode } : {}),
+    ...(httpStatus ? { httpStatus } : {}),
+    ...(providerRequestId ? { providerRequestId } : {}),
+  } as ImageFailureDiagnostics;
+  return failure;
+};
+
+/**
+ * 明确收到、安全且文档化的临时拒绝才允许有限重试：
+ * HTTP 429（限流）与“队列已满/繁忙”语义的 400。超时、连接重置、5xx 等
+ * 供应商可能已收到并处理请求的不确定结果绝不自动重放 POST（Issue #39）。
+ */
+const isExplicitSafeTemporaryRejection = (error: any): boolean => {
+  const status = Number(error?.response?.status || 0);
+  if (status === 429) return true;
+  if (status === 400) {
+    return /busy|queue|concurr|rate|limit|frequent|频繁|并发|稍后/i.test(getImageResponseText(error));
+  }
+  return false;
+};
+
+const postImageWithSafeRetry = async (url: string, body: any, headers: any): Promise<any> => {
+  const startedAt = Date.now();
   let lastError: any;
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -440,26 +532,12 @@ const postImageWithRetry = async (url: string, body: any, headers: any): Promise
       return await axios.post(url, body, { headers, timeout: 360000, proxy: false });
     } catch (error: any) {
       lastError = error;
-      const status = Number(error?.response?.status || 0);
-      const responseValue =
-        error?.response?.data?.error?.message ||
-          error?.response?.data?.message ||
-          error?.response?.data?.detail ||
-          error?.response?.data ||
-          error?.message ||
-          "";
-      const responseText =
-        typeof responseValue === "string" ? responseValue : JSON.stringify(responseValue);
-      const isNetworkError = /ECONNRESET|ETIMEDOUT|ECONNABORTED|EAI_AGAIN|ENOTFOUND|socket hang up|timeout/i.test(
-        responseText,
-      );
-      const isRetryableStatus = [408, 409, 429, 500, 502, 503, 504, 520, 522, 524].includes(status);
-      const isBusy400 = status === 400 && /busy|queue|concurr|rate|limit|frequent|频繁|并发|稍后/i.test(responseText);
-
-      if (attempt >= 3 || (!isNetworkError && !isRetryableStatus && !isBusy400)) throw error;
-
+      if (attempt >= 3 || !isExplicitSafeTemporaryRejection(error)) {
+        throw buildImageFailure(classifyImageRequestError(error), "generation", error, attempt, startedAt);
+      }
       const waitMs = attempt * 3000;
-      logger(`[Agnes 图片] 请求暂时失败，将在 ${waitMs / 1000} 秒后重试（${attempt}/3）`);
+      const status = Number(error?.response?.status || 0);
+      logger(`[Agnes 图片] 供应商明确临时拒绝（HTTP ${status}），将在 ${waitMs / 1000} 秒后重试（${attempt}/3）`);
       await waitWithPollTask(waitMs);
     }
   }
@@ -596,19 +674,47 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   logger(`[Agnes 图片] 提交 ${model.modelName}，参考图 ${referenceCount} 张，尺寸 ${body.size}，比例 ${ratio}`);
 
   return await runImageRequestSerially(async (): Promise<string> => {
-    logger(`[Agnes 图片] 已进入生成队列：${model.modelName}`);
+    // 只有获得本地串行执行槽后才宣告 generating；仍在队列中的请求保持等待中。
+    if (config.onStage) await config.onStage("generating");
+    // 本地日志只描述本地事实：请求即将从这里发出，不代表 Agnes 云端已接受
+    logger(`[Agnes 图片] 开始本地供应商请求：${model.modelName}`);
+    const requestStartedAt = Date.now();
+    let response: any;
     try {
-      const response = await postImageWithRetry(`${baseUrl}/v1/images/generations`, body, headers);
-      const payload = response?.data;
-      const item = Array.isArray(payload?.data) ? payload.data[0] : payload?.data?.[0] || payload;
-      const b64 = item?.b64_json || payload?.b64_json;
-      const url = item?.url || payload?.url;
-
-      if (b64) return ensureImageDataUri(b64);
-      if (url) return await urlToBase64(url);
-      throw new Error(`响应中没有图片数据：${JSON.stringify(payload).slice(0, 500)}`);
+      response = await postImageWithSafeRetry(`${baseUrl}/v1/images/generations`, body, headers);
     } catch (error: any) {
-      throw new Error(getErrorMessage(error, "Agnes 图片生成失败"));
+      // 已携带结构化诊断的失败（含安全重试耗尽）原样上抛
+      if (error?.imageFailure) throw error;
+      throw buildImageFailure(classifyImageRequestError(error), "generation", error, 1, requestStartedAt);
+    }
+    const payload = response?.data;
+    const item = Array.isArray(payload?.data) ? payload.data[0] : payload?.data?.[0] || payload;
+    const b64 = item?.b64_json || payload?.b64_json;
+    const url = item?.url || payload?.url;
+
+    try {
+      if (b64) return ensureImageDataUri(b64);
+      if (url) {
+        // 供应商返回 URL：媒体网络下载开始，通知调用方进入“下载中”
+        if (config.onStage) await config.onStage("downloading");
+        try {
+          const downloaded = await urlToBase64(url);
+          if (config.onStage) await config.onStage("downloaded");
+          return downloaded;
+        } catch (error: any) {
+          throw buildImageFailure("downloadFailed", "download", error, 1, requestStartedAt);
+        }
+      }
+      throw buildImageFailure(
+        "noImageData",
+        "generation",
+        new Error(`响应中没有图片数据：${JSON.stringify(payload).slice(0, 200)}`),
+        1,
+        requestStartedAt,
+      );
+    } catch (error: any) {
+      if (error?.imageFailure) throw error;
+      throw buildImageFailure("transport", "generation", error, 1, requestStartedAt);
     }
   });
 };
