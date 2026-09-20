@@ -63,7 +63,7 @@ export async function deleteMediaFileIfPresent(mediaPath: string): Promise<void>
 export async function deleteMediaFileBestEffort(mediaPath: string): Promise<void> {
   try {
     await deleteMediaFileIfPresent(mediaPath);
-  } catch (error) {
-    console.warn("[assetReference] 媒体文件清理失败:", mediaPath, error);
+  } catch {
+    console.warn("[assetReference] 媒体文件清理失败");
   }
 }

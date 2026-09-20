@@ -11,16 +11,93 @@ import {
   IMAGE_GENERATION_LIFECYCLE_STATES,
   IMAGE_GENERATION_TERMINAL_STATES,
   VendorImageGenerationError,
+  VendorImageDiagnosticContractError,
   classifyVendorImageFailure,
   cancelImageGeneration,
   extractVendorImageFailure,
   failInterruptedImageGenerations,
   imageFailureKindFromStoredReason,
+  inspectVendorImageFailure,
   isImageGenerationActiveState,
   isImageGenerationTerminalState,
+  projectVendorImageFailureDiagnostic,
   sanitizeDiagnosticText,
   sanitizeVendorImageFailureDiagnostics,
+  validateVendorImageFailureDiagnostics,
 } from "../src/assets/imageGenerationLifecycle";
+
+test("图片 Vendor 失败通过共享 taxonomy 投影为稳定诊断", () => {
+  const timeout = projectVendorImageFailureDiagnostic(
+    {
+      kind: "timeout",
+      stage: "generation",
+      attempt: 1,
+      elapsedMs: 360000,
+      transportCode: "ETIMEDOUT",
+      providerRequestId: "request-123",
+    },
+    "toolReceipt",
+  );
+  assert.equal(timeout.ok, true);
+  if (!timeout.ok) return;
+  assert.deepEqual(
+    {
+      failureClass: timeout.value.failureClass,
+      stage: timeout.value.stage,
+      kind: timeout.value.kind,
+      certainty: timeout.value.certainty,
+      retryDisposition: timeout.value.retryDisposition,
+    },
+    {
+      failureClass: "Vendor",
+      stage: "image-generation",
+      kind: "timeout",
+      certainty: "unknown-effect",
+      retryDisposition: "reconcile-first",
+    },
+  );
+
+  const download = projectVendorImageFailureDiagnostic(
+    { kind: "downloadFailed", stage: "download", attempt: 2, httpStatus: 503 },
+    "ui",
+  );
+  assert.equal(download.ok, true);
+  if (!download.ok) return;
+  assert.equal(download.value.certainty, "known-effect");
+  assert.equal(download.value.retryDisposition, "reconcile-first");
+});
+
+test("图片 Vendor 投影拒绝契约漂移与额外敏感字段", () => {
+  const secret = "sk_vendor_projection_secret";
+  const projected = projectVendorImageFailureDiagnostic(
+    {
+      kind: "newKind",
+      stage: "somewhere",
+      attempt: 0,
+      apiKey: secret,
+    } as never,
+    "toolReceipt",
+  );
+  assert.equal(projected.ok, false);
+  assert.equal(JSON.stringify(projected).includes(secret), false);
+  if (!projected.ok) {
+    assert.ok(projected.violations.some((entry) => entry.code === "unknownField"));
+  }
+});
+
+test("生产提取边界拒绝而非纠正非法 Vendor 诊断", () => {
+  const drift = { kind: "newKind", stage: "somewhere", attempt: 0, raw_provider_payload: { status: "failed" } };
+  assert.equal(validateVendorImageFailureDiagnostics(drift), null);
+  assert.equal(extractVendorImageFailure({ imageFailure: drift }), null);
+  assert.throws(
+    () => new VendorImageGenerationError(drift as never),
+    /Invalid Vendor image failure diagnostics/u,
+  );
+  assert.deepEqual(inspectVendorImageFailure(new VendorImageDiagnosticContractError()), {
+    status: "rejected",
+    kind: "contractRejected",
+  });
+});
 
 test("生命周期契约包含六个状态且活跃/终态划分完整", () => {
   assert.deepEqual([...IMAGE_GENERATION_LIFECYCLE_STATES], [
@@ -225,13 +302,23 @@ test("extractVendorImageFailure 从 VM 边界普通对象提取并脱敏诊断",
       stage: "generation",
       attempt: 3,
       elapsedMs: 1080000,
-      message: "https://signed.example.com/x?expires=1&token=SECRET",
     },
   };
   const diagnostics = extractVendorImageFailure(plainError);
   assert.equal(diagnostics?.kind, "timeout");
   assert.equal(diagnostics?.attempt, 3);
-  assert.ok(!JSON.stringify(diagnostics).includes("SECRET"));
+  assert.equal(
+    extractVendorImageFailure({
+      imageFailure: {
+        kind: "timeout",
+        stage: "generation",
+        attempt: 3,
+        message: "https://signed.example.com/x?expires=1&token=SECRET",
+      },
+    }),
+    null,
+    "未知自由文本字段必须拒绝整个诊断，而不是静默丢弃",
+  );
   assert.equal(extractVendorImageFailure(new Error("plain")), null);
   assert.equal(extractVendorImageFailure(null), null);
   const typed = new VendorImageGenerationError({ kind: "transport", stage: "generation", attempt: 1 });

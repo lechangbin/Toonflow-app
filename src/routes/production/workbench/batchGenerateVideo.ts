@@ -9,7 +9,7 @@ export default router.post("/", async (req, res, next) => {
   try {
     const request = videoGenerationBatchRequestSchema.parse(req.body);
     const started = await startVideoGenerationBatch(request);
-    void started.completion.catch((error) => console.error("Video Production Action completion update failed", error));
+    void started.completion.catch(() => console.error("Video Production Action completion update failed"));
     res.status(200).send(success({ actionId: started.actionId, tasks: started.tasks }));
   } catch (error) {
     next(error);

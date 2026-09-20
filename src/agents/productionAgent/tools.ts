@@ -319,13 +319,13 @@ export default (toolCpnfig: ToolConfig) => {
       execute: async ({ ids }) => {
         const thinking = msg.thinking("正在生成衍生资产...");
         new Promise((resolve) => socket.emit("generateDeriveAsset", { ids }, (res: any) => resolve(res)))
-          .then((res) => {
-            thinking.appendText(`已生成衍生资产，ID: ${JSON.stringify(res, null, 2)}\n`);
+          .then(() => {
+            thinking.appendText(`已提交 ${ids.length} 个衍生资产生成任务。\n`);
             thinking.updateTitle("衍生资产开始完成");
             thinking.complete();
           })
-          .catch((e) => {
-            thinking.appendText("衍生资产生成失败:\n" + u.error(e).message);
+          .catch(() => {
+            thinking.appendText("衍生资产生成失败。");
             thinking.updateTitle("衍生资产生成失败");
             thinking.complete();
           });
@@ -353,13 +353,13 @@ export default (toolCpnfig: ToolConfig) => {
               }),
             ),
         )
-          .then((res) => {
-            thinking.appendText("生成的分镜数据:\n" + JSON.stringify(res, null, 2));
+          .then(() => {
+            thinking.appendText(`已提交 ${ids.length} 个分镜生成任务。`);
             thinking.updateTitle("分镜生成完成");
             thinking.complete();
           })
-          .catch((e) => {
-            thinking.appendText("分镜生成失败:\n" + u.error(e).message);
+          .catch(() => {
+            thinking.appendText("分镜生成失败。");
             thinking.updateTitle("分镜生成失败");
             thinking.complete();
           });

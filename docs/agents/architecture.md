@@ -49,6 +49,10 @@ The review may add omitted Assets, add stable evidence-grounded facts, correct t
 
 Script Agent and Production Agent duplicate authentication, abort handling, thinking state, stream consumption, memory writes, sub-Agent lifecycle, and output cleanup. They are two real adapters for a shared session seam, but migration risk is higher because behavior is largely untested.
 
+## Implemented enabler: Trace-safe diagnostics
+
+ADR-0010 establishes `src/diagnostics/` as the single fail-closed export seam for future Trace and ToolReceipt records, current evaluation evidence, and UI-safe diagnostic projections. The versioned taxonomy keeps primary failure class separate from stage, stable kind, severity, outcome certainty, expectedness, and retry disposition. Recursive inspection rejects sensitive or structurally unsafe evidence before export; T03 adds no Agent Run or Trace persistence.
+
 ## Enabler: shrink the global `u` locator — partially done
 
 `src/utils.ts` no longer exposes `db`, `Ai`, `vendor`, or `vm`; the remaining fields (oss, getConfig, uuid, error, cleanNovel, getPath, task, getPrompts, getArtPrompt, replaceUrl, writeVersion) are narrow utility capabilities. Keep shrinking it as deeper modules establish stable interfaces; do not add new global locators.

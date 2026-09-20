@@ -1,7 +1,6 @@
 import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import u from "@/utils";
 import { getDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { tool, jsonSchema } from "ai";
@@ -54,14 +53,10 @@ export default router.post(
           tools: { getWeatherTool },
         },
       });
-      console.log("%c Line:46 🍐 data", "background:#6ec1c2", data);
       if (!data) return res.status(500).send(error("模型未返回结果"));
       res.status(200).send(success({ thinking: data.reasoningText, content: data.text }));
-    } catch (err) {
-      console.error(err);
-      const msg = u.error(err).message;
-      console.error(msg);
-      res.status(500).send(error(msg));
+    } catch {
+      res.status(500).send(error("模型测试失败"));
     }
   },
 );

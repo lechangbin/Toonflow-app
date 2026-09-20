@@ -24,9 +24,10 @@ import {
 } from "./assetPromptOrchestration";
 import {
   IMAGE_GENERATION_ACTIVE_STATES,
+  VendorImageDiagnosticContractError,
   VendorImageGenerationError,
   classifyVendorImageFailure,
-  extractVendorImageFailure,
+  inspectVendorImageFailure,
   type VendorImageFailureDiagnostics,
 } from "./imageGenerationLifecycle";
 
@@ -231,6 +232,8 @@ interface GenerationFailureEvidence {
   failureReasonHash: string;
   /** 供应商失败的白名单诊断（阶段/尝试次数/耗时/传输码/HTTP 状态/请求 ID），已脱敏。 */
   diagnostics?: VendorImageFailureDiagnostics;
+  /** Vendor 声称提供诊断但契约校验失败；只持久化稳定分类，不静默当作 absent。 */
+  diagnosticRejection?: { kind: "contractRejected" };
 }
 
 function failureHashFromStoredReason(reason: unknown): string {
@@ -525,12 +528,16 @@ export async function generateAssetImage(
       // 稳定失败分类：超时 / 下载失败 / 普通生成失败分别落 kind；
       // 诊断只保留白名单字段并脱敏，原始供应商异常不进入持久化。
       const kind = classifyVendorImageFailure(error);
-      const diagnostics = extractVendorImageFailure(error) ?? undefined;
+      const inspectedDiagnostics = inspectVendorImageFailure(error);
+      const diagnostics = inspectedDiagnostics.status === "valid" ? inspectedDiagnostics.diagnostics : undefined;
       const reason = normalizeError(error).message;
       const failureEvidence: GenerationFailureEvidence = {
         kind,
         failureReasonHash: sha256(reason),
         ...(diagnostics ? { diagnostics } : {}),
+        ...(inspectedDiagnostics.status === "rejected"
+          ? { diagnosticRejection: { kind: inspectedDiagnostics.kind } }
+          : {}),
       };
       const sanitizedReason = `${failureEvidence.kind}:${failureEvidence.failureReasonHash}`;
       await taskDone(-1, sanitizedReason, JSON.stringify({ ...snapshot, failureEvidence }));
@@ -714,8 +721,14 @@ export function createDefaultAssetImageGenerationDependencies(): AssetImageGener
         });
       } catch (error) {
         // 适配器通过 error.imageFailure 携带白名单诊断（VM 边界普通对象）
-        const diagnostics = extractVendorImageFailure(error);
-        throw diagnostics ? new VendorImageGenerationError(diagnostics) : error;
+        const inspectedDiagnostics = inspectVendorImageFailure(error);
+        if (inspectedDiagnostics.status === "valid") {
+          throw new VendorImageGenerationError(inspectedDiagnostics.diagnostics);
+        }
+        if (inspectedDiagnostics.status === "rejected") {
+          throw new VendorImageDiagnosticContractError();
+        }
+        throw error;
       }
       if (typeof result === "string" && result.startsWith("http")) {
         // 供应商直接返回 URL：媒体网络下载开始，进入“下载中”

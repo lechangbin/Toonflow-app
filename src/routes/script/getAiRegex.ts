@@ -1,5 +1,4 @@
 import express from "express";
-import u from "@/utils";
 import { getDefaultConfiguredVendor } from "@/vendor";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
@@ -30,8 +29,8 @@ export default router.post(
         },
       });
       res.status(200).send(success(normalizeAiRegex(resText.text || "")));
-    } catch (cause) {
-      res.status(400).send(error(u.error(cause).message));
+    } catch {
+      res.status(400).send(error("AI 正则分析失败"));
     }
   },
 );

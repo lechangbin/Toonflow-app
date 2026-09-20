@@ -757,6 +757,39 @@ test("供应商失败时任务快照与占位记录保留诊断信息", async ()
   }
 });
 
+test("供应商携带非法诊断时持久化 contractRejected 而非静默丢弃", async () => {
+  const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-invalid-diagnostic-");
+  try {
+    await prepareSchema(knex);
+    await seedBasics(knex);
+    await generatePromptRecord(knex, [101]);
+    const harness = imageHarness(knex, {
+      generateImage: async () => {
+        throw Object.assign(new Error("raw provider failure"), {
+          imageFailure: { kind: "unknownKind", stage: "somewhere", attempt: 0, apiKey: "sk_private_value" },
+        });
+      },
+    });
+
+    const result = await generateAssetImage(harness.deps, {
+      projectId: 1,
+      assetsId: 101,
+      model: MODEL,
+      resolution: "1K",
+    });
+
+    assert.equal(result.ok, false);
+    const snapshot = JSON.parse(harness.taskSnapshots[0].content);
+    assert.deepEqual(snapshot.failureEvidence.diagnosticRejection, { kind: "contractRejected" });
+    assert.equal("diagnostics" in snapshot.failureEvidence, false);
+    assert.equal(harness.taskSnapshots[0].content.includes("sk_private_value"), false);
+    assert.equal(harness.taskSnapshots[0].content.includes("raw provider failure"), false);
+  } finally {
+    await knex.destroy();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("图片落盘失败时 Generation Task 与快照同步失败且只保留脱敏证据", async () => {
   const { directory, knex } = createTemporaryDatabase("toonflow-asset-image-persist-");
   try {

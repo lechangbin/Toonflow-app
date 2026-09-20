@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "toonflow.trace-safe-negative-fixtures.v1",
+  "taxonomyVersion": "toonflow.trace-safe-diagnostic.v1",
+  "cases": [
+    {
+      "id": "NEG-CREDENTIAL-001",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": { "authorization": "Bearer fixture-secret-value" } },
+      "expectedCodes": ["secretValue", "sensitiveKey"]
+    },
+    {
+      "id": "NEG-BASE64-002",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": { "image": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" } },
+      "expectedCodes": ["base64Payload"]
+    },
+    {
+      "id": "NEG-SIGNED-URL-003",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": { "url": "https://fixture.invalid/object?X-Amz-Signature=fake&X-Amz-Expires=60" } },
+      "expectedCodes": ["signedUrl"]
+    },
+    {
+      "id": "NEG-PROVIDER-PAYLOAD-004",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": { "vendorResponse": { "status": "failed", "unknown": true } } },
+      "expectedCodes": ["rawProviderPayload"]
+    },
+    {
+      "id": "NEG-REASONING-005",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": { "hiddenReasoning": "fixture private reasoning" } },
+      "expectedCodes": ["hiddenReasoning"]
+    },
+    {
+      "id": "NEG-UNKNOWN-FIELD-006",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": {}, "vendorDebugBlob": { "status": "raw" } },
+      "expectedCodes": ["unknownField"]
+    },
+    {
+      "id": "NEG-NESTED-ARRAY-007",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": [{ "safe": "request-1" }, { "password": "fixture-password-value" }] },
+      "expectedCodes": ["sensitiveKey"]
+    },
+    {
+      "id": "NEG-DATA-URI-008",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": { "image": "data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" } },
+      "expectedCodes": ["base64Payload"]
+    },
+    {
+      "id": "NEG-COMMON-TOKENS-009",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": ["npm_abcdefghijklmnopqrstuvwxyz123456", "ghp_abcdefghijklmnopqrstuvwxyz123456", "AKIA1234567890ABCDEF"] },
+      "expectedCodes": ["secretValue"]
+    },
+    {
+      "id": "NEG-JWT-SK-010",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": ["sk_abcdefghijklmnopqrstuvwxyz", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signaturevalue123456"] },
+      "expectedCodes": ["secretValue"]
+    },
+    {
+      "id": "NEG-PLAIN-TOKEN-KEY-011",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": { "token": "opaque-but-sensitive" } },
+      "expectedCodes": ["sensitiveKey"]
+    },
+    {
+      "id": "NEG-SEPARATOR-BYPASS-012",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": { "provider_response": {}, "raw-provider-payload": {}, "vendor-output": {}, "reasoning_content": "private" } },
+      "expectedCodes": ["hiddenReasoning", "rawProviderPayload"]
+    },
+    {
+      "id": "NEG-DATA-URI-VARIANTS-013",
+      "allowedTopLevelKeys": ["evidence"],
+      "input": { "evidence": [" data:text/plain;base64,c2VjcmV0", "prefix data:image/png;charset=utf-8;base64,AAAA", "data:application/octet-stream;base64,_-_-_"] },
+      "expectedCodes": ["base64Payload"]
+    }
+  ]
+}

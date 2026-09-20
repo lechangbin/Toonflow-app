@@ -122,11 +122,8 @@ export default router.post(
         const resultUrl = await u.oss.getFileUrl(type == "video" ? "test.mp4" : "testImage.jpg");
         res.status(200).send(success(resultUrl));
       }
-    } catch (err) {
-      console.error(err);
-      const msg = u.error(err).message;
-      console.error(msg);
-      res.status(500).send(error(msg));
+    } catch {
+      res.status(500).send(error("模型测试失败"));
     }
   },
 );

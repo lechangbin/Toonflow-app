@@ -406,14 +406,11 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`图片生成请求失败: ${errorText}`);
+    throw new Error(`图片生成请求失败 status=${res.status}`);
   }
   const response = await res.json();
-  logger(response);
-
   if (response?.error) {
-    throw new Error(`图片生成失败：${response.error.message || response.error.code}`);
+    throw new Error("图片生成失败：供应商拒绝请求");
   }
 
   // 从 data 数组中提取第一张成功的图片
@@ -426,7 +423,7 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
         return item.b64_json;
       }
       if (item.error) {
-        throw new Error(`图片生成失败：${item.error.message || item.error.code}`);
+        throw new Error("图片生成失败：供应商返回失败项");
       }
     }
   }
@@ -467,11 +464,9 @@ const videoRequest = async (config: VideoGenerationCommand, model: VideoModel): 
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`视频生成任务创建失败: ${errorText}`);
+    throw new Error(`视频生成任务创建失败 status=${res.status}`);
   }
   const createResponse = await res.json();
-  logger(createResponse);
   const taskId = createResponse?.id;
 
   if (!taskId) {
@@ -487,12 +482,9 @@ const videoRequest = async (config: VideoGenerationCommand, model: VideoModel): 
         headers,
       });
       if (!queryRes.ok) {
-        const errorText = await queryRes.text();
-        throw new Error(`查询视频生成任务状态失败: ${errorText}`);
+        throw new Error(`查询视频生成任务状态失败 status=${queryRes.status}`);
       }
       const task = await queryRes.json();
-
-      logger(`[视频生成] 任务状态: ${JSON.stringify(task)}`);
 
       switch (task.status) {
         case "succeeded":
@@ -501,7 +493,7 @@ const videoRequest = async (config: VideoGenerationCommand, model: VideoModel): 
           }
           return { completed: true, error: "任务成功但未返回视频URL" };
         case "failed":
-          return { completed: true, error: task.error?.message || "视频生成失败" };
+          return { completed: true, error: "视频生成失败" };
         case "expired":
           return { completed: true, error: "视频生成任务超时" };
         case "cancelled":

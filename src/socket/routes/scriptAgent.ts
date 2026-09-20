@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import u from "@/utils";
 import { getDatabaseRuntime } from "@/database";
 import { Namespace, Socket } from "socket.io";
 import * as agent from "@/agents/scriptAgent/index";
@@ -70,8 +69,8 @@ export default (nsp: Namespace) => {
         await agent.runDecisionAI(ctx);
       } catch (err: any) {
         if (err.name !== "AbortError" && !currentController.signal.aborted) {
-          console.error("[scriptAgent] chat error:", u.error(err).message);
-          msg.error(u.error(err).message)
+          console.error("[scriptAgent] chat failed");
+          msg.error("Agent 执行失败");
         }
       } finally {
         if (abortController === currentController) {

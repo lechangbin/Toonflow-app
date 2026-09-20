@@ -76,8 +76,8 @@ export function createBatchGenerateAssetsImageRouter(
         ),
       );
       // 后台执行，不阻塞响应；失败已由领域模块回写 o_image 占位记录供轮询诊断
-      Promise.all(tasks).catch((error) => {
-        console.error("[batchGenerateAssetsImage] 后台生成编排失败:", error);
+      Promise.all(tasks).catch(() => {
+        console.error("[batchGenerateAssetsImage] 后台生成编排失败");
       });
 
       return res.status(200).send(success("开始生成资产图片"));
