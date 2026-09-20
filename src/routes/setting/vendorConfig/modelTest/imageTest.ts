@@ -39,11 +39,8 @@ export default router.post(
       await u.oss.writeFile("testImage.jpg", await normalizeHttpResult(result));
       const resultUrl = await u.oss.getFileUrl("testImage.jpg");
       res.status(200).send(success(resultUrl));
-    } catch (err) {
-      console.error(err);
-      const msg = u.error(err).message;
-      console.error(msg);
-      res.status(500).send(error(msg));
+    } catch {
+      res.status(500).send(error("模型测试失败"));
     }
   },
 );

@@ -69,7 +69,7 @@ export default router.post("/", async (req, res) => {
     });
     await u.oss.writeFile("test.mp4", await normalizeHttpResult(result));
     res.status(200).send(success(await u.oss.getFileUrl("test.mp4")));
-  } catch (cause) {
-    res.status(400).send(error(u.error(cause).message));
+  } catch {
+    res.status(400).send(error("模型测试失败"));
   }
 });

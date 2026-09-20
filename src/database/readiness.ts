@@ -152,7 +152,7 @@ export async function runDevelopmentPhase(context: ReadinessContext): Promise<vo
   if (process.env.NODE_ENV !== "dev") return;
   try {
     await generateDatabaseTypes(context.knex);
-  } catch (error) {
-    console.error("[数据库类型生成失败，已忽略]", error);
+  } catch {
+    console.error("[数据库类型生成失败，已忽略]");
   }
 }

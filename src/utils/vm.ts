@@ -14,6 +14,7 @@ import FormData from "form-data";
 import jsonwebtoken from "jsonwebtoken";
 import crypto from "node:crypto";
 import normalizeError from "@/utils/error";
+import { formatTraceSafeLog } from "@/diagnostics/traceSafeDiagnostics";
 
 export interface VmBoundaryOverrides {
   axios?: any;
@@ -72,7 +73,7 @@ export default function runCode(code: string, vendor?: Record<string, any>, depe
   return exports as Record<string, any>;
 }
 export function logger(logstring: any) {
-  console.log("【VM】" + JSON.stringify(logstring));
+  console.log("【VM】" + formatTraceSafeLog(logstring));
 }
 /**
  * 压缩图片，目标字节数不高于 size

@@ -55,9 +55,9 @@ export default router.post(
         });
         result = await vendor.generateImage({ target: { vendorId, modelId }, input });
         result = await normalizeHttpResult(result);
-      } catch (e) {
-        taskRecord(-1, u.error(e).message);
-        throw new Error(u.error(e).message);
+      } catch {
+        taskRecord(-1, "imageGenerationFailed");
+        throw new Error("图片生成失败");
       }
       taskRecord(1);
       const savePath = `${projectId}/workFlow/${u.uuid()}.jpg`;
@@ -65,8 +65,8 @@ export default router.post(
 
       const url = await u.oss.getSmallImageUrl(savePath);
       return res.status(200).send(success({ url }));
-    } catch (e) {
-      res.status(400).send(error(u.error(e).message));
+    } catch {
+      res.status(400).send(error("图片生成失败"));
     }
   },
 );

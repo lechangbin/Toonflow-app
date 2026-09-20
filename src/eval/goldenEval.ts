@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 
+import { inspectTraceSafePayload } from "../diagnostics/traceSafeDiagnostics";
 import { executeGoldenScenario, GOLDEN_SCENARIO_IDS } from "./goldenEvalScenarios";
 
 export const GOLDEN_EVAL_RUNNER_VERSION = "golden-eval-runner@1.0.0";
@@ -191,23 +192,38 @@ function safeErrorKind(error: unknown): string {
   return error.name.replace(/[^A-Za-z0-9_.:-]/g, "").slice(0, 80) || "Error";
 }
 
-const SENSITIVE_ARTIFACT_KEY = /(api[-_]?key|authorization|credential|password|secret|token|raw|response|result|output|body|payload|hidden[-_]?reasoning|chain[-_]?of[-_]?thought)/i;
-const SIGNED_URL = /https?:\/\/\S+[?&](?:signature|sig|token|key|expires|x-amz-[^=]+)=/i;
-const BASE64_PAYLOAD = /^[A-Za-z0-9+/]{80,}={0,2}$/;
-
 export function findUndeclaredGoldenArtifacts(
   artifacts: Record<string, unknown>,
   declaredArtifactNames: readonly string[],
 ): string[] {
-  const declared = new Set(declaredArtifactNames);
-  return Object.keys(artifacts)
-    .map((key, index) => ({ key, index }))
-    .filter(({ key }) => !declared.has(key))
-    // An undeclared key is untrusted input too. Persist its location, not its
-    // content, because credentials are sometimes accidentally used as keys.
-    .map(({ index }) => `artifacts.[undeclared-key:${index}]`)
+  const inspected = inspectTraceSafePayload(artifacts, { allowedTopLevelKeys: declaredArtifactNames });
+  if (inspected.ok) return [];
+  return inspected.violations
+    .filter((entry) => entry.code === "unknownField")
+    .map((entry) => entry.path.replace(/^payload\.\[key:(\d+)\]$/u, "artifacts.[undeclared-key:$1]"))
     .sort();
 }
+
+const GOLDEN_EVAL_ALLOWED_NESTED_ARTIFACT_KEYS = [
+  "assetId",
+  "attempt",
+  "baseName",
+  "digest",
+  "elapsedMs",
+  "errorKind",
+  "filePath",
+  "id",
+  "kind",
+  "name",
+  "prompt",
+  "providerRequestId",
+  "requestId",
+  "scriptId",
+  "stage",
+  "state",
+  "transportCode",
+  "type",
+] as const;
 
 /**
  * Eval evidence is an export boundary. Reject sensitive shapes before JSON
@@ -215,37 +231,26 @@ export function findUndeclaredGoldenArtifacts(
  * look complete while silently dropping its evidence.
  */
 export function findSensitiveGoldenArtifacts(value: unknown, path = "artifacts"): string[] {
-  const findings: string[] = [];
-  const visit = (current: unknown, currentPath: string): void => {
-    if (typeof current === "string") {
-      const compact = current.replace(/[\t\n\f\r ]/g, "");
-      if (SIGNED_URL.test(current) || BASE64_PAYLOAD.test(compact)) findings.push(currentPath);
-      return;
-    }
-    if (
-      Buffer.isBuffer(current) ||
-      current instanceof ArrayBuffer ||
-      ArrayBuffer.isView(current)
-    ) {
-      findings.push(currentPath);
-      return;
-    }
-    if (Array.isArray(current)) {
-      current.forEach((entry, index) => visit(entry, `${currentPath}[${index}]`));
-      return;
-    }
-    if (!isRecord(current)) return;
-    for (const [index, [key, entry]] of Object.entries(current).entries()) {
-      // All scenario object keys are untrusted, including keys that do not
-      // resemble a credential. Keep only their structural position so a
-      // secret used as a dynamic key can never reach the exported report.
-      const entryPath = `${currentPath}.[key:${index}]`;
-      if (SENSITIVE_ARTIFACT_KEY.test(key)) findings.push(`${currentPath}.[sensitive-key:${index}]`);
-      else visit(entry, entryPath);
-    }
-  };
-  visit(value, path);
-  return [...new Set(findings)].sort();
+  if (!isRecord(value)) return [path];
+  const inspected = inspectTraceSafePayload(value, {
+    allowedTopLevelKeys: Object.keys(value),
+    allowedNestedKeys: GOLDEN_EVAL_ALLOWED_NESTED_ARTIFACT_KEYS,
+    nestedNullOnlyKeys: ["prompt", "filePath"],
+  });
+  if (inspected.ok) return [];
+  return inspected.violations
+    .filter(
+      (entry, _index, entries) =>
+        entry.code !== "unknownField" || !entries.some((candidate) => candidate.path === entry.path && candidate !== entry),
+    )
+    .map((entry) => {
+      const structuralPath = entry.path.replace(/^payload/u, path);
+      return ["sensitiveKey", "rawProviderPayload", "hiddenReasoning"].includes(entry.code)
+        ? structuralPath.replace(/\.\[key:(\d+)\]$/u, ".[sensitive-key:$1]")
+        : structuralPath;
+    })
+    .filter((entry, index, entries) => entries.indexOf(entry) === index)
+    .sort();
 }
 
 type GoldenCaseFailure = GoldenEvalCaseResult["failures"][number];

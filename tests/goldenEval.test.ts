@@ -145,6 +145,18 @@ test("evaluation export boundary rejects nested secrets, payloads, and signed UR
     "artifacts.[key:1][6].[key:0]",
   ]);
   assert.deepEqual(findSensitiveGoldenArtifacts({ digest: "a".repeat(64), requestId: "request-123" }), []);
+  const disguisedProvider = { upstreamReply: { detail: "private provider text" } };
+  const disguisedFindings = findSensitiveGoldenArtifacts({ evidence: disguisedProvider });
+  assert.ok(disguisedFindings.length > 0);
+  assert.equal(JSON.stringify(disguisedFindings).includes("upstreamReply"), false);
+  assert.equal(JSON.stringify(disguisedFindings).includes("private provider text"), false);
+  assert.deepEqual(findSensitiveGoldenArtifacts({ evidence: { prompt: null, filePath: null } }), []);
+  assert.ok(findSensitiveGoldenArtifacts({ evidence: { prompt: "private script body" } }).length > 0);
+  assert.ok(findSensitiveGoldenArtifacts({ evidence: { filePath: "C:/Users/private/story.txt" } }).length > 0);
+  assert.ok(
+    findSensitiveGoldenArtifacts({ evidence: { value: "prefix data:image/png;base64," + "A".repeat(100) } }).length > 0,
+  );
+  assert.ok(findSensitiveGoldenArtifacts({ evidence: { value: " data:text/plain;base64,c2VjcmV0" } }).length > 0);
   assert.deepEqual(
     findSensitiveGoldenArtifacts({ rawResponse: {}, providerResponse: {}, vendorResult: {} }),
     [

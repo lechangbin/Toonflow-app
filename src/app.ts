@@ -18,6 +18,7 @@ import { ensureThumbnail, ThumbnailSize } from "@/utils/image";
 import { getDatabaseRuntime, openDatabase } from "@/database";
 import { resolveServerConfig } from "@/server/config";
 import { createHealthRouter } from "@/server/health";
+import { formatTraceSafeLog } from "@/diagnostics/traceSafeDiagnostics";
 
 const app = express();
 const server = http.createServer(app);
@@ -189,10 +190,9 @@ export default async function startServe(randomPort: Boolean = false) {
 
   // 错误处理
   app.use((err: any, _: Request, res: Response, __: NextFunction) => {
-    res.locals.message = err.message;
-    res.locals.error = err;
-    console.error(err);
-    res.status(err.status || 500).send(err);
+    console.error(formatTraceSafeLog(err));
+    const status = typeof err?.status === "number" && err.status >= 400 && err.status < 600 ? err.status : 500;
+    res.status(status).send({ message: status >= 500 ? "服务处理失败" : "请求处理失败" });
   });
 
   const serverConfig = resolveServerConfig();

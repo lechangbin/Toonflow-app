@@ -1,5 +1,13 @@
 import type { Knex } from "knex";
 
+import {
+  inspectTraceSafePayload,
+  projectTraceSafeDiagnostic,
+  type DiagnosticAudience,
+  type TraceSafeDiagnostic,
+  type TraceSafeResult,
+} from "@/diagnostics/traceSafeDiagnostics";
+
 /**
  * 图片生成共享生命周期契约（Issue #39）。
  *
@@ -71,7 +79,9 @@ export class VendorImageGenerationError extends Error {
   constructor(diagnostics: VendorImageFailureDiagnostics) {
     super(`供应商图片生成失败 kind=${diagnostics.kind} stage=${diagnostics.stage}`);
     this.name = "VendorImageGenerationError";
-    this.diagnostics = sanitizeVendorImageFailureDiagnostics(diagnostics);
+    const validated = validateVendorImageFailureDiagnostics(diagnostics);
+    if (!validated) throw new TypeError("Invalid Vendor image failure diagnostics");
+    this.diagnostics = validated;
   }
 }
 
@@ -97,7 +107,7 @@ function sanitizeDiagnosticIdentifier(value: unknown, limit: number): string | u
   return normalized && SAFE_DIAGNOSTIC_IDENTIFIER.test(normalized) ? normalized : undefined;
 }
 
-/** 白名单字段 + 标量截断：任何来源的诊断在持久化前都必须经过本函数。 */
+/** 旧调用兼容 helper；导出或持久化边界必须改用严格 validator，不得依赖此函数纠错。 */
 export function sanitizeVendorImageFailureDiagnostics(
   diagnostics: VendorImageFailureDiagnostics,
 ): VendorImageFailureDiagnostics {
@@ -133,6 +143,102 @@ export function sanitizeVendorImageFailureDiagnostics(
   };
 }
 
+/** 仅表示 Vendor 提供的诊断契约被拒绝；不携带原始诊断或异常正文。 */
+export class VendorImageDiagnosticContractError extends Error {
+  constructor() {
+    super("Invalid Vendor image failure diagnostics");
+    this.name = "VendorImageDiagnosticContractError";
+  }
+}
+
+/** Existing Image Vendor diagnostics adapt into the shared Harness taxonomy without exposing free text. */
+export function projectVendorImageFailureDiagnostic(
+  diagnostics: VendorImageFailureDiagnostics,
+  audience: DiagnosticAudience,
+): TraceSafeResult<TraceSafeDiagnostic> {
+  const inspected = inspectTraceSafePayload(diagnostics, {
+    allowedTopLevelKeys: [
+      "kind",
+      "stage",
+      "attempt",
+      "elapsedMs",
+      "transportCode",
+      "httpStatus",
+      "providerRequestId",
+    ],
+  });
+  if (!inspected.ok) return inspected;
+  const generationOutcomeUnknown =
+    diagnostics.stage === "generation" && ["timeout", "transport", "httpError"].includes(diagnostics.kind);
+  const effectWasObserved = diagnostics.stage === "download" || diagnostics.kind === "noImageData";
+  return projectTraceSafeDiagnostic(
+    {
+      failureClass: "Vendor",
+      stage:
+        diagnostics.stage === "download"
+          ? "image-download"
+          : diagnostics.stage === "generation"
+            ? "image-generation"
+            : diagnostics.stage,
+      kind: diagnostics.kind,
+      severity: "error",
+      certainty: generationOutcomeUnknown ? "unknown-effect" : effectWasObserved ? "known-effect" : "known-no-effect",
+      expectedness: "unexpected",
+      retryDisposition: generationOutcomeUnknown || effectWasObserved ? "reconcile-first" : "safe-retry",
+      attributes: {
+        attempt: diagnostics.attempt,
+        ...(diagnostics.elapsedMs !== undefined ? { elapsedMs: diagnostics.elapsedMs } : {}),
+        ...(diagnostics.transportCode !== undefined ? { transportCode: diagnostics.transportCode } : {}),
+        ...(diagnostics.httpStatus !== undefined ? { httpStatus: diagnostics.httpStatus } : {}),
+        ...(diagnostics.providerRequestId !== undefined ? { providerRequestId: diagnostics.providerRequestId } : {}),
+      },
+    },
+    audience,
+  );
+}
+
+/** 严格接受 Vendor 失败契约；未知字段、非法枚举和非法数值一律拒绝，不做静默纠正。 */
+export function validateVendorImageFailureDiagnostics(diagnostics: unknown): VendorImageFailureDiagnostics | null {
+  if (!diagnostics || typeof diagnostics !== "object") return null;
+  const projected = projectVendorImageFailureDiagnostic(diagnostics as VendorImageFailureDiagnostics, "trace");
+  if (!projected.ok) return null;
+  const raw = diagnostics as VendorImageFailureDiagnostics;
+  return {
+    kind: raw.kind,
+    stage: raw.stage,
+    attempt: raw.attempt,
+    ...(raw.elapsedMs !== undefined ? { elapsedMs: raw.elapsedMs } : {}),
+    ...(raw.transportCode !== undefined ? { transportCode: raw.transportCode } : {}),
+    ...(raw.httpStatus !== undefined ? { httpStatus: raw.httpStatus } : {}),
+    ...(raw.providerRequestId !== undefined ? { providerRequestId: raw.providerRequestId } : {}),
+  };
+}
+
+export type VendorImageFailureExtraction =
+  | { status: "absent" }
+  | { status: "valid"; diagnostics: VendorImageFailureDiagnostics }
+  | { status: "rejected"; kind: "contractRejected" };
+
+/** 区分“未携带诊断”与“携带了非法诊断”，防止持久化边界静默丢弃被拒绝证据。 */
+export function inspectVendorImageFailure(error: unknown): VendorImageFailureExtraction {
+  if (error instanceof VendorImageGenerationError) return { status: "valid", diagnostics: error.diagnostics };
+  if (error instanceof VendorImageDiagnosticContractError) {
+    return { status: "rejected", kind: "contractRejected" };
+  }
+  if (!error || typeof error !== "object") return { status: "absent" };
+  let candidate: unknown;
+  try {
+    if (!("imageFailure" in error)) return { status: "absent" };
+    candidate = (error as { imageFailure?: unknown }).imageFailure;
+  } catch {
+    return { status: "rejected", kind: "contractRejected" };
+  }
+  const diagnostics = validateVendorImageFailureDiagnostics(candidate);
+  return diagnostics
+    ? { status: "valid", diagnostics }
+    : { status: "rejected", kind: "contractRejected" };
+}
+
 /** 取消也属于共享状态机：只允许活跃态一次性迁移到“已取消”。 */
 export async function cancelImageGeneration(db: Knex, imageId: number): Promise<boolean> {
   const updated = await db("o_image")
@@ -157,13 +263,8 @@ export function isTimeoutLikeError(error: unknown): boolean {
 
 /** 从任意供应商错误中提取结构化诊断（类型化错误或 `error.imageFailure`）；没有时返回 null。 */
 export function extractVendorImageFailure(error: unknown): VendorImageFailureDiagnostics | null {
-  if (error instanceof VendorImageGenerationError) return error.diagnostics;
-  if (!error || typeof error !== "object") return null;
-  const candidate = (error as { imageFailure?: unknown }).imageFailure;
-  if (!candidate || typeof candidate !== "object") return null;
-  const raw = candidate as Partial<VendorImageFailureDiagnostics>;
-  if (typeof raw.kind !== "string") return null;
-  return sanitizeVendorImageFailureDiagnostics(raw as VendorImageFailureDiagnostics);
+  const inspected = inspectVendorImageFailure(error);
+  return inspected.status === "valid" ? inspected.diagnostics : null;
 }
 
 /** 供应商失败诊断 → 稳定 failure kind（超时/下载失败与普通失败分别展示）。 */

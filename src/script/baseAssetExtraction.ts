@@ -599,7 +599,7 @@ export function createDefaultBaseAssetExtractionDependencies(): BaseAssetExtract
     },
     loadSkillFile: createDefaultBaseAssetSkillFileLoader(),
     now: () => Date.now(),
-    log: (entry) => console.log(`[baseAssetExtraction] ${JSON.stringify(entry)}`),
+    log: () => undefined,
   };
 }
 

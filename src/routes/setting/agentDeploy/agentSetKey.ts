@@ -48,8 +48,8 @@ export default router.post(
         }));
         res.status(200).send(success("一键填入成功"));
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      console.error("Agent KEY 验证失败");
       inputValue.apiKey = "";
       await getDatabaseRuntime().work((db) => db("o_vendorConfig")
         .where("id", "toonflow")

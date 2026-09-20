@@ -132,9 +132,9 @@ export default router.post(
           });
           result = await vendor.generateImage({ target: { vendorId, modelId }, input });
           result = await normalizeHttpResult(result);
-        } catch (e) {
-          taskRecord(-1, u.error(e).message);
-          throw new Error(u.error(e).message);
+        } catch {
+          taskRecord(-1, "imageGenerationFailed");
+          throw new Error("图片生成失败");
         }
         taskRecord(1);
         const savePath = `/${projectId}/assets/${scriptId}/${u.uuid()}.jpg`;
@@ -145,13 +145,13 @@ export default router.post(
             state: "已完成",
           }),
         );
-      } catch (e) {
+      } catch {
         await getDatabaseRuntime().work((db) =>
           db("o_storyboard")
             .where("id", item.id)
             .update({
               filePath: "",
-              reason: u.error(e).message,
+              reason: "图片生成失败",
               state: "生成失败",
             }),
         );

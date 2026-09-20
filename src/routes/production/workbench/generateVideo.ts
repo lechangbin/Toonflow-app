@@ -24,7 +24,7 @@ export default router.post("/", async (req, res, next) => {
       requestedBy: request.requestedBy,
       items: [request.item],
     });
-    void started.completion.catch((error) => console.error("Video Production Action completion update failed", error));
+    void started.completion.catch(() => console.error("Video Production Action completion update failed"));
     res.status(200).send(success({ actionId: started.actionId, ...started.tasks[0] }));
   } catch (error) {
     next(error);
