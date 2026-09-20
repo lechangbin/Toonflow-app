@@ -1,0 +1,1019 @@
+{
+  "schemaVersion": "toonflow.golden-eval-result.v1",
+  "suiteId": "agent-harness-golden-v1",
+  "runId": "agent-harness-golden-v1:f591cf24090b:golden-eval-runner@1.0.0",
+  "runnerVersion": "golden-eval-runner@1.0.0",
+  "manifestHash": "f591cf24090b041b6b573fa14a7d63b08283dbbb30dabbfc0bef148072b57940",
+  "baselineRevision": "6c4f4d5fadb1463b7ae7bafe422d46b34407dd42",
+  "executionTier": "deterministic-local-fake",
+  "commands": [
+    "yarn eval:golden",
+    "yarn test",
+    "yarn lint",
+    "yarn build",
+    "git diff --check"
+  ],
+  "environment": {
+    "temporarySqlite": true,
+    "modelAdapter": "deterministic-fake",
+    "vendorAdapter": "deterministic-fake",
+    "paidProviderCalls": 0
+  },
+  "summary": {
+    "defined": 18,
+    "executed": 18,
+    "hardGate": {
+      "passed": 18,
+      "failed": 0,
+      "denominator": 18
+    },
+    "executions": {
+      "valid": 18,
+      "invalid": 0,
+      "missing": 0,
+      "denominator": 18
+    },
+    "quality": {
+      "reviewed": 0,
+      "pending": 18,
+      "denominator": 18,
+      "scoreCounts": {
+        "0": 0,
+        "1": 0,
+        "2": 0
+      }
+    },
+    "partitions": {
+      "development": {
+        "passed": 12,
+        "failed": 0,
+        "denominator": 12
+      },
+      "holdout": {
+        "passed": 3,
+        "failed": 0,
+        "denominator": 3
+      },
+      "incident-regression": {
+        "passed": 3,
+        "failed": 0,
+        "denominator": 3
+      }
+    },
+    "failuresByTaxonomy": {}
+  },
+  "cases": [
+    {
+      "id": "DEV-EXT-001",
+      "partition": "development",
+      "scenario": "extraction-two-stage",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "extraction",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "two-model-calls",
+          "statement": "One extraction and one audit call only",
+          "passed": true
+        },
+        {
+          "id": "review-addition",
+          "statement": "Evidence-backed audit addition is retained",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "modelCallCount",
+          "candidateNames"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "modelCallCount": 2,
+        "candidateNames": [
+          "吴广",
+          "胡亥",
+          "大泽乡"
+        ]
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-EXT-002",
+      "partition": "development",
+      "scenario": "extraction-deterministic",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "merge",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "stable-output",
+          "statement": "Reordered Script IDs do not change staged output",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "firstDigest",
+          "secondDigest"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "firstDigest": "6a034dfb16906b0defde4d60d7a8d89f7dbde6a69f59bc2830c76e6e13c38ac7",
+        "secondDigest": "6a034dfb16906b0defde4d60d7a8d89f7dbde6a69f59bc2830c76e6e13c38ac7"
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-EXT-003",
+      "partition": "development",
+      "scenario": "extraction-derived-fold",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "merge",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "derived-folded",
+          "statement": "Derived state is folded",
+          "passed": true
+        },
+        {
+          "id": "base-retained",
+          "statement": "Base identity remains",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "candidateNames",
+          "mergeLogs"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "candidateNames": [
+          "大泽乡"
+        ],
+        "mergeLogs": [
+          {
+            "stage": "merge",
+            "kind": "stateVariantFolded",
+            "type": "scene",
+            "name": "大泽乡·雨夜",
+            "baseName": "大泽乡"
+          }
+        ]
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-EXT-004",
+      "partition": "development",
+      "scenario": "extraction-invalid-evidence",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "Extraction",
+        "stage": "validation",
+        "kind": "invalidOutput"
+      },
+      "hardGates": [
+        {
+          "id": "invalid-evidence-rejected",
+          "statement": "Invalid evidence fails closed",
+          "passed": true
+        },
+        {
+          "id": "zero-write",
+          "statement": "No Asset is written",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "failureKind",
+          "assetCount"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "failureKind": "invalidOutput",
+        "assetCount": 0
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-PRM-001",
+      "partition": "development",
+      "scenario": "prompt-reference-priority",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "prompt-compilation",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "priority-wins",
+          "statement": "Highest priority reference wins",
+          "passed": true
+        },
+        {
+          "id": "no-duplicate-control",
+          "statement": "Controlled dimensions are unique",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "selectedReferenceIds",
+          "generationPromptHash"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "selectedReferenceIds": [
+          "ref-low",
+          "ref-high"
+        ],
+        "generationPromptHash": "dba345eddb5e71fa6ed073a96dcc830e5a833759f76ee9de224846298ce7e5f4"
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-PRM-002",
+      "partition": "development",
+      "scenario": "prompt-no-reference",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "prompt-compilation",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "no-reference-clause",
+          "statement": "No reference wording is invented",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "selectedReferenceIds",
+          "referenceClause"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "selectedReferenceIds": [],
+        "referenceClause": ""
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-PRM-003",
+      "partition": "development",
+      "scenario": "prompt-character-contrast",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "prompt-compilation",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "prompts-differ",
+          "statement": "Sibling prompts differ",
+          "passed": true
+        },
+        {
+          "id": "identity-details",
+          "statement": "Each prompt retains named identity details",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "promptHashes",
+          "identityMarkers"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "promptHashes": [
+          "0128202338ce13ea33222a5cb3d25bf81a386fcf0be50983cd59acaca5aa3729",
+          "3a7014ef9f77d20b47c033397344bad168c85ad9c4e5f48bbbdc8ea6571b15c0"
+        ],
+        "identityMarkers": [
+          "玄黑",
+          "粗麻"
+        ]
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-DER-001",
+      "partition": "development",
+      "scenario": "derived-multi-dimension",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "derived-prompt",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "dimensions-composed",
+          "statement": "Compatible dimensions compose",
+          "passed": true
+        },
+        {
+          "id": "contract-separated",
+          "statement": "Preserve/change/exclude are explicit",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "generationPromptHash",
+          "contractMarkers"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "generationPromptHash": "60ea8e6e32fcca6426df98521ab3caa3a0fd9f1339de4a172f1dc570de254fd6",
+        "contractMarkers": [
+          "preserve",
+          "change",
+          "exclude"
+        ]
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-DER-002",
+      "partition": "development",
+      "scenario": "derived-invalid-contract",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "Decision",
+        "stage": "derived-prompt",
+        "kind": "derivedPromptCompilationFailed"
+      },
+      "hardGates": [
+        {
+          "id": "invalid-contract-rejected",
+          "statement": "Missing preserve entries fail closed",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "failureKind"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "failureKind": "derivedPromptCompilationFailed"
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-REF-001",
+      "partition": "development",
+      "scenario": "reference-limit",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "Tool",
+        "stage": "reference-admission",
+        "kind": "referenceLimitExceeded"
+      },
+      "hardGates": [
+        {
+          "id": "seventh-rejected",
+          "statement": "Reference limit is enforced",
+          "passed": true
+        },
+        {
+          "id": "no-media-side-effect",
+          "statement": "Rejected upload creates no media",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "failureKind",
+          "mediaWriteCount",
+          "referenceCount"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "failureKind": "referenceLimitExceeded",
+        "mediaWriteCount": 0,
+        "referenceCount": 6
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-REC-001",
+      "partition": "development",
+      "scenario": "recovery-interrupted-images",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "recovery",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "active-failed",
+          "statement": "All active states fail on restart",
+          "passed": true
+        },
+        {
+          "id": "terminal-preserved",
+          "statement": "Terminal states are preserved",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "statesBefore",
+          "statesAfter"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "statesBefore": [
+          "等待中",
+          "生成中",
+          "下载中",
+          "已完成",
+          "已取消"
+        ],
+        "statesAfter": [
+          "生成失败",
+          "生成失败",
+          "生成失败",
+          "已完成",
+          "已取消"
+        ]
+      },
+      "failures": []
+    },
+    {
+      "id": "DEV-REC-002",
+      "partition": "development",
+      "scenario": "failure-diagnostic-redaction",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "Vendor",
+        "stage": "generation",
+        "kind": "imageGenerationFailed"
+      },
+      "hardGates": [
+        {
+          "id": "secret-redacted",
+          "statement": "Sensitive payload is absent",
+          "passed": true
+        },
+        {
+          "id": "safe-fields-retained",
+          "statement": "Safe failure facts remain",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "sanitizedDiagnostic",
+          "sanitizedText"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "sanitizedDiagnostic": {
+          "kind": "transport",
+          "stage": "generation",
+          "attempt": 1,
+          "elapsedMs": 321,
+          "transportCode": "ECONNRESET",
+          "providerRequestId": "request-123"
+        },
+        "sanitizedText": "[signed-url-redacted] token abc [redacted]"
+      },
+      "failures": []
+    },
+    {
+      "id": "HOLD-EXT-001",
+      "partition": "holdout",
+      "scenario": "extraction-unknown-script",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "Extraction",
+        "stage": "validation",
+        "kind": "invalidOutput"
+      },
+      "hardGates": [
+        {
+          "id": "scope-rejected",
+          "statement": "Out-of-scope Script evidence fails",
+          "passed": true
+        },
+        {
+          "id": "zero-write",
+          "statement": "No Asset is written",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "failureKind",
+          "assetCount"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "failureKind": "invalidOutput",
+        "assetCount": 0
+      },
+      "failures": []
+    },
+    {
+      "id": "HOLD-DER-001",
+      "partition": "holdout",
+      "scenario": "derived-reference-forbidden",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "Decision",
+        "stage": "derived-resolution",
+        "kind": "derivedAssetReferenceForbidden"
+      },
+      "hardGates": [
+        {
+          "id": "reference-forbidden",
+          "statement": "Human reference is rejected",
+          "passed": true
+        },
+        {
+          "id": "no-external-call",
+          "statement": "No external adapter runs",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "failureKind",
+          "modelCallCount",
+          "vendorCallCount"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "failureKind": "derivedAssetReferenceForbidden",
+        "modelCallCount": 0,
+        "vendorCallCount": 0
+      },
+      "failures": []
+    },
+    {
+      "id": "HOLD-REC-001",
+      "partition": "holdout",
+      "scenario": "polling-missing-row",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "polling",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "complete-denominator",
+          "statement": "Every requested ID has a row",
+          "passed": true
+        },
+        {
+          "id": "missing-is-terminally-visible",
+          "statement": "Missing data is explicit null",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "pollingRows"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "pollingRows": [
+          {
+            "id": 101,
+            "state": null,
+            "filePath": null,
+            "prompt": null,
+            "errorKind": null
+          },
+          {
+            "id": 999,
+            "state": null,
+            "filePath": null,
+            "prompt": null,
+            "errorKind": null
+          }
+        ]
+      },
+      "failures": []
+    },
+    {
+      "id": "INC-IMG-001",
+      "partition": "incident-regression",
+      "scenario": "timeout-no-replay",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "Vendor",
+        "stage": "generation",
+        "kind": "imageGenerationTimeout"
+      },
+      "hardGates": [
+        {
+          "id": "timeout-classified",
+          "statement": "Timeout has stable kind",
+          "passed": true
+        },
+        {
+          "id": "single-call",
+          "statement": "Ambiguous call is not replayed",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "failureKind",
+          "vendorCallCount",
+          "imageState",
+          "mediaWriteCount"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "failureKind": "imageGenerationTimeout",
+        "vendorCallCount": 1,
+        "imageState": "生成失败",
+        "mediaWriteCount": 0
+      },
+      "failures": []
+    },
+    {
+      "id": "INC-IMG-002",
+      "partition": "incident-regression",
+      "scenario": "late-success-after-cancel",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "None",
+        "stage": "cancellation",
+        "kind": "none"
+      },
+      "hardGates": [
+        {
+          "id": "cancel-wins",
+          "statement": "Cancelled state remains terminal",
+          "passed": true
+        },
+        {
+          "id": "late-write-fenced",
+          "statement": "Late success writes nothing",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "cancelled",
+          "lateUpdateCount",
+          "finalState",
+          "failureKind",
+          "vendorCallCount",
+          "mediaWriteCount"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "cancelled": true,
+        "lateUpdateCount": 0,
+        "finalState": "已取消",
+        "failureKind": "cancelled",
+        "vendorCallCount": 1,
+        "mediaWriteCount": 0
+      },
+      "failures": []
+    },
+    {
+      "id": "INC-EXT-001",
+      "partition": "incident-regression",
+      "scenario": "replacement-atomic-rollback",
+      "passed": true,
+      "expectedFailureClass": {
+        "primary": "Artifact",
+        "stage": "persistence",
+        "kind": "persistenceFailed"
+      },
+      "hardGates": [
+        {
+          "id": "stable-failure",
+          "statement": "Failure is classified",
+          "passed": true
+        },
+        {
+          "id": "transaction-rolled-back",
+          "statement": "Replacement is all-or-nothing",
+          "passed": true
+        },
+        {
+          "id": "artifact-export-contract",
+          "statement": "Exported artifacts match the manifest allowlist and contain no credentials, binary/Base64 payloads, signed URLs, raw responses, or hidden reasoning",
+          "passed": true
+        },
+        {
+          "id": "required-artifacts",
+          "statement": "Every required artifact is present",
+          "passed": true
+        }
+      ],
+      "qualityReview": {
+        "rubricVersion": "production-quality@1.0.0",
+        "state": "pending",
+        "evaluator": null,
+        "score": null,
+        "evidence": [
+          "failureKind",
+          "assetsAfter",
+          "linksAfter"
+        ],
+        "reason": "T02 records the anchored human rubric but does not fabricate a human score."
+      },
+      "artifacts": {
+        "failureKind": "persistenceFailed",
+        "assetsAfter": [
+          {
+            "id": 1,
+            "name": "旧资产"
+          }
+        ],
+        "linksAfter": [
+          {
+            "scriptId": 1,
+            "assetId": 1
+          }
+        ]
+      },
+      "failures": []
+    }
+  ]
+}
