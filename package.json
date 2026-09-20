@@ -34,6 +34,8 @@
     "debug:ai": "npx @ai-sdk/devtools",
     "license": "node scripts/license.ts",
     "vendor2json": "tsx scripts/vendor2json.ts",
+    "eval:golden": "tsx scripts/runGoldenEval.ts",
+    "eval:golden:write": "tsx scripts/runGoldenEval.ts --write",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
     "docker:stop": "docker compose stop"
