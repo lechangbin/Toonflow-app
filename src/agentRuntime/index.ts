@@ -357,12 +357,17 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           dependencies.work((db) => db("o_project").where("id", claimed.projectId).first()),
           dependencies.work((db) => db("o_novel").where("projectId", claimed.projectId).count<{ count: number }[]>("id as count").first()),
         ]);
-        if (!project) throw new AgentRunProjectNotFoundError(claimed.projectId);
       } catch (error) {
+        throw new ClassifiedAgentRunError({
+          failureClass: "Context", stage: "context-build", kind: "executionFailed", severity: "error",
+          certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry",
+        }, error);
+      }
+      if (!project) {
         throw new ClassifiedAgentRunError({
           failureClass: "Context", stage: "context-build", kind: "contextMissing", severity: "error",
           certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "never",
-        }, error);
+        }, new AgentRunProjectNotFoundError(claimed.projectId));
       }
       let call: ConfiguredTextCall;
       try {

@@ -271,6 +271,23 @@ test("a failed Model Step stores only a Trace-safe diagnostic", async () => {
   }
 });
 
+test("a Project fact read failure is classified as retryable Context execution failure", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const started = await harness.runtime.start(startInput);
+    await db.schema.dropTable("o_novel");
+    await harness.flush();
+    const failed = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    const diagnostic = failed?.traces.at(-1)?.diagnostic;
+    assert.equal(diagnostic?.failureClass, "Context");
+    assert.equal(diagnostic?.kind, "executionFailed");
+    assert.equal(diagnostic?.retryDisposition, "safe-retry");
+  } finally {
+    await db.destroy();
+  }
+});
+
 test("Run input and final output reject credentials before durable persistence", async () => {
   const db = await createDatabase();
   try {

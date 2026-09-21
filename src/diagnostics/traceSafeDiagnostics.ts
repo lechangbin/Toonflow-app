@@ -135,7 +135,7 @@ const BASE64_DATA_URI = /data:[^,\s]*;base64,/iu;
 const SIGNED_URL = /https?:\/\/\S+[?&](?:x-amz-signature|x-amz-credential|x-amz-security-token|x-tos-signature|signature|sig|token|key|expires)=/iu;
 const ANY_URL = /https?:\/\/\S+/iu;
 const SECRET_VALUE = /(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}|\b(?:sk|ak)[-_][A-Za-z0-9_-]{8,}|\b(?:npm_[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})\b|\b[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----/iu;
-const SECRET_ASSIGNMENT = /\b(?:api[-_ ]?key|authorization|credential|pass(?:word|wd)?|secret|session[-_ ]?token|access[-_ ]?token|refresh[-_ ]?token)\s*[:=]\s*["']?[^\s"'&,;]{4,}/iu;
+const SECRET_ASSIGNMENT = /\b(?:api[-_ ]?key|authorization|cookie|credential|pass(?:word|wd)?|secret|token|session[-_ ]?token|access[-_ ]?token|refresh[-_ ]?token)\s*[:=]\s*["']?[^\s"'&,;]{4,}/iu;
 const SENSITIVE_KEY = /(?:api[-_]?key|authorization|cookie|credential|password|secret|session[-_]?token|access[-_]?token|refresh[-_]?token|(?:^|[-_])token(?:$|[-_]))/iu;
 const RAW_PROVIDER_KEY = /^(?:raw(?:[-_]?provider)?(?:[-_]?(?:response|request|payload|result|output|body))?|provider(?:[-_]?(?:response|request|payload|result|output|body))|vendor(?:[-_]?(?:response|request|payload|result|output|body))|response|request[-_]?body|response[-_]?body|body|payload)$/iu;
 const HIDDEN_REASONING_KEY = /^(?:reasoning|reasoning[-_]?content|hidden[-_]?reasoning|thinking|chain[-_]?of[-_]?thought)$/iu;
