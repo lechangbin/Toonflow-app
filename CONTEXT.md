@@ -80,6 +80,18 @@ _Avoid_: Video Agent
 Project-isolated retained conversation knowledge used to maintain continuity across Agent sessions.
 _Avoid_: Chat history
 
+**Agent Run**:
+A durable execution of one scoped request by an Agent role, with an authoritative lifecycle that survives transport disconnects and process restarts.
+_Avoid_: Production Action, Socket session, chat message
+
+**Agent Step**:
+An ordered, typed unit of work within an Agent Run whose lifecycle and result can be inspected independently.
+_Avoid_: Generation Task, callback, stream chunk
+
+**Agent Trace**:
+An ordered, safe record of lifecycle and diagnostic events that explains an Agent Run without retaining hidden reasoning or raw provider payloads.
+_Avoid_: Application log, transcript, chain of thought
+
 **Skill**:
 An editable production instruction that guides an Agent role or a specialized execution step.
 _Avoid_: Prompt template

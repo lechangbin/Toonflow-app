@@ -171,6 +171,22 @@ function inspectString(value: string, path: string, violations: TraceSafeViolati
   if (SECRET_VALUE.test(value)) addViolation(violations, "secretValue", path);
 }
 
+/**
+ * Checks user-visible text before durable persistence. Public URLs are valid
+ * answer content, while credentials, signed URLs and encoded binary payloads
+ * remain forbidden. The text itself is never copied into a violation.
+ */
+export function inspectPersistableText(value: string): TraceSafeResult<string> {
+  const violations: TraceSafeViolation[] = [];
+  const compact = value.replace(/[\t\n\f\r ]/gu, "");
+  if (SIGNED_URL.test(value)) addViolation(violations, "signedUrl", "content");
+  if (BASE64_DATA_URI.test(value) || BASE64_PAYLOAD.test(compact)) {
+    addViolation(violations, "base64Payload", "content");
+  }
+  if (SECRET_VALUE.test(value)) addViolation(violations, "secretValue", "content");
+  return violations.length === 0 ? { ok: true, value } : { ok: false, violations };
+}
+
 function inspectValue(
   value: unknown,
   path: string,

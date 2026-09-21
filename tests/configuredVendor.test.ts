@@ -369,6 +369,11 @@ test("invokes and streams text with the resolved logical model", async () => {
     for await (const chunk of streamed.textStream) text += chunk;
     assert.equal(text, "hello");
     assert.equal(createdModelIds[1], "text-model|true|0");
+
+    const call = await vendor.openTextCall({ kind: "logical", key: "scriptAgent" });
+    assert.deepEqual(call.target, { vendorId: "text-vendor", modelId: "text-model" });
+    assert.equal((await call.invokeText({ prompt: "bound" })).text, "hello");
+    assert.equal(createdModelIds[2], "text-model|true|0");
   } finally {
     await knex.destroy();
   }

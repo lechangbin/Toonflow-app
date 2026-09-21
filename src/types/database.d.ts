@@ -1,4 +1,4 @@
-// @db-hash ced8385b810cce28d32937ab7743771e
+// @db-hash 0204534a2c320035f9693473f63aa539
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -25,6 +25,60 @@ export interface o_agentDeploy {
   'temperature'?: number | null;
   'type'?: string | null;
   'vendorId'?: string | null;
+}
+export interface o_agentRun {
+  'allowedActions': string;
+  'attentionReason'?: string | null;
+  'clientRequestId': string;
+  'completedAt'?: number | null;
+  'createdAt': number;
+  'failureDiagnostic'?: string | null;
+  'id'?: string;
+  'input': string;
+  'projectId': number;
+  'requestFingerprint': string;
+  'role': string;
+  'scope': string;
+  'scriptId'?: number | null;
+  'startedAt'?: number | null;
+  'status': string;
+  'updatedAt': number;
+  'version': number;
+  'waitingReason'?: string | null;
+}
+export interface o_agentRunOutput {
+  'content': string;
+  'contentHash': string;
+  'createdAt': number;
+  'id'?: string;
+  'kind': string;
+  'runId': string;
+  'schemaVersion': string;
+  'stepId': string;
+}
+export interface o_agentRunStep {
+  'completedAt'?: number | null;
+  'id'?: string;
+  'kind': string;
+  'logicalTarget': string;
+  'ordinal': number;
+  'promptFingerprint': string;
+  'resolvedTarget'?: string | null;
+  'runId': string;
+  'startedAt'?: number | null;
+  'status': string;
+}
+export interface o_agentTrace {
+  'createdAt': number;
+  'diagnostic'?: string | null;
+  'diagnosticSchemaVersion'?: string | null;
+  'eventType': string;
+  'id'?: string;
+  'runId': string;
+  'runStatus'?: string | null;
+  'sequence': number;
+  'stepId'?: string | null;
+  'stepStatus'?: string | null;
 }
 export interface o_agentWorkData {
   'createTime'?: number | null;
@@ -344,6 +398,10 @@ export interface o_videoTrack {
 export interface DB {
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
+  "o_agentRun": o_agentRun;
+  "o_agentRunOutput": o_agentRunOutput;
+  "o_agentRunStep": o_agentRunStep;
+  "o_agentTrace": o_agentTrace;
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;
   "o_artStyle": o_artStyle;

@@ -87,6 +87,13 @@ export interface TextStreamRequest {
  * persisted tuning instead of re-resolving the logical role per call.
  */
 export interface ConfiguredTextCall {
+  /** Safe, already-resolved execution identity; contains no credentials or Vendor source. */
+  readonly target: {
+    readonly vendorId: string;
+    readonly modelId: string;
+    readonly temperature?: number;
+    readonly maxOutputTokens?: number;
+  };
   invokeText(input: TextInvokeInput): ReturnType<typeof generateText>;
 }
 

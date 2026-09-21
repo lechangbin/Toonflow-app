@@ -602,6 +602,85 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["id"]);
       },
     },
+    // Agent Run：一次可跨刷新与进程重启检查的持久化 Agent 请求
+    {
+      name: "o_agentRun",
+      builder: (table) => {
+        table.text("id").notNullable();
+        table.integer("projectId").notNullable();
+        table.integer("scriptId");
+        table.string("role").notNullable();
+        table.string("scope").notNullable();
+        table.text("clientRequestId").notNullable();
+        table.text("requestFingerprint").notNullable();
+        table.text("input").notNullable();
+        table.string("status").notNullable();
+        table.string("waitingReason");
+        table.string("attentionReason");
+        table.text("allowedActions").notNullable();
+        table.integer("version").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.integer("startedAt");
+        table.integer("completedAt");
+        table.text("failureDiagnostic");
+        table.primary(["id"]);
+        table.unique(["projectId", "role", "scope", "clientRequestId"]);
+        table.index(["projectId", "createdAt"]);
+      },
+    },
+    // Agent Step：Run 内有序、可独立检查的执行步骤
+    {
+      name: "o_agentRunStep",
+      builder: (table) => {
+        table.text("id").notNullable();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.integer("ordinal").notNullable();
+        table.string("kind").notNullable();
+        table.string("logicalTarget").notNullable();
+        table.string("resolvedTarget");
+        table.text("promptFingerprint").notNullable();
+        table.string("status").notNullable();
+        table.integer("startedAt");
+        table.integer("completedAt");
+        table.primary(["id"]);
+        table.unique(["runId", "ordinal"]);
+      },
+    },
+    // Agent Run Output：只保存最终可展示输出，不保存隐藏推理或 Provider 原始负载
+    {
+      name: "o_agentRunOutput",
+      builder: (table) => {
+        table.text("id").notNullable();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("stepId").notNullable().references("id").inTable("o_agentRunStep");
+        table.string("kind").notNullable();
+        table.text("content").notNullable();
+        table.text("contentHash").notNullable();
+        table.string("schemaVersion").notNullable();
+        table.integer("createdAt").notNullable();
+        table.primary(["id"]);
+        table.unique(["runId", "stepId"]);
+      },
+    },
+    // Agent Trace：Run 内单调有序的安全生命周期与诊断事件
+    {
+      name: "o_agentTrace",
+      builder: (table) => {
+        table.text("id").notNullable();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("stepId").references("id").inTable("o_agentRunStep");
+        table.integer("sequence").notNullable();
+        table.string("eventType").notNullable();
+        table.string("runStatus");
+        table.string("stepStatus");
+        table.string("diagnosticSchemaVersion");
+        table.text("diagnostic");
+        table.integer("createdAt").notNullable();
+        table.primary(["id"]);
+        table.unique(["runId", "sequence"]);
+      },
+    },
     //视频
     {
       name: "o_video",

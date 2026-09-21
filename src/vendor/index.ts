@@ -104,6 +104,12 @@ async function openTextCallImpl(
 ): Promise<ConfiguredTextCall> {
   const resolved = await resolveTextTarget(dependencies, target);
   return {
+    target: {
+      vendorId: resolved.vendorId,
+      modelId: resolved.modelId,
+      ...(resolved.temperature !== undefined ? { temperature: resolved.temperature } : {}),
+      ...(resolved.maxOutputTokens !== undefined ? { maxOutputTokens: resolved.maxOutputTokens } : {}),
+    },
     invokeText: (input) => invokeWithResolvedModel(dependencies, resolved, input),
   };
 }
