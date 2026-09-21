@@ -9,6 +9,8 @@ import {
   projectTraceSafeDiagnostic,
   TRACE_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
   type TraceSafeDiagnostic,
+  type TraceSafeDiagnosticInput,
+  validateTraceSafeDiagnostic,
 } from "@/diagnostics/traceSafeDiagnostics";
 import type { AIMessage } from "@/socket/chatMessagesData";
 import { getDefaultConfiguredVendor, type ConfiguredTextCall, type TextModelTarget } from "@/vendor";
@@ -139,6 +141,13 @@ export class AgentRunContentRejectedError extends Error {
   }
 }
 
+export class AgentRunEvidenceCorruptError extends Error {
+  constructor() {
+    super("Agent Run 持久化证据不符合安全契约");
+    this.name = "AgentRunEvidenceCorruptError";
+  }
+}
+
 function fingerprint(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
@@ -150,6 +159,19 @@ function parseJson<T>(value: unknown, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function parseTraceDiagnostic(value: unknown): TraceSafeDiagnostic {
+  if (typeof value !== "string") throw new AgentRunEvidenceCorruptError();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new AgentRunEvidenceCorruptError();
+  }
+  const validated = validateTraceSafeDiagnostic(parsed, "trace");
+  if (!validated.ok) throw new AgentRunEvidenceCorruptError();
+  return validated.value;
 }
 
 function optionalNumber(value: unknown): number | undefined {
@@ -207,37 +229,43 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
       eventType: trace.eventType,
       ...(trace.runStatus ? { runStatus: parseAgentRunStatus(trace.runStatus) } : {}),
       ...(trace.stepStatus ? { stepStatus: parseAgentRunStepStatus(trace.stepStatus) } : {}),
-      ...(trace.diagnostic ? { diagnostic: parseJson<TraceSafeDiagnostic>(trace.diagnostic, undefined as never) } : {}),
+      ...(trace.diagnostic ? { diagnostic: parseTraceDiagnostic(trace.diagnostic) } : {}),
       createdAt: trace.createdAt,
     })),
   };
 }
 
+type FailureFacts = Omit<TraceSafeDiagnosticInput, "cause">;
+
+class ClassifiedAgentRunError extends Error {
+  constructor(readonly facts: FailureFacts, cause: unknown) {
+    super("Agent Run execution failed", { cause });
+    this.name = "ClassifiedAgentRunError";
+  }
+}
+
 function projectFailure(error: unknown): TraceSafeDiagnostic {
+  const fallbackFacts: FailureFacts = {
+    failureClass: "Vendor",
+    stage: "vendor-request",
+    kind: "executionFailed",
+    severity: "error",
+    certainty: "unknown-effect",
+    expectedness: "unexpected",
+    retryDisposition: "reconcile-first",
+  };
+  const facts = error instanceof ClassifiedAgentRunError ? error.facts : fallbackFacts;
+  const cause = error instanceof ClassifiedAgentRunError ? error.cause : error;
   const projected = projectTraceSafeDiagnostic(
     {
-      failureClass: "Vendor",
-      stage: "vendor-request",
-      kind: "executionFailed",
-      severity: "error",
-      certainty: "unknown-effect",
-      expectedness: "unexpected",
-      retryDisposition: "reconcile-first",
-      cause: error,
+      ...facts,
+      cause,
     },
     "trace",
   );
   if (projected.ok) return projected.value;
   const fallback = projectTraceSafeDiagnostic(
-    {
-      failureClass: "Vendor",
-      stage: "vendor-request",
-      kind: "executionFailed",
-      severity: "error",
-      certainty: "unknown-effect",
-      expectedness: "unexpected",
-      retryDisposition: "reconcile-first",
-    },
+    facts,
     "trace",
   );
   if (!fallback.ok) throw new Error("Trace-safe diagnostic fallback failed");
@@ -316,17 +344,47 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     if (!claimed) return;
 
     try {
-      const [project, chapterRow, call] = await Promise.all([
-        dependencies.work((db) => db("o_project").where("id", claimed.projectId).first()),
-        dependencies.work((db) => db("o_novel").where("projectId", claimed.projectId).count<{ count: number }[]>("id as count").first()),
-        dependencies.openTextCall(LOGICAL_TARGET),
-      ]);
-      if (!project) throw new AgentRunProjectNotFoundError(claimed.projectId);
-      await dependencies.work((db) => db("o_agentRunStep").where({ id: stepId, status: "running" }).update({
-        resolvedTarget: JSON.stringify(call.target),
-      }).then((changed) => {
-        if (changed !== 1) throw new Error("Agent Step 模型目标提交发生并发冲突");
-      }));
+      let project: {
+        name?: string | null;
+        type?: string | null;
+        intro?: string | null;
+        artStyle?: string | null;
+        videoRatio?: string | null;
+      } | undefined;
+      let chapterRow: { count?: number } | undefined;
+      try {
+        [project, chapterRow] = await Promise.all([
+          dependencies.work((db) => db("o_project").where("id", claimed.projectId).first()),
+          dependencies.work((db) => db("o_novel").where("projectId", claimed.projectId).count<{ count: number }[]>("id as count").first()),
+        ]);
+        if (!project) throw new AgentRunProjectNotFoundError(claimed.projectId);
+      } catch (error) {
+        throw new ClassifiedAgentRunError({
+          failureClass: "Context", stage: "context-build", kind: "contextMissing", severity: "error",
+          certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "never",
+        }, error);
+      }
+      let call: ConfiguredTextCall;
+      try {
+        call = await dependencies.openTextCall(LOGICAL_TARGET);
+      } catch (error) {
+        throw new ClassifiedAgentRunError({
+          failureClass: "Vendor", stage: "vendor-request", kind: "executionFailed", severity: "error",
+          certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry",
+        }, error);
+      }
+      try {
+        await dependencies.work((db) => db("o_agentRunStep").where({ id: stepId, status: "running" }).update({
+          resolvedTarget: JSON.stringify(call.target),
+        }).then((changed) => {
+          if (changed !== 1) throw new Error("Agent Step 模型目标提交发生并发冲突");
+        }));
+      } catch (error) {
+        throw new ClassifiedAgentRunError({
+          failureClass: "Artifact", stage: "artifact-persistence", kind: "persistenceFailed", severity: "error",
+          certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry",
+        }, error);
+      }
       const projectFacts = [
         `项目名称：${project.name ?? "未知"}`,
         `项目类型：${project.type ?? "未知"}`,
@@ -345,33 +403,43 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       const content = result.text;
       const persistableOutput = inspectPersistableText(content);
       if (!persistableOutput.ok) {
-        throw new AgentRunContentRejectedError(persistableOutput.violations.map((entry) => entry.code));
+        throw new ClassifiedAgentRunError({
+          failureClass: "Artifact", stage: "artifact-persistence", kind: "redactionFailed", severity: "error",
+          certainty: "known-effect", expectedness: "unexpected", retryDisposition: "never",
+        }, new AgentRunContentRejectedError(persistableOutput.violations.map((entry) => entry.code)));
       }
       const now = dependencies.now();
-      await dependencies.work((db) => db.transaction(async (trx) => {
-        const run = await trx("o_agentRun").where({ id: runId, status: "running" }).first();
-        if (!run) return;
-        const step = await trx("o_agentRunStep").where({ id: stepId, status: "running" }).first();
-        if (!step) throw new Error("Agent Step 终态提交前态无效");
-        assertAgentRunTransition(parseAgentRunStatus(run.status), "succeeded");
-        assertAgentRunStepTransition(parseAgentRunStepStatus(step.status), "succeeded");
-        await trx("o_agentRunOutput").insert({
-          id: dependencies.createId(), runId, stepId, kind: "assistant-text", content,
-          contentHash: fingerprint(content), schemaVersion: AGENT_RUN_OUTPUT_SCHEMA_VERSION, createdAt: now,
-        });
-        const changedStep = await trx("o_agentRunStep").where({ id: stepId, status: "running" }).update({
-          status: "succeeded", completedAt: now,
-        });
-        const changedRun = await trx("o_agentRun").where({ id: runId, status: "running", version: run.version }).update({
-          status: "succeeded", allowedActions: JSON.stringify(["inspect"]), completedAt: now,
-          updatedAt: now, version: run.version + 1,
-        });
-        if (changedStep !== 1 || changedRun !== 1) throw new Error("Agent Run 终态提交发生并发冲突");
-        await trx("o_agentTrace").insert({
-          id: dependencies.createId(), runId, stepId, sequence: 3, eventType: "run.succeeded",
-          runStatus: "succeeded", stepStatus: "succeeded", createdAt: now,
-        });
-      }));
+      try {
+        await dependencies.work((db) => db.transaction(async (trx) => {
+          const run = await trx("o_agentRun").where({ id: runId, status: "running" }).first();
+          if (!run) return;
+          const step = await trx("o_agentRunStep").where({ id: stepId, status: "running" }).first();
+          if (!step) throw new Error("Agent Step 终态提交前态无效");
+          assertAgentRunTransition(parseAgentRunStatus(run.status), "succeeded");
+          assertAgentRunStepTransition(parseAgentRunStepStatus(step.status), "succeeded");
+          await trx("o_agentRunOutput").insert({
+            id: dependencies.createId(), runId, stepId, kind: "assistant-text", content,
+            contentHash: fingerprint(content), schemaVersion: AGENT_RUN_OUTPUT_SCHEMA_VERSION, createdAt: now,
+          });
+          const changedStep = await trx("o_agentRunStep").where({ id: stepId, status: "running" }).update({
+            status: "succeeded", completedAt: now,
+          });
+          const changedRun = await trx("o_agentRun").where({ id: runId, status: "running", version: run.version }).update({
+            status: "succeeded", allowedActions: JSON.stringify(["inspect"]), completedAt: now,
+            updatedAt: now, version: run.version + 1,
+          });
+          if (changedStep !== 1 || changedRun !== 1) throw new Error("Agent Run 终态提交发生并发冲突");
+          await trx("o_agentTrace").insert({
+            id: dependencies.createId(), runId, stepId, sequence: 3, eventType: "run.succeeded",
+            runStatus: "succeeded", stepStatus: "succeeded", createdAt: now,
+          });
+        }));
+      } catch (error) {
+        throw new ClassifiedAgentRunError({
+          failureClass: "Artifact", stage: "artifact-persistence", kind: "persistenceFailed", severity: "error",
+          certainty: "known-effect", expectedness: "unexpected", retryDisposition: "reconcile-first",
+        }, error);
+      }
     } catch (error) {
       await markFailed(runId, stepId, error);
     }

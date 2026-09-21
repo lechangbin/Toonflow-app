@@ -16,6 +16,8 @@ test("durable user-visible text allows public links but rejects secret-bearing m
   assert.equal(inspectPersistableText("参考 https://example.com/guide").ok, true);
   for (const unsafe of [
     "token sk_forbidden_persistence_secret",
+    "password=123456",
+    "apiKey: abcdef",
     "https://example.com/file?signature=forbidden",
     `data:image/png;base64,${"A".repeat(100)}`,
   ]) {

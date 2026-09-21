@@ -34,7 +34,7 @@ export async function recoverInterruptedAgentRuns(db: Knex, recoveredAt = Date.n
   );
   const queuedDiagnostic = projectTraceSafeDiagnostic(
     {
-      failureClass: "Vendor",
+      failureClass: "Decision",
       stage: "runtime",
       kind: "executionFailed",
       severity: "warning",
@@ -63,10 +63,13 @@ export async function recoverInterruptedAgentRuns(db: Knex, recoveredAt = Date.n
         .orderBy("ordinal", "asc")
         .select("id", "status");
       const activeStep = activeSteps[0] as { id?: string; status?: string } | undefined;
-      const stepId = activeStep?.id ?? null;
-      if (activeStep?.status) assertAgentRunStepTransition(parseAgentRunStepStatus(activeStep.status), "waiting");
+      if (activeSteps.length !== 1 || !activeStep?.id || !activeStep.status) {
+        throw new Error("Interrupted Agent Run must own exactly one active Model Step");
+      }
+      const stepId = activeStep.id;
+      assertAgentRunStepTransition(parseAgentRunStepStatus(activeStep.status), "waiting");
 
-      await trx("o_agentRunStep").where({ runId: run.id, status: stepStatus }).update({
+      const changedStep = await trx("o_agentRunStep").where({ id: stepId, runId: run.id, status: stepStatus }).update({
         status: "waiting",
         completedAt: null,
       });
@@ -80,7 +83,9 @@ export async function recoverInterruptedAgentRuns(db: Knex, recoveredAt = Date.n
         completedAt: null,
         failureDiagnostic: JSON.stringify(projected),
       });
-      if (changedRun !== 1) throw new Error("Interrupted Agent Run recovery lost its state/version precondition");
+      if (changedStep !== 1 || changedRun !== 1) {
+        throw new Error("Interrupted Agent Run recovery lost its state/version precondition");
+      }
 
       const latest = await trx("o_agentTrace").where("runId", run.id).max<{ sequence?: number }>("sequence as sequence").first();
       await trx("o_agentTrace").insert({

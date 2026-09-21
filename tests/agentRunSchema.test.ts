@@ -278,10 +278,35 @@ test("readiness recovery parks an interrupted Model call with attention and one 
     assert.equal(queued.status, "waiting", "a committed intent is not left queued after its in-memory scheduler disappears");
     assert.equal(queued.waitingReason, "interrupted-before-model-call");
     const queuedDiagnostic = JSON.parse(queued.failureDiagnostic);
+    assert.equal(queuedDiagnostic.failureClass, "Decision");
     assert.equal(queuedDiagnostic.certainty, "known-no-effect");
     assert.equal(queuedDiagnostic.retryDisposition, "safe-retry");
     assert.equal((await knex("o_agentRunStep").where("id", "step-queued").first()).status, "waiting");
     assert.equal((await knex("o_agentTrace").where("runId", "run-queued")).length, 1);
+  } finally {
+    await dispose(directory, knex);
+  }
+});
+
+test("readiness recovery rejects a Run with multiple active Steps without partial writes", async () => {
+  const { directory, knex } = createTemporaryDatabase();
+  try {
+    await initializeSchema(knex);
+    await knex("o_agentRun").insert({
+      id: "run-corrupt", projectId: 7, role: "projectAgent", scope: "read-only-summary",
+      clientRequestId: "request-corrupt", requestFingerprint: "3".repeat(64),
+      input: JSON.stringify({ content: "corrupt request" }), status: "running",
+      allowedActions: JSON.stringify(["inspect"]), version: 1, createdAt: 100, updatedAt: 101, startedAt: 101,
+    });
+    await knex("o_agentRunStep").insert([1, 2].map((ordinal) => ({
+      id: `step-corrupt-${ordinal}`, runId: "run-corrupt", ordinal, kind: "model",
+      logicalTarget: "universalAi", promptFingerprint: String(ordinal).repeat(64), status: "running", startedAt: 101,
+    })));
+    const context = { knex, dataRoot: directory, databaseFile: path.join(directory, "db.sqlite") };
+    await assert.rejects(recoverInterruptedWork(context), /exactly one active Model Step/u);
+    assert.equal((await knex("o_agentRun").where("id", "run-corrupt").first()).status, "running");
+    assert.equal((await knex("o_agentRunStep").where("runId", "run-corrupt").andWhere("status", "running")).length, 2);
+    assert.equal((await knex("o_agentTrace").where("runId", "run-corrupt")).length, 0);
   } finally {
     await dispose(directory, knex);
   }

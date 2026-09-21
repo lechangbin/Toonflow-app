@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 export const TRACE_SAFE_DIAGNOSTIC_SCHEMA_VERSION = "toonflow.trace-safe-diagnostic.v1" as const;
 
 export const DIAGNOSTIC_FAILURE_CLASSES = [
@@ -133,6 +135,7 @@ const BASE64_DATA_URI = /data:[^,\s]*;base64,/iu;
 const SIGNED_URL = /https?:\/\/\S+[?&](?:x-amz-signature|x-amz-credential|x-amz-security-token|x-tos-signature|signature|sig|token|key|expires)=/iu;
 const ANY_URL = /https?:\/\/\S+/iu;
 const SECRET_VALUE = /(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}|\b(?:sk|ak)[-_][A-Za-z0-9_-]{8,}|\b(?:npm_[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})\b|\b[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----/iu;
+const SECRET_ASSIGNMENT = /\b(?:api[-_ ]?key|authorization|credential|pass(?:word|wd)?|secret|session[-_ ]?token|access[-_ ]?token|refresh[-_ ]?token)\s*[:=]\s*["']?[^\s"'&,;]{4,}/iu;
 const SENSITIVE_KEY = /(?:api[-_]?key|authorization|cookie|credential|password|secret|session[-_]?token|access[-_]?token|refresh[-_]?token|(?:^|[-_])token(?:$|[-_]))/iu;
 const RAW_PROVIDER_KEY = /^(?:raw(?:[-_]?provider)?(?:[-_]?(?:response|request|payload|result|output|body))?|provider(?:[-_]?(?:response|request|payload|result|output|body))|vendor(?:[-_]?(?:response|request|payload|result|output|body))|response|request[-_]?body|response[-_]?body|body|payload)$/iu;
 const HIDDEN_REASONING_KEY = /^(?:reasoning|reasoning[-_]?content|hidden[-_]?reasoning|thinking|chain[-_]?of[-_]?thought)$/iu;
@@ -169,6 +172,7 @@ function inspectString(value: string, path: string, violations: TraceSafeViolati
   else if (ANY_URL.test(value)) addViolation(violations, "urlPayload", path);
   if (BASE64_DATA_URI.test(value) || BASE64_PAYLOAD.test(compact)) addViolation(violations, "base64Payload", path);
   if (SECRET_VALUE.test(value)) addViolation(violations, "secretValue", path);
+  if (SECRET_ASSIGNMENT.test(value)) addViolation(violations, "secretValue", path);
 }
 
 /**
@@ -184,6 +188,7 @@ export function inspectPersistableText(value: string): TraceSafeResult<string> {
     addViolation(violations, "base64Payload", "content");
   }
   if (SECRET_VALUE.test(value)) addViolation(violations, "secretValue", "content");
+  if (SECRET_ASSIGNMENT.test(value)) addViolation(violations, "secretValue", "content");
   return violations.length === 0 ? { ok: true, value } : { ok: false, violations };
 }
 
@@ -431,4 +436,45 @@ export function projectTraceSafeDiagnostic(
       ...(causes ? { causes } : {}),
     },
   };
+}
+
+/** Revalidates a persisted diagnostic instead of trusting a TypeScript cast. */
+export function validateTraceSafeDiagnostic(
+  value: unknown,
+  audience: DiagnosticAudience,
+): TraceSafeResult<TraceSafeDiagnostic> {
+  if (!isRecord(value)) return { ok: false, violations: [{ code: "invalidContract", path: "diagnostic" }] };
+  let cause: Error | undefined;
+  if (Array.isArray(value.causes)) {
+    for (const entry of [...value.causes].reverse()) {
+      if (!isRecord(entry) || typeof entry.name !== "string") {
+        return { ok: false, violations: [{ code: "invalidContract", path: "diagnostic.causes" }] };
+      }
+      const next = new Error("");
+      next.name = entry.name;
+      next.cause = cause;
+      cause = next;
+    }
+  } else if (value.causes !== undefined) {
+    return { ok: false, violations: [{ code: "invalidContract", path: "diagnostic.causes" }] };
+  }
+  const projected = projectTraceSafeDiagnostic(
+    {
+      failureClass: value.failureClass as DiagnosticFailureClass,
+      stage: value.stage as string,
+      kind: value.kind as string,
+      severity: value.severity as DiagnosticSeverity,
+      certainty: value.certainty as DiagnosticCertainty,
+      expectedness: value.expectedness as DiagnosticExpectedness,
+      retryDisposition: value.retryDisposition as DiagnosticRetryDisposition,
+      ...(value.attributes !== undefined ? { attributes: value.attributes as TraceSafeDiagnosticAttributes } : {}),
+      ...(cause ? { cause } : {}),
+    },
+    audience,
+  );
+  if (!projected.ok) return projected;
+  if (!isDeepStrictEqual(projected.value, value)) {
+    return { ok: false, violations: [{ code: "invalidContract", path: "diagnostic" }] };
+  }
+  return projected;
 }

@@ -9,6 +9,7 @@ import knexFactory, { type Knex } from "knex";
 import {
   AgentRunConflictError,
   AgentRunContentRejectedError,
+  AgentRunEvidenceCorruptError,
   AgentRunStateConflictError,
   assertAgentRunStepTransition,
   assertAgentRunTransition,
@@ -287,6 +288,26 @@ test("Run input and final output reject credentials before durable persistence",
     assert.equal(failed?.status, "failed");
     assert.equal(failed?.outputs.length, 0);
     assert.equal(JSON.stringify(failed).includes("sk_forbidden_output_secret"), false);
+    assert.equal(failed?.traces.at(-1)?.diagnostic?.failureClass, "Artifact");
+    assert.equal(failed?.traces.at(-1)?.diagnostic?.kind, "redactionFailed");
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("inspect fails closed when a persisted diagnostic is corrupted", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db, async () => { throw new Error("safe failure"); });
+    const started = await harness.runtime.start(startInput);
+    await harness.flush();
+    await db("o_agentTrace").where({ runId: started.id, eventType: "run.failed" }).update({
+      diagnostic: JSON.stringify({ schemaVersion: "toonflow.trace-safe-diagnostic.v1", audience: "trace", secret: "leak" }),
+    });
+    await assert.rejects(
+      harness.runtime.inspect({ runId: started.id, projectId: 7 }),
+      AgentRunEvidenceCorruptError,
+    );
   } finally {
     await db.destroy();
   }
@@ -312,6 +333,8 @@ test("terminal commit rolls back output, Step, Run, and Trace together", async (
     assert.equal(snapshot?.status, "failed");
     assert.equal(snapshot?.steps[0]?.status, "failed");
     assert.equal(snapshot?.outputs.length, 0);
+    assert.equal(snapshot?.traces.at(-1)?.diagnostic?.failureClass, "Artifact");
+    assert.equal(snapshot?.traces.at(-1)?.diagnostic?.kind, "persistenceFailed");
   } finally {
     await db.destroy();
   }
