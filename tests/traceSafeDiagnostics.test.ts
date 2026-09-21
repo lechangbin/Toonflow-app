@@ -7,9 +7,25 @@ import {
   DIAGNOSTIC_AUDIENCES,
   DIAGNOSTIC_FAILURE_CLASSES,
   formatTraceSafeLog,
+  inspectPersistableText,
   inspectTraceSafePayload,
   projectTraceSafeDiagnostic,
 } from "../src/diagnostics/traceSafeDiagnostics";
+
+test("durable user-visible text allows public links but rejects secret-bearing material", () => {
+  assert.equal(inspectPersistableText("参考 https://example.com/guide").ok, true);
+  for (const unsafe of [
+    "token sk_forbidden_persistence_secret",
+    "password=123456",
+    "apiKey: abcdef",
+    "cookie=sessionvalue1234",
+    "token=credential1234",
+    "https://example.com/file?signature=forbidden",
+    `data:image/png;base64,${"A".repeat(100)}`,
+  ]) {
+    assert.equal(inspectPersistableText(unsafe).ok, false);
+  }
+});
 
 test("versioned negative fixtures remain fail-closed with their declared violation codes", () => {
   const fixture = JSON.parse(
