@@ -96,6 +96,9 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   await addColumn("o_video", "artifactRevisionId", "integer");
   await addColumn("o_generationTask", "promptRevisionId", "integer");
   await addColumn("o_artifactRevision", "videoTrackId", "integer");
+  // T05: existing T04 databases keep their history and gain only the nullable
+  // committed-Step cursor. New Attempt/Checkpoint tables are created by initDB.
+  await addColumn("o_agentRun", "lastCommittedStepId", "text");
   //检测是否包含新增音色绑定提示词
   const existAudioPrompt = await knex("o_prompt").where("type", "audioBindPrompt").first();
   if (!existAudioPrompt)

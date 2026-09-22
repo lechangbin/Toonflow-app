@@ -49,6 +49,12 @@ The review may add omitted Assets, add stable evidence-grounded facts, correct t
 
 Script Agent and Production Agent duplicate authentication, abort handling, thinking state, stream consumption, memory writes, sub-Agent lifecycle, and output cleanup. They are two real adapters for a shared session seam, but migration risk is higher because behavior is largely untested.
 
+## Implemented foundation: durable Agent Runtime
+
+ADR-0011 establishes the first read-only Agent Run slice in `src/agentRuntime/`: Project-scoped idempotent start, ordered Step and Trace evidence, immutable final Output, and an authoritative lifecycle that survives transport loss. Waiting remains an execution status and operator attention remains an orthogonal signal.
+
+ADR-0012 deepens that boundary with causal Agent Attempts and immutable, hash-linked Agent Checkpoints. The `model-call-intent` checkpoint is the replay safety boundary: pre-intent interruption is known-no-effect and may create a successor Attempt under recovery policy; post-intent interruption is unknown-effect and must not silently repeat a provider call. Only committed terminal checkpoints can authorize Output reuse; token streams and partial provider responses stay outside durable recovery evidence.
+
 ## Implemented enabler: Trace-safe diagnostics
 
 ADR-0010 establishes `src/diagnostics/` as the single fail-closed export seam for future Trace and ToolReceipt records, current evaluation evidence, and UI-safe diagnostic projections. The versioned taxonomy keeps primary failure class separate from stage, stable kind, severity, outcome certainty, expectedness, and retry disposition. Recursive inspection rejects sensitive or structurally unsafe evidence before export; T03 adds no Agent Run or Trace persistence.
