@@ -108,6 +108,14 @@ _Avoid_: AbortController event, cancelled status, compensation
 An ordered, safe record of lifecycle and diagnostic events that explains an Agent Run without retaining hidden reasoning or raw provider payloads.
 _Avoid_: Application log, transcript, chain of thought
 
+**ToolDefinition**:
+An immutable revision of an Agent-callable capability that states its typed contract, execution policy, risk, and domain adapter identity.
+_Avoid_: Ad-hoc model function, Socket callback, route handler
+
+**ToolReceipt**:
+A durable record of one authorized Tool operation's identity, outcome, and safe evidence, causally attached to an Agent Run.
+_Avoid_: Chat message, raw adapter response, Agent Checkpoint
+
 **Skill**:
 An editable production instruction that guides an Agent role or a specialized execution step.
 _Avoid_: Prompt template
