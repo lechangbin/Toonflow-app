@@ -22,6 +22,7 @@ const AGENT_TABLES = [
   "o_agentRunAttempt",
   "o_agentRunOutput",
   "o_agentRunCheckpoint",
+  "o_agentRunCommand",
   "o_agentTrace",
 ] as const;
 
@@ -90,6 +91,12 @@ test("a fresh database owns durable Run, Step, Attempt, Output, Checkpoint and T
       "version",
       "failureDiagnostic",
       "lastCommittedStepId",
+      "leaseOwnerId",
+      "leaseEpoch",
+      "leaseExpiresAt",
+      "fence",
+      "cancellationRequestedAt",
+      "cancellationCommandId",
     ]) {
       assert.ok(runColumns[required], `o_agentRun owns ${required}`);
     }
@@ -406,6 +413,40 @@ test("readiness recovery rejects a Run with multiple active Steps without partia
   }
 });
 
+test("readiness leaves a live lease alone, then recovers it only after expiry", async () => {
+  const { directory, knex } = createTemporaryDatabase();
+  try {
+    await initializeSchema(knex);
+    await knex("o_agentRun").insert({
+      id: "run-leased", projectId: 7, role: "projectAgent", scope: "read-only-summary",
+      clientRequestId: "request-leased", requestFingerprint: "f".repeat(64),
+      input: JSON.stringify({ content: "safe request" }), status: "queued",
+      allowedActions: JSON.stringify(["inspect"]), version: 2, fence: 1,
+      leaseOwnerId: "worker-a", leaseEpoch: "epoch-a", leaseExpiresAt: 200,
+      createdAt: 100, updatedAt: 101,
+    });
+    await knex("o_agentRunStep").insert({
+      id: "step-leased", runId: "run-leased", ordinal: 1, kind: "model",
+      logicalTarget: "universalAi", promptFingerprint: "e".repeat(64), status: "pending",
+    });
+    const { recoverInterruptedAgentRuns } = await import("../src/database/agentRunRecovery");
+    await recoverInterruptedAgentRuns(knex, 199);
+    assert.equal((await knex("o_agentRun").where("id", "run-leased").first()).status, "queued");
+    assert.equal((await knex("o_agentTrace").where("runId", "run-leased")).length, 0);
+
+    await recoverInterruptedAgentRuns(knex, 200);
+    const recovered = await knex("o_agentRun").where("id", "run-leased").first();
+    assert.equal(recovered.status, "waiting");
+    assert.equal(recovered.waitingReason, "interrupted-before-model-call");
+    assert.equal(recovered.leaseOwnerId, null);
+    assert.equal(recovered.leaseEpoch, null);
+    assert.equal(recovered.leaseExpiresAt, null);
+    assert.equal(recovered.fence, 1, "recovery never rolls back the fence");
+  } finally {
+    await dispose(directory, knex);
+  }
+});
+
 test("the upgrade path adds the committed-Step cursor to a T04 Run table without rewriting rows", async () => {
   const { directory, knex } = createTemporaryDatabase();
   try {
@@ -426,6 +467,34 @@ test("the upgrade path adds the committed-Step cursor to a T04 Run table without
     assert.equal(legacy.status, "succeeded");
     assert.equal(legacy.version, 2);
     assert.equal(legacy.lastCommittedStepId, null);
+  } finally {
+    await dispose(directory, knex);
+  }
+});
+
+test("the T06 upgrade adds lease and cancellation fields without rewriting a legacy Run", async () => {
+  const { directory, knex } = createTemporaryDatabase();
+  try {
+    await initializeSchema(knex);
+    await knex("o_agentRun").insert({
+      id: "legacy-t05", projectId: 7, role: "projectAgent", scope: "read-only-summary",
+      clientRequestId: "legacy-t05-request", requestFingerprint: "c".repeat(64),
+      input: JSON.stringify({ content: "legacy" }), status: "succeeded",
+      allowedActions: JSON.stringify(["inspect"]), version: 3, createdAt: 90, updatedAt: 99, completedAt: 99,
+    });
+    await knex.schema.dropTable("o_agentRunCommand");
+    for (const column of ["leaseOwnerId", "leaseEpoch", "leaseExpiresAt", "fence", "cancellationRequestedAt", "cancellationCommandId"]) {
+      await knex.schema.alterTable("o_agentRun", (table) => table.dropColumn(column));
+    }
+    await initDB(knex);
+    await fixDB(knex, directory);
+    const legacy = await knex("o_agentRun").where("id", "legacy-t05").first();
+    assert.equal(legacy.status, "succeeded");
+    assert.equal(legacy.version, 3);
+    assert.equal(legacy.fence, 0);
+    assert.equal(legacy.leaseOwnerId, null);
+    assert.equal(legacy.cancellationRequestedAt, null);
+    assert.equal(await knex.schema.hasTable("o_agentRunCommand"), true);
   } finally {
     await dispose(directory, knex);
   }

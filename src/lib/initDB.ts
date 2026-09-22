@@ -625,9 +625,31 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("completedAt");
         table.text("failureDiagnostic");
         table.text("lastCommittedStepId");
+        table.text("leaseOwnerId");
+        table.text("leaseEpoch");
+        table.integer("leaseExpiresAt");
+        table.integer("fence").notNullable().defaultTo(0);
+        table.integer("cancellationRequestedAt");
+        table.text("cancellationCommandId");
         table.primary(["id"]);
         table.unique(["projectId", "role", "scope", "clientRequestId"]);
         table.index(["projectId", "createdAt"]);
+      },
+    },
+    // Agent Run Command：客户端命令的幂等身份与预期版本
+    {
+      name: "o_agentRunCommand",
+      builder: (table) => {
+        table.text("id").notNullable();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("clientCommandId").notNullable();
+        table.string("kind").notNullable();
+        table.text("inputFingerprint").notNullable();
+        table.integer("expectedVersion").notNullable();
+        table.integer("resultVersion").notNullable();
+        table.integer("createdAt").notNullable();
+        table.primary(["id"]);
+        table.unique(["runId", "clientCommandId"]);
       },
     },
     // Agent Step：Run 内有序、可独立检查的执行步骤

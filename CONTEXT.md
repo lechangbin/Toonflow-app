@@ -96,6 +96,14 @@ _Avoid_: Agent Step, retry counter, request
 An immutable, versioned record that proves one Agent Run commit boundary and links its Run revision, causal predecessor, and last committed Agent Step. Streaming tokens, partial provider responses, and in-memory results are never checkpoints.
 _Avoid_: Snapshot, progress event, stream chunk
 
+**Agent Run Lease**:
+A time-bounded ownership claim that authorizes one worker epoch and fence to advance an Agent Run; it is not the Run's lifecycle status or a database connection lease.
+_Avoid_: Socket session, database lease, Run status
+
+**Agent Cancellation Intent**:
+A durable, idempotent request to stop future Agent Run work, distinct from confirmed terminal cancellation or rollback of an external effect.
+_Avoid_: AbortController event, cancelled status, compensation
+
 **Agent Trace**:
 An ordered, safe record of lifecycle and diagnostic events that explains an Agent Run without retaining hidden reasoning or raw provider payloads.
 _Avoid_: Application log, transcript, chain of thought

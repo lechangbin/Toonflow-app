@@ -9,9 +9,12 @@ import knexFactory, { type Knex } from "knex";
 
 import {
   AgentRunConflictError,
+  AgentRunCommandConflictError,
   AgentRunContentRejectedError,
   AgentRunEvidenceCorruptError,
+  AgentRunLeaseLostError,
   AgentRunStateConflictError,
+  AgentRunVersionConflictError,
   assertAgentRunStepTransition,
   assertAgentRunTransition,
   createAgentRuntime,
@@ -51,12 +54,29 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.text("allowedActions").notNullable();
     table.text("failureDiagnostic");
     table.text("lastCommittedStepId");
+    table.text("leaseOwnerId");
+    table.text("leaseEpoch");
+    table.integer("leaseExpiresAt");
+    table.integer("fence").notNullable().defaultTo(0);
+    table.integer("cancellationRequestedAt");
+    table.text("cancellationCommandId");
     table.integer("version").notNullable();
     table.integer("createdAt").notNullable();
     table.integer("updatedAt").notNullable();
     table.integer("startedAt");
     table.integer("completedAt");
     table.unique(["projectId", "role", "scope", "clientRequestId"]);
+  });
+  await db.schema.createTable("o_agentRunCommand", (table) => {
+    table.text("id").primary();
+    table.text("runId").notNullable();
+    table.text("clientCommandId").notNullable();
+    table.text("kind").notNullable();
+    table.text("inputFingerprint").notNullable();
+    table.integer("expectedVersion").notNullable();
+    table.integer("resultVersion").notNullable();
+    table.integer("createdAt").notNullable();
+    table.unique(["runId", "clientCommandId"]);
   });
   await db.schema.createTable("o_agentRunStep", (table) => {
     table.text("id").primary();
@@ -131,7 +151,12 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
   return db;
 }
 
-function makeHarness(db: Knex, model: () => Promise<string> = async () => "只读建议", idPrefix = "id") {
+function makeHarness(
+  db: Knex,
+  model: () => Promise<string> = async () => "只读建议",
+  idPrefix = "id",
+  overrides: Partial<AgentRunDependencies> = {},
+) {
   const queue: Array<() => Promise<void>> = [];
   let serial = 0;
   let calls = 0;
@@ -147,6 +172,7 @@ function makeHarness(db: Knex, model: () => Promise<string> = async () => "只�
         return { text: await model() } as any;
       },
     }),
+    ...overrides,
   };
   const runtime = createAgentRuntime(dependencies);
   return {
@@ -179,6 +205,7 @@ test("identical starts return one durable Agent Run and execute one Model Step",
     });
     assert.equal(first.id, second.id);
     assert.equal(first.status, "queued");
+    assert.deepEqual(first.allowedActions, ["inspect", "cancel"]);
     await harness.flush();
     const completed = await harness.runtime.inspect({ runId: first.id, projectId: 7 });
     assert.equal(completed?.status, "succeeded");
@@ -191,6 +218,151 @@ test("identical starts return one durable Agent Run and execute one Model Step",
     await harness.flush();
     assert.equal(restarted.id, first.id);
     assert.equal(harness.calls(), 1);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("queued cancellation commits intent and terminal state once before any Provider call", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const started = await harness.runtime.start(startInput);
+    const command = { runId: started.id, projectId: 7, clientCommandId: "cancel-1", expectedVersion: started.version };
+    const cancelled = await harness.runtime.cancel(command);
+    assert.equal(cancelled?.status, "cancelled");
+    assert.equal(cancelled?.steps[0]?.status, "cancelled");
+    assert.equal(cancelled?.attempts[0]?.status, "cancelled");
+    assert.equal(cancelled?.cancellationCommandId, "cancel-1");
+    await harness.flush();
+    assert.equal(harness.calls(), 0);
+    const duplicate = await harness.runtime.cancel(command);
+    assert.equal(duplicate?.version, cancelled?.version);
+    assert.equal((await db("o_agentRunCommand").where("runId", started.id)).length, 1);
+    await assert.rejects(harness.runtime.cancel({ ...command, expectedVersion: cancelled!.version }), AgentRunCommandConflictError);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("an in-flight cancellation remains intent, and a stale client version cannot overwrite it", async () => {
+  const db = await createDatabase();
+  let release!: (value: string) => void;
+  const provider = new Promise<string>((resolve) => { release = resolve; });
+  try {
+    const harness = makeHarness(db, () => provider);
+    const started = await harness.runtime.start(startInput);
+    const executing = harness.flush();
+    while (harness.calls() === 0) await new Promise<void>((resolve) => setImmediate(resolve));
+    const running = (await harness.runtime.inspect({ runId: started.id, projectId: 7 }))!;
+    assert.deepEqual(running.allowedActions, ["inspect", "cancel"]);
+    await assert.rejects(harness.runtime.cancel({
+      runId: started.id, projectId: 7, clientCommandId: "stale", expectedVersion: started.version,
+    }), AgentRunVersionConflictError);
+    const requested = (await harness.runtime.cancel({
+      runId: started.id, projectId: 7, clientCommandId: "cancel-in-flight", expectedVersion: running.version,
+    }))!;
+    assert.equal(requested.status, "running", "intent is not false confirmation of cancellation");
+    assert.equal(requested.cancellationCommandId, "cancel-in-flight");
+    await assert.rejects(harness.runtime.cancel({
+      runId: started.id, projectId: 7, clientCommandId: "second-cancel", expectedVersion: requested.version,
+    }), AgentRunVersionConflictError, "the first accepted cancellation intent remains stable");
+    release("只读建议");
+    await executing;
+    const settled = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(settled?.status, "succeeded", "a completed in-flight effect is retained");
+    assert.equal(settled?.cancellationCommandId, "cancel-in-flight");
+    assert.equal(settled?.outputs[0]?.content, "只读建议");
+    assert.equal(harness.calls(), 1);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a long Provider call renews its lease without advancing Run version", async () => {
+  const db = await createDatabase();
+  let release!: (value: string) => void;
+  const provider = new Promise<string>((resolve) => { release = resolve; });
+  try {
+    const harness = makeHarness(db, () => provider, "heartbeat", { now: Date.now, leaseDurationMs: 120 });
+    const started = await harness.runtime.start(startInput);
+    const executing = harness.flush();
+    while (harness.calls() === 0) await new Promise<void>((resolve) => setImmediate(resolve));
+    const initial = (await harness.runtime.inspect({ runId: started.id, projectId: 7 }))!;
+    await new Promise<void>((resolve) => setTimeout(resolve, 260));
+    const renewed = (await harness.runtime.inspect({ runId: started.id, projectId: 7 }))!;
+    assert.equal(renewed.status, "running");
+    assert.equal(renewed.version, initial.version);
+    assert.ok(renewed.leaseExpiresAt! > initial.leaseExpiresAt!, "heartbeat extends the same fenced lease");
+    release("只读建议");
+    await executing;
+    assert.equal((await harness.runtime.inspect({ runId: started.id, projectId: 7 }))?.status, "succeeded");
+  } finally {
+    release?.("只读建议");
+    await db.destroy();
+  }
+});
+
+test("an expired worker cannot commit a late Provider result after recovery fences it out", async () => {
+  const db = await createDatabase();
+  let release!: (value: string) => void;
+  const provider = new Promise<string>((resolve) => { release = resolve; });
+  try {
+    const harness = makeHarness(db, () => provider);
+    const started = await harness.runtime.start(startInput);
+    const executing = harness.flush();
+    while (harness.calls() === 0) await new Promise<void>((resolve) => setImmediate(resolve));
+    const running = (await harness.runtime.inspect({ runId: started.id, projectId: 7 }))!;
+    await recoverInterruptedAgentRuns(db, running.leaseExpiresAt!);
+    release("迟到的 Provider 结果");
+    await assert.rejects(executing, AgentRunLeaseLostError);
+    const recovered = (await harness.runtime.inspect({ runId: started.id, projectId: 7 }))!;
+    assert.equal(recovered.status, "waiting");
+    assert.equal(recovered.waitingReason, "interrupted-model-call");
+    assert.equal(recovered.outputs.length, 0, "stale worker cannot commit its late result");
+    assert.equal(recovered.checkpoints.at(-1)?.kind, "model-call-intent");
+  } finally {
+    release?.("迟到的 Provider 结果");
+    await db.destroy();
+  }
+});
+
+test("refresh lists the current Run and exactly twenty deterministic recent Runs within one Project scope", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const ids: string[] = [];
+    for (let index = 0; index < 22; index += 1) {
+      const started = await harness.runtime.start({ ...startInput, clientRequestId: `request-${index}` });
+      ids.push(started.id);
+    }
+    const listed = await harness.runtime.list({ projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1" });
+    assert.equal(listed.recent.length, 20);
+    assert.equal(listed.current?.id, ids.at(-1));
+    assert.deepEqual(listed.recent.map((item) => item.id), ids.slice(-20).reverse());
+    const other = await harness.runtime.list({ projectId: 8, role: "scriptAgent", scope: "read-only-project-guidance-v1" });
+    assert.deepEqual(other, { current: null, recent: [] });
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a fresh Runtime reprojects persisted Run state without the original scheduler or Socket", async () => {
+  const db = await createDatabase();
+  try {
+    const original = makeHarness(db, async () => "不应调用", "original");
+    const started = await original.runtime.start(startInput);
+    const reconnected = makeHarness(db, async () => "不应调用", "reconnected");
+    const listed = await reconnected.runtime.list({ projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1" });
+    assert.equal(listed.current?.id, started.id);
+    assert.equal(listed.current?.version, started.version);
+    const cancelled = await reconnected.runtime.cancel({
+      runId: started.id, projectId: 7, clientCommandId: "reconnected-cancel", expectedVersion: listed.current!.version,
+    });
+    assert.equal(cancelled?.status, "cancelled");
+    await original.flush();
+    assert.equal(original.calls(), 0, "a disconnected scheduler cannot revive the cancelled Run");
+    assert.equal((await reconnected.runtime.inspect({ runId: started.id, projectId: 7 }))?.status, "cancelled");
   } finally {
     await db.destroy();
   }
