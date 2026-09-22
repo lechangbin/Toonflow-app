@@ -32,6 +32,7 @@ interface InterruptedRunRow {
   requestFingerprint: string;
   lastCommittedStepId?: string | null;
   attentionReason?: string | null;
+  leaseExpiresAt?: number | null;
 }
 
 interface CheckpointRow {
@@ -234,6 +235,7 @@ async function parkInvalidCheckpointRun(
     attentionReason: reason, allowedActions: WAITING_ALLOWED_ACTIONS,
     version: run.version + 1, updatedAt: recoveredAt,
     failureDiagnostic: JSON.stringify(evidenceDiagnostic),
+    leaseOwnerId: null, leaseEpoch: null, leaseExpiresAt: null,
   });
   if (changed !== 1) throw new Error("Invalid Agent Run checkpoint recovery lost its state/version precondition");
   await trx("o_agentTrace").insert({
@@ -259,6 +261,7 @@ async function parkLegacyRun(trx: Knex.Transaction, run: InterruptedRunRow, reco
   const changedRun = await trx("o_agentRun").where({ id: run.id, status: runStatus, version: run.version }).update({
     status: "waiting", waitingReason: reason, attentionReason: reason, allowedActions: WAITING_ALLOWED_ACTIONS,
     version: run.version + 1, updatedAt: recoveredAt, completedAt: null, failureDiagnostic: JSON.stringify(projected),
+    leaseOwnerId: null, leaseEpoch: null, leaseExpiresAt: null,
   });
   if (changedStep !== 1 || changedRun !== 1) throw new Error("Interrupted Agent Run recovery lost its state/version precondition");
   await trx("o_agentTrace").insert({
@@ -287,6 +290,7 @@ async function recoverCheckpointedRun(trx: Knex.Transaction, run: InterruptedRun
   const changedRun = await trx("o_agentRun").where({ id: run.id, status: run.status, version: run.version }).update({
     status: "waiting", waitingReason: reason, attentionReason: reason, allowedActions: WAITING_ALLOWED_ACTIONS,
     version: nextVersion, updatedAt: recoveredAt, completedAt: null, failureDiagnostic: JSON.stringify(projected),
+    leaseOwnerId: null, leaseEpoch: null, leaseExpiresAt: null,
   });
   if (changedRun !== 1) throw new Error("Interrupted Agent Run recovery lost its state/version precondition");
 
@@ -330,11 +334,14 @@ export async function recoverInterruptedAgentRuns(db: Knex, recoveredAt = Date.n
     ).orWhereExists(
       db("o_agentRunAttempt").select(db.raw("1")).whereRaw("o_agentRunAttempt.runId = o_agentRun.id"),
     ))
-    .select("id", "version", "status", "requestFingerprint", "lastCommittedStepId", "attentionReason") as InterruptedRunRow[];
+    .select("id", "version", "status", "requestFingerprint", "lastCommittedStepId", "attentionReason", "leaseExpiresAt") as InterruptedRunRow[];
   for (const candidate of candidateRuns) {
     await db.transaction(async (trx) => {
       const run = await trx("o_agentRun").where({ id: candidate.id, status: candidate.status, version: candidate.version }).first() as InterruptedRunRow | undefined;
       if (!run) return;
+      // Readiness may run while another worker is alive. Expiry is the
+      // takeover boundary; an unexpired owner must never be parked here.
+      if (["queued", "running"].includes(run.status) && Number(run.leaseExpiresAt ?? 0) > recoveredAt) return;
       try {
         const checkpoints = await validateCheckpointChain(trx, run);
         if (checkpoints === null) {

@@ -1,4 +1,4 @@
-// @db-hash 62022e2d7bdf9a51b02794a4b1a3d709
+// @db-hash a56e6f364f100677cf1f2e66e6f08d57
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -23,19 +23,24 @@ export interface o_agentDeploy {
   'modelName'?: string | null;
   'name'?: string | null;
   'temperature'?: number | null;
-  'type'?: string | null;
   'vendorId'?: string | null;
 }
 export interface o_agentRun {
   'allowedActions': string;
   'attentionReason'?: string | null;
+  'cancellationCommandId'?: string | null;
+  'cancellationRequestedAt'?: number | null;
   'clientRequestId': string;
   'completedAt'?: number | null;
   'createdAt': number;
   'failureDiagnostic'?: string | null;
+  'fence'?: number;
   'id'?: string;
   'input': string;
   'lastCommittedStepId'?: string | null;
+  'leaseEpoch'?: string | null;
+  'leaseExpiresAt'?: number | null;
+  'leaseOwnerId'?: string | null;
   'projectId': number;
   'requestFingerprint': string;
   'role': string;
@@ -75,6 +80,16 @@ export interface o_agentRunCheckpoint {
   'schemaVersion': string;
   'sequence': number;
   'stepId'?: string | null;
+}
+export interface o_agentRunCommand {
+  'clientCommandId': string;
+  'createdAt': number;
+  'expectedVersion': number;
+  'id'?: string;
+  'inputFingerprint': string;
+  'kind': string;
+  'resultVersion': number;
+  'runId': string;
 }
 export interface o_agentRunOutput {
   'content': string;
@@ -345,16 +360,7 @@ export interface o_skillAttribution {
   'skillId'?: string;
 }
 export interface o_skillList {
-  'createTime': number;
-  'description': string;
-  'embedding'?: string | null;
-  'id'?: string;
-  'md5': string;
-  'name': string;
-  'path': string;
-  'state': number;
-  'type': string;
-  'updateTime': number;
+  'id'?: string | null;
 }
 export interface o_storyboard {
   'createTime'?: number | null;
@@ -431,6 +437,7 @@ export interface DB {
   "o_agentRun": o_agentRun;
   "o_agentRunAttempt": o_agentRunAttempt;
   "o_agentRunCheckpoint": o_agentRunCheckpoint;
+  "o_agentRunCommand": o_agentRunCommand;
   "o_agentRunOutput": o_agentRunOutput;
   "o_agentRunStep": o_agentRunStep;
   "o_agentTrace": o_agentTrace;

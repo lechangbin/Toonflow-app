@@ -19,6 +19,7 @@ import { getDatabaseRuntime } from "@/database";
 import {
   assertAgentRunStepTransition,
   assertAgentRunTransition,
+  AgentRunStateConflictError,
   parseAgentRunStatus,
   parseAgentRunStepStatus,
   type AgentRunStatus,
@@ -33,9 +34,18 @@ import {
   type AgentRunCheckpointKind,
   type AgentRunCheckpointPayload,
 } from "./checkpoints";
+import {
+  DEFAULT_AGENT_RUN_LEASE_MS,
+  AgentRunLeaseLostError,
+  assertAgentRunLease,
+  claimAgentRunLease,
+  renewAgentRunLease,
+  type AgentRunLease,
+} from "./lease";
 
 export * from "./lifecycle";
 export * from "./checkpoints";
+export * from "./lease";
 
 export const AGENT_RUN_START_SCHEMA_VERSION = "toonflow.agent-run.start.v1" as const;
 export const AGENT_RUN_OUTPUT_SCHEMA_VERSION = "toonflow.agent-run-output.v1" as const;
@@ -43,6 +53,7 @@ export const READ_ONLY_AGENT_ROLE = "scriptAgent" as const;
 export const READ_ONLY_AGENT_SCOPE = "read-only-project-guidance-v1" as const;
 const LOGICAL_TARGET: TextModelTarget = { kind: "logical", key: "scriptAgent:decisionAgent" };
 const PROMPT_VERSION = "toonflow.read-only-project-guidance.v1";
+const DEFAULT_PROCESS_EPOCH = uuid();
 const SYSTEM_PROMPT = [
   "你是 Toonflow 的只读项目顾问。",
   "只能依据给出的项目事实回答用户，不得声称已修改项目，不得请求或调用工具。",
@@ -61,6 +72,22 @@ export interface StartAgentRunInput {
 export interface InspectAgentRunInput {
   runId: string;
   projectId: number;
+}
+
+export interface CancelAgentRunInput extends InspectAgentRunInput {
+  clientCommandId: string;
+  expectedVersion: number;
+}
+
+export interface ListAgentRunsInput {
+  projectId: number;
+  role: typeof READ_ONLY_AGENT_ROLE;
+  scope: typeof READ_ONLY_AGENT_SCOPE;
+}
+
+export interface AgentRunListSnapshot {
+  current: AgentRunSnapshot | null;
+  recent: AgentRunSnapshot[];
 }
 
 export interface AgentRunStepSnapshot {
@@ -144,6 +171,10 @@ export interface AgentRunSnapshot {
   startedAt?: number;
   completedAt?: number;
   lastCommittedStepId?: string;
+  leaseFence: number;
+  leaseExpiresAt?: number;
+  cancellationRequestedAt?: number;
+  cancellationCommandId?: string;
   steps: AgentRunStepSnapshot[];
   attempts: AgentRunAttemptSnapshot[];
   checkpoints: AgentRunCheckpointSnapshot[];
@@ -154,6 +185,8 @@ export interface AgentRunSnapshot {
 export interface AgentRuntime {
   start(input: StartAgentRunInput): Promise<AgentRunSnapshot>;
   inspect(input: InspectAgentRunInput): Promise<AgentRunSnapshot | null>;
+  cancel(input: CancelAgentRunInput): Promise<AgentRunSnapshot | null>;
+  list(input: ListAgentRunsInput): Promise<AgentRunListSnapshot>;
 }
 
 export interface AgentRunDependencies {
@@ -162,12 +195,29 @@ export interface AgentRunDependencies {
   schedule(work: () => Promise<void>): void;
   now(): number;
   createId(): string;
+  workerId?: string;
+  processEpoch?: string;
+  leaseDurationMs?: number;
 }
 
 export class AgentRunConflictError extends Error {
   constructor() {
     super("clientRequestId 已被不同请求使用");
     this.name = "AgentRunConflictError";
+  }
+}
+
+export class AgentRunCommandConflictError extends Error {
+  constructor() {
+    super("clientCommandId 已被不同命令使用");
+    this.name = "AgentRunCommandConflictError";
+  }
+}
+
+export class AgentRunVersionConflictError extends Error {
+  constructor() {
+    super("Agent Run 版本已变化，请刷新后重试");
+    this.name = "AgentRunVersionConflictError";
   }
 }
 
@@ -346,7 +396,9 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
     } else {
       if (checkpoints.length === 0 || attempts.length === 0) throw new AgentRunEvidenceCorruptError();
       const checkpointVersion = checkpoints.at(-1)!.runVersion;
-      if (checkpointVersion > run.version || run.version - checkpointVersion > 1) throw new AgentRunEvidenceCorruptError();
+      // Lease claims and commands advance the Run revision without claiming a
+      // new execution checkpoint; only backwards checkpoint versions are invalid.
+      if (checkpointVersion > run.version) throw new AgentRunEvidenceCorruptError();
       validateCheckpointEvidence(run, steps, attempts, outputs, checkpoints);
     }
   }
@@ -367,6 +419,10 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
     ...(optionalNumber(run.startedAt) !== undefined ? { startedAt: run.startedAt } : {}),
     ...(optionalNumber(run.completedAt) !== undefined ? { completedAt: run.completedAt } : {}),
     ...(run.lastCommittedStepId ? { lastCommittedStepId: run.lastCommittedStepId } : {}),
+    leaseFence: Number(run.fence ?? 0),
+    ...(optionalNumber(run.leaseExpiresAt) !== undefined ? { leaseExpiresAt: run.leaseExpiresAt } : {}),
+    ...(optionalNumber(run.cancellationRequestedAt) !== undefined ? { cancellationRequestedAt: run.cancellationRequestedAt } : {}),
+    ...(run.cancellationCommandId ? { cancellationCommandId: run.cancellationCommandId } : {}),
     steps: steps.map((step) => ({
       id: step.id,
       ordinal: step.ordinal,
@@ -464,14 +520,104 @@ function projectFailure(error: unknown): TraceSafeDiagnostic {
 }
 
 export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRuntime {
+  const workerId = dependencies.workerId ?? uuid();
+  const processEpoch = dependencies.processEpoch ?? DEFAULT_PROCESS_EPOCH;
+  const leaseDurationMs = dependencies.leaseDurationMs ?? DEFAULT_AGENT_RUN_LEASE_MS;
   async function inspect(input: InspectAgentRunInput): Promise<AgentRunSnapshot | null> {
     return dependencies.work((db) => readSnapshot(db, input.runId, input.projectId));
   }
 
-  async function settleFailure(runId: string, stepId: string, attemptId: string, intentCommitted: boolean, error: unknown): Promise<void> {
+  async function list(input: ListAgentRunsInput): Promise<AgentRunListSnapshot> {
+    if (!Number.isInteger(input.projectId) || input.projectId <= 0
+      || input.role !== READ_ONLY_AGENT_ROLE || input.scope !== READ_ONLY_AGENT_SCOPE) {
+      throw new TypeError("Agent Run 列表范围无效");
+    }
+    return dependencies.work(async (db) => {
+      const scope = { projectId: input.projectId, role: input.role, scope: input.scope };
+      const [recentRows, currentRow] = await Promise.all([
+        db("o_agentRun").where(scope).orderBy("createdAt", "desc").orderBy("id", "desc").limit(20).select("id"),
+        db("o_agentRun").where(scope).whereIn("status", ["queued", "running", "waiting"])
+          .orderBy("createdAt", "desc").orderBy("id", "desc").first("id"),
+      ]);
+      const recent = await Promise.all(recentRows.map((row: { id: string }) => readSnapshot(db, row.id, input.projectId)));
+      const current = currentRow
+        ? recent.find((run) => run?.id === currentRow.id) ?? await readSnapshot(db, currentRow.id, input.projectId)
+        : recent[0] ?? null;
+      return { current, recent: recent.filter((run): run is AgentRunSnapshot => run !== null) };
+    });
+  }
+
+  async function cancel(input: CancelAgentRunInput): Promise<AgentRunSnapshot | null> {
+    const clientCommandId = input.clientCommandId.trim();
+    if (!input.runId || !Number.isInteger(input.projectId) || input.projectId <= 0
+      || !clientCommandId || clientCommandId.length > 128
+      || !Number.isInteger(input.expectedVersion) || input.expectedVersion <= 0) {
+      throw new TypeError("Agent Run 取消命令无效");
+    }
+    const inputFingerprint = fingerprint({
+      kind: "cancel", runId: input.runId, projectId: input.projectId,
+      clientCommandId, expectedVersion: input.expectedVersion,
+    });
+    return dependencies.work((db) => db.transaction(async (trx) => {
+      const run = await trx("o_agentRun").where({ id: input.runId, projectId: input.projectId }).first();
+      if (!run) return null;
+      const previous = await trx("o_agentRunCommand").where({ runId: run.id, clientCommandId }).first();
+      if (previous) {
+        if (previous.inputFingerprint !== inputFingerprint) throw new AgentRunCommandConflictError();
+        return readSnapshot(trx, run.id, input.projectId);
+      }
+      if (run.version !== input.expectedVersion) throw new AgentRunVersionConflictError();
+      if (run.cancellationRequestedAt) throw new AgentRunVersionConflictError();
+      if (["succeeded", "failed", "cancelled"].includes(run.status)) {
+        throw new AgentRunStateConflictError("Run", run.status, "cancelled");
+      }
+      if (run.status === "waiting") throw new AgentRunStateConflictError("Run", "waiting", "cancelled");
+      const now = dependencies.now();
+      const safeBeforeCall = run.status === "queued";
+      const nextStatus = safeBeforeCall ? "cancelled" : run.status;
+      const nextVersion = run.version + 1;
+      const changed = await trx("o_agentRun")
+        .where({ id: run.id, projectId: input.projectId, status: run.status, version: run.version })
+        .update({
+          status: nextStatus,
+          version: nextVersion,
+          updatedAt: now,
+          cancellationRequestedAt: now,
+          cancellationCommandId: clientCommandId,
+          allowedActions: JSON.stringify(["inspect"]),
+          ...(safeBeforeCall ? {
+            completedAt: now, leaseOwnerId: null, leaseEpoch: null, leaseExpiresAt: null,
+          } : {}),
+        });
+      if (changed !== 1) throw new AgentRunVersionConflictError();
+      if (safeBeforeCall) {
+        const step = await trx("o_agentRunStep").where({ runId: run.id, status: "pending" }).first();
+        if (!step) throw new Error("Agent Run 取消缺少待执行 Step");
+        const changedStep = await trx("o_agentRunStep").where({ id: step.id, status: "pending" })
+          .update({ status: "cancelled", completedAt: now });
+        const changedAttempt = await trx("o_agentRunAttempt").where({ runId: run.id, stepId: step.id, status: "preparing" })
+          .update({ status: "cancelled", completedAt: now });
+        if (changedStep !== 1 || changedAttempt !== 1) throw new Error("Agent Run 取消缺少唯一待执行 Step/Attempt");
+      }
+      await trx("o_agentRunCommand").insert({
+        id: dependencies.createId(), runId: run.id, clientCommandId, kind: "cancel", inputFingerprint,
+        expectedVersion: input.expectedVersion, resultVersion: nextVersion, createdAt: now,
+      });
+      const latest = await trx("o_agentTrace").where("runId", run.id).max<{ sequence?: number }>("sequence as sequence").first();
+      await trx("o_agentTrace").insert({
+        id: dependencies.createId(), runId: run.id, sequence: Number(latest?.sequence ?? 0) + 1,
+        eventType: safeBeforeCall ? "run.cancelled" : "run.cancellation-requested",
+        runStatus: nextStatus, stepStatus: safeBeforeCall ? "cancelled" : null, createdAt: now,
+      });
+      return readSnapshot(trx, run.id, input.projectId);
+    }));
+  }
+
+  async function settleFailure(runId: string, stepId: string, attemptId: string, lease: AgentRunLease, intentCommitted: boolean, error: unknown): Promise<void> {
     const diagnostic = projectFailure(error);
     const now = dependencies.now();
     await dependencies.work((db) => db.transaction(async (trx) => {
+      await assertAgentRunLease(trx, lease, now);
       const run = await trx("o_agentRun").where("id", runId).first();
       if (!run || !["queued", "running"].includes(run.status)) return;
       const step = await trx("o_agentRunStep").where("id", stepId).first();
@@ -493,7 +639,10 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         status: targetStatus,
         ...(intentCommitted ? {} : { completedAt: now }),
       });
-      const changedRun = await trx("o_agentRun").where({ id: runId, status: runStatus, version: run.version }).update({
+      const changedRun = await trx("o_agentRun").where({
+        id: runId, status: runStatus, version: run.version,
+        leaseOwnerId: lease.ownerId, leaseEpoch: lease.epoch, fence: lease.fence,
+      }).where("leaseExpiresAt", ">", now).update({
         status: targetStatus,
         waitingReason: intentCommitted ? "model-call-outcome-unknown" : null,
         attentionReason: intentCommitted ? "model-call-outcome-unknown" : null,
@@ -502,6 +651,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         ...(intentCommitted ? {} : { completedAt: now }),
         updatedAt: now,
         version: run.version + 1,
+        leaseOwnerId: null,
+        leaseEpoch: null,
+        leaseExpiresAt: null,
       });
       if (changedAttempt !== 1 || changedStep !== 1 || changedRun !== 1) throw new Error("Agent Run 失败状态提交发生并发冲突");
       await trx("o_agentTrace").insert({
@@ -520,6 +672,19 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   }
 
   async function execute(runId: string, stepId: string, attemptId: string): Promise<void> {
+    const lease = await dependencies.work((db) => claimAgentRunLease(db, {
+      runId, ownerId: workerId, epoch: processEpoch, now: dependencies.now(), durationMs: leaseDurationMs,
+    }));
+    if (!lease) return;
+    let heartbeatFailed = false;
+    let renewal = Promise.resolve();
+    const heartbeat = setInterval(() => {
+      renewal = renewal.then(async () => {
+        if (heartbeatFailed) return;
+        await dependencies.work((db) => renewAgentRunLease(db, lease, dependencies.now(), leaseDurationMs));
+      }).catch(() => { heartbeatFailed = true; });
+    }, Math.max(1, Math.floor(leaseDurationMs / 3)));
+    heartbeat.unref();
     let intentCommitted = false;
     try {
       const prepared = await dependencies.work(async (db) => {
@@ -589,6 +754,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           const predecessor = await trx("o_agentRunCheckpoint").where({ runId }).orderBy("sequence", "desc").first();
           if (!predecessor) throw new Error("Agent Run 缺少创建 checkpoint");
           const now = dependencies.now();
+          await assertAgentRunLease(trx, lease, now);
           const nextVersion = run.version + 1;
           const checkpointId = dependencies.createId();
           const payload: AgentRunCheckpointPayload = {
@@ -597,8 +763,11 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             predecessorCheckpointId: predecessor.id, predecessorPayloadHash: predecessor.payloadHash,
             invocationFingerprint, resolvedTargetFingerprint: fingerprint(call.target),
           };
-          const changedRun = await trx("o_agentRun").where({ id: runId, status: "queued", version: run.version }).update({
-            status: "running", allowedActions: JSON.stringify(["inspect"]), startedAt: now, updatedAt: now, version: nextVersion,
+          const changedRun = await trx("o_agentRun").where({
+            id: runId, status: "queued", version: run.version,
+            leaseOwnerId: lease.ownerId, leaseEpoch: lease.epoch, fence: lease.fence,
+          }).where("leaseExpiresAt", ">", now).update({
+            status: "running", allowedActions: JSON.stringify(["inspect", "cancel"]), startedAt: now, updatedAt: now, version: nextVersion,
           });
           if (changedRun !== 1) return false;
           const changedStep = await trx("o_agentRunStep").where({ id: stepId, status: "pending" }).update({
@@ -623,6 +792,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           severity: "error", certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry" }, error);
       }
       if (!intentCommitted) return;
+      await renewal;
+      if (heartbeatFailed) throw new AgentRunLeaseLostError();
+      await dependencies.work((db) => db.transaction((trx) => assertAgentRunLease(trx, lease, dependencies.now())));
       const result = await call.invokeText({
         messages: invocation.messages,
       });
@@ -637,6 +809,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       const now = dependencies.now();
       try {
         await dependencies.work((db) => db.transaction(async (trx) => {
+          await assertAgentRunLease(trx, lease, now);
           const run = await trx("o_agentRun").where({ id: runId, status: "running" }).first();
           if (!run) return;
           const step = await trx("o_agentRunStep").where({ id: stepId, status: "running" }).first();
@@ -665,9 +838,13 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             status: "succeeded", completedAt: now,
           });
           const changedAttempt = await trx("o_agentRunAttempt").where({ id: attemptId, status: "running" }).update({ status: "succeeded", completedAt: now });
-          const changedRun = await trx("o_agentRun").where({ id: runId, status: "running", version: run.version }).update({
+          const changedRun = await trx("o_agentRun").where({
+            id: runId, status: "running", version: run.version,
+            leaseOwnerId: lease.ownerId, leaseEpoch: lease.epoch, fence: lease.fence,
+          }).where("leaseExpiresAt", ">", now).update({
             status: "succeeded", allowedActions: JSON.stringify(["inspect"]), completedAt: now,
             lastCommittedStepId: stepId, updatedAt: now, version: nextVersion,
+            leaseOwnerId: null, leaseEpoch: null, leaseExpiresAt: null,
           });
           if (changedStep !== 1 || changedAttempt !== 1 || changedRun !== 1) throw new Error("Agent Run 终态提交发生并发冲突");
           await trx("o_agentRunCheckpoint").insert({
@@ -676,8 +853,10 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             predecessorCheckpointId: predecessor.id, payload: canonicalCheckpointPayload(payload),
             payloadHash: hashCheckpointPayload(payload), createdAt: now,
           });
+          const latestTrace = await trx("o_agentTrace").where("runId", runId)
+            .max<{ sequence?: number }>("sequence as sequence").first();
           await trx("o_agentTrace").insert({
-            id: dependencies.createId(), runId, stepId, sequence: 3, eventType: "run.succeeded",
+            id: dependencies.createId(), runId, stepId, sequence: Number(latestTrace?.sequence ?? 0) + 1, eventType: "run.succeeded",
             runStatus: "succeeded", stepStatus: "succeeded", createdAt: now,
           });
         }));
@@ -688,7 +867,11 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         }, error);
       }
     } catch (error) {
-      await settleFailure(runId, stepId, attemptId, intentCommitted, error);
+      if (error instanceof AgentRunLeaseLostError) throw error;
+      await settleFailure(runId, stepId, attemptId, lease, intentCommitted, error);
+    } finally {
+      clearInterval(heartbeat);
+      await renewal;
     }
   }
 
@@ -720,7 +903,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         id: runId, projectId: input.projectId, scriptId: null, role: input.role, scope: input.scope,
         clientRequestId, requestFingerprint, input: JSON.stringify({ content }),
         status: "queued", waitingReason: null, attentionReason: null,
-        allowedActions: JSON.stringify(["inspect"]), lastCommittedStepId: null,
+        allowedActions: JSON.stringify(["inspect", "cancel"]), lastCommittedStepId: null,
         version: 1, createdAt: now, updatedAt: now,
       }).onConflict(["projectId", "role", "scope", "clientRequestId"]).ignore();
       const authoritative = await trx("o_agentRun").where({
@@ -774,7 +957,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     return created.snapshot;
   }
 
-  return { start, inspect };
+  return { start, inspect, cancel, list };
 }
 
 export function projectAgentRunToChatMessage(snapshot: AgentRunSnapshot): AIMessage {

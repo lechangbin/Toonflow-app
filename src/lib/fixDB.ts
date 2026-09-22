@@ -24,10 +24,13 @@ export const legacyDroppedColumns: Readonly<Record<string, readonly string[]>> =
 };
 
 export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
-  const addColumn = async (table: string, column: string, type: string) => {
+  const addColumn = async (table: string, column: string, type: string, defaultValue?: number) => {
     if (!(await knex.schema.hasTable(table))) return;
     if (!(await knex.schema.hasColumn(table, column))) {
-      await knex.schema.alterTable(table, (t) => (t as any)[type](column));
+      await knex.schema.alterTable(table, (t) => {
+        const added = (t as any)[type](column);
+        if (defaultValue !== undefined) added.notNullable().defaultTo(defaultValue);
+      });
     }
   };
 
@@ -99,6 +102,12 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   // T05: existing T04 databases keep their history and gain only the nullable
   // committed-Step cursor. New Attempt/Checkpoint tables are created by initDB.
   await addColumn("o_agentRun", "lastCommittedStepId", "text");
+  await addColumn("o_agentRun", "leaseOwnerId", "text");
+  await addColumn("o_agentRun", "leaseEpoch", "text");
+  await addColumn("o_agentRun", "leaseExpiresAt", "integer");
+  await addColumn("o_agentRun", "fence", "integer", 0);
+  await addColumn("o_agentRun", "cancellationRequestedAt", "integer");
+  await addColumn("o_agentRun", "cancellationCommandId", "text");
   //检测是否包含新增音色绑定提示词
   const existAudioPrompt = await knex("o_prompt").where("type", "audioBindPrompt").first();
   if (!existAudioPrompt)
