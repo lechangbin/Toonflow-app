@@ -1,4 +1,4 @@
-// @db-hash 0204534a2c320035f9693473f63aa539
+// @db-hash 62022e2d7bdf9a51b02794a4b1a3d709
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -35,6 +35,7 @@ export interface o_agentRun {
   'failureDiagnostic'?: string | null;
   'id'?: string;
   'input': string;
+  'lastCommittedStepId'?: string | null;
   'projectId': number;
   'requestFingerprint': string;
   'role': string;
@@ -45,6 +46,35 @@ export interface o_agentRun {
   'updatedAt': number;
   'version': number;
   'waitingReason'?: string | null;
+}
+export interface o_agentRunAttempt {
+  'completedAt'?: number | null;
+  'createdAt': number;
+  'id'?: string;
+  'invocationFingerprint'?: string | null;
+  'ordinal': number;
+  'predecessorAttemptId'?: string | null;
+  'reason': string;
+  'resolvedTarget'?: string | null;
+  'runId': string;
+  'startedAt'?: number | null;
+  'status': string;
+  'stepId': string;
+}
+export interface o_agentRunCheckpoint {
+  'attemptId'?: string | null;
+  'createdAt': number;
+  'id'?: string;
+  'kind': string;
+  'lastCommittedStepId'?: string | null;
+  'payload': string;
+  'payloadHash': string;
+  'predecessorCheckpointId'?: string | null;
+  'runId': string;
+  'runVersion': number;
+  'schemaVersion': string;
+  'sequence': number;
+  'stepId'?: string | null;
 }
 export interface o_agentRunOutput {
   'content': string;
@@ -399,6 +429,8 @@ export interface DB {
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
   "o_agentRun": o_agentRun;
+  "o_agentRunAttempt": o_agentRunAttempt;
+  "o_agentRunCheckpoint": o_agentRunCheckpoint;
   "o_agentRunOutput": o_agentRunOutput;
   "o_agentRunStep": o_agentRunStep;
   "o_agentTrace": o_agentTrace;

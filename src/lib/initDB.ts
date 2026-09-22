@@ -624,6 +624,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("startedAt");
         table.integer("completedAt");
         table.text("failureDiagnostic");
+        table.text("lastCommittedStepId");
         table.primary(["id"]);
         table.unique(["projectId", "role", "scope", "clientRequestId"]);
         table.index(["projectId", "createdAt"]);
@@ -645,6 +646,52 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("completedAt");
         table.primary(["id"]);
         table.unique(["runId", "ordinal"]);
+      },
+    },
+    // Agent Run Attempt：Step 的一次物理执行；重试保留有序且不可分叉的因果链
+    {
+      name: "o_agentRunAttempt",
+      builder: (table) => {
+        table.text("id").notNullable();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("stepId").notNullable().references("id").inTable("o_agentRunStep");
+        table.integer("ordinal").notNullable();
+        table.text("predecessorAttemptId").references("id").inTable("o_agentRunAttempt");
+        table.string("reason").notNullable();
+        table.string("status").notNullable();
+        table.text("resolvedTarget");
+        table.text("invocationFingerprint");
+        table.integer("createdAt").notNullable();
+        table.integer("startedAt");
+        table.integer("completedAt");
+        table.primary(["id"]);
+        table.unique(["runId", "stepId", "ordinal"]);
+        table.unique(["predecessorAttemptId"]);
+        table.index(["runId", "createdAt"]);
+      },
+    },
+    // Agent Run Checkpoint：显式提交边界的版本化、哈希校验且禁止更新的恢复证据
+    {
+      name: "o_agentRunCheckpoint",
+      builder: (table) => {
+        table.text("id").notNullable();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("stepId").references("id").inTable("o_agentRunStep");
+        table.text("attemptId").references("id").inTable("o_agentRunAttempt");
+        table.integer("sequence").notNullable();
+        table.string("kind").notNullable();
+        table.string("schemaVersion").notNullable();
+        table.integer("runVersion").notNullable();
+        table.text("lastCommittedStepId");
+        table.text("predecessorCheckpointId").references("id").inTable("o_agentRunCheckpoint");
+        table.text("payload").notNullable();
+        table.text("payloadHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.primary(["id"]);
+        table.unique(["runId", "sequence"]);
+        table.unique(["runId", "runVersion"]);
+        table.unique(["predecessorCheckpointId"]);
+        table.index(["runId", "createdAt"]);
       },
     },
     // Agent Run Output：只保存最终可展示输出，不保存隐藏推理或 Provider 原始负载
@@ -1252,5 +1299,17 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         console.log("[初始化数据库] 表数据初始化:", t.name);
       }
     }
+  }
+
+  // Checkpoints are append-only evidence. Project/database lifecycle deletion is
+  // deliberately still allowed; an UPDATE can never rewrite committed history.
+  if (await knex.schema.hasTable("o_agentRunCheckpoint")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentRunCheckpoint_prevent_update
+      BEFORE UPDATE ON o_agentRunCheckpoint
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Run checkpoints are immutable');
+      END
+    `);
   }
 };

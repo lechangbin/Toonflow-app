@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -17,6 +18,7 @@ import {
   projectAgentRunToChatMessage,
   type AgentRunDependencies,
 } from "../src/agentRuntime";
+import { recoverInterruptedAgentRuns } from "../src/database/agentRunRecovery";
 
 async function createDatabase(filename = ":memory:"): Promise<Knex> {
   const db = knexFactory({ client: "better-sqlite3", connection: { filename }, useNullAsDefault: true });
@@ -48,6 +50,7 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.text("attentionReason");
     table.text("allowedActions").notNullable();
     table.text("failureDiagnostic");
+    table.text("lastCommittedStepId");
     table.integer("version").notNullable();
     table.integer("createdAt").notNullable();
     table.integer("updatedAt").notNullable();
@@ -78,6 +81,37 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.text("schemaVersion").notNullable();
     table.integer("createdAt").notNullable();
     table.unique(["runId", "stepId"]);
+  });
+  await db.schema.createTable("o_agentRunAttempt", (table) => {
+    table.text("id").primary();
+    table.text("runId").notNullable();
+    table.text("stepId").notNullable();
+    table.integer("ordinal").notNullable();
+    table.text("predecessorAttemptId");
+    table.text("reason").notNullable();
+    table.text("status").notNullable();
+    table.text("resolvedTarget");
+    table.text("invocationFingerprint");
+    table.integer("createdAt").notNullable();
+    table.integer("startedAt");
+    table.integer("completedAt");
+    table.unique(["runId", "stepId", "ordinal"]);
+  });
+  await db.schema.createTable("o_agentRunCheckpoint", (table) => {
+    table.text("id").primary();
+    table.text("runId").notNullable();
+    table.text("stepId").notNullable();
+    table.text("attemptId").notNullable();
+    table.integer("sequence").notNullable();
+    table.text("kind").notNullable();
+    table.text("schemaVersion").notNullable();
+    table.integer("runVersion").notNullable();
+    table.text("lastCommittedStepId");
+    table.text("predecessorCheckpointId");
+    table.text("payload").notNullable();
+    table.text("payloadHash").notNullable();
+    table.integer("createdAt").notNullable();
+    table.unique(["runId", "sequence"]);
   });
   await db.schema.createTable("o_agentTrace", (table) => {
     table.text("id").primary();
@@ -149,6 +183,13 @@ test("identical starts return one durable Agent Run and execute one Model Step",
     const completed = await harness.runtime.inspect({ runId: first.id, projectId: 7 });
     assert.equal(completed?.status, "succeeded");
     assert.equal(completed?.outputs[0]?.content, "只读建议");
+    assert.equal(completed?.lastCommittedStepId, completed?.steps[0]?.id);
+    assert.deepEqual(completed?.attempts.map(({ ordinal, status }) => ({ ordinal, status })), [{ ordinal: 1, status: "succeeded" }]);
+    assert.deepEqual(completed?.checkpoints.map((checkpoint) => checkpoint.kind), ["run-created", "model-call-intent", "step-committed"]);
+    assert.equal(completed?.checkpoints.some((checkpoint) => "payload" in checkpoint), false);
+    const restarted = await harness.runtime.start(startInput);
+    await harness.flush();
+    assert.equal(restarted.id, first.id);
     assert.equal(harness.calls(), 1);
   } finally {
     await db.destroy();
@@ -228,6 +269,8 @@ test("the initial Run, Step, and Trace creation is atomic", async () => {
     await assert.rejects(harness.runtime.start(startInput), /injected/u);
     assert.equal(await db("o_agentRun").first(), undefined);
     assert.equal(await db("o_agentRunStep").first(), undefined);
+    assert.equal(await db("o_agentRunAttempt").first(), undefined);
+    assert.equal(await db("o_agentRunCheckpoint").first(), undefined);
   } finally {
     await db.destroy();
   }
@@ -250,7 +293,144 @@ test("inspect is a pure read and remains project-scoped", async () => {
   }
 });
 
-test("a failed Model Step stores only a Trace-safe diagnostic", async () => {
+test("a legacy T04 succeeded Run remains inspectable after the T05 schema upgrade", async () => {
+  const db = await createDatabase();
+  try {
+    const content = "旧版只读建议";
+    const contentHash = createHash("sha256").update(JSON.stringify(content)).digest("hex");
+    await db("o_agentRun").insert({
+      id: "legacy-run", projectId: 7, scriptId: null, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "legacy-request", requestFingerprint: "legacy-fingerprint", input: JSON.stringify({ content: "旧版请求" }),
+      status: "succeeded", waitingReason: null, attentionReason: null, allowedActions: JSON.stringify(["inspect"]),
+      failureDiagnostic: null, lastCommittedStepId: null, version: 3, createdAt: 100, updatedAt: 102, startedAt: 101, completedAt: 102,
+    });
+    await db("o_agentRunStep").insert({
+      id: "legacy-step", runId: "legacy-run", ordinal: 1, kind: "model", status: "succeeded",
+      logicalTarget: JSON.stringify({ kind: "logical", key: "scriptAgent:decisionAgent" }),
+      resolvedTarget: JSON.stringify({ vendorId: "fake", modelId: "text-v1", temperature: 2, maxOutputTokens: 256 }),
+      promptFingerprint: "legacy-prompt", startedAt: 101, completedAt: 102,
+    });
+    await db("o_agentRunOutput").insert({
+      id: "legacy-output", runId: "legacy-run", stepId: "legacy-step", kind: "assistant-text",
+      content, contentHash, schemaVersion: "toonflow.agent-run-output.v1", createdAt: 102,
+    });
+    await db("o_agentTrace").insert([
+      { id: "legacy-trace-1", runId: "legacy-run", stepId: "legacy-step", sequence: 1, eventType: "run.created", runStatus: "queued", stepStatus: "pending", createdAt: 100 },
+      { id: "legacy-trace-2", runId: "legacy-run", stepId: "legacy-step", sequence: 2, eventType: "run.started", runStatus: "running", stepStatus: "running", createdAt: 101 },
+      { id: "legacy-trace-3", runId: "legacy-run", stepId: "legacy-step", sequence: 3, eventType: "run.succeeded", runStatus: "succeeded", stepStatus: "succeeded", createdAt: 102 },
+    ]);
+    const harness = makeHarness(db);
+    const snapshot = await harness.runtime.inspect({ runId: "legacy-run", projectId: 7 });
+    assert.equal(snapshot?.status, "succeeded");
+    assert.equal(snapshot?.outputs[0]?.content, content);
+    assert.deepEqual(snapshot?.attempts, []);
+    assert.deepEqual(snapshot?.checkpoints, []);
+
+    await db("o_agentRunOutput").where("id", "legacy-output").update({ content: "被篡改" });
+    await assert.rejects(harness.runtime.inspect({ runId: "legacy-run", projectId: 7 }), AgentRunEvidenceCorruptError);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("checkpoint summaries are ordered, hash-linked, and fail closed after envelope tampering", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const started = await harness.runtime.start(startInput);
+    await harness.flush();
+    const snapshot = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.deepEqual(snapshot?.checkpoints.map((checkpoint) => checkpoint.sequence), [1, 2, 3]);
+    assert.equal(snapshot?.checkpoints[1]?.predecessorCheckpointId, snapshot?.checkpoints[0]?.id);
+    assert.equal(snapshot?.checkpoints[2]?.predecessorCheckpointId, snapshot?.checkpoints[1]?.id);
+    await db("o_agentRunCheckpoint").where({ runId: started.id, sequence: 2 }).update({ runVersion: 99 });
+    await assert.rejects(harness.runtime.inspect({ runId: started.id, projectId: 7 }), AgentRunEvidenceCorruptError);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a quarantined terminal Run remains inspectable without projecting untrusted output", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const started = await harness.runtime.start(startInput);
+    await harness.flush();
+    await db("o_agentRunCheckpoint").where({ runId: started.id, sequence: 3 }).update({ payloadHash: "0".repeat(64) });
+    await recoverInterruptedAgentRuns(db);
+    const snapshot = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(snapshot?.status, "succeeded", "committed lifecycle is not rewritten");
+    assert.equal(snapshot?.attentionReason, "agent-checkpoint-corrupt");
+    assert.deepEqual(snapshot?.outputs, [], "untrusted output is not projected");
+    assert.deepEqual(snapshot?.checkpoints, [], "untrusted checkpoint metadata is not projected");
+    const message = projectAgentRunToChatMessage(snapshot!);
+    assert.equal(message.ext?.agentRun.displayStatus, "needs-attention");
+    assert.equal(message.status, "pending");
+    assert.equal(JSON.stringify(message).includes("只读建议"), false);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("deleted checkpoint history on a T05 terminal Run is quarantined, not mistaken for T04", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const started = await harness.runtime.start(startInput);
+    await harness.flush();
+    await db("o_agentRunCheckpoint").where("runId", started.id).del();
+    await recoverInterruptedAgentRuns(db);
+    const snapshot = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(snapshot?.status, "succeeded");
+    assert.equal(snapshot?.attentionReason, "agent-checkpoint-corrupt");
+    assert.deepEqual(snapshot?.outputs, []);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("model-call intent is durable before invocation and partial provider work is not a checkpoint", async () => {
+  const db = await createDatabase();
+  let release!: (value: string) => void;
+  const provider = new Promise<string>((resolve) => { release = resolve; });
+  try {
+    const harness = makeHarness(db, () => provider);
+    const started = await harness.runtime.start(startInput);
+    const executing = harness.flush();
+    while (harness.calls() === 0) await new Promise<void>((resolve) => setImmediate(resolve));
+    const inFlight = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(inFlight?.status, "running");
+    assert.deepEqual(inFlight?.checkpoints.map((checkpoint) => checkpoint.kind), ["run-created", "model-call-intent"]);
+    assert.equal(inFlight?.outputs.length, 0);
+    release("只读建议");
+    await executing;
+    const completed = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.deepEqual(completed?.checkpoints.map((checkpoint) => checkpoint.kind), ["run-created", "model-call-intent", "step-committed"]);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a rejected intent commit has known-no-effect semantics and never invokes the provider", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const started = await harness.runtime.start(startInput);
+    await db.raw(`CREATE TRIGGER reject_intent_checkpoint BEFORE INSERT ON o_agentRunCheckpoint
+      WHEN NEW.kind = 'model-call-intent' BEGIN SELECT RAISE(ABORT, 'injected'); END`);
+    await harness.flush();
+    const failed = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(failed?.status, "failed");
+    assert.equal(failed?.attempts[0]?.status, "failed");
+    assert.equal(failed?.traces.at(-1)?.diagnostic?.certainty, "known-no-effect");
+    assert.equal(harness.calls(), 0);
+    assert.deepEqual(failed?.checkpoints.map((checkpoint) => checkpoint.kind), ["run-created"]);
+  } finally {
+    await db.destroy();
+  }
+});
+
+test("a provider failure after intent waits for reconciliation and stores only a Trace-safe diagnostic", async () => {
   const db = await createDatabase();
   try {
     const secret = "sk_forbidden_provider_message";
@@ -258,7 +438,9 @@ test("a failed Model Step stores only a Trace-safe diagnostic", async () => {
     const started = await harness.runtime.start(startInput);
     await harness.flush();
     const failed = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
-    assert.equal(failed?.status, "failed");
+    assert.equal(failed?.status, "waiting");
+    assert.equal(failed?.attentionReason, "model-call-outcome-unknown");
+    assert.equal(failed?.attempts[0]?.status, "waiting");
     assert.equal(failed?.outputs.length, 0);
     assert.deepEqual(failed?.steps[0]?.resolvedTarget, {
       vendorId: "fake", modelId: "text-v1", temperature: 2, maxOutputTokens: 256,
@@ -302,7 +484,7 @@ test("Run input and final output reject credentials before durable persistence",
     const started = await outputHarness.runtime.start({ ...startInput, clientRequestId: "output-secret" });
     await outputHarness.flush();
     const failed = await outputHarness.runtime.inspect({ runId: started.id, projectId: 7 });
-    assert.equal(failed?.status, "failed");
+    assert.equal(failed?.status, "waiting");
     assert.equal(failed?.outputs.length, 0);
     assert.equal(JSON.stringify(failed).includes("sk_forbidden_output_secret"), false);
     assert.equal(failed?.traces.at(-1)?.diagnostic?.failureClass, "Artifact");
@@ -318,7 +500,7 @@ test("inspect fails closed when a persisted diagnostic is corrupted", async () =
     const harness = makeHarness(db, async () => { throw new Error("safe failure"); });
     const started = await harness.runtime.start(startInput);
     await harness.flush();
-    await db("o_agentTrace").where({ runId: started.id, eventType: "run.failed" }).update({
+    await db("o_agentTrace").where({ runId: started.id, eventType: "run.needs-attention" }).update({
       diagnostic: JSON.stringify({ schemaVersion: "toonflow.trace-safe-diagnostic.v1", audience: "trace", secret: "leak" }),
     });
     await assert.rejects(
@@ -338,7 +520,7 @@ test("lifecycle guards reject terminal rewrites and allow the recovery transitio
   assert.throws(() => assertAgentRunStepTransition("failed", "running"), AgentRunStateConflictError);
 });
 
-test("terminal commit rolls back output, Step, Run, and Trace together", async () => {
+test("terminal commit failure rolls back output and pauses unknown-effect work for attention", async () => {
   const db = await createDatabase();
   try {
     const harness = makeHarness(db);
@@ -347,8 +529,10 @@ test("terminal commit rolls back output, Step, Run, and Trace together", async (
       WHEN NEW.eventType = 'run.succeeded' BEGIN SELECT RAISE(ABORT, 'injected'); END`);
     await harness.flush();
     const snapshot = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
-    assert.equal(snapshot?.status, "failed");
-    assert.equal(snapshot?.steps[0]?.status, "failed");
+    assert.equal(snapshot?.status, "waiting");
+    assert.equal(snapshot?.steps[0]?.status, "waiting");
+    assert.equal(snapshot?.attempts[0]?.status, "waiting");
+    assert.equal(snapshot?.attentionReason, "model-call-outcome-unknown");
     assert.equal(snapshot?.outputs.length, 0);
     assert.equal(snapshot?.traces.at(-1)?.diagnostic?.failureClass, "Artifact");
     assert.equal(snapshot?.traces.at(-1)?.diagnostic?.kind, "persistenceFailed");

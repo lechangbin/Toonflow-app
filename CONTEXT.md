@@ -88,6 +88,14 @@ _Avoid_: Production Action, Socket session, chat message
 An ordered, typed unit of work within an Agent Run whose lifecycle and result can be inspected independently.
 _Avoid_: Generation Task, callback, stream chunk
 
+**Agent Attempt**:
+One concrete execution try for an Agent Step, retained as causal history even when a later retry or restart recovery creates a successor.
+_Avoid_: Agent Step, retry counter, request
+
+**Agent Checkpoint**:
+An immutable, versioned record that proves one Agent Run commit boundary and links its Run revision, causal predecessor, and last committed Agent Step. Streaming tokens, partial provider responses, and in-memory results are never checkpoints.
+_Avoid_: Snapshot, progress event, stream chunk
+
 **Agent Trace**:
 An ordered, safe record of lifecycle and diagnostic events that explains an Agent Run without retaining hidden reasoning or raw provider payloads.
 _Avoid_: Application log, transcript, chain of thought

@@ -24,8 +24,18 @@ import {
   type AgentRunStatus,
   type AgentRunStepStatus,
 } from "./lifecycle";
+import {
+  AGENT_RUN_CHECKPOINT_KINDS,
+  AGENT_RUN_CHECKPOINT_SCHEMA_VERSION,
+  canonicalCheckpointPayload,
+  hashCheckpointPayload,
+  parseCheckpointPayload,
+  type AgentRunCheckpointKind,
+  type AgentRunCheckpointPayload,
+} from "./checkpoints";
 
 export * from "./lifecycle";
+export * from "./checkpoints";
 
 export const AGENT_RUN_START_SCHEMA_VERSION = "toonflow.agent-run.start.v1" as const;
 export const AGENT_RUN_OUTPUT_SCHEMA_VERSION = "toonflow.agent-run-output.v1" as const;
@@ -86,6 +96,37 @@ export interface AgentTraceSnapshot {
   createdAt: number;
 }
 
+export type AgentRunAttemptStatus = "preparing" | "running" | "waiting" | "succeeded" | "failed" | "cancelled";
+export type AgentRunAttemptReason = "initial" | "restart-recovery";
+
+export interface AgentRunAttemptSnapshot {
+  id: string;
+  stepId: string;
+  ordinal: number;
+  predecessorAttemptId?: string;
+  reason: AgentRunAttemptReason;
+  status: AgentRunAttemptStatus;
+  resolvedTarget?: ConfiguredTextCall["target"];
+  invocationFingerprint?: string;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+}
+
+export interface AgentRunCheckpointSnapshot {
+  id: string;
+  stepId: string;
+  attemptId: string;
+  sequence: number;
+  kind: AgentRunCheckpointKind;
+  schemaVersion: typeof AGENT_RUN_CHECKPOINT_SCHEMA_VERSION;
+  runVersion: number;
+  lastCommittedStepId?: string;
+  predecessorCheckpointId?: string;
+  payloadHash: string;
+  createdAt: number;
+}
+
 export interface AgentRunSnapshot {
   id: string;
   projectId: number;
@@ -102,7 +143,10 @@ export interface AgentRunSnapshot {
   updatedAt: number;
   startedAt?: number;
   completedAt?: number;
+  lastCommittedStepId?: string;
   steps: AgentRunStepSnapshot[];
+  attempts: AgentRunAttemptSnapshot[];
+  checkpoints: AgentRunCheckpointSnapshot[];
   outputs: AgentRunOutputSnapshot[];
   traces: AgentTraceSnapshot[];
 }
@@ -178,14 +222,134 @@ function optionalNumber(value: unknown): number | undefined {
   return typeof value === "number" ? value : undefined;
 }
 
+function parseAttemptStatus(value: unknown): AgentRunAttemptStatus {
+  if (["preparing", "running", "waiting", "succeeded", "failed", "cancelled"].includes(String(value))) {
+    return value as AgentRunAttemptStatus;
+  }
+  throw new AgentRunEvidenceCorruptError();
+}
+
+function parseAttemptReason(value: unknown): AgentRunAttemptReason {
+  if (value === "initial" || value === "restart-recovery") return value;
+  throw new AgentRunEvidenceCorruptError();
+}
+
+function validateCheckpointRows(rows: any[]): Array<any & { parsedPayload: AgentRunCheckpointPayload }> {
+  let predecessorCheckpointId: string | null = null;
+  let predecessorPayloadHash: string | null = null;
+  let previousRunVersion = 0;
+  return rows.map((row, index) => {
+    if (row.sequence !== index + 1
+      || row.schemaVersion !== AGENT_RUN_CHECKPOINT_SCHEMA_VERSION
+      || !(AGENT_RUN_CHECKPOINT_KINDS as readonly unknown[]).includes(row.kind)
+      || (row.predecessorCheckpointId ?? null) !== predecessorCheckpointId
+      || !Number.isInteger(row.runVersion) || row.runVersion <= previousRunVersion) {
+      throw new AgentRunEvidenceCorruptError();
+    }
+    const parsedPayload = parseCheckpointPayload(row.payload, row.kind as AgentRunCheckpointKind);
+    if (!parsedPayload || canonicalCheckpointPayload(parsedPayload) !== row.payload
+      || hashCheckpointPayload(parsedPayload) !== row.payloadHash
+      || parsedPayload.runId !== row.runId || parsedPayload.stepId !== row.stepId
+      || parsedPayload.attemptId !== row.attemptId || parsedPayload.sequence !== row.sequence
+      || parsedPayload.runVersion !== row.runVersion
+      || parsedPayload.lastCommittedStepId !== (row.lastCommittedStepId ?? null)
+      || parsedPayload.predecessorCheckpointId !== (row.predecessorCheckpointId ?? null)
+      || parsedPayload.predecessorPayloadHash !== predecessorPayloadHash) {
+      throw new AgentRunEvidenceCorruptError();
+    }
+    predecessorCheckpointId = row.id;
+    predecessorPayloadHash = row.payloadHash;
+    previousRunVersion = row.runVersion;
+    return { ...row, parsedPayload };
+  });
+}
+
+function validateCheckpointEvidence(run: any, steps: any[], attempts: any[], outputs: any[], checkpoints: Array<any & { parsedPayload: AgentRunCheckpointPayload }>): void {
+  const stepIds = new Set(steps.map((step) => step.id));
+  const attemptById = new Map(attempts.map((attempt) => [attempt.id, attempt]));
+  const outputById = new Map(outputs.map((output) => [output.id, output]));
+  const attemptGroups = new Map<string, any[]>();
+  for (const attempt of attempts) {
+    const group = attemptGroups.get(attempt.stepId) ?? [];
+    group.push(attempt);
+    attemptGroups.set(attempt.stepId, group);
+  }
+  for (const [stepId, group] of attemptGroups) {
+    if (!stepIds.has(stepId)) throw new AgentRunEvidenceCorruptError();
+    group.sort((left, right) => left.ordinal - right.ordinal);
+    group.forEach((attempt, index) => {
+      if (attempt.runId !== run.id || attempt.ordinal !== index + 1
+        || (attempt.predecessorAttemptId ?? null) !== (index === 0 ? null : group[index - 1].id)) {
+        throw new AgentRunEvidenceCorruptError();
+      }
+    });
+  }
+  checkpoints.forEach((checkpoint, index) => {
+    const payload = checkpoint.parsedPayload;
+    const attempt = attemptById.get(checkpoint.attemptId);
+    if (!stepIds.has(checkpoint.stepId) || !attempt || attempt.stepId !== checkpoint.stepId) throw new AgentRunEvidenceCorruptError();
+    if ((index === 0) !== (payload.kind === "run-created")) throw new AgentRunEvidenceCorruptError();
+    if (payload.kind === "run-created" && payload.requestFingerprint !== run.requestFingerprint) {
+      throw new AgentRunEvidenceCorruptError();
+    }
+    if (payload.kind === "attempt-created"
+      && (attempt.predecessorAttemptId !== payload.predecessorAttemptId || attempt.reason !== payload.reason)) {
+      throw new AgentRunEvidenceCorruptError();
+    }
+    if (payload.kind === "model-call-intent") {
+      const target = parseJson<ConfiguredTextCall["target"] | null>(attempt.resolvedTarget, null);
+      if (!target || attempt.invocationFingerprint !== payload.invocationFingerprint
+        || fingerprint(target) !== payload.resolvedTargetFingerprint) throw new AgentRunEvidenceCorruptError();
+    }
+    if (payload.kind === "step-committed") {
+      const output = outputById.get(payload.outputId);
+      if (!output || output.stepId !== checkpoint.stepId || output.contentHash !== payload.outputContentHash
+        || fingerprint(output.content) !== output.contentHash || output.schemaVersion !== AGENT_RUN_OUTPUT_SCHEMA_VERSION
+        || checkpoint.lastCommittedStepId !== checkpoint.stepId) throw new AgentRunEvidenceCorruptError();
+    }
+  });
+  if ((checkpoints.at(-1)?.lastCommittedStepId ?? null) !== (run.lastCommittedStepId ?? null)) {
+    throw new AgentRunEvidenceCorruptError();
+  }
+}
+
+function validateOutputs(outputs: any[]): void {
+  for (const output of outputs) {
+    if (output.schemaVersion !== AGENT_RUN_OUTPUT_SCHEMA_VERSION
+      || fingerprint(output.content) !== output.contentHash
+      || !inspectPersistableText(output.content).ok) {
+      throw new AgentRunEvidenceCorruptError();
+    }
+  }
+}
+
 async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectId: number): Promise<AgentRunSnapshot | null> {
   const run = await db("o_agentRun").where({ id: runId, projectId }).first();
   if (!run) return null;
-  const [steps, outputs, traces] = await Promise.all([
+  const [steps, attempts, checkpointRows, outputs, traces] = await Promise.all([
     db("o_agentRunStep").where("runId", runId).orderBy("ordinal", "asc"),
+    db("o_agentRunAttempt").where("runId", runId).orderBy([{ column: "createdAt", order: "asc" }, { column: "ordinal", order: "asc" }]),
+    db("o_agentRunCheckpoint").where("runId", runId).orderBy("sequence", "asc"),
     db("o_agentRunOutput").where("runId", runId).orderBy("createdAt", "asc"),
     db("o_agentTrace").where("runId", runId).orderBy("sequence", "asc"),
   ]);
+  const quarantinedEvidence = run.attentionReason === "agent-checkpoint-corrupt"
+    || run.attentionReason === "agent-checkpoint-incompatible";
+  const checkpoints = quarantinedEvidence ? [] : validateCheckpointRows(checkpointRows);
+  if (!quarantinedEvidence) {
+    validateOutputs(outputs);
+    const legacyEvidence = checkpoints.length === 0 && attempts.length === 0;
+    if (legacyEvidence) {
+      if (!["succeeded", "failed", "cancelled"].includes(run.status) || run.lastCommittedStepId) {
+        throw new AgentRunEvidenceCorruptError();
+      }
+    } else {
+      if (checkpoints.length === 0 || attempts.length === 0) throw new AgentRunEvidenceCorruptError();
+      const checkpointVersion = checkpoints.at(-1)!.runVersion;
+      if (checkpointVersion > run.version || run.version - checkpointVersion > 1) throw new AgentRunEvidenceCorruptError();
+      validateCheckpointEvidence(run, steps, attempts, outputs, checkpoints);
+    }
+  }
   return {
     id: run.id,
     projectId: run.projectId,
@@ -202,6 +366,7 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
     updatedAt: run.updatedAt,
     ...(optionalNumber(run.startedAt) !== undefined ? { startedAt: run.startedAt } : {}),
     ...(optionalNumber(run.completedAt) !== undefined ? { completedAt: run.completedAt } : {}),
+    ...(run.lastCommittedStepId ? { lastCommittedStepId: run.lastCommittedStepId } : {}),
     steps: steps.map((step) => ({
       id: step.id,
       ordinal: step.ordinal,
@@ -213,7 +378,33 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
       ...(optionalNumber(step.startedAt) !== undefined ? { startedAt: step.startedAt } : {}),
       ...(optionalNumber(step.completedAt) !== undefined ? { completedAt: step.completedAt } : {}),
     })),
-    outputs: outputs.map((output) => ({
+    attempts: (quarantinedEvidence ? [] : attempts).map((attempt) => ({
+      id: attempt.id,
+      stepId: attempt.stepId,
+      ordinal: attempt.ordinal,
+      ...(attempt.predecessorAttemptId ? { predecessorAttemptId: attempt.predecessorAttemptId } : {}),
+      reason: parseAttemptReason(attempt.reason),
+      status: parseAttemptStatus(attempt.status),
+      ...(attempt.resolvedTarget ? { resolvedTarget: parseJson<ConfiguredTextCall["target"]>(attempt.resolvedTarget, undefined as never) } : {}),
+      ...(attempt.invocationFingerprint ? { invocationFingerprint: attempt.invocationFingerprint } : {}),
+      createdAt: attempt.createdAt,
+      ...(optionalNumber(attempt.startedAt) !== undefined ? { startedAt: attempt.startedAt } : {}),
+      ...(optionalNumber(attempt.completedAt) !== undefined ? { completedAt: attempt.completedAt } : {}),
+    })),
+    checkpoints: checkpoints.map((checkpoint) => ({
+      id: checkpoint.id,
+      stepId: checkpoint.stepId,
+      attemptId: checkpoint.attemptId,
+      sequence: checkpoint.sequence,
+      kind: checkpoint.kind,
+      schemaVersion: checkpoint.schemaVersion,
+      runVersion: checkpoint.runVersion,
+      ...(checkpoint.lastCommittedStepId ? { lastCommittedStepId: checkpoint.lastCommittedStepId } : {}),
+      ...(checkpoint.predecessorCheckpointId ? { predecessorCheckpointId: checkpoint.predecessorCheckpointId } : {}),
+      payloadHash: checkpoint.payloadHash,
+      createdAt: checkpoint.createdAt,
+    })),
+    outputs: (quarantinedEvidence ? [] : outputs).map((output) => ({
       id: output.id,
       stepId: output.stepId,
       kind: output.kind,
@@ -277,7 +468,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     return dependencies.work((db) => readSnapshot(db, input.runId, input.projectId));
   }
 
-  async function markFailed(runId: string, stepId: string, error: unknown): Promise<void> {
+  async function settleFailure(runId: string, stepId: string, attemptId: string, intentCommitted: boolean, error: unknown): Promise<void> {
     const diagnostic = projectFailure(error);
     const now = dependencies.now();
     await dependencies.work((db) => db.transaction(async (trx) => {
@@ -285,30 +476,42 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       if (!run || !["queued", "running"].includes(run.status)) return;
       const step = await trx("o_agentRunStep").where("id", stepId).first();
       if (!step || !["pending", "running"].includes(step.status)) return;
+      const attempt = await trx("o_agentRunAttempt").where("id", attemptId).first();
+      if (!attempt || !["preparing", "running"].includes(attempt.status)) return;
       const runStatus = parseAgentRunStatus(run.status);
       const stepStatus = parseAgentRunStepStatus(step.status);
-      assertAgentRunTransition(runStatus, "failed");
-      assertAgentRunStepTransition(stepStatus, "failed");
+      const targetStatus = intentCommitted ? "waiting" : "failed";
+      assertAgentRunTransition(runStatus, targetStatus);
+      assertAgentRunStepTransition(stepStatus, targetStatus);
       const sequenceRow = await trx("o_agentTrace").where("runId", runId).max<{ sequence?: number }>("sequence as sequence").first();
       const sequence = Number(sequenceRow?.sequence ?? 0) + 1;
-      const changedStep = await trx("o_agentRunStep").where({ id: stepId, status: stepStatus }).update({ status: "failed", completedAt: now });
+      const changedAttempt = await trx("o_agentRunAttempt").where({ id: attemptId, status: attempt.status }).update({
+        status: targetStatus,
+        ...(intentCommitted ? {} : { completedAt: now }),
+      });
+      const changedStep = await trx("o_agentRunStep").where({ id: stepId, status: stepStatus }).update({
+        status: targetStatus,
+        ...(intentCommitted ? {} : { completedAt: now }),
+      });
       const changedRun = await trx("o_agentRun").where({ id: runId, status: runStatus, version: run.version }).update({
-        status: "failed",
+        status: targetStatus,
+        waitingReason: intentCommitted ? "model-call-outcome-unknown" : null,
+        attentionReason: intentCommitted ? "model-call-outcome-unknown" : null,
         allowedActions: JSON.stringify(["inspect"]),
         failureDiagnostic: JSON.stringify(diagnostic),
-        completedAt: now,
+        ...(intentCommitted ? {} : { completedAt: now }),
         updatedAt: now,
         version: run.version + 1,
       });
-      if (changedStep !== 1 || changedRun !== 1) throw new Error("Agent Run 失败状态提交发生并发冲突");
+      if (changedAttempt !== 1 || changedStep !== 1 || changedRun !== 1) throw new Error("Agent Run 失败状态提交发生并发冲突");
       await trx("o_agentTrace").insert({
         id: dependencies.createId(),
         runId,
         stepId,
         sequence,
-        eventType: "run.failed",
-        runStatus: "failed",
-        stepStatus: "failed",
+        eventType: intentCommitted ? "run.needs-attention" : "run.failed",
+        runStatus: targetStatus,
+        stepStatus: targetStatus,
         diagnosticSchemaVersion: TRACE_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
         diagnostic: JSON.stringify(diagnostic),
         createdAt: now,
@@ -316,34 +519,17 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     }));
   }
 
-  async function execute(runId: string, stepId: string): Promise<void> {
-    const claimed = await dependencies.work((db) => db.transaction(async (trx) => {
-      const run = await trx("o_agentRun").where({ id: runId, status: "queued" }).first();
-      if (!run) return null;
-      const step = await trx("o_agentRunStep").where({ id: stepId, status: "pending" }).first();
-      if (!step) return null;
-      assertAgentRunTransition(parseAgentRunStatus(run.status), "running");
-      assertAgentRunStepTransition(parseAgentRunStepStatus(step.status), "running");
-      const now = dependencies.now();
-      const changed = await trx("o_agentRun").where({ id: runId, status: "queued", version: run.version }).update({
-        status: "running",
-        allowedActions: JSON.stringify(["inspect"]),
-        startedAt: now,
-        updatedAt: now,
-        version: run.version + 1,
-      });
-      if (changed !== 1) return null;
-      const changedStep = await trx("o_agentRunStep").where({ id: stepId, status: "pending" }).update({ status: "running", startedAt: now });
-      if (changedStep !== 1) throw new Error("Agent Step 领取发生并发冲突");
-      await trx("o_agentTrace").insert({
-        id: dependencies.createId(), runId, stepId, sequence: 2, eventType: "run.started",
-        runStatus: "running", stepStatus: "running", createdAt: now,
-      });
-      return { input: parseJson<{ content: string }>(run.input, { content: "" }), projectId: run.projectId };
-    }));
-    if (!claimed) return;
-
+  async function execute(runId: string, stepId: string, attemptId: string): Promise<void> {
+    let intentCommitted = false;
     try {
+      const prepared = await dependencies.work(async (db) => {
+        const run = await db("o_agentRun").where({ id: runId, status: "queued" }).first();
+        const step = await db("o_agentRunStep").where({ id: stepId, status: "pending" }).first();
+        const attempt = await db("o_agentRunAttempt").where({ id: attemptId, status: "preparing" }).first();
+        if (!run || !step || !attempt) return null;
+        return { input: parseJson<{ content: string }>(run.input, { content: "" }), projectId: run.projectId };
+      });
+      if (!prepared) return;
       let project: {
         name?: string | null;
         type?: string | null;
@@ -354,8 +540,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       let chapterRow: { count?: number } | undefined;
       try {
         [project, chapterRow] = await Promise.all([
-          dependencies.work((db) => db("o_project").where("id", claimed.projectId).first()),
-          dependencies.work((db) => db("o_novel").where("projectId", claimed.projectId).count<{ count: number }[]>("id as count").first()),
+          dependencies.work((db) => db("o_project").where("id", prepared.projectId).first()),
+          dependencies.work((db) => db("o_novel").where("projectId", prepared.projectId).count<{ count: number }[]>("id as count").first()),
         ]);
       } catch (error) {
         throw new ClassifiedAgentRunError({
@@ -367,7 +553,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         throw new ClassifiedAgentRunError({
           failureClass: "Context", stage: "context-build", kind: "contextMissing", severity: "error",
           certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "never",
-        }, new AgentRunProjectNotFoundError(claimed.projectId));
+        }, new AgentRunProjectNotFoundError(prepared.projectId));
       }
       let call: ConfiguredTextCall;
       try {
@@ -375,18 +561,6 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       } catch (error) {
         throw new ClassifiedAgentRunError({
           failureClass: "Vendor", stage: "vendor-request", kind: "executionFailed", severity: "error",
-          certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry",
-        }, error);
-      }
-      try {
-        await dependencies.work((db) => db("o_agentRunStep").where({ id: stepId, status: "running" }).update({
-          resolvedTarget: JSON.stringify(call.target),
-        }).then((changed) => {
-          if (changed !== 1) throw new Error("Agent Step 模型目标提交发生并发冲突");
-        }));
-      } catch (error) {
-        throw new ClassifiedAgentRunError({
-          failureClass: "Artifact", stage: "artifact-persistence", kind: "persistenceFailed", severity: "error",
           certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry",
         }, error);
       }
@@ -398,12 +572,59 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         `视频画幅：${project.videoRatio ?? "16:9"}`,
         `章节数量：${Number(chapterRow?.count ?? 0)}`,
       ].join("\n");
-      const result = await call.invokeText({
+      const invocation = {
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "assistant", content: projectFacts },
-          { role: "user", content: claimed.input.content },
+          { role: "system" as const, content: SYSTEM_PROMPT },
+          { role: "assistant" as const, content: projectFacts },
+          { role: "user" as const, content: prepared.input.content },
         ],
+      };
+      const invocationFingerprint = fingerprint({ target: call.target, invocation });
+      try {
+        intentCommitted = await dependencies.work((db) => db.transaction(async (trx) => {
+          const run = await trx("o_agentRun").where({ id: runId, status: "queued" }).first();
+          const step = await trx("o_agentRunStep").where({ id: stepId, status: "pending" }).first();
+          const attempt = await trx("o_agentRunAttempt").where({ id: attemptId, status: "preparing" }).first();
+          if (!run || !step || !attempt) return false;
+          const predecessor = await trx("o_agentRunCheckpoint").where({ runId }).orderBy("sequence", "desc").first();
+          if (!predecessor) throw new Error("Agent Run 缺少创建 checkpoint");
+          const now = dependencies.now();
+          const nextVersion = run.version + 1;
+          const checkpointId = dependencies.createId();
+          const payload: AgentRunCheckpointPayload = {
+            schemaVersion: AGENT_RUN_CHECKPOINT_SCHEMA_VERSION, kind: "model-call-intent", runId, stepId, attemptId,
+            sequence: predecessor.sequence + 1, runVersion: nextVersion, lastCommittedStepId: run.lastCommittedStepId ?? null,
+            predecessorCheckpointId: predecessor.id, predecessorPayloadHash: predecessor.payloadHash,
+            invocationFingerprint, resolvedTargetFingerprint: fingerprint(call.target),
+          };
+          const changedRun = await trx("o_agentRun").where({ id: runId, status: "queued", version: run.version }).update({
+            status: "running", allowedActions: JSON.stringify(["inspect"]), startedAt: now, updatedAt: now, version: nextVersion,
+          });
+          if (changedRun !== 1) return false;
+          const changedStep = await trx("o_agentRunStep").where({ id: stepId, status: "pending" }).update({
+            status: "running", resolvedTarget: JSON.stringify(call.target), startedAt: now,
+          });
+          const changedAttempt = await trx("o_agentRunAttempt").where({ id: attemptId, status: "preparing" }).update({
+            status: "running", resolvedTarget: JSON.stringify(call.target), invocationFingerprint, startedAt: now,
+          });
+          if (changedStep !== 1 || changedAttempt !== 1) throw new Error("Agent Run intent 提交发生并发冲突");
+          await trx("o_agentRunCheckpoint").insert({
+            id: checkpointId, runId, stepId, attemptId, sequence: payload.sequence, kind: payload.kind,
+            schemaVersion: payload.schemaVersion, runVersion: nextVersion, lastCommittedStepId: null,
+            predecessorCheckpointId: predecessor.id, payload: canonicalCheckpointPayload(payload),
+            payloadHash: hashCheckpointPayload(payload), createdAt: now,
+          });
+          await trx("o_agentTrace").insert({ id: dependencies.createId(), runId, stepId, sequence: 2,
+            eventType: "run.started", runStatus: "running", stepStatus: "running", createdAt: now });
+          return true;
+        }));
+      } catch (error) {
+        throw new ClassifiedAgentRunError({ failureClass: "Artifact", stage: "artifact-persistence", kind: "persistenceFailed",
+          severity: "error", certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry" }, error);
+      }
+      if (!intentCommitted) return;
+      const result = await call.invokeText({
+        messages: invocation.messages,
       });
       const content = result.text;
       const persistableOutput = inspectPersistableText(content);
@@ -420,20 +641,41 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           if (!run) return;
           const step = await trx("o_agentRunStep").where({ id: stepId, status: "running" }).first();
           if (!step) throw new Error("Agent Step 终态提交前态无效");
+          const attempt = await trx("o_agentRunAttempt").where({ id: attemptId, status: "running" }).first();
+          if (!attempt) throw new Error("Agent Attempt 终态提交前态无效");
+          const predecessor = await trx("o_agentRunCheckpoint").where({ runId }).orderBy("sequence", "desc").first();
+          if (!predecessor || predecessor.kind !== "model-call-intent") throw new Error("Agent Run 缺少 intent checkpoint");
           assertAgentRunTransition(parseAgentRunStatus(run.status), "succeeded");
           assertAgentRunStepTransition(parseAgentRunStepStatus(step.status), "succeeded");
+          const outputId = dependencies.createId();
+          const outputContentHash = fingerprint(content);
+          const nextVersion = run.version + 1;
+          const checkpointId = dependencies.createId();
+          const payload: AgentRunCheckpointPayload = {
+            schemaVersion: AGENT_RUN_CHECKPOINT_SCHEMA_VERSION, kind: "step-committed", runId, stepId, attemptId,
+            sequence: predecessor.sequence + 1, runVersion: nextVersion, lastCommittedStepId: stepId,
+            predecessorCheckpointId: predecessor.id, predecessorPayloadHash: predecessor.payloadHash,
+            outputId, outputContentHash,
+          };
           await trx("o_agentRunOutput").insert({
-            id: dependencies.createId(), runId, stepId, kind: "assistant-text", content,
-            contentHash: fingerprint(content), schemaVersion: AGENT_RUN_OUTPUT_SCHEMA_VERSION, createdAt: now,
+            id: outputId, runId, stepId, kind: "assistant-text", content,
+            contentHash: outputContentHash, schemaVersion: AGENT_RUN_OUTPUT_SCHEMA_VERSION, createdAt: now,
           });
           const changedStep = await trx("o_agentRunStep").where({ id: stepId, status: "running" }).update({
             status: "succeeded", completedAt: now,
           });
+          const changedAttempt = await trx("o_agentRunAttempt").where({ id: attemptId, status: "running" }).update({ status: "succeeded", completedAt: now });
           const changedRun = await trx("o_agentRun").where({ id: runId, status: "running", version: run.version }).update({
             status: "succeeded", allowedActions: JSON.stringify(["inspect"]), completedAt: now,
-            updatedAt: now, version: run.version + 1,
+            lastCommittedStepId: stepId, updatedAt: now, version: nextVersion,
           });
-          if (changedStep !== 1 || changedRun !== 1) throw new Error("Agent Run 终态提交发生并发冲突");
+          if (changedStep !== 1 || changedAttempt !== 1 || changedRun !== 1) throw new Error("Agent Run 终态提交发生并发冲突");
+          await trx("o_agentRunCheckpoint").insert({
+            id: checkpointId, runId, stepId, attemptId, sequence: payload.sequence, kind: payload.kind,
+            schemaVersion: payload.schemaVersion, runVersion: nextVersion, lastCommittedStepId: stepId,
+            predecessorCheckpointId: predecessor.id, payload: canonicalCheckpointPayload(payload),
+            payloadHash: hashCheckpointPayload(payload), createdAt: now,
+          });
           await trx("o_agentTrace").insert({
             id: dependencies.createId(), runId, stepId, sequence: 3, eventType: "run.succeeded",
             runStatus: "succeeded", stepStatus: "succeeded", createdAt: now,
@@ -446,7 +688,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         }, error);
       }
     } catch (error) {
-      await markFailed(runId, stepId, error);
+      await settleFailure(runId, stepId, attemptId, intentCommitted, error);
     }
   }
 
@@ -469,6 +711,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     });
     const runId = dependencies.createId();
     const stepId = dependencies.createId();
+    const attemptId = dependencies.createId();
+    const checkpointId = dependencies.createId();
     const traceId = dependencies.createId();
     const now = dependencies.now();
     const persistStart = () => dependencies.work((db) => db.transaction(async (trx) => {
@@ -476,7 +720,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         id: runId, projectId: input.projectId, scriptId: null, role: input.role, scope: input.scope,
         clientRequestId, requestFingerprint, input: JSON.stringify({ content }),
         status: "queued", waitingReason: null, attentionReason: null,
-        allowedActions: JSON.stringify(["inspect"]), version: 1, createdAt: now, updatedAt: now,
+        allowedActions: JSON.stringify(["inspect"]), lastCommittedStepId: null,
+        version: 1, createdAt: now, updatedAt: now,
       }).onConflict(["projectId", "role", "scope", "clientRequestId"]).ignore();
       const authoritative = await trx("o_agentRun").where({
         projectId: input.projectId, role: input.role, scope: input.scope, clientRequestId,
@@ -492,13 +737,28 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         id: stepId, runId, ordinal: 1, kind: "model", logicalTarget: JSON.stringify(LOGICAL_TARGET),
         resolvedTarget: null, promptFingerprint: fingerprint({ version: PROMPT_VERSION, prompt: SYSTEM_PROMPT }), status: "pending",
       });
+      await trx("o_agentRunAttempt").insert({
+        id: attemptId, runId, stepId, ordinal: 1, predecessorAttemptId: null, reason: "initial",
+        status: "preparing", resolvedTarget: null, invocationFingerprint: null, createdAt: now,
+      });
+      const checkpointPayload: AgentRunCheckpointPayload = {
+        schemaVersion: AGENT_RUN_CHECKPOINT_SCHEMA_VERSION, kind: "run-created", runId, stepId, attemptId,
+        sequence: 1, runVersion: 1, lastCommittedStepId: null, predecessorCheckpointId: null,
+        predecessorPayloadHash: null, requestFingerprint,
+      };
+      await trx("o_agentRunCheckpoint").insert({
+        id: checkpointId, runId, stepId, attemptId, sequence: 1, kind: checkpointPayload.kind,
+        schemaVersion: checkpointPayload.schemaVersion, runVersion: 1, lastCommittedStepId: null,
+        predecessorCheckpointId: null, payload: canonicalCheckpointPayload(checkpointPayload),
+        payloadHash: hashCheckpointPayload(checkpointPayload), createdAt: now,
+      });
       await trx("o_agentTrace").insert({
         id: traceId, runId, stepId, sequence: 1, eventType: "run.created",
         runStatus: "queued", stepStatus: "pending", createdAt: now,
       });
-      return { snapshot: await readSnapshot(trx, runId, input.projectId), created: true, stepId };
+      return { snapshot: await readSnapshot(trx, runId, input.projectId), created: true, stepId, attemptId };
     }));
-    let created: { snapshot: AgentRunSnapshot | null; created: boolean; stepId: string } | undefined;
+    let created: { snapshot: AgentRunSnapshot | null; created: boolean; stepId: string; attemptId?: string } | undefined;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         created = await persistStart();
@@ -510,7 +770,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     }
     if (!created) throw new Error("Agent Run 幂等写入未完成");
     if (!created.snapshot) throw new Error("Agent Run 创建后无法读取");
-    if (created.created) dependencies.schedule(() => execute(created.snapshot!.id, created.stepId));
+    if (created.created && created.attemptId) dependencies.schedule(() => execute(created.snapshot!.id, created.stepId, created.attemptId!));
     return created.snapshot;
   }
 
@@ -518,16 +778,17 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
 }
 
 export function projectAgentRunToChatMessage(snapshot: AgentRunSnapshot): AIMessage {
-  const displayStatus = snapshot.status === "waiting" && snapshot.attentionReason ? "needs-attention" : snapshot.status;
-  const content = snapshot.status === "succeeded"
+  const displayStatus = snapshot.attentionReason ? "needs-attention" : snapshot.status;
+  const content = snapshot.status === "succeeded" && !snapshot.attentionReason
     ? snapshot.outputs.map((output) => ({ type: "markdown" as const, id: `${snapshot.id}:output`, status: "complete" as const, data: output.content }))
     : [{
         type: "markdown" as const,
         id: `${snapshot.id}:status`,
-        status: snapshot.status === "failed" ? "error" as const : "pending" as const,
-        data: snapshot.status === "failed" ? "Agent 执行失败" : `Agent Run：${displayStatus}`,
+        status: snapshot.status === "failed" && !snapshot.attentionReason ? "error" as const : "pending" as const,
+        data: snapshot.status === "failed" && !snapshot.attentionReason ? "Agent 执行失败" : `Agent Run：${displayStatus}`,
       }];
-  const messageStatus = snapshot.status === "succeeded" ? "complete"
+  const messageStatus = snapshot.attentionReason ? "pending"
+    : snapshot.status === "succeeded" ? "complete"
     : snapshot.status === "failed" ? "error"
       : snapshot.status === "cancelled" ? "stop"
         : snapshot.status === "running" ? "streaming" : "pending";
