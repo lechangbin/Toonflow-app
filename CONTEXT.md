@@ -116,6 +116,10 @@ _Avoid_: Ad-hoc model function, Socket callback, route handler
 A durable record of one authorized Tool operation's identity, outcome, and safe evidence, causally attached to an Agent Run.
 _Avoid_: Chat message, raw adapter response, Agent Checkpoint
 
+**ToolApproval**:
+An expiring, user-issued decision bound to one immutable Tool operation payload, target version, and effect preview; it grants no authority to a changed operation.
+_Avoid_: Chat reply, generic confirmation, reusable permission
+
 **Skill**:
 An editable production instruction that guides an Agent role or a specialized execution step.
 _Avoid_: Prompt template
