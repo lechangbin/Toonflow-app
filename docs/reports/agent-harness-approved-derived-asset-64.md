@@ -2,7 +2,7 @@
 
 ## 范围与版本
 
-Issue #64 在 T07 受控只读工具之后加入首个需人工批准的本地生产写工具 `upsert_derived_asset`。App 起点为 `origin/develop@6f44360c01908474b766bcc4d690b964e79c5b32`，实现提交为 `86843cc`（前置契约提交 `0ff9034`）；Web 起点为 `origin/develop@c8c0bf4`，实现提交为 `9725b88`。最终合并提交及 PR 以 Issue #64 的记录为准。ToolDefinition 修订为 `toonflow.tool.upsert-derived-asset.v1`，契约 SHA-256 为 `648a4e1104ab90387c41fcd9bde890d5c0d7e6eca7d886192115ed139b45fe6b`。本阶段没有生成 App/Web bundle，故没有 bundle 哈希、打包截图或真实 Provider 结果；这些属于最终验收。
+Issue #64 在 T07 受控只读工具之后加入首个需人工批准的本地生产写工具 `upsert_derived_asset`。App 起点为 `origin/develop@6f44360c01908474b766bcc4d690b964e79c5b32`，实现提交为 `86843cc`（前置契约提交 `0ff9034`）；Web 起点为 `origin/develop@c8c0bf4`，实现与测试纳入提交为 `9725b88..a58ff96`。App PR #87 与 Web PR #4 构成完整 T08 交付，最终合并提交以 Issue #64 的记录为准。ToolDefinition 修订为 `toonflow.tool.upsert-derived-asset.v1`，契约 SHA-256 为 `648a4e1104ab90387c41fcd9bde890d5c0d7e6eca7d886192115ed139b45fe6b`。本阶段没有生成 App/Web bundle，故没有 bundle 哈希、打包截图或真实 Provider 结果；这些属于最终验收。
 
 ## 设计与行为变化
 
