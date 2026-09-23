@@ -175,7 +175,8 @@ async function validateCheckpointChain(
       throw new Error("Agent Run model-call intent has no preparing checkpoint");
     }
     if (row.kind === "step-committed"
-      && (!predecessor || predecessor.kind !== "model-call-intent" || predecessor.attemptId !== row.attemptId)) {
+      && (!predecessor || !["model-call-intent", "vendor-request-intent", "provider-task-observed"].includes(predecessor.kind)
+        || predecessor.attemptId !== row.attemptId)) {
       throw new Error("Agent Run Step commit has no matching model-call intent");
     }
     if (row.kind === "run-created" && parsedPayload.kind === "run-created"
@@ -210,6 +211,20 @@ async function validateCheckpointChain(
         || output.schemaVersion !== "toonflow.agent-run-output.v1"
         || row.lastCommittedStepId !== row.stepId) {
         throw new Error("Agent Run committed Step evidence is invalid");
+      }
+      if (predecessor?.kind === "vendor-request-intent" || predecessor?.kind === "provider-task-observed") {
+        let committed: { assetId: number; imageId: number; artifactHash: string };
+        try { committed = JSON.parse(output.content); }
+        catch { throw new Error("Agent Run committed image output is invalid"); }
+        const request = await trx("o_agentVendorRequest as request")
+          .join("o_agentToolCall as call", "call.id", "request.toolCallId")
+          .join("o_agentImageArtifact as artifact", "artifact.vendorRequestId", "request.id")
+          .where({ "request.runId": run.id, "request.assetId": committed.assetId,
+            "request.imageId": committed.imageId, "request.artifactHash": committed.artifactHash,
+            "request.status": "succeeded", "artifact.contentHash": committed.artifactHash,
+            "artifact.status": "accepted", "call.stepId": row.stepId, "call.attemptId": row.attemptId })
+          .first("request.id");
+        if (!request) throw new Error("Agent Run committed image has no accepted artifact");
       }
     }
     const current = { ...row, kind: row.kind as AgentRunCheckpointKind, parsedPayload };

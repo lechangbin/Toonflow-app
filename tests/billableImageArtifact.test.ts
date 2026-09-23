@@ -8,10 +8,12 @@ import {
   hashCheckpointPayload, type AgentRunCheckpointPayload,
 } from "../src/agentRuntime";
 import { createBillableImageArtifactRuntime } from "../src/controlledTools/billableImageArtifact";
+import { createBillableImageCommitRuntime } from "../src/controlledTools/billableImageCommit";
 import { createBillableImageLedger, BillableImageLedgerConflictError } from "../src/controlledTools/billableImageLedger";
 import { billableImageScopeHash } from "../src/controlledTools/billableImageLifecycle";
 import { BILLABLE_IMAGE_TOOL_DEFINITION, toolDefinitionContractHash } from "../src/controlledTools/definitions";
 import initDB from "../src/lib/initDB";
+import { recoverInterruptedAgentRuns } from "../src/database/agentRunRecovery";
 
 const scope = { projectId: 7, assetId: 10, vendorId: "vendor", modelId: "model", resolution: "1K",
   maxCalls: 1 as const, estimatedMaxCostMicros: 200_000, currency: "USD" };
@@ -56,7 +58,9 @@ function runtimes(db: Knex) {
   const writes: string[] = [];
   const artifact = createBillableImageArtifactRuntime({ work, now: () => 101,
     createId: () => `artifact-${++id}`, writeMedia: async (path) => { writes.push(path); } });
-  return { ledger, artifact, writes };
+  const commit = createBillableImageCommitRuntime({ work, now: () => 102,
+    createId: () => `commit-${++id}`, verifyPreflight: async () => "state" });
+  return { ledger, artifact, commit, writes };
 }
 
 test("duplicate callback stores one artifact and a conflicting result cannot replace it", async () => {
@@ -92,5 +96,29 @@ test("late callback after cancellation persists inspectable media but cannot com
       "late_artifact_observed");
     assert.equal((await db("o_image").where({ id: dispatched.imageId }).first()).state, "已取消");
     assert.equal((await db("o_assets").where({ id: 10 }).first()).imageId, null);
+  } finally { await db.destroy(); }
+});
+
+test("accepted artifact atomically commits Image, Asset, Receipt, Output and checkpoint", async () => {
+  const db = await database();
+  try {
+    const { ledger, artifact, commit } = runtimes(db);
+    const dispatched = await ledger.dispatch({ projectId: 7, actorUserId: 1, runId: "run", approvalId: "approval", expectedVersion: 1 });
+    const observed = await artifact.observe(dispatched.requestId, png);
+    const run = await db("o_agentRun").where({ id: "run" }).first();
+    const accepted = await commit.commit({ projectId: 7, actorUserId: 1,
+      requestId: dispatched.requestId, expectedVersion: run.version });
+    assert.deepEqual(accepted, { assetId: 10, imageId: dispatched.imageId, artifactHash: observed.artifactHash });
+    assert.equal((await db("o_image").where({ id: dispatched.imageId }).first()).state, "已完成");
+    assert.equal((await db("o_assets").where({ id: 10 }).first()).imageId, dispatched.imageId);
+    assert.equal((await db("o_agentToolReceipt").where({ id: "receipt" }).first()).status, "succeeded");
+    assert.equal((await db("o_agentVendorRequest").where({ requestId: dispatched.requestId }).first()).status, "succeeded");
+    assert.deepEqual((await db("o_agentRunCheckpoint").orderBy("sequence")).map((row) => row.kind),
+      ["run-created", "vendor-request-intent", "step-committed"]);
+    assert.deepEqual(await commit.commit({ projectId: 7, actorUserId: 1,
+      requestId: dispatched.requestId, expectedVersion: run.version }), accepted);
+    assert.equal((await db("o_agentRunOutput")).length, 1);
+    await recoverInterruptedAgentRuns(db, 200);
+    assert.equal((await db("o_agentRun").where({ id: "run" }).first()).status, "succeeded");
   } finally { await db.destroy(); }
 });
