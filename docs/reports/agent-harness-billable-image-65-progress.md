@@ -1,6 +1,6 @@
-# Agent Harness T09 · 计费图片请求恢复（进行中）
+# Agent Harness T09 · 计费图片请求恢复（阶段交付）
 
-Issue: `lechangbin/Toonflow-app#65`. Branch: `codex/harness-t09-billable-image-20260923`. This is an implementation checkpoint, **not** T09 acceptance and not a resume claim.
+Issue: `lechangbin/Toonflow-app#65`. App branch: `codex/harness-t09-billable-image-20260923`; Web branch: `codex/harness-t09-billable-image-ui-20260923`. This is focused-stage evidence, **not** full-system acceptance or a resume claim.
 
 ## 已实现和可核验的边界
 
@@ -19,10 +19,10 @@ Issue: `lechangbin/Toonflow-app#65`. Branch: `codex/harness-t09-billable-image-2
 
 ## 阶段验证
 
-`tests/billableImageLifecycle.test.ts`、`tests/billableImageLedger.test.ts`、`tests/billableImageSchema.test.ts`、`tests/billableImageApproval.test.ts`、`tests/billableImagePreflight.test.ts`、`tests/billableImageArtifact.test.ts`、`tests/billableImageExecution.test.ts`、`tests/billableImageQuotePolicy.test.ts`、`tests/billableImageRoutes.test.ts` 和受影响的 `tests/databaseReadiness.test.ts` 为定向测试；已运行的阶段用例均通过。`yarn lint`（TypeScript `--noEmit`）通过。没有运行仓库全量测试、App/Web 构建、浏览器端到端、真实 Provider 或打包验收。
+`tests/billableImageLifecycle.test.ts`、`tests/billableImageLedger.test.ts`、`tests/billableImageSchema.test.ts`、`tests/billableImageApproval.test.ts`、`tests/billableImagePreflight.test.ts`、`tests/billableImageArtifact.test.ts`、`tests/billableImageExecution.test.ts`、`tests/billableImageQuotePolicy.test.ts`、`tests/billableImageRoutes.test.ts` 和受影响的 `tests/databaseReadiness.test.ts` 共 37 个定向用例通过；`yarn lint`（TypeScript `--noEmit`）通过。Web 新增 `tests/billableImageApproval.test.ts` 2 个定向用例通过，并以关闭声明输出的 `vue-tsc --noEmit` 完成类型检查。没有运行仓库全量测试、App/Web 构建、浏览器端到端、真实 Provider 或打包验收。
 
 ## 尚未实现，不能宣称完成
 
-受控单资产审批界面已在独立 Web 分支实现，但尚未跨仓验收或连接 Agent 自动提案，也未验证真实 Provider 行为。现有 Vendor 同步接口没有向 Harness 暴露 Provider task ID，因此实际轮询恢复尚不能兑现；未知请求只能保持待人工核对，不能自动重发。`write_pending` 能追踪本地未完成媒体写入，操作员可从既有媒体路径重读并按内容哈希核对、恢复本地观察；文件未落盘时仍须保持待处理，不能宣称全自动恢复。旧批量 `generateAssetImage` 对超时的图片失败状态，不能作为 T09 的无计费证明。Issue #65 和 ADR-0016 应保持开放/proposed。
+受控单资产审批界面已在独立 Web 分支实现，但尚未进行浏览器级跨仓验收或连接 Agent 自动提案，也未验证真实 Provider 行为。现有 Vendor 同步接口没有向 Harness 暴露 Provider task ID，因此实际轮询恢复尚不能兑现；未知请求只能保持待人工核对，不能自动重发。`write_pending` 能追踪本地未完成媒体写入，操作员可从既有媒体路径重读并按内容哈希核对、恢复本地观察；文件未落盘时仍须保持待处理，不能宣称全自动恢复。旧批量 `generateAssetImage` 对超时的图片失败状态，不能作为 T09 的无计费证明。
 
-下一步应接入审批卡与操作员恢复动作；明确同步 Vendor 无任务 ID 时的不可轮询边界，处理孤儿媒体，完成跨模块定向契约验证。T09 完成后再写正式深化说明、导学与面经；简历内容由用户自行决定。
+下一步是按既定顺序推进 T10 因果 Trace 与安全证据展示；旧 Agent 工具迁移和批量路径另归后续阶段。全量测试、真实 Provider、浏览器和打包留到 T21 最终验收。本阶段已写 `docs/interview/导学-Agent-Harness-T09.md` 与 `面经-Agent-Harness-T09.md`，简历内容由用户自行决定。
