@@ -15,10 +15,10 @@
 
 统一追加器校验事件所带 Run、Step、Attempt、ToolReceipt、ToolCall、VendorRequest 和 ImageArtifact 身份。Run 创建、执行意图、成功、失败、取消、恢复、受控读工具、衍生资产审批，以及 T09 单资产计费图片的审批、请求意图、未知、取消、迟到、产物与本地接受均使用事务内追加。`src/agentRuntime/causalTrace.ts` 是新写入的唯一直接 `o_agentTrace` 插入点；导出按序号和前驱核对。旧批量生图和历史 Run 不因此自动获得完整因果身份，不能宣称“全业务路径 100% 覆盖”。
 
-诊断在写入和导出两端使用受控字段合同，不存原始异常消息、堆栈、提示词、Provider payload、Base64、签名 URL 或媒体路径。失败阶段与效果确定性依照当前 Trace-safe taxonomy；Provider 请求后的不确定效果不会归类为可直接重试的已知无效果。当前没有对所有旧代码路径做全系统失败分类审计。
+诊断在写入和导出两端使用受控字段合同，不存原始异常消息、堆栈、提示词、Provider payload、Base64、签名 URL 或媒体路径。失败阶段与效果确定性依照当前 Trace-safe taxonomy；Provider 请求后的不确定效果不会归类为可直接重试的已知无效果。衍生资产审批的过期、冲突和证据损坏写入 Trace-safe 授权失败诊断；用户主动拒绝保留为决定事件，不误标成系统故障。当前没有对所有旧代码路径做全系统失败分类审计。
 
 ## 阶段验证与未完成项
 
-本轮更新后，`tests/agentRunSchema.test.ts`、`tests/agentRunRuntime.test.ts`、`tests/controlledTools.test.ts`、`tests/derivedAssetWrite.test.ts` 共 65 个定向用例通过；`tests/agentTraceEvidence.test.ts`、`tests/agentEvidenceRetention.test.ts` 共 5 个定向用例通过；受影响的 `tests/causalTrace.test.ts` 与计费图片 Ledger、执行、产物、审批单测共 20 个定向用例通过；`yarn lint`（TypeScript `--noEmit`）通过。Web 抽屉用例本轮重跑 2 个通过，抽屉与删除提醒的 4 个定向用例及类型检查此前通过，但没有浏览器端到端。
+本轮更新后，`tests/agentRunSchema.test.ts`、`tests/agentRunRuntime.test.ts`、`tests/controlledTools.test.ts`、`tests/derivedAssetWrite.test.ts` 共 65 个定向用例通过；`tests/agentTraceEvidence.test.ts`、`tests/agentEvidenceRetention.test.ts` 共 5 个定向用例通过；受影响的 `tests/causalTrace.test.ts` 与计费图片 Ledger、执行、产物、审批单测共 20 个定向用例通过；补充审批失败分类断言后重跑衍生资产审批 13 个用例通过；`yarn lint`（TypeScript `--noEmit`）通过。Web 抽屉用例本轮重跑 2 个通过，抽屉与删除提醒的 4 个定向用例及类型检查此前通过，但没有浏览器端到端。
 
 T21 最终验收仍需：全量单测与构建、跨仓浏览器交互、真实 Provider 成功/未知/迟到对账、跨进程并发、磁盘清理故障、敏感信息抓包审查和长期存储容量测量。此阶段不运行这些全量测试，也不宣称线上效果。面试准备材料见 `docs/interview/导学-Agent-Harness-T10.md` 与 `docs/interview/面经-Agent-Harness-T10.md`；简历由用户自行编写。

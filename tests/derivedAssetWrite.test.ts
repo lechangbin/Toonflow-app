@@ -168,6 +168,10 @@ test("rejection and expiry preserve safe inspectable state without production wr
     const afterExpiry = await write.decide(decision(other));
     assert.equal(afterExpiry?.status, "expired");
     assert.deepEqual(afterExpiry?.allowedActions, ["inspect"]);
+    const failedTraces = await db("o_agentTrace").whereIn("eventType", ["tool.approval.rejected", "tool.approval.expired"]);
+    assert.equal(failedTraces.length, 2);
+    assert.equal(failedTraces.find((row) => row.eventType === "tool.approval.rejected")?.diagnostic, null);
+    assert.equal(JSON.parse(failedTraces.find((row) => row.eventType === "tool.approval.expired")?.diagnostic).audience, "trace");
     assert.equal((await db("o_assets")).length, 2);
     assert.equal((await db("o_derivedChangeInstruction")).length, 0);
   } finally { await db.destroy(); }
@@ -293,6 +297,7 @@ test("an expired approval settles durably on inspection without a browser decisi
     assert.equal(expired?.receiptStatus, "failed");
     assert.deepEqual(expired?.allowedActions, ["inspect"]);
     assert.equal((await db("o_agentTrace")).length, 2);
+    assert.equal(JSON.parse((await db("o_agentTrace").where({ eventType: "tool.approval.expired" }).first()).diagnostic).kind, "authorizationFailed");
     assert.deepEqual(await write.inspect(7, pending.runId, 1), expired);
     assert.equal((await db("o_assets")).length, 2);
   } finally { await db.destroy(); }

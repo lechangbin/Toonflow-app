@@ -108,11 +108,11 @@ function previewFor(payload: Payload): DerivedAssetApprovalSnapshot["preview"] {
   };
 }
 
-function safeDiagnostic(kind: "authorizationFailed" | "executionFailed" | "invalidOutput"): TraceSafeDiagnostic {
+function safeDiagnostic(kind: "authorizationFailed" | "executionFailed" | "invalidOutput", audience: "toolReceipt" | "trace" = "toolReceipt"): TraceSafeDiagnostic {
   const result = projectTraceSafeDiagnostic({
     failureClass: "Tool", stage: "tool-call", kind, severity: "error",
     certainty: "known-no-effect", expectedness: "expected", retryDisposition: "never",
-  }, "toolReceipt");
+  }, audience);
   if (!result.ok) throw new Error("Tool diagnostic projection failed");
   return result.value;
 }
@@ -175,9 +175,10 @@ async function assertNoEquivalent(db: Knex.Transaction, projectId: number, paylo
   if (existing !== null) throw new DerivedAssetWriteRejectedError("equivalent");
 }
 
-async function addTrace(db: Knex.Transaction, runId: string, receiptId: string, eventType: string, now: number, createId: () => string): Promise<void> {
+async function addTrace(db: Knex.Transaction, runId: string, receiptId: string, eventType: string, now: number, createId: () => string, authorizationFailure = false): Promise<void> {
   await appendCausalTrace(db, {
     id: createId(), runId, toolReceiptId: receiptId, eventType, createdAt: now,
+    ...(authorizationFailure ? { diagnostic: safeDiagnostic("authorizationFailed", "trace") } : {}),
   });
 }
 
@@ -215,7 +216,7 @@ export async function expireDueDerivedAssetApprovals(
         allowedActions: JSON.stringify(["inspect"]), version: current.version + 1, updatedAt: now,
       });
       if (receiptChanged !== 1 || runChanged !== 1) throw new DerivedAssetWriteRejectedError("unsafe");
-      await addTrace(tx, current.runId, current.receiptId, "tool.approval.expired", now, createId);
+      await addTrace(tx, current.runId, current.receiptId, "tool.approval.expired", now, createId, true);
     });
   }
 }
@@ -473,7 +474,7 @@ export function createDerivedAssetWriteRuntime(dependencies: DerivedAssetWriteDe
             ...(failure === "rejected" ? { completedAt: now } : {}) });
           await tx("o_agentRunAttempt").where({ runId: run.id }).update({ status: failure === "rejected" ? "cancelled" : "waiting",
             ...(failure === "rejected" ? { completedAt: now } : {}) });
-          await addTrace(tx, run.id, receipt.id, `tool.approval.${failure}`, now, dependencies.createId);
+          await addTrace(tx, run.id, receipt.id, `tool.approval.${failure}`, now, dependencies.createId, failure !== "rejected");
         } else {
           const result = tool.outputSchema.parse(output);
           const outputJson = JSON.stringify(result);
