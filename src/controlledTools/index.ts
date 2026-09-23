@@ -5,6 +5,7 @@ import { v4 as uuid } from "uuid";
 
 import type { AgentRunLease } from "@/agentRuntime/lease";
 import { AgentRunLeaseLostError, assertAgentRunLease } from "@/agentRuntime/lease";
+import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import type { DatabaseWork } from "@/database";
 import { getDatabaseRuntime } from "@/database";
 import {
@@ -90,21 +91,14 @@ function safeDiagnostic(kind: "contractRejected" | "authorizationFailed" | "exec
   return projected.value;
 }
 
-async function nextTraceSequence(trx: Knex.Transaction, runId: string): Promise<number> {
-  const latest = await trx("o_agentTrace").where("runId", runId).max<{ sequence?: number }>("sequence as sequence").first();
-  return Number(latest?.sequence ?? 0) + 1;
-}
-
 async function insertTrace(
   trx: Knex.Transaction,
   input: { runId: string; receiptId: string; eventType: string; now: number; createId(): string; diagnosticKind?: "authorizationFailed" | "executionFailed" | "invalidOutput" | "timeout" },
 ): Promise<void> {
   const diagnostic = input.diagnosticKind ? safeDiagnostic(input.diagnosticKind, "trace") : undefined;
-  await trx("o_agentTrace").insert({
+  await appendCausalTrace(trx, {
     id: input.createId(), runId: input.runId, toolReceiptId: input.receiptId,
-    sequence: await nextTraceSequence(trx, input.runId), eventType: input.eventType,
-    diagnosticSchemaVersion: diagnostic?.schemaVersion ?? null,
-    diagnostic: diagnostic ? JSON.stringify(diagnostic) : null, createdAt: input.now,
+    eventType: input.eventType, diagnostic, createdAt: input.now,
   });
 }
 

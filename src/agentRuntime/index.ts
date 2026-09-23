@@ -8,7 +8,6 @@ import type { DatabaseWork } from "@/database";
 import {
   inspectPersistableText,
   projectTraceSafeDiagnostic,
-  TRACE_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
   type TraceSafeDiagnostic,
   type TraceSafeDiagnosticInput,
   validateTraceSafeDiagnostic,
@@ -41,6 +40,7 @@ import {
   type AgentRunCheckpointKind,
   type AgentRunCheckpointPayload,
 } from "./checkpoints";
+import { appendCausalTrace, auditCausalTraceTimeline, type TraceTimelineEvidence } from "./causalTrace";
 import {
   DEFAULT_AGENT_RUN_LEASE_MS,
   AgentRunLeaseLostError,
@@ -123,6 +123,12 @@ export interface AgentRunOutputSnapshot {
 export interface AgentTraceSnapshot {
   id: string;
   stepId?: string;
+  attemptId?: string;
+  toolReceiptId?: string;
+  toolCallId?: string;
+  vendorRequestId?: string;
+  imageArtifactId?: string;
+  predecessorTraceId?: string;
   sequence: number;
   eventType: string;
   runStatus?: AgentRunStatus;
@@ -187,6 +193,7 @@ export interface AgentRunSnapshot {
   attempts: AgentRunAttemptSnapshot[];
   checkpoints: AgentRunCheckpointSnapshot[];
   outputs: AgentRunOutputSnapshot[];
+  traceEvidence: TraceTimelineEvidence;
   traces: AgentTraceSnapshot[];
 }
 
@@ -392,6 +399,7 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
     db("o_agentRunOutput").where("runId", runId).orderBy("createdAt", "asc"),
     db("o_agentTrace").where("runId", runId).orderBy("sequence", "asc"),
   ]);
+  const traceEvidence = auditCausalTraceTimeline(traces);
   const quarantinedEvidence = run.attentionReason === "agent-checkpoint-corrupt"
     || run.attentionReason === "agent-checkpoint-incompatible";
   const checkpoints = quarantinedEvidence ? [] : validateCheckpointRows(checkpointRows);
@@ -478,9 +486,16 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
       schemaVersion: output.schemaVersion,
       createdAt: output.createdAt,
     })),
-    traces: traces.map((trace) => ({
+    traceEvidence,
+    traces: (traceEvidence.linkage === "corrupt" ? [] : traces).map((trace) => ({
       id: trace.id,
       ...(trace.stepId ? { stepId: trace.stepId } : {}),
+      ...(trace.attemptId ? { attemptId: trace.attemptId } : {}),
+      ...(trace.toolReceiptId ? { toolReceiptId: trace.toolReceiptId } : {}),
+      ...(trace.toolCallId ? { toolCallId: trace.toolCallId } : {}),
+      ...(trace.vendorRequestId ? { vendorRequestId: trace.vendorRequestId } : {}),
+      ...(trace.imageArtifactId ? { imageArtifactId: trace.imageArtifactId } : {}),
+      ...(trace.predecessorTraceId ? { predecessorTraceId: trace.predecessorTraceId } : {}),
       sequence: trace.sequence,
       eventType: trace.eventType,
       ...(trace.runStatus ? { runStatus: parseAgentRunStatus(trace.runStatus) } : {}),
@@ -615,11 +630,15 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         id: dependencies.createId(), runId: run.id, clientCommandId, kind: "cancel", inputFingerprint,
         expectedVersion: input.expectedVersion, resultVersion: nextVersion, createdAt: now,
       });
-      const latest = await trx("o_agentTrace").where("runId", run.id).max<{ sequence?: number }>("sequence as sequence").first();
-      await trx("o_agentTrace").insert({
-        id: dependencies.createId(), runId: run.id, sequence: Number(latest?.sequence ?? 0) + 1,
+      const traceStep = await trx("o_agentRunStep").where({ runId: run.id }).orderBy("ordinal", "desc").first("id");
+      const traceAttempt = traceStep && await trx("o_agentRunAttempt")
+        .where({ runId: run.id, stepId: traceStep.id }).orderBy("ordinal", "desc").first("id");
+      await appendCausalTrace(trx, {
+        id: dependencies.createId(), runId: run.id,
+        ...(traceStep ? { stepId: traceStep.id } : {}),
+        ...(traceAttempt ? { attemptId: traceAttempt.id } : {}),
         eventType: safeBeforeCall ? "run.cancelled" : "run.cancellation-requested",
-        runStatus: nextStatus, stepStatus: safeBeforeCall ? "cancelled" : null, createdAt: now,
+        runStatus: nextStatus, ...(safeBeforeCall ? { stepStatus: "cancelled" } : {}), createdAt: now,
       });
       return readSnapshot(trx, run.id, input.projectId);
     }));
@@ -641,8 +660,6 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       const targetStatus = intentCommitted ? "waiting" : "failed";
       assertAgentRunTransition(runStatus, targetStatus);
       assertAgentRunStepTransition(stepStatus, targetStatus);
-      const sequenceRow = await trx("o_agentTrace").where("runId", runId).max<{ sequence?: number }>("sequence as sequence").first();
-      const sequence = Number(sequenceRow?.sequence ?? 0) + 1;
       const changedAttempt = await trx("o_agentRunAttempt").where({ id: attemptId, status: attempt.status }).update({
         status: targetStatus,
         ...(intentCommitted ? {} : { completedAt: now }),
@@ -668,16 +685,15 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         leaseExpiresAt: null,
       });
       if (changedAttempt !== 1 || changedStep !== 1 || changedRun !== 1) throw new Error("Agent Run 失败状态提交发生并发冲突");
-      await trx("o_agentTrace").insert({
+      await appendCausalTrace(trx, {
         id: dependencies.createId(),
         runId,
         stepId,
-        sequence,
+        attemptId,
         eventType: intentCommitted ? "run.needs-attention" : "run.failed",
         runStatus: targetStatus,
         stepStatus: targetStatus,
-        diagnosticSchemaVersion: TRACE_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
-        diagnostic: JSON.stringify(diagnostic),
+        diagnostic,
         createdAt: now,
       });
     }));
@@ -802,7 +818,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             predecessorCheckpointId: predecessor.id, payload: canonicalCheckpointPayload(payload),
             payloadHash: hashCheckpointPayload(payload), createdAt: now,
           });
-          await trx("o_agentTrace").insert({ id: dependencies.createId(), runId, stepId, sequence: 2,
+          await appendCausalTrace(trx, { id: dependencies.createId(), runId, stepId, attemptId,
             eventType: "run.started", runStatus: "running", stepStatus: "running", createdAt: now });
           return true;
         }));
@@ -899,10 +915,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             predecessorCheckpointId: predecessor.id, payload: canonicalCheckpointPayload(payload),
             payloadHash: hashCheckpointPayload(payload), createdAt: now,
           });
-          const latestTrace = await trx("o_agentTrace").where("runId", runId)
-            .max<{ sequence?: number }>("sequence as sequence").first();
-          await trx("o_agentTrace").insert({
-            id: dependencies.createId(), runId, stepId, sequence: Number(latestTrace?.sequence ?? 0) + 1, eventType: "run.succeeded",
+          await appendCausalTrace(trx, {
+            id: dependencies.createId(), runId, stepId, attemptId, eventType: "run.succeeded",
             runStatus: "succeeded", stepStatus: "succeeded", createdAt: now,
           });
         }));
@@ -981,8 +995,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         predecessorCheckpointId: null, payload: canonicalCheckpointPayload(checkpointPayload),
         payloadHash: hashCheckpointPayload(checkpointPayload), createdAt: now,
       });
-      await trx("o_agentTrace").insert({
-        id: traceId, runId, stepId, sequence: 1, eventType: "run.created",
+      await appendCausalTrace(trx, {
+        id: traceId, runId, stepId, attemptId, eventType: "run.created",
         runStatus: "queued", stepStatus: "pending", createdAt: now,
       });
       return { snapshot: await readSnapshot(trx, runId, input.projectId), created: true, stepId, attemptId };

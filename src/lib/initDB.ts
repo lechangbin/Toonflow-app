@@ -711,6 +711,13 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["receiptId"]);
       },
     },
+    // 仅在 Project 删除事务内短暂存在的批准证据删除许可。
+    {
+      name: "o_agentEvidenceDeletionPermit",
+      builder: (table) => {
+        table.text("runId").notNullable().primary();
+      },
+    },
     // 一次受审批 Tool 调用：与可能收费的 VendorRequest 分离，保留 Run 因果关系。
     {
       name: "o_agentToolCall",
@@ -881,7 +888,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("id").notNullable();
         table.text("runId").notNullable().references("id").inTable("o_agentRun");
         table.text("stepId").references("id").inTable("o_agentRunStep");
+        table.text("attemptId").references("id").inTable("o_agentRunAttempt");
         table.text("toolReceiptId").references("id").inTable("o_agentToolReceipt");
+        table.text("toolCallId").references("id").inTable("o_agentToolCall");
+        table.text("vendorRequestId").references("id").inTable("o_agentVendorRequest");
+        table.text("imageArtifactId").references("id").inTable("o_agentImageArtifact");
+        table.text("predecessorTraceId").references("id").inTable("o_agentTrace");
         table.integer("sequence").notNullable();
         table.string("eventType").notNullable();
         table.string("runStatus");
@@ -1503,9 +1515,14 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         SELECT RAISE(ABORT, 'Agent Tool approval binding is immutable');
       END
     `);
+    // A permit exists only within the Project-deletion transaction. This trigger
+    // deliberately avoids referencing o_agentRun, so SQLite table rebuilds during
+    // legacy upgrades do not invalidate it.
+    await knex.raw("DROP TRIGGER IF EXISTS o_agentToolApproval_prevent_delete");
     await knex.raw(`
-      CREATE TRIGGER IF NOT EXISTS o_agentToolApproval_prevent_delete
+      CREATE TRIGGER o_agentToolApproval_prevent_delete
       BEFORE DELETE ON o_agentToolApproval
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
       BEGIN
         SELECT RAISE(ABORT, 'Agent Tool approvals are durable evidence');
       END

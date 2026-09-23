@@ -155,7 +155,12 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.text("id").primary();
     table.text("runId").notNullable();
     table.text("stepId");
+    table.text("attemptId");
     table.text("toolReceiptId");
+    table.text("toolCallId");
+    table.text("vendorRequestId");
+    table.text("imageArtifactId");
+    table.text("predecessorTraceId");
     table.integer("sequence").notNullable();
     table.text("eventType").notNullable();
     table.text("runStatus");
@@ -233,6 +238,10 @@ test("identical starts return one durable Agent Run and execute one Model Step",
     assert.equal(completed?.status, "succeeded");
     assert.equal(completed?.outputs[0]?.content, "只读建议");
     assert.equal(completed?.lastCommittedStepId, completed?.steps[0]?.id);
+    assert.equal(completed?.traceEvidence.linkage, "linked");
+    assert.deepEqual(completed?.traces.map((trace) => trace.predecessorTraceId),
+      [undefined, completed?.traces[0]?.id, completed?.traces[1]?.id]);
+    assert.equal(completed?.traces[0]?.attemptId, completed?.attempts[0]?.id);
     assert.deepEqual(completed?.attempts.map(({ ordinal, status }) => ({ ordinal, status })), [{ ordinal: 1, status: "succeeded" }]);
     assert.deepEqual(completed?.checkpoints.map((checkpoint) => checkpoint.kind), ["run-created", "model-call-intent", "step-committed"]);
     assert.equal(completed?.checkpoints.some((checkpoint) => "payload" in checkpoint), false);
@@ -243,6 +252,22 @@ test("identical starts return one durable Agent Run and execute one Model Step",
   } finally {
     await db.destroy();
   }
+});
+
+test("inspection quarantines a broken Trace predecessor instead of presenting a false timeline", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const started = await harness.runtime.start(startInput);
+    await harness.flush();
+    await db("o_agentTrace").where({ runId: started.id, sequence: 2 })
+      .update({ predecessorTraceId: "wrong-trace" });
+    const snapshot = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(snapshot?.traceEvidence.linkage, "corrupt");
+    assert.equal(snapshot?.traceEvidence.ordering, "durable-sequence");
+    assert.deepEqual(snapshot?.traces, []);
+    assert.equal(snapshot?.status, "succeeded", "Run state remains independently inspectable");
+  } finally { await db.destroy(); }
 });
 
 test("the read-only Agent Run invokes novel Tools only through controlled receipts", async () => {
@@ -272,6 +297,7 @@ test("the read-only Agent Run invokes novel Tools only through controlled receip
     assert.deepEqual(snapshot?.traces.map((trace) => trace.eventType), [
       "run.created", "run.started", "tool.started", "tool.succeeded", "run.succeeded",
     ]);
+    assert.equal(snapshot?.traces.find((trace) => trace.eventType === "tool.succeeded")?.toolReceiptId, receipt.id);
     assert.equal(JSON.stringify(snapshot?.traces).includes("小说正文"), false);
   } finally { await db.destroy(); }
 });

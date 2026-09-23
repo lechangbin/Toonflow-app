@@ -87,6 +87,9 @@ test("cross-Project actor, changed scope, stale state and expired approval fail 
     currentTime = 1100;
     await assert.rejects(approval.decide(decide), BillableImageLedgerConflictError);
     assert.equal((await db("o_agentToolApproval").where({ id: pending.id }).first()).status, "expired");
+    const expiryTrace = await db("o_agentTrace").where({ runId: pending.runId, eventType: "tool.billing-approval.expired" }).first();
+    assert.equal(JSON.parse(expiryTrace.diagnostic).kind, "authorizationFailed");
+    assert.equal(JSON.parse(expiryTrace.diagnostic).certainty, "known-no-effect");
     assert.deepEqual((await approval.inspect(7, pending.runId, 1))?.allowedActions, ["inspect"]);
     await assert.rejects(ledger.dispatch({ projectId: 7, actorUserId: 1,
       runId: pending.runId, approvalId: pending.id, expectedVersion: pending.runVersion }), BillableImageLedgerConflictError);

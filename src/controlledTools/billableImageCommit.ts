@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { Knex } from "knex";
+import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 
 import {
   AGENT_RUN_CHECKPOINT_SCHEMA_VERSION,
@@ -131,10 +132,9 @@ export function createBillableImageCommitRuntime(dependencies: BillableImageComm
           allowedActions: JSON.stringify([]), lastCommittedStepId: call.stepId,
           version: run.version + 1, updatedAt: now, completedAt: now });
         if (runChanged !== 1) return conflict();
-        const latest = await tx("o_agentTrace").where({ runId: run.id })
-          .max<{ sequence?: number }>("sequence as sequence").first();
-        await tx("o_agentTrace").insert({ id: dependencies.createId(), runId: run.id,
-          stepId: call.stepId, toolReceiptId: call.receiptId, sequence: Number(latest?.sequence ?? 0) + 1,
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId, toolReceiptId: call.receiptId,
+          toolCallId: call.id, vendorRequestId: request.id, imageArtifactId: artifact.id,
           eventType: "tool.billable-image.committed", runStatus: "succeeded", stepStatus: "succeeded", createdAt: now });
         return output;
       }));

@@ -26,6 +26,7 @@ const AGENT_TABLES = [
   "o_agentToolDefinition",
   "o_agentToolReceipt",
   "o_agentToolApproval",
+  "o_agentEvidenceDeletionPermit",
   "o_agentTrace",
 ] as const;
 
@@ -78,7 +79,10 @@ test("a fresh database owns durable Run, Step, Attempt, Output, Checkpoint and T
     for (const tableName of AGENT_TABLES) assert.equal(await knex.schema.hasTable(tableName), true);
 
     const runColumns = await knex("o_agentRun").columnInfo();
-    assert.ok((await knex("o_agentTrace").columnInfo()).toolReceiptId);
+    const traceColumns = await knex("o_agentTrace").columnInfo();
+    for (const column of ["toolReceiptId", "attemptId", "toolCallId", "vendorRequestId", "imageArtifactId", "predecessorTraceId"]) {
+      assert.ok(traceColumns[column], `o_agentTrace owns ${column}`);
+    }
     for (const required of [
       "id",
       "projectId",
@@ -283,11 +287,17 @@ test("T07 upgrade creates Tool tables and adds Trace receipt link without rewrit
     await knex.schema.dropTable("o_agentToolReceipt");
     await knex.schema.dropTable("o_agentToolDefinition");
     await knex.schema.alterTable("o_agentTrace", (table) => table.dropColumn("toolReceiptId"));
+    for (const column of ["attemptId", "toolCallId", "vendorRequestId", "imageArtifactId", "predecessorTraceId"]) {
+      await knex.schema.alterTable("o_agentTrace", (table) => table.dropColumn(column));
+    }
     await initDB(knex);
     await fixDB(knex, directory);
     assert.equal(await knex.schema.hasTable("o_agentToolDefinition"), true);
     assert.equal(await knex.schema.hasTable("o_agentToolReceipt"), true);
-    assert.ok((await knex("o_agentTrace").columnInfo()).toolReceiptId);
+    const upgradedTraceColumns = await knex("o_agentTrace").columnInfo();
+    for (const column of ["toolReceiptId", "attemptId", "toolCallId", "vendorRequestId", "imageArtifactId", "predecessorTraceId"]) {
+      assert.ok(upgradedTraceColumns[column], `upgraded o_agentTrace owns ${column}`);
+    }
     const old = await knex("o_agentRun").where("id", "old-run").first();
     assert.equal(old.status, "succeeded");
     assert.equal(old.version, 3);
@@ -430,6 +440,7 @@ test("readiness recovery parks an interrupted Model call with attention and one 
     const traces = await knex("o_agentTrace").where("runId", "run-interrupted").orderBy("sequence", "asc");
     assert.equal(traces.length, 2, "recovery is idempotent after the Run leaves running");
     assert.equal(traces[1].sequence, 2);
+    assert.equal(traces[1].predecessorTraceId, traces[0].id);
     assert.equal(traces[1].eventType, "interrupted-model-call");
     const diagnostic = JSON.parse(traces[1].diagnostic);
     assert.equal(diagnostic.schemaVersion, "toonflow.trace-safe-diagnostic.v1");
@@ -613,6 +624,8 @@ test("checkpoint recovery creates one causal successor Attempt only before model
     assert.equal(payload.predecessorCheckpointId, checkpoints[0].id);
     assert.equal(payload.predecessorPayloadHash, checkpoints[0].payloadHash);
     assert.equal(payload.predecessorAttemptId, attempts[0].id);
+    const recoveryTrace = await knex("o_agentTrace").where({ runId: run.id }).orderBy("sequence", "desc").first();
+    assert.equal(recoveryTrace.attemptId, attempts[1].id, "pre-intent recovery points to the successor Attempt");
   } finally {
     await dispose(directory, knex);
   }

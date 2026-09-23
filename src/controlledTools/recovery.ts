@@ -1,6 +1,7 @@
 import { v4 as uuid } from "uuid";
 import type { Knex } from "knex";
 
+import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
 import { TOOL_DEFINITIONS } from "./definitions";
@@ -38,14 +39,11 @@ export async function recoverPendingControlledTools(db: Knex, recoveredAt = Date
         status: "failed", diagnostic: JSON.stringify(diagnostic), updatedAt: recoveredAt,
       });
       if (changed !== 1) return;
-      const latest = await trx("o_agentTrace").where("runId", current.runId)
-        .max<{ sequence?: number }>("sequence as sequence").first();
       const traceDiagnostic = interruptionDiagnostic("trace");
-      await trx("o_agentTrace").insert({
+      await appendCausalTrace(trx, {
         id: uuid(), runId: current.runId, toolReceiptId: current.id,
-        sequence: Number(latest?.sequence ?? 0) + 1, eventType: "tool.interrupted",
-        runStatus: current.status, diagnosticSchemaVersion: traceDiagnostic.schemaVersion,
-        diagnostic: JSON.stringify(traceDiagnostic), createdAt: recoveredAt,
+        eventType: "tool.interrupted", runStatus: current.status,
+        diagnostic: traceDiagnostic, createdAt: recoveredAt,
       });
     });
   }

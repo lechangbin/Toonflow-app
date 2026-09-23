@@ -1,4 +1,6 @@
 import type { Knex } from "knex";
+import { appendCausalTrace } from "@/agentRuntime/causalTrace";
+import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
 import {
   AGENT_RUN_CHECKPOINT_SCHEMA_VERSION,
@@ -21,6 +23,15 @@ import {
 
 export const BILLABLE_IMAGE_RUN_SCOPE = "approved-billable-image-v1" as const;
 export const BILLABLE_IMAGE_RUN_ROLE = "productionAgent" as const;
+
+const unknownVendorEffect = (() => {
+  const projected = projectTraceSafeDiagnostic({
+    failureClass: "Vendor", stage: "vendor-request", kind: "executionFailed", severity: "error",
+    certainty: "unknown-effect", expectedness: "unexpected", retryDisposition: "reconcile-first",
+  }, "trace");
+  if (!projected.ok) throw new Error("Unknown Vendor effect diagnostic is invalid");
+  return projected.value;
+})();
 
 export interface BillableImageLedgerDependencies {
   work: DatabaseWork;
@@ -78,11 +89,10 @@ export async function recoverAmbiguousBillableImageRequests(db: Knex, recoveredA
       if (changedRun !== 1) return reject();
       await tx("o_agentRunStep").where({ id: call.stepId, runId: run.id }).update({ status: "waiting" });
       await tx("o_agentRunAttempt").where({ id: call.attemptId, runId: run.id }).update({ status: "waiting" });
-      const latest = await tx("o_agentTrace").where({ runId: run.id }).max<{ sequence?: number }>("sequence as sequence").first();
-      await tx("o_agentTrace").insert({ id: `recovery:${request.id}`, runId: run.id, stepId: call.stepId,
-        toolReceiptId: call.receiptId, sequence: Number(latest?.sequence ?? 0) + 1,
+      await appendCausalTrace(tx, { id: `recovery:${request.id}`, runId: run.id, stepId: call.stepId,
+        attemptId: call.attemptId, toolReceiptId: call.receiptId, toolCallId: call.id, vendorRequestId: request.id,
         eventType: "vendor.request.unknown-on-recovery", runStatus: "waiting", stepStatus: "waiting",
-        createdAt: recoveredAt });
+        diagnostic: unknownVendorEffect, createdAt: recoveredAt });
     });
   }
 }
@@ -193,6 +203,10 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
         if (updated !== 1) return reject();
         await tx("o_agentRunStep").where({ id: step.id }).update({ status: "running" });
         await tx("o_agentRunAttempt").where({ id: attempt.id }).update({ status: "running" });
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: step.id, attemptId: attempt.id, toolReceiptId: receipt.id,
+          toolCallId, vendorRequestId, eventType: "vendor.request.intent-recorded",
+          runStatus: "waiting", stepStatus: "running", createdAt: now });
         return { requestId, vendorRequestId, toolCallId, imageId, scope, maySubmit: true };
       }));
     },
@@ -250,6 +264,10 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
           attentionReason: next.status === "submitted" ? null : run.attentionReason,
         });
         if (changedRun !== 1) return reject();
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId, toolReceiptId: call.receiptId,
+          toolCallId: call.id, vendorRequestId: request.id, eventType: "vendor.task.observed",
+          runStatus: run.status, createdAt: now });
       }));
     },
 
@@ -275,6 +293,12 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
           allowedActions: JSON.stringify(billableImageAllowedActions(next)), version: run.version + 1, updatedAt: now,
         });
         if (changedRun !== 1) return reject();
+        const call = await tx("o_agentToolCall").where({ id: request.toolCallId, runId: run.id }).first();
+        if (!call) return reject();
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId, toolReceiptId: call.receiptId,
+          toolCallId: call.id, vendorRequestId: request.id, eventType: "vendor.request.submission-unknown",
+          runStatus: "waiting", diagnostic: unknownVendorEffect, createdAt: now });
       }));
     },
 
@@ -308,6 +332,12 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
           version: run.version + 1, updatedAt: now,
         });
         if (changedRun !== 1) return reject();
+        const call = await tx("o_agentToolCall").where({ id: request.toolCallId, runId: run.id }).first();
+        if (!call) return reject();
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId, toolReceiptId: call.receiptId,
+          toolCallId: call.id, vendorRequestId: request.id, eventType: "vendor.request.cancellation-requested",
+          runStatus: "waiting", createdAt: now });
       }));
     },
 
@@ -344,11 +374,9 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
           .update({ status: "cancelled", completedAt: now });
         await tx("o_agentRunAttempt").where({ id: call.attemptId }).whereNot("status", "succeeded")
           .update({ status: "cancelled", completedAt: now });
-        const latest = await tx("o_agentTrace").where({ runId: run.id })
-          .max<{ sequence?: number }>("sequence as sequence").first();
-        await tx("o_agentTrace").insert({ id: dependencies.createId(), runId: run.id,
-          stepId: call.stepId, toolReceiptId: call.receiptId,
-          sequence: Number(latest?.sequence ?? 0) + 1, eventType: "vendor.request.stopped-without-replay",
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId, toolReceiptId: call.receiptId,
+          toolCallId: call.id, vendorRequestId: request.id, eventType: "vendor.request.stopped-without-replay",
           runStatus: "cancelled", stepStatus: "cancelled", createdAt: now });
       }));
     },

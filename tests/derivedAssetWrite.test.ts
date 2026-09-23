@@ -53,8 +53,9 @@ async function database(): Promise<Knex> {
     t.text("contentHash"); t.text("schemaVersion"); t.integer("createdAt");
   });
   await db.schema.createTable("o_agentTrace", (t) => {
-    t.text("id").primary(); t.text("runId"); t.text("toolReceiptId"); t.integer("sequence");
-    t.text("eventType"); t.integer("createdAt"); t.unique(["runId", "sequence"]);
+    t.text("id").primary(); t.text("runId"); t.text("toolReceiptId"); t.text("predecessorTraceId"); t.integer("sequence");
+    t.text("eventType"); t.text("diagnostic"); t.text("diagnosticSchemaVersion");
+    t.integer("createdAt"); t.unique(["runId", "sequence"]);
   });
   await db.schema.createTable("o_agentToolDefinition", (t) => {
     t.text("id").primary(); t.text("name"); t.text("revision"); t.text("contractHash");
@@ -118,7 +119,9 @@ test("approval atomically commits one Derived Asset, instruction, receipt, check
     assert.equal((await db("o_assets")).length, 3);
     assert.equal((await db("o_derivedChangeInstruction")).length, 1);
     assert.deepEqual((await db("o_agentRunCheckpoint").orderBy("sequence")).map((row) => row.kind), ["run-created", "step-committed"]);
-    assert.deepEqual((await db("o_agentTrace").orderBy("sequence")).map((row) => row.eventType), ["tool.approval.requested", "tool.approval.committed"]);
+    const traces = await db("o_agentTrace").orderBy("sequence");
+    assert.deepEqual(traces.map((row) => row.eventType), ["tool.approval.requested", "tool.approval.committed"]);
+    assert.equal(traces[1].predecessorTraceId, traces[0].id);
     assert.deepEqual(await write.decide(decision(pending)), approved);
     assert.equal((await db("o_assets")).length, 3, "duplicate approval must not create another asset");
     assert.deepEqual(await write.propose(proposal), approved, "duplicate proposal projects the durable result");
@@ -165,6 +168,10 @@ test("rejection and expiry preserve safe inspectable state without production wr
     const afterExpiry = await write.decide(decision(other));
     assert.equal(afterExpiry?.status, "expired");
     assert.deepEqual(afterExpiry?.allowedActions, ["inspect"]);
+    const failedTraces = await db("o_agentTrace").whereIn("eventType", ["tool.approval.rejected", "tool.approval.expired"]);
+    assert.equal(failedTraces.length, 2);
+    assert.equal(failedTraces.find((row) => row.eventType === "tool.approval.rejected")?.diagnostic, null);
+    assert.equal(JSON.parse(failedTraces.find((row) => row.eventType === "tool.approval.expired")?.diagnostic).audience, "trace");
     assert.equal((await db("o_assets")).length, 2);
     assert.equal((await db("o_derivedChangeInstruction")).length, 0);
   } finally { await db.destroy(); }
@@ -290,6 +297,7 @@ test("an expired approval settles durably on inspection without a browser decisi
     assert.equal(expired?.receiptStatus, "failed");
     assert.deepEqual(expired?.allowedActions, ["inspect"]);
     assert.equal((await db("o_agentTrace")).length, 2);
+    assert.equal(JSON.parse((await db("o_agentTrace").where({ eventType: "tool.approval.expired" }).first()).diagnostic).kind, "authorizationFailed");
     assert.deepEqual(await write.inspect(7, pending.runId, 1), expired);
     assert.equal((await db("o_assets")).length, 2);
   } finally { await db.destroy(); }

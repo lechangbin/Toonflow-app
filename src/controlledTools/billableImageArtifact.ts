@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { Knex } from "knex";
 
 import { detectImageMime } from "@/assets/assetReferenceMedia";
+import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import type { DatabaseWork } from "@/database";
 
 import { billableImageAllowedActions, transitionBillableImage, type BillableImageState } from "./billableImageLifecycle";
@@ -115,6 +116,13 @@ export function createBillableImageArtifactRuntime(dependencies: BillableImageAr
           version: run.version + 1, updatedAt: now,
         });
         if (changedRun !== 1) return reject();
+        const call = await tx("o_agentToolCall").where({ id: request.toolCallId, runId: run.id }).first();
+        if (!call) return reject();
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId, toolReceiptId: call.receiptId,
+          toolCallId: call.id, vendorRequestId: request.id, imageArtifactId: known.id,
+          eventType: status === "late" ? "artifact.late-observed" : "artifact.observed",
+          runStatus: stopped ? "cancelled" : "waiting", createdAt: now });
         return { requestId, artifactHash, mediaPath, status, duplicate: false };
       }));
     },
