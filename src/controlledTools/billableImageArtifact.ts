@@ -85,10 +85,12 @@ export function createBillableImageArtifactRuntime(dependencies: BillableImageAr
         if (changed !== 1) return reject();
         const run = await tx("o_agentRun").where({ id: request.runId, projectId: request.projectId }).first();
         if (!run) return reject();
+        const stopped = run.status === "cancelled" && run.allowedActions === '["inspect"]';
         const changedRun = await tx("o_agentRun").where({ id: run.id, version: run.version }).update({
-          status: "waiting", waitingReason: status === "late" ? "late-artifact-after-cancel" : "artifact-awaiting-commit",
+          status: stopped ? "cancelled" : "waiting",
+          waitingReason: stopped ? null : status === "late" ? "late-artifact-after-cancel" : "artifact-awaiting-commit",
           attentionReason: status === "late" ? "inspect-late-artifact" : null,
-          allowedActions: JSON.stringify(billableImageAllowedActions(next)),
+          allowedActions: stopped ? JSON.stringify(["inspect"]) : JSON.stringify(billableImageAllowedActions(next)),
           version: run.version + 1, updatedAt: now,
         });
         if (changedRun !== 1) return reject();

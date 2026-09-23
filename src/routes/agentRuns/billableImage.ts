@@ -98,6 +98,20 @@ export function createBillableImageRouter(runtime: Runtime) {
     try { await runtime.ledger.requestCancellation({ ...req.body, actorUserId }); res.send(success()); }
     catch (error) { fail(res, error, next); }
   });
+  router.post("/stop", validateFields({ projectId: targetFields.projectId,
+    requestId: z.string().min(1).max(128), expectedVersion: z.number().int().positive() }),
+  async (req, res, next) => {
+    const actorUserId = withActor(req, res); if (actorUserId === null) return;
+    try { await runtime.ledger.stopWithoutReplay({ ...req.body, actorUserId }); res.send(success()); }
+    catch (error) { fail(res, error, next); }
+  });
+  router.post("/commit", validateFields({ projectId: targetFields.projectId,
+    requestId: z.string().min(1).max(128), expectedVersion: z.number().int().positive() }),
+  async (req, res, next) => {
+    const actorUserId = withActor(req, res); if (actorUserId === null) return;
+    try { res.send(success({ output: await runtime.commit.commit({ ...req.body, actorUserId }) })); }
+    catch (error) { fail(res, error, next); }
+  });
   router.post("/artifact", validateFields({ projectId: targetFields.projectId,
     requestId: z.string().min(1).max(128) }), async (req, res, next) => {
     const actorUserId = withActor(req, res); if (actorUserId === null) return;

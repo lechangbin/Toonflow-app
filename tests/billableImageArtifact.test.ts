@@ -99,6 +99,29 @@ test("late callback after cancellation persists inspectable media but cannot com
   } finally { await db.destroy(); }
 });
 
+test("stopping local tracking preserves a later artifact without resurrecting the Run", async () => {
+  const db = await database();
+  try {
+    const { ledger, artifact } = runtimes(db);
+    const dispatched = await ledger.dispatch({ projectId: 7, actorUserId: 1,
+      runId: "run", approvalId: "approval", expectedVersion: 1 });
+    let run = await db("o_agentRun").where({ id: "run" }).first();
+    await ledger.requestCancellation({ projectId: 7, actorUserId: 1,
+      requestId: dispatched.requestId, expectedVersion: run.version });
+    run = await db("o_agentRun").where({ id: "run" }).first();
+    await assert.rejects(ledger.stopWithoutReplay({ projectId: 7, actorUserId: 2,
+      requestId: dispatched.requestId, expectedVersion: run.version }), BillableImageLedgerConflictError);
+    await ledger.stopWithoutReplay({ projectId: 7, actorUserId: 1,
+      requestId: dispatched.requestId, expectedVersion: run.version });
+    assert.equal((await db("o_agentRun").where({ id: "run" }).first()).status, "cancelled");
+    assert.equal((await artifact.observe(dispatched.requestId, png)).status, "late");
+    run = await db("o_agentRun").where({ id: "run" }).first();
+    assert.equal(run.status, "cancelled");
+    assert.deepEqual(JSON.parse(run.allowedActions), ["inspect"]);
+    assert.equal((await artifact.inspect(7, 1, dispatched.requestId))?.status, "late");
+  } finally { await db.destroy(); }
+});
+
 test("accepted artifact atomically commits Image, Asset, Receipt, Output and checkpoint", async () => {
   const db = await database();
   try {

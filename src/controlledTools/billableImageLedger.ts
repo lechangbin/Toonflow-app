@@ -310,5 +310,47 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
         if (changedRun !== 1) return reject();
       }));
     },
+
+    /** Close local tracking without claiming Provider cancellation, no-charge, or a safe replay. */
+    async stopWithoutReplay(input: { projectId: number; actorUserId: number; requestId: string;
+      expectedVersion: number }): Promise<void> {
+      if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
+        || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0
+        || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion <= 0
+        || !/^[A-Za-z0-9._:-]{1,128}$/.test(input.requestId)) return reject();
+      await dependencies.work((db) => db.transaction(async (tx) => {
+        if (!await tx("o_project").where({ id: input.projectId, userId: input.actorUserId }).first("id")) return reject();
+        const request = await tx("o_agentVendorRequest").where({ requestId: input.requestId,
+          projectId: input.projectId }).first();
+        if (!request || !["cancelled", "late_artifact_observed", "failed_no_effect"].includes(request.status)) return reject();
+        const run = await tx("o_agentRun").where({ id: request.runId, projectId: input.projectId }).first();
+        const call = await tx("o_agentToolCall").where({ id: request.toolCallId, runId: request.runId }).first();
+        if (!run || !call) return reject();
+        if (run.status === "cancelled" && run.allowedActions === '["inspect"]') return;
+        if (run.version !== input.expectedVersion) return reject();
+        const now = dependencies.now();
+        const changed = await tx("o_agentRun").where({ id: run.id, version: run.version }).update({
+          status: "cancelled", waitingReason: null,
+          attentionReason: request.status === "failed_no_effect" ? null : "vendor-effect-not-disproven",
+          allowedActions: JSON.stringify(["inspect"]), version: run.version + 1,
+          completedAt: now, updatedAt: now,
+        });
+        if (changed !== 1) return reject();
+        await tx("o_agentToolCall").where({ id: call.id }).whereNot("status", "succeeded")
+          .update({ status: "cancelled", updatedAt: now });
+        await tx("o_agentToolReceipt").where({ id: call.receiptId, status: "pending" })
+          .update({ status: "cancelled", updatedAt: now });
+        await tx("o_agentRunStep").where({ id: call.stepId }).whereNot("status", "succeeded")
+          .update({ status: "cancelled", completedAt: now });
+        await tx("o_agentRunAttempt").where({ id: call.attemptId }).whereNot("status", "succeeded")
+          .update({ status: "cancelled", completedAt: now });
+        const latest = await tx("o_agentTrace").where({ runId: run.id })
+          .max<{ sequence?: number }>("sequence as sequence").first();
+        await tx("o_agentTrace").insert({ id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, toolReceiptId: call.receiptId,
+          sequence: Number(latest?.sequence ?? 0) + 1, eventType: "vendor.request.stopped-without-replay",
+          runStatus: "cancelled", stepStatus: "cancelled", createdAt: now });
+      }));
+    },
   };
 }

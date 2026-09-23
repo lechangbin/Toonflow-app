@@ -12,8 +12,9 @@ Issue: `lechangbin/Toonflow-app#65`. Branch: `codex/harness-t09-billable-image-2
 - 图片前置校验按 Asset 所属、用户所选且已配置的 Image Model、提示词修订和实际参考图/父资产锚点媒体内容计算指纹；记录只保存摘要，不保存提示词、Base64 或媒体路径。单资产弹窗可选择不同于 Project 默认值的模型，因此 Project 默认值不作为此操作的前置条件或指纹维度。
 - dispatch 同事务创建与 VendorRequest 相关联的 `o_image` 占位，但尚不改写 Asset 当前选中的图片。内部产物观察模块对媒体做 MIME/Hash 校验，用请求身份派生存储路径，重复同一回调只返回既有记录，冲突内容拒绝替换；取消后的迟到产物留为 `late` 证据，不改写已取消图片或 Asset 绑定。
 - 正常产物接受路径重查 Project Owner、审批绑定、未取消状态、当前图片与目标指纹；在同一 SQLite 事务内提交 Image 完成态、Asset 当前图、Artifact 接受态、ToolCall/Receipt、Run Output、Checkpoint 与 Trace。重复提交只返回原结果；恢复校验最终输出与被接受的 Artifact 关联。
+- 操作员可在受控入口重新提交已观察、未取消的本地产物；该动作只运行本地接受事务，不再次调用供应商。取消后可“结束跟踪但不重发”，Run 进入取消终态，保留请求与可能计费的注意标记；结束后的迟到产物仍可观察，但不复活 Run 或绑定资产。
 - 内部执行编排复用现有图片域的提示词/参考图/父锚点准备函数与已配置 Vendor 的图片适配器。准备前后及 dispatch 事务各核对一次目标指纹；只有 `maySubmit=true` 的首次请求跨外部调用边界。fake Provider 覆盖成功、重复调用无二次提交、超时未知、取消后迟到与本地提交失败。
-- 项目 Owner 可按 Vendor/Model/分辨率配置带修订号的本地审批估算；缺省拒绝提案。这是用户维护的调用预算上限，不是 Provider 实时价格或账单保证。受 JWT 保护的 `/api/agentRuns/billableImage` 路由提供报价读写、提案、列表、审批决定、单次执行、取消及产物查询。执行时服务端重新读取已批准 scope，忽略浏览器传来的 scope 或 actor ID；审批快照同时暴露请求身份/状态供操作员查看，不暴露原始提示词或密钥。
+- 项目 Owner 可按 Vendor/Model/分辨率配置带修订号的本地审批估算；缺省拒绝提案。这是用户维护的调用预算上限，不是 Provider 实时价格或账单保证。受 JWT 保护的 `/api/agentRuns/billableImage` 路由提供报价读写、提案、列表、审批决定、单次执行、取消、已观察产物的人工提交及产物查询。执行时服务端重新读取已批准 scope，忽略浏览器传来的 scope 或 actor ID；审批快照同时暴露请求身份/状态供操作员查看，不暴露原始提示词或密钥。
 
 ## 阶段验证
 
@@ -21,6 +22,6 @@ Issue: `lechangbin/Toonflow-app#65`. Branch: `codex/harness-t09-billable-image-2
 
 ## 尚未实现，不能宣称完成
 
-当前只有受保护的服务端入口，尚无实际用户审批界面或 Agent 自动提案连接，也未验证真实 Provider 行为。现有 Vendor 同步接口没有向 Harness 暴露 Provider task ID，因此实际轮询恢复尚不能兑现；未知请求只能保持待人工核对，不能自动重发。写入媒体在数据库观察事务前进行，事务失败可能留下未关联对象；此时不宣称成功，后续需补清理或回收。旧 `generateAssetImage` 对超时的图片失败状态，不能作为 T09 的无计费证明。Issue #65 和 ADR-0016 应保持开放/proposed。
+受控单资产审批界面已在独立 Web 分支实现，但尚未跨仓验收或连接 Agent 自动提案，也未验证真实 Provider 行为。现有 Vendor 同步接口没有向 Harness 暴露 Provider task ID，因此实际轮询恢复尚不能兑现；未知请求只能保持待人工核对，不能自动重发。写入媒体在数据库观察事务前进行，事务失败可能留下未关联对象；此时不宣称成功，后续需补清理或回收。旧批量 `generateAssetImage` 对超时的图片失败状态，不能作为 T09 的无计费证明。Issue #65 和 ADR-0016 应保持开放/proposed。
 
 下一步应接入审批卡与操作员恢复动作；明确同步 Vendor 无任务 ID 时的不可轮询边界，处理孤儿媒体，完成跨模块定向契约验证。T09 完成后再写正式深化说明、导学与面经；简历内容由用户自行决定。
