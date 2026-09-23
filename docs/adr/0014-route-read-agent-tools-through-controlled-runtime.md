@@ -1,6 +1,6 @@
 # Route read Agent Tools through one controlled runtime
 
-Status: proposed
+Status: accepted
 
 Existing Script Agent read Tools mix model-facing schemas, database queries, and Socket thinking callbacks. The first Harness read Tools instead use immutable versioned ToolDefinitions and one Controlled Tool Runtime that validates, authorizes against the Run Project, deduplicates stable operation identities, invokes a domain adapter with a frozen least-privilege context, validates bounded output, and commits a ToolReceipt with a causal Trace. The model never receives a database handle, HTTP response helper, or Socket callback.
 

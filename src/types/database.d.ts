@@ -1,4 +1,4 @@
-// @db-hash a56e6f364f100677cf1f2e66e6f08d57
+// @db-hash 31784df5fade555f66801963a39fa26b
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -113,6 +113,28 @@ export interface o_agentRunStep {
   'startedAt'?: number | null;
   'status': string;
 }
+export interface o_agentToolDefinition {
+  'contractHash': string;
+  'createdAt': number;
+  'id'?: string;
+  'name': string;
+  'policy': string;
+  'revision': string;
+}
+export interface o_agentToolReceipt {
+  'createdAt': number;
+  'diagnostic'?: string | null;
+  'id'?: string;
+  'inputHash': string;
+  'operationId': string;
+  'outputHash'?: string | null;
+  'outputJson'?: string | null;
+  'runId': string;
+  'status': string;
+  'toolName': string;
+  'toolRevision': string;
+  'updatedAt': number;
+}
 export interface o_agentTrace {
   'createdAt': number;
   'diagnostic'?: string | null;
@@ -124,6 +146,7 @@ export interface o_agentTrace {
   'sequence': number;
   'stepId'?: string | null;
   'stepStatus'?: string | null;
+  'toolReceiptId'?: string | null;
 }
 export interface o_agentWorkData {
   'createTime'?: number | null;
@@ -440,6 +463,8 @@ export interface DB {
   "o_agentRunCommand": o_agentRunCommand;
   "o_agentRunOutput": o_agentRunOutput;
   "o_agentRunStep": o_agentRunStep;
+  "o_agentToolDefinition": o_agentToolDefinition;
+  "o_agentToolReceipt": o_agentToolReceipt;
   "o_agentTrace": o_agentTrace;
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;

@@ -1,0 +1,274 @@
+import { createHash } from "node:crypto";
+
+import type { Knex } from "knex";
+import { v4 as uuid } from "uuid";
+
+import type { AgentRunLease } from "@/agentRuntime/lease";
+import { AgentRunLeaseLostError, assertAgentRunLease } from "@/agentRuntime/lease";
+import type { DatabaseWork } from "@/database";
+import { getDatabaseRuntime } from "@/database";
+import {
+  inspectPersistableText,
+  projectTraceSafeDiagnostic,
+  validateTraceSafeDiagnostic,
+  type TraceSafeDiagnostic,
+} from "@/diagnostics/traceSafeDiagnostics";
+
+import { TOOL_DEFINITIONS, toolDefinitionContractHash, type ControlledToolName } from "./definitions";
+
+export { TOOL_DEFINITIONS, toolDefinitionContractHash } from "./definitions";
+export type { ControlledToolName } from "./definitions";
+
+export interface ExecuteControlledToolInput {
+  runId: string;
+  projectId: number;
+  operationId: string;
+  toolName: ControlledToolName;
+  revision: string;
+  input: unknown;
+  lease: AgentRunLease;
+}
+
+export interface ToolReceiptSnapshot {
+  id: string;
+  runId: string;
+  operationId: string;
+  toolName: ControlledToolName;
+  toolRevision: string;
+  inputHash: string;
+  status: "pending" | "succeeded" | "failed";
+  outputHash?: string;
+  output?: unknown;
+  diagnostic?: TraceSafeDiagnostic;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type ControlledToolResult =
+  | { status: "rejected"; diagnostic: TraceSafeDiagnostic }
+  | { status: "recorded"; receipt: ToolReceiptSnapshot };
+
+export interface ToolAdapterContext {
+  readonly runId: string;
+  readonly projectId: number;
+}
+
+export type ToolAdapter = (context: Readonly<ToolAdapterContext>, input: { novelId: number }) => Promise<unknown>;
+
+export interface ControlledToolDependencies {
+  work: DatabaseWork;
+  now(): number;
+  createId(): string;
+  adapters?: Partial<Record<ControlledToolName, ToolAdapter>>;
+}
+
+export class ToolOperationConflictError extends Error {
+  constructor() {
+    super("Tool operation identity was reused for a different call");
+    this.name = "ToolOperationConflictError";
+  }
+}
+
+export class ToolEvidenceCorruptError extends Error {
+  constructor() {
+    super("ToolReceipt evidence is invalid");
+    this.name = "ToolEvidenceCorruptError";
+  }
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function safeDiagnostic(kind: "contractRejected" | "authorizationFailed" | "executionFailed" | "invalidOutput" | "timeout", audience: "toolReceipt" | "trace"): TraceSafeDiagnostic {
+  const projected = projectTraceSafeDiagnostic({
+    failureClass: "Tool", stage: "tool-call", kind, severity: "error",
+    certainty: "known-no-effect", expectedness: kind === "authorizationFailed" ? "expected" : "unexpected",
+    retryDisposition: kind === "executionFailed" || kind === "timeout" ? "safe-retry" : "never",
+  }, audience);
+  if (!projected.ok) throw new Error("Tool diagnostic projection failed");
+  return projected.value;
+}
+
+async function nextTraceSequence(trx: Knex.Transaction, runId: string): Promise<number> {
+  const latest = await trx("o_agentTrace").where("runId", runId).max<{ sequence?: number }>("sequence as sequence").first();
+  return Number(latest?.sequence ?? 0) + 1;
+}
+
+async function insertTrace(
+  trx: Knex.Transaction,
+  input: { runId: string; receiptId: string; eventType: string; now: number; createId(): string; diagnosticKind?: "authorizationFailed" | "executionFailed" | "invalidOutput" | "timeout" },
+): Promise<void> {
+  const diagnostic = input.diagnosticKind ? safeDiagnostic(input.diagnosticKind, "trace") : undefined;
+  await trx("o_agentTrace").insert({
+    id: input.createId(), runId: input.runId, toolReceiptId: input.receiptId,
+    sequence: await nextTraceSequence(trx, input.runId), eventType: input.eventType,
+    diagnosticSchemaVersion: diagnostic?.schemaVersion ?? null,
+    diagnostic: diagnostic ? JSON.stringify(diagnostic) : null, createdAt: input.now,
+  });
+}
+
+function readReceipt(row: any): ToolReceiptSnapshot {
+  const definition = TOOL_DEFINITIONS[row.toolName as ControlledToolName];
+  if (!definition || row.toolRevision !== definition.revision || !["pending", "succeeded", "failed"].includes(row.status)) {
+    throw new ToolEvidenceCorruptError();
+  }
+  let output: unknown;
+  if (row.status === "succeeded") {
+    if (typeof row.outputJson !== "string" || sha256(row.outputJson) !== row.outputHash) throw new ToolEvidenceCorruptError();
+    try { output = JSON.parse(row.outputJson); } catch { throw new ToolEvidenceCorruptError(); }
+    if (!definition.outputSchema.safeParse(output).success || !inspectPersistableText(row.outputJson).ok) throw new ToolEvidenceCorruptError();
+  } else if (row.outputJson != null || row.outputHash != null) {
+    throw new ToolEvidenceCorruptError();
+  }
+  let diagnostic: TraceSafeDiagnostic | undefined;
+  if (row.diagnostic != null) {
+    let parsed: unknown;
+    try { parsed = JSON.parse(row.diagnostic); } catch { throw new ToolEvidenceCorruptError(); }
+    const checked = validateTraceSafeDiagnostic(parsed, "toolReceipt");
+    if (!checked.ok) throw new ToolEvidenceCorruptError();
+    diagnostic = checked.value;
+  }
+  if ((row.status === "failed") !== Boolean(diagnostic)) throw new ToolEvidenceCorruptError();
+  return {
+    id: row.id, runId: row.runId, operationId: row.operationId,
+    toolName: row.toolName, toolRevision: row.toolRevision, inputHash: row.inputHash,
+    status: row.status, ...(row.outputHash ? { outputHash: row.outputHash, output } : {}),
+    ...(diagnostic ? { diagnostic } : {}), createdAt: row.createdAt, updatedAt: row.updatedAt,
+  };
+}
+
+function defaultAdapters(work: DatabaseWork): Record<ControlledToolName, ToolAdapter> {
+  return {
+    get_novel_text: async (context, input) => work(async (db) => {
+      const row = await db("o_novel").where({ id: input.novelId, projectId: context.projectId })
+        .first("id", "chapterIndex", "chapter", "chapterData");
+      if (!row) throw new Error("Authorized novel disappeared");
+      return { novelId: row.id, chapterIndex: row.chapterIndex, chapter: row.chapter ?? "", text: row.chapterData ?? "" };
+    }),
+    get_novel_events: async (context, input) => work(async (db) => {
+      const rows = await db("o_eventChapter as ec")
+        .join("o_event as e", "e.id", "ec.eventId")
+        .join("o_novel as n", "n.id", "ec.novelId")
+        .where({ "n.id": input.novelId, "n.projectId": context.projectId })
+        .distinct("e.id", "e.name", "e.detail")
+        .orderBy("e.id", "asc").limit(21);
+      return { novelId: input.novelId, truncated: rows.length > 20,
+        events: rows.slice(0, 20).map((row) => ({ id: row.id, name: row.name ?? "", detail: row.detail ?? "" })) };
+    }),
+  };
+}
+
+/** The model-facing seam has one operation and never exposes database or transport handles. */
+export function createControlledToolRuntime(dependencies: ControlledToolDependencies) {
+  const adapters = { ...defaultAdapters(dependencies.work), ...dependencies.adapters };
+  return {
+    async execute(request: ExecuteControlledToolInput): Promise<ControlledToolResult> {
+      const definition = TOOL_DEFINITIONS[request.toolName];
+      const parsed = definition?.inputSchema.safeParse(request.input);
+      if (!definition || request.revision !== definition.revision || !parsed?.success
+        || !request.runId || !Number.isSafeInteger(request.projectId) || request.projectId <= 0
+        || !/^[A-Za-z0-9._:-]{1,128}$/u.test(request.operationId)) {
+        return { status: "rejected", diagnostic: safeDiagnostic("contractRejected", "toolReceipt") };
+      }
+      const normalized = parsed.data;
+      const inputHash = sha256(JSON.stringify({ toolName: definition.name, revision: definition.revision, input: normalized }));
+      const now = dependencies.now();
+      const prepared = await dependencies.work((db) => db.transaction(async (trx) => {
+        const run = await trx("o_agentRun").where({
+          id: request.runId, projectId: request.projectId, status: "running",
+        }).whereNull("cancellationRequestedAt")
+          .whereIn("role", definition.policy.roles).whereIn("scope", definition.policy.scopes)
+          .first("id", "projectId");
+        if (!run || request.lease.runId !== request.runId) return { kind: "rejected" as const };
+        await assertAgentRunLease(trx, request.lease, now);
+        const contractHash = toolDefinitionContractHash(definition);
+        const catalog = await trx("o_agentToolDefinition").where({ name: definition.name, revision: definition.revision }).first();
+        if (catalog && catalog.contractHash !== contractHash) throw new ToolEvidenceCorruptError();
+        if (!catalog) await trx("o_agentToolDefinition").insert({
+          id: dependencies.createId(), name: definition.name, revision: definition.revision,
+          contractHash, policy: JSON.stringify(definition.policy), createdAt: now,
+        });
+        const existing = await trx("o_agentToolReceipt").where({ runId: run.id, operationId: request.operationId }).first();
+        if (existing) {
+          if (existing.toolName !== definition.name || existing.toolRevision !== definition.revision || existing.inputHash !== inputHash) {
+            throw new ToolOperationConflictError();
+          }
+          return { kind: "existing" as const, receipt: readReceipt(existing) };
+        }
+        const authorizedNovel = await trx("o_novel").where({ id: normalized.novelId, projectId: run.projectId }).first("id");
+        const receiptId = dependencies.createId();
+        const status = authorizedNovel ? "pending" : "failed";
+        const diagnostic = authorizedNovel ? undefined : safeDiagnostic("authorizationFailed", "toolReceipt");
+        await trx("o_agentToolReceipt").insert({
+          id: receiptId, runId: run.id, operationId: request.operationId,
+          toolName: definition.name, toolRevision: definition.revision, inputHash,
+          status, diagnostic: diagnostic ? JSON.stringify(diagnostic) : null,
+          createdAt: now, updatedAt: now,
+        });
+        await insertTrace(trx, {
+          runId: run.id, receiptId, eventType: authorizedNovel ? "tool.started" : "tool.denied",
+          now, createId: dependencies.createId,
+          ...(!authorizedNovel ? { diagnosticKind: "authorizationFailed" as const } : {}),
+        });
+        return { kind: authorizedNovel ? "execute" as const : "existing" as const,
+          receipt: readReceipt(await trx("o_agentToolReceipt").where("id", receiptId).first()) };
+      })).catch((error: unknown) => {
+        if (error instanceof AgentRunLeaseLostError) return { kind: "rejected" as const };
+        throw error;
+      });
+      if (prepared.kind === "rejected") return { status: "rejected", diagnostic: safeDiagnostic("authorizationFailed", "toolReceipt") };
+      if (prepared.kind === "existing") return { status: "recorded", receipt: prepared.receipt };
+
+      let output: unknown;
+      let failure: "executionFailed" | "invalidOutput" | "timeout" | undefined;
+      const context = Object.freeze({ runId: request.runId, projectId: request.projectId });
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        output = await Promise.race([
+          adapters[request.toolName](context, normalized),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error("controlled-tool-timeout")), definition.policy.timeoutMs);
+          }),
+        ]);
+        const checked = definition.outputSchema.safeParse(output);
+        if (!checked.success || !inspectPersistableText(JSON.stringify(output)).ok) failure = "invalidOutput";
+        else output = checked.data;
+      } catch (error) {
+        failure = error instanceof Error && error.message === "controlled-tool-timeout" ? "timeout" : "executionFailed";
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+
+      const completedAt = dependencies.now();
+      const receipt = await dependencies.work((db) => db.transaction(async (trx) => {
+        await assertAgentRunLease(trx, request.lease, completedAt);
+        const current = await trx("o_agentToolReceipt").where({ id: prepared.receipt.id, status: "pending" }).first();
+        if (!current) throw new ToolEvidenceCorruptError();
+        const outputJson = failure ? null : JSON.stringify(output);
+        const diagnostic = failure ? safeDiagnostic(failure, "toolReceipt") : undefined;
+        const changed = await trx("o_agentToolReceipt").where({ id: current.id, status: "pending" }).update({
+          status: failure ? "failed" : "succeeded", outputJson,
+          outputHash: outputJson ? sha256(outputJson) : null,
+          diagnostic: diagnostic ? JSON.stringify(diagnostic) : null, updatedAt: completedAt,
+        });
+        if (changed !== 1) throw new ToolEvidenceCorruptError();
+        await insertTrace(trx, {
+          runId: request.runId, receiptId: current.id,
+          eventType: failure ? "tool.failed" : "tool.succeeded", now: completedAt,
+          createId: dependencies.createId, ...(failure ? { diagnosticKind: failure } : {}),
+        });
+        return readReceipt(await trx("o_agentToolReceipt").where("id", current.id).first());
+      }));
+      return { status: "recorded", receipt };
+    },
+  };
+}
+
+export function getDefaultControlledToolRuntime() {
+  return createControlledToolRuntime({
+    work: (operation) => getDatabaseRuntime().work(operation),
+    now: Date.now,
+    createId: uuid,
+  });
+}

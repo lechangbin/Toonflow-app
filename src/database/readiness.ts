@@ -13,6 +13,7 @@ import { failInterruptedVideoProduction } from "@/video/recovery";
 
 import { generateDatabaseTypes } from "./developmentTypes";
 import { recoverInterruptedAgentRuns } from "./agentRunRecovery";
+import { recoverPendingControlledTools } from "@/controlledTools/recovery";
 
 export const DEFAULT_DATABASE_FILE_NAME = "db2.sqlite";
 
@@ -111,6 +112,7 @@ export async function reconcileDefaults(context: ReadinessContext): Promise<void
 export async function recoverInterruptedWork(context: ReadinessContext): Promise<void> {
   await failInterruptedVideoProduction(context.knex);
   await recoverInterruptedAgentRuns(context.knex);
+  await recoverPendingControlledTools(context.knex);
 }
 
 /** Phase 6: validate the database and the required runtime invariants. */

@@ -23,6 +23,8 @@ const AGENT_TABLES = [
   "o_agentRunOutput",
   "o_agentRunCheckpoint",
   "o_agentRunCommand",
+  "o_agentToolDefinition",
+  "o_agentToolReceipt",
   "o_agentTrace",
 ] as const;
 
@@ -75,6 +77,7 @@ test("a fresh database owns durable Run, Step, Attempt, Output, Checkpoint and T
     for (const tableName of AGENT_TABLES) assert.equal(await knex.schema.hasTable(tableName), true);
 
     const runColumns = await knex("o_agentRun").columnInfo();
+    assert.ok((await knex("o_agentTrace").columnInfo()).toolReceiptId);
     for (const required of [
       "id",
       "projectId",
@@ -225,6 +228,43 @@ test("a fresh database owns durable Run, Step, Attempt, Output, Checkpoint and T
   } finally {
     await dispose(directory, knex);
   }
+});
+
+test("ToolDefinition revisions cannot be updated or deleted", async () => {
+  const { directory, knex } = createTemporaryDatabase();
+  try {
+    await initializeSchema(knex);
+    await knex("o_agentToolDefinition").insert({
+      id: "definition-1", name: "get_novel_text", revision: "v1",
+      contractHash: "a".repeat(64), policy: "{}", createdAt: 100,
+    });
+    await assert.rejects(knex("o_agentToolDefinition").where("id", "definition-1").update({ contractHash: "b".repeat(64) }), /immutable/i);
+    await assert.rejects(knex("o_agentToolDefinition").where("id", "definition-1").del(), /immutable/i);
+  } finally { await dispose(directory, knex); }
+});
+
+test("T07 upgrade creates Tool tables and adds Trace receipt link without rewriting old Runs", async () => {
+  const { directory, knex } = createTemporaryDatabase();
+  try {
+    await initializeSchema(knex);
+    await knex("o_agentRun").insert({
+      id: "old-run", projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "old-request", requestFingerprint: "a".repeat(64),
+      input: JSON.stringify({ content: "old" }), status: "succeeded",
+      allowedActions: JSON.stringify(["inspect"]), version: 3, createdAt: 90, updatedAt: 99, completedAt: 99,
+    });
+    await knex.schema.dropTable("o_agentToolReceipt");
+    await knex.schema.dropTable("o_agentToolDefinition");
+    await knex.schema.alterTable("o_agentTrace", (table) => table.dropColumn("toolReceiptId"));
+    await initDB(knex);
+    await fixDB(knex, directory);
+    assert.equal(await knex.schema.hasTable("o_agentToolDefinition"), true);
+    assert.equal(await knex.schema.hasTable("o_agentToolReceipt"), true);
+    assert.ok((await knex("o_agentTrace").columnInfo()).toolReceiptId);
+    const old = await knex("o_agentRun").where("id", "old-run").first();
+    assert.equal(old.status, "succeeded");
+    assert.equal(old.version, 3);
+  } finally { await dispose(directory, knex); }
 });
 
 test("an upgraded database gains the Agent Run history tables without rewriting existing Project data", async () => {

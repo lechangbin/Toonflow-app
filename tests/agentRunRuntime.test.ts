@@ -38,6 +38,14 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.integer("id").primary();
     table.integer("projectId").notNullable();
     table.integer("chapterIndex");
+    table.text("chapter");
+    table.text("chapterData");
+  });
+  await db.schema.createTable("o_event", (table) => {
+    table.integer("id").primary(); table.text("name"); table.text("detail");
+  });
+  await db.schema.createTable("o_eventChapter", (table) => {
+    table.integer("id").primary(); table.integer("novelId"); table.integer("eventId");
   });
   await db.schema.createTable("o_agentRun", (table) => {
     table.text("id").primary();
@@ -77,6 +85,16 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.integer("resultVersion").notNullable();
     table.integer("createdAt").notNullable();
     table.unique(["runId", "clientCommandId"]);
+  });
+  await db.schema.createTable("o_agentToolDefinition", (table) => {
+    table.text("id").primary(); table.text("name"); table.text("revision"); table.text("contractHash");
+    table.text("policy"); table.integer("createdAt"); table.unique(["name", "revision"]);
+  });
+  await db.schema.createTable("o_agentToolReceipt", (table) => {
+    table.text("id").primary(); table.text("runId"); table.text("operationId"); table.text("toolName");
+    table.text("toolRevision"); table.text("inputHash"); table.text("status"); table.text("outputJson");
+    table.text("outputHash"); table.text("diagnostic"); table.integer("createdAt"); table.integer("updatedAt");
+    table.unique(["runId", "operationId"]);
   });
   await db.schema.createTable("o_agentRunStep", (table) => {
     table.text("id").primary();
@@ -137,6 +155,7 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.text("id").primary();
     table.text("runId").notNullable();
     table.text("stepId");
+    table.text("toolReceiptId");
     table.integer("sequence").notNullable();
     table.text("eventType").notNullable();
     table.text("runStatus");
@@ -147,7 +166,10 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.unique(["runId", "sequence"]);
   });
   await db("o_project").insert({ id: 7, name: "北境", type: "奇幻", intro: "远征", artStyle: "水墨", videoRatio: "16:9" });
-  await db("o_novel").insert([{ id: 1, projectId: 7, chapterIndex: 1 }, { id: 2, projectId: 7, chapterIndex: 2 }]);
+  await db("o_novel").insert([
+    { id: 1, projectId: 7, chapterIndex: 1, chapter: "开篇", chapterData: "可读取的小说正文" },
+    { id: 2, projectId: 7, chapterIndex: 2, chapter: "续篇", chapterData: "第二章正文" },
+  ]);
   return db;
 }
 
@@ -221,6 +243,37 @@ test("identical starts return one durable Agent Run and execute one Model Step",
   } finally {
     await db.destroy();
   }
+});
+
+test("the read-only Agent Run invokes novel Tools only through controlled receipts", async () => {
+  const db = await createDatabase();
+  let observedToolOutput: unknown;
+  try {
+    const harness = makeHarness(db, undefined, "tool-integration", {
+      openTextCall: async () => ({
+        target: { vendorId: "fake", modelId: "text-v1" },
+        invokeText: async (input) => {
+          const facts = (input.messages as Array<{ content: string }>)[1].content;
+          assert.match(facts, /1:1、2:2/u, "the model receives authorized chapter IDs");
+          const read = (input.tools as any).get_novel_text;
+          observedToolOutput = await read.execute({ novelId: 1 }, { toolCallId: "novel-call-1" });
+          return { text: "已依据原文给出只读建议" } as any;
+        },
+      }),
+    });
+    const started = await harness.runtime.start(startInput);
+    await harness.flush();
+    assert.deepEqual(observedToolOutput, { novelId: 1, chapterIndex: 1, chapter: "开篇", text: "可读取的小说正文" });
+    const receipt = await db("o_agentToolReceipt").where("runId", started.id).first();
+    assert.equal(receipt.status, "succeeded");
+    assert.equal(receipt.toolName, "get_novel_text");
+    const snapshot = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(snapshot?.status, "succeeded");
+    assert.deepEqual(snapshot?.traces.map((trace) => trace.eventType), [
+      "run.created", "run.started", "tool.started", "tool.succeeded", "run.succeeded",
+    ]);
+    assert.equal(JSON.stringify(snapshot?.traces).includes("小说正文"), false);
+  } finally { await db.destroy(); }
 });
 
 test("queued cancellation commits intent and terminal state once before any Provider call", async () => {
