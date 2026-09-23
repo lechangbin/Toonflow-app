@@ -23,6 +23,9 @@ export interface BillableImageArtifactObservation {
   duplicate: boolean;
 }
 
+export type BillableImageArtifactInspection = BillableImageArtifactObservation
+  | { requestId: string; artifactHash: string; mediaPath: string; status: "write_pending"; duplicate: false };
+
 function reject(): never { throw new BillableImageLedgerConflictError(); }
 
 function stateOf(row: any): BillableImageState {
@@ -40,8 +43,8 @@ function inspectMedia(base64: string): { content: Buffer; mime: "image/png" | "i
   return { content, mime };
 }
 
-/** Writes a deterministic, request-scoped media object, then commits a durable observation.
- * A local write can precede a failed DB transaction; such an object is orphaned, never linked or reported as success.
+/** Registers a deterministic request-scoped media intent before writing bytes. The pending row
+ * survives a crash or failed finalization and can be inspected without claiming image success.
  */
 export function createBillableImageArtifactRuntime(dependencies: BillableImageArtifactDependencies) {
   return {
@@ -53,7 +56,7 @@ export function createBillableImageArtifactRuntime(dependencies: BillableImageAr
       if (!before || !Number.isSafeInteger(before.projectId) || !Number.isSafeInteger(before.assetId)) return reject();
       const existing = await dependencies.work((db) => db("o_agentImageArtifact")
         .where({ vendorRequestId: before.id, contentHash: artifactHash }).first());
-      if (existing) return { requestId, artifactHash, mediaPath: existing.mediaPath,
+      if (existing && existing.status !== "write_pending") return { requestId, artifactHash, mediaPath: existing.mediaPath,
         status: existing.status === "late" ? "late" : "observed", duplicate: true };
       if (before.artifactHash && before.artifactHash !== artifactHash) return reject();
       let planned: BillableImageState;
@@ -62,23 +65,40 @@ export function createBillableImageArtifactRuntime(dependencies: BillableImageAr
       const extension = mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg"
         : mime === "image/gif" ? "gif" : "webp";
       const mediaPath = `/${before.projectId}/agent-image/${requestId}/${artifactHash}.${extension}`;
+      await dependencies.work((db) => db.transaction(async (tx) => {
+        const request = await tx("o_agentVendorRequest").where({ id: before.id, requestId }).first();
+        if (!request || (request.artifactHash && request.artifactHash !== artifactHash)) return reject();
+        try { transitionBillableImage(stateOf(request), { kind: "artifact_observed", artifactHash }); }
+        catch { return reject(); }
+        const known = await tx("o_agentImageArtifact").where({ vendorRequestId: before.id,
+          contentHash: artifactHash }).first();
+        const otherPending = await tx("o_agentImageArtifact").where({ vendorRequestId: before.id,
+          status: "write_pending" }).whereNot({ contentHash: artifactHash }).first("id");
+        if (otherPending) return reject();
+        if (!known) await tx("o_agentImageArtifact").insert({ id: dependencies.createId(),
+          vendorRequestId: request.id, assetId: request.assetId, imageId: request.imageId,
+          mediaPath, contentHash: artifactHash, status: "write_pending",
+          createdAt: dependencies.now(), updatedAt: dependencies.now() });
+        else if (known.mediaPath !== mediaPath) return reject();
+      }));
       await dependencies.writeMedia(mediaPath, base64);
       return dependencies.work((db) => db.transaction(async (tx) => {
         const request = await tx("o_agentVendorRequest").where({ id: before.id, requestId }).first();
         const known = await tx("o_agentImageArtifact").where({ vendorRequestId: before.id,
           contentHash: artifactHash }).first();
-        if (known) return { requestId, artifactHash, mediaPath: known.mediaPath,
+        if (known && known.status !== "write_pending") return { requestId, artifactHash, mediaPath: known.mediaPath,
           status: known.status === "late" ? "late" as const : "observed" as const, duplicate: true };
-        if (!request || (request.artifactHash && request.artifactHash !== artifactHash)) return reject();
+        if (!request || !known || known.mediaPath !== mediaPath
+          || (request.artifactHash && request.artifactHash !== artifactHash)) return reject();
         let next: BillableImageState;
         try { next = transitionBillableImage(stateOf(request), { kind: "artifact_observed", artifactHash }); }
         catch { return reject(); }
         if (planned.status === "late_artifact_observed" && next.status === "artifact_observed") return reject();
         const now = dependencies.now();
         const status = next.status === "late_artifact_observed" ? "late" as const : "observed" as const;
-        await tx("o_agentImageArtifact").insert({ id: dependencies.createId(), vendorRequestId: request.id,
-          assetId: request.assetId, imageId: request.imageId, mediaPath, contentHash: artifactHash,
-          status, createdAt: now, updatedAt: now });
+        const artifactChanged = await tx("o_agentImageArtifact").where({ id: known.id,
+          status: "write_pending" }).update({ status, updatedAt: now });
+        if (artifactChanged !== 1) return reject();
         const changed = await tx("o_agentVendorRequest").where({ id: request.id, version: request.version }).update({
           status: next.status, artifactHash, version: request.version + 1, updatedAt: now,
         });
@@ -98,16 +118,20 @@ export function createBillableImageArtifactRuntime(dependencies: BillableImageAr
       }));
     },
 
-    async inspect(projectId: number, actorUserId: number, requestId: string): Promise<BillableImageArtifactObservation | null> {
+    async inspect(projectId: number, actorUserId: number, requestId: string): Promise<BillableImageArtifactInspection | null> {
       return dependencies.work(async (db: Knex) => {
         if (!await db("o_project").where({ id: projectId, userId: actorUserId }).first("id")) return reject();
         const request = await db("o_agentVendorRequest").where({ projectId, requestId }).first();
-        if (!request || !request.artifactHash) return null;
-        const artifact = await db("o_agentImageArtifact").where({ vendorRequestId: request.id,
-          contentHash: request.artifactHash }).first();
-        if (!artifact) return reject();
+        if (!request) return null;
+        const artifact = request.artifactHash
+          ? await db("o_agentImageArtifact").where({ vendorRequestId: request.id,
+            contentHash: request.artifactHash }).first()
+          : await db("o_agentImageArtifact").where({ vendorRequestId: request.id,
+            status: "write_pending" }).first();
+        if (!artifact) return null;
         return { requestId, artifactHash: artifact.contentHash, mediaPath: artifact.mediaPath,
-          status: artifact.status === "late" ? "late" : "observed", duplicate: false };
+          status: artifact.status === "write_pending" ? "write_pending"
+            : artifact.status === "late" ? "late" : "observed", duplicate: false };
       });
     },
   };

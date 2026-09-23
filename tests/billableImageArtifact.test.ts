@@ -82,6 +82,29 @@ test("duplicate callback stores one artifact and a conflicting result cannot rep
   } finally { await db.destroy(); }
 });
 
+test("a failed local media write leaves an inspectable pending intent, not a success claim", async () => {
+  const db = await database();
+  try {
+    const { ledger } = runtimes(db);
+    const dispatched = await ledger.dispatch({ projectId: 7, actorUserId: 1,
+      runId: "run", approvalId: "approval", expectedVersion: 1 });
+    let failWrite = true;
+    let id = 0;
+    const artifact = createBillableImageArtifactRuntime({
+      work: async (operation) => operation(db), now: () => 101, createId: () => `pending-${++id}`,
+      writeMedia: async () => { if (failWrite) throw new Error("local storage unavailable"); },
+    });
+    await assert.rejects(artifact.observe(dispatched.requestId, png), /local storage unavailable/);
+    assert.equal((await artifact.inspect(7, 1, dispatched.requestId))?.status, "write_pending");
+    await assert.rejects(artifact.observe(dispatched.requestId, otherPng), BillableImageLedgerConflictError);
+    assert.equal((await db("o_agentVendorRequest").where({ requestId: dispatched.requestId }).first()).artifactHash, null);
+    assert.equal((await db("o_image").where({ id: dispatched.imageId }).first()).state, "等待中");
+    failWrite = false;
+    assert.equal((await artifact.observe(dispatched.requestId, png)).status, "observed");
+    assert.equal((await db("o_agentImageArtifact").where({ vendorRequestId: dispatched.vendorRequestId })).length, 1);
+  } finally { await db.destroy(); }
+});
+
 test("late callback after cancellation persists inspectable media but cannot complete the image", async () => {
   const db = await database();
   try {

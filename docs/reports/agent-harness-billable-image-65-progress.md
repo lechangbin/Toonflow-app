@@ -10,7 +10,7 @@ Issue: `lechangbin/Toonflow-app#65`. Branch: `codex/harness-t09-billable-image-2
 - 观察到可信 Provider task ID 时先记录 checkpoint，再允许后续按 task ID 核对。数据库就绪恢复把没有确认结果的 `dispatch_recorded` 停在 unknown；不自动重发可能计费的请求。恢复读链校验 VendorRequest 与 checkpoint 的对应关系。
 - 新增计费提案与决定运行时：服务端报价形成最多一次调用的 scope，冻结 Tool 修订、内容 hash、目标状态指纹和用户可读预览；项目 Owner 才能提案、检查和决定。拒绝、过期、目标漂移不产生 VendorRequest。重复提案即使报价策略更新也返回原审批；重复决定保持幂等。
 - 图片前置校验按 Asset 所属、用户所选且已配置的 Image Model、提示词修订和实际参考图/父资产锚点媒体内容计算指纹；记录只保存摘要，不保存提示词、Base64 或媒体路径。单资产弹窗可选择不同于 Project 默认值的模型，因此 Project 默认值不作为此操作的前置条件或指纹维度。
-- dispatch 同事务创建与 VendorRequest 相关联的 `o_image` 占位，但尚不改写 Asset 当前选中的图片。内部产物观察模块对媒体做 MIME/Hash 校验，用请求身份派生存储路径，重复同一回调只返回既有记录，冲突内容拒绝替换；取消后的迟到产物留为 `late` 证据，不改写已取消图片或 Asset 绑定。
+- dispatch 同事务创建与 VendorRequest 相关联的 `o_image` 占位，但尚不改写 Asset 当前选中的图片。内部产物观察模块对媒体做 MIME/Hash 校验，用请求身份派生存储路径；先记录 `write_pending` 媒体意图，再写入字节并提交观察状态。中断或写入失败留下可检查的待写入记录，不被当作成功；同一回调可恢复本地写入，冲突内容拒绝替换。取消后的迟到产物留为 `late` 证据，不改写已取消图片或 Asset 绑定。
 - 正常产物接受路径重查 Project Owner、审批绑定、未取消状态、当前图片与目标指纹；在同一 SQLite 事务内提交 Image 完成态、Asset 当前图、Artifact 接受态、ToolCall/Receipt、Run Output、Checkpoint 与 Trace。重复提交只返回原结果；恢复校验最终输出与被接受的 Artifact 关联。
 - 操作员可在受控入口重新提交已观察、未取消的本地产物；该动作只运行本地接受事务，不再次调用供应商。取消后可“结束跟踪但不重发”，Run 进入取消终态，保留请求与可能计费的注意标记；结束后的迟到产物仍可观察，但不复活 Run 或绑定资产。
 - 内部执行编排复用现有图片域的提示词/参考图/父锚点准备函数与已配置 Vendor 的图片适配器。准备前后及 dispatch 事务各核对一次目标指纹；只有 `maySubmit=true` 的首次请求跨外部调用边界。fake Provider 覆盖成功、重复调用无二次提交、超时未知、取消后迟到与本地提交失败。
@@ -22,6 +22,6 @@ Issue: `lechangbin/Toonflow-app#65`. Branch: `codex/harness-t09-billable-image-2
 
 ## 尚未实现，不能宣称完成
 
-受控单资产审批界面已在独立 Web 分支实现，但尚未跨仓验收或连接 Agent 自动提案，也未验证真实 Provider 行为。现有 Vendor 同步接口没有向 Harness 暴露 Provider task ID，因此实际轮询恢复尚不能兑现；未知请求只能保持待人工核对，不能自动重发。写入媒体在数据库观察事务前进行，事务失败可能留下未关联对象；此时不宣称成功，后续需补清理或回收。旧批量 `generateAssetImage` 对超时的图片失败状态，不能作为 T09 的无计费证明。Issue #65 和 ADR-0016 应保持开放/proposed。
+受控单资产审批界面已在独立 Web 分支实现，但尚未跨仓验收或连接 Agent 自动提案，也未验证真实 Provider 行为。现有 Vendor 同步接口没有向 Harness 暴露 Provider task ID，因此实际轮询恢复尚不能兑现；未知请求只能保持待人工核对，不能自动重发。`write_pending` 能追踪本地未完成媒体写入，但进程重启后尚无自动重读文件并完成观察的恢复器；需要同一回调重到或操作员后续恢复能力，不能宣称全自动恢复。旧批量 `generateAssetImage` 对超时的图片失败状态，不能作为 T09 的无计费证明。Issue #65 和 ADR-0016 应保持开放/proposed。
 
 下一步应接入审批卡与操作员恢复动作；明确同步 Vendor 无任务 ID 时的不可轮询边界，处理孤儿媒体，完成跨模块定向契约验证。T09 完成后再写正式深化说明、导学与面经；简历内容由用户自行决定。

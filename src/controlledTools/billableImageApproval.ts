@@ -77,7 +77,8 @@ export interface BillableImageApprovalSnapshot {
   contractHash: string;
   preview: BillableImagePreflight["preview"];
   vendorRequest: null | { requestId: string; status: string; providerTaskId: string | null;
-    artifactHash: string | null; cancellationRequested: boolean; imageId: number };
+    artifactHash: string | null; pendingArtifactHash: string | null;
+    cancellationRequested: boolean; imageId: number };
 }
 
 export async function expireDueBillableImageApprovals(
@@ -145,12 +146,15 @@ async function snapshot(tx: Knex | Knex.Transaction, projectId: number, runId: s
   let preview: BillableImagePreflight["preview"];
   try { preview = JSON.parse(approval.previewJson); } catch { return conflict(); }
   const request = await tx("o_agentVendorRequest").where({ runId, projectId }).first();
+  const pendingArtifact = request && await tx("o_agentImageArtifact")
+    .where({ vendorRequestId: request.id, status: "write_pending" }).first("contentHash");
   return { id: approval.id, runId, receiptId: approval.receiptId, operationId: approval.operationId,
     status: approval.status, runVersion: run.version, runStatus: run.status,
     allowedActions: JSON.parse(run.allowedActions), expiresAt: approval.expiresAt,
     scopeHash: approval.payloadHash, contractHash: approval.contractHash, preview,
     vendorRequest: request ? { requestId: request.requestId, status: request.status,
       providerTaskId: request.providerTaskId ?? null, artifactHash: request.artifactHash ?? null,
+      pendingArtifactHash: pendingArtifact?.contentHash ?? null,
       cancellationRequested: request.cancellationRequestedAt != null, imageId: request.imageId } : null };
 }
 
