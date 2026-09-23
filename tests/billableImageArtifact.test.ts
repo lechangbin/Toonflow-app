@@ -119,6 +119,8 @@ test("stopping local tracking preserves a later artifact without resurrecting th
     assert.equal(run.status, "cancelled");
     assert.deepEqual(JSON.parse(run.allowedActions), ["inspect"]);
     assert.equal((await artifact.inspect(7, 1, dispatched.requestId))?.status, "late");
+    await recoverInterruptedAgentRuns(db, 200);
+    assert.equal((await db("o_agentRun").where({ id: "run" }).first()).status, "cancelled");
   } finally { await db.destroy(); }
 });
 
