@@ -30,6 +30,7 @@
 - [ ] 能说明 Run、Step、Attempt、ToolReceipt、ToolCall、VendorRequest、Artifact 关联的父子校验。
 - [ ] 能指出旧 Trace 的 `legacy-unlinked` 不等于已证明完整因果。
 - [ ] 能说明为什么诊断使用固定字段分类、不能直接保存异常消息。
+- [ ] 能解释新失败写入强制诊断与历史 `legacy-unclassified` 的分母，不能把已识别事件数说成全业务覆盖率。
 - [ ] 能回答导出超过上限或证据损坏时为何整体拒绝而非静默截断。
 - [ ] 能区分数据库事务删除与媒体目录后置清理，以及清理失败如何呈现。
 - [ ] 不把定向测试说成真实 Provider、浏览器或全量验收。
@@ -56,7 +57,7 @@
 ## 7. 核心原理解析
 
 1. 分散的事件写入易形成断链 → 在状态事务内调用统一追加器，查前驱、分配连续序号并校验同 Run 父子身份 → `causalTrace.ts`。
-2. 日志和时间戳不能证明原因 → 导出按数据库序号读取、审计前驱；旧记录保留未链接标记，损坏记录拒绝作为完整证据 → `auditCausalTraceTimeline`。
+2. 日志和时间戳不能证明原因 → 导出按数据库序号读取、审计前驱；旧记录保留未链接标记，损坏记录拒绝作为完整证据；已识别失败事件另报告分类覆盖与历史缺口 → `auditCausalTraceTimeline`、`auditTraceFailureClassification`。
 3. 观察性可能变成泄漏面 → 只投影 ID、状态、时间与固定词表诊断，并对最终对象做共享敏感内容扫描 → `traceEvidence.ts`。
 4. 未知外部效果需要可查 → 不按年龄自动删除 Agent 证据；Project Owner 删除项目时在同一数据库事务清除关联记录 → `retention.ts`。
 5. 文件系统无法随数据库回滚 → 提交后再清理项目媒体目录，并明确返回清理失败状态供人工处置 → `delProject.ts`。

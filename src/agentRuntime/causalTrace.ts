@@ -2,6 +2,36 @@ import type { Knex } from "knex";
 import { validateTraceSafeDiagnostic, type TraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
 export const TRACE_TIMELINE_EVIDENCE_SCHEMA_VERSION = "toonflow.trace-timeline-evidence.v1" as const;
+export const TRACE_FAILURE_CLASSIFICATION_SCHEMA_VERSION = "toonflow.trace-failure-classification.v1" as const;
+
+const CLASSIFIED_FAILURE_EVENTS = new Set([
+  "run.failed", "run.needs-attention", "tool.denied", "tool.failed", "tool.interrupted",
+  "tool.approval.expired", "tool.approval.conflicted", "tool.approval.corrupt",
+  "tool.billing-approval.expired", "vendor.request.submission-unknown",
+  "vendor.request.unknown-on-recovery", "interrupted-model-call",
+  "interrupted-before-model-call", "agent-checkpoint-corrupt", "agent-checkpoint-incompatible",
+]);
+
+export interface TraceFailureClassificationEvidence {
+  schemaVersion: typeof TRACE_FAILURE_CLASSIFICATION_SCHEMA_VERSION;
+  coverage: "complete" | "legacy-unclassified";
+  knownFailureEventCount: number;
+  classifiedFailureEventCount: number;
+}
+
+/** Only events in the current Harness failure vocabulary are counted; unknown legacy event types are not inferred. */
+export function auditTraceFailureClassification(rows: readonly { eventType: string; diagnostic?: string | null }[]): TraceFailureClassificationEvidence {
+  let knownFailureEventCount = 0;
+  let classifiedFailureEventCount = 0;
+  for (const row of rows) {
+    if (!CLASSIFIED_FAILURE_EVENTS.has(row.eventType)) continue;
+    knownFailureEventCount++;
+    if (row.diagnostic != null) classifiedFailureEventCount++;
+  }
+  return { schemaVersion: TRACE_FAILURE_CLASSIFICATION_SCHEMA_VERSION,
+    coverage: knownFailureEventCount === classifiedFailureEventCount ? "complete" : "legacy-unclassified",
+    knownFailureEventCount, classifiedFailureEventCount };
+}
 
 export interface TraceTimelineEvidence {
   schemaVersion: typeof TRACE_TIMELINE_EVIDENCE_SCHEMA_VERSION;
@@ -49,6 +79,9 @@ export interface CausalTraceInput {
 
 /** Append inside the same transaction as the state change, so sequence and cause cannot diverge. */
 export async function appendCausalTrace(tx: Knex.Transaction, input: CausalTraceInput): Promise<void> {
+  if (CLASSIFIED_FAILURE_EVENTS.has(input.eventType) && !input.diagnostic) {
+    throw new Error("Trace failure event requires a safe diagnostic");
+  }
   const diagnostic = input.diagnostic && validateTraceSafeDiagnostic(input.diagnostic, "trace");
   if (diagnostic && !diagnostic.ok) throw new Error("Trace diagnostic violates safe contract");
   const links = [

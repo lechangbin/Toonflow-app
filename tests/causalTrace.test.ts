@@ -3,7 +3,7 @@ import test from "node:test";
 
 import knexFactory from "knex";
 
-import { appendCausalTrace, auditCausalTraceTimeline } from "../src/agentRuntime/causalTrace";
+import { appendCausalTrace, auditCausalTraceTimeline, auditTraceFailureClassification } from "../src/agentRuntime/causalTrace";
 
 test("timeline evidence distinguishes linked, legacy and corrupt history without trusting timestamps", () => {
   const linked = [
@@ -20,6 +20,19 @@ test("timeline evidence distinguishes linked, legacy and corrupt history without
     "corrupt");
   assert.equal(auditCausalTraceTimeline([{ ...linked[0] }, { ...linked[1], sequence: 3 }]).linkage,
     "corrupt");
+});
+
+test("failure classification does not invent diagnostics for old rows", () => {
+  assert.deepEqual(auditTraceFailureClassification([
+    { eventType: "run.created", diagnostic: null },
+    { eventType: "vendor.request.submission-unknown", diagnostic: null },
+  ]), { schemaVersion: "toonflow.trace-failure-classification.v1", coverage: "legacy-unclassified",
+    knownFailureEventCount: 1, classifiedFailureEventCount: 0 });
+  assert.deepEqual(auditTraceFailureClassification([
+    { eventType: "run.created", diagnostic: null },
+    { eventType: "run.failed", diagnostic: "validated-on-export" },
+  ]), { schemaVersion: "toonflow.trace-failure-classification.v1", coverage: "complete",
+    knownFailureEventCount: 1, classifiedFailureEventCount: 1 });
 });
 
 test("causal Trace links ordered events and rejects an entity owned by another Run", async () => {
@@ -43,6 +56,9 @@ test("causal Trace links ordered events and rejects an entity owned by another R
     await db.transaction((tx) => appendCausalTrace(tx, {
       id: "trace-b", runId: "run-a", stepId: "step-a", eventType: "run.started", createdAt: 99,
     }));
+    await assert.rejects(db.transaction((tx) => appendCausalTrace(tx, {
+      id: "missing-diagnostic", runId: "run-a", stepId: "step-a", eventType: "run.failed", createdAt: 102,
+    })), /requires a safe diagnostic/);
     const rows = await db("o_agentTrace").where({ runId: "run-a" }).orderBy("sequence");
     assert.deepEqual(rows.map((row) => [row.id, row.sequence, row.predecessorTraceId]),
       [["trace-a", 1, null], ["trace-b", 2, "trace-a"]]);

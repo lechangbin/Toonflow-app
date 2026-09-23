@@ -1,7 +1,8 @@
 import type { DatabaseWork } from "@/database";
 import { inspectTraceSafePayload, validateTraceSafeDiagnostic, type TraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
-import { auditCausalTraceTimeline, type TraceTimelineEvidence } from "./causalTrace";
+import { auditCausalTraceTimeline, auditTraceFailureClassification,
+  type TraceTimelineEvidence, type TraceFailureClassificationEvidence } from "./causalTrace";
 import { AGENT_EVIDENCE_RETENTION_POLICY } from "./retention";
 
 export const AGENT_TRACE_EXPORT_SCHEMA_VERSION = "toonflow.agent-trace-export.v1" as const;
@@ -36,6 +37,7 @@ export interface AgentTraceExport {
   projectId: number;
   runId: string;
   timeline: TraceTimelineEvidence;
+  failureClassification: TraceFailureClassificationEvidence;
   retention: typeof AGENT_EVIDENCE_RETENTION_POLICY;
   redaction: { schemaVersion: typeof TRACE_REDACTION_EVIDENCE_SCHEMA_VERSION; result: "passed" };
   events: AgentTraceExportEvent[];
@@ -109,12 +111,14 @@ export function createAgentTraceEvidenceRuntime(work: DatabaseWork) {
         if (timeline.linkage === "corrupt") throw new AgentTraceExportUnavailableError();
         const result: AgentTraceExport = { schemaVersion: AGENT_TRACE_EXPORT_SCHEMA_VERSION,
           projectId: input.projectId, runId: input.runId, timeline,
+          failureClassification: auditTraceFailureClassification(rows),
           retention: AGENT_EVIDENCE_RETENTION_POLICY,
           redaction: { schemaVersion: TRACE_REDACTION_EVIDENCE_SCHEMA_VERSION, result: "passed" },
           events: rows.map(projectEvent) };
         const inspected = inspectTraceSafePayload(result, { allowedTopLevelKeys: ["schemaVersion", "projectId",
-          "runId", "timeline", "retention", "redaction", "events"], allowedNestedKeys: ["schemaVersion",
-          "ordering", "linkage", "eventCount", "databaseRetention", "databaseDeletion", "mediaDeletion",
+          "runId", "timeline", "failureClassification", "retention", "redaction", "events"], allowedNestedKeys: ["schemaVersion",
+          "ordering", "linkage", "eventCount", "coverage", "knownFailureEventCount", "classifiedFailureEventCount",
+          "databaseRetention", "databaseDeletion", "mediaDeletion",
           "redactedExportRetention", "result", ...eventKeys, ...diagnosticKeys] });
         if (!inspected.ok) throw new AgentTraceExportUnavailableError();
         return result;
