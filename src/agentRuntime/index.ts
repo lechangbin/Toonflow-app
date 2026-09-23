@@ -41,6 +41,7 @@ import {
   type AgentRunCheckpointKind,
   type AgentRunCheckpointPayload,
 } from "./checkpoints";
+import { auditCausalTraceTimeline, type TraceTimelineEvidence } from "./causalTrace";
 import {
   DEFAULT_AGENT_RUN_LEASE_MS,
   AgentRunLeaseLostError,
@@ -193,6 +194,7 @@ export interface AgentRunSnapshot {
   attempts: AgentRunAttemptSnapshot[];
   checkpoints: AgentRunCheckpointSnapshot[];
   outputs: AgentRunOutputSnapshot[];
+  traceEvidence: TraceTimelineEvidence;
   traces: AgentTraceSnapshot[];
 }
 
@@ -398,6 +400,7 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
     db("o_agentRunOutput").where("runId", runId).orderBy("createdAt", "asc"),
     db("o_agentTrace").where("runId", runId).orderBy("sequence", "asc"),
   ]);
+  const traceEvidence = auditCausalTraceTimeline(traces);
   const quarantinedEvidence = run.attentionReason === "agent-checkpoint-corrupt"
     || run.attentionReason === "agent-checkpoint-incompatible";
   const checkpoints = quarantinedEvidence ? [] : validateCheckpointRows(checkpointRows);
@@ -484,7 +487,8 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
       schemaVersion: output.schemaVersion,
       createdAt: output.createdAt,
     })),
-    traces: traces.map((trace) => ({
+    traceEvidence,
+    traces: (traceEvidence.linkage === "corrupt" ? [] : traces).map((trace) => ({
       id: trace.id,
       ...(trace.stepId ? { stepId: trace.stepId } : {}),
       ...(trace.attemptId ? { attemptId: trace.attemptId } : {}),

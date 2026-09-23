@@ -250,6 +250,22 @@ test("identical starts return one durable Agent Run and execute one Model Step",
   }
 });
 
+test("inspection quarantines a broken Trace predecessor instead of presenting a false timeline", async () => {
+  const db = await createDatabase();
+  try {
+    const harness = makeHarness(db);
+    const started = await harness.runtime.start(startInput);
+    await harness.flush();
+    await db("o_agentTrace").where({ runId: started.id, sequence: 2 })
+      .update({ predecessorTraceId: "wrong-trace" });
+    const snapshot = await harness.runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(snapshot?.traceEvidence.linkage, "corrupt");
+    assert.equal(snapshot?.traceEvidence.ordering, "durable-sequence");
+    assert.deepEqual(snapshot?.traces, []);
+    assert.equal(snapshot?.status, "succeeded", "Run state remains independently inspectable");
+  } finally { await db.destroy(); }
+});
+
 test("the read-only Agent Run invokes novel Tools only through controlled receipts", async () => {
   const db = await createDatabase();
   let observedToolOutput: unknown;

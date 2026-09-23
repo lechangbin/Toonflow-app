@@ -28,6 +28,8 @@ const run: AgentRunSnapshot = {
   attempts: [],
   checkpoints: [],
   outputs: [],
+  traceEvidence: { schemaVersion: "toonflow.trace-timeline-evidence.v1", ordering: "durable-sequence",
+    linkage: "legacy-unlinked", eventCount: 0 },
   traces: [],
 };
 

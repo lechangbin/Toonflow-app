@@ -139,6 +139,8 @@ test("startup parks a committed dispatch intent as unknown without issuing anoth
       ["vendor.request.intent-recorded", "vendor.request.unknown-on-recovery"]);
     assert.equal(traces[1].predecessorTraceId, traces[0].id);
     assert.equal(traces[1].vendorRequestId, dispatched.vendorRequestId);
+    assert.equal(JSON.parse(traces[1].diagnostic).certainty, "unknown-effect");
+    assert.equal(JSON.parse(traces[1].diagnostic).retryDisposition, "reconcile-first");
     assert.equal((await db("o_agentRun").where({ id: "run-1" }).first()).attentionReason, "vendor-reconciliation-required");
     assert.equal((await ledger(db).dispatch(command)).maySubmit, false);
   } finally { await db.destroy(); }

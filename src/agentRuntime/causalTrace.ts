@@ -1,4 +1,34 @@
 import type { Knex } from "knex";
+import { validateTraceSafeDiagnostic, type TraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
+
+export const TRACE_TIMELINE_EVIDENCE_SCHEMA_VERSION = "toonflow.trace-timeline-evidence.v1" as const;
+
+export interface TraceTimelineEvidence {
+  schemaVersion: typeof TRACE_TIMELINE_EVIDENCE_SCHEMA_VERSION;
+  ordering: "durable-sequence";
+  linkage: "linked" | "legacy-unlinked" | "corrupt";
+  eventCount: number;
+}
+
+/** Old rows have no predecessor edge; never infer one merely from timestamps. */
+export function auditCausalTraceTimeline(rows: readonly {
+  id: string; sequence: number; predecessorTraceId?: string | null;
+}[]): TraceTimelineEvidence {
+  let linkage: TraceTimelineEvidence["linkage"] = rows.length === 0 ? "legacy-unlinked" : "linked";
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index];
+    const previous = rows[index - 1];
+    if (!row.id || !Number.isSafeInteger(row.sequence) || row.sequence !== index + 1
+      || (!previous && row.predecessorTraceId)
+      || (previous && row.predecessorTraceId && row.predecessorTraceId !== previous.id)) {
+      linkage = "corrupt";
+      break;
+    }
+    if (previous && !row.predecessorTraceId) linkage = "legacy-unlinked";
+  }
+  return { schemaVersion: TRACE_TIMELINE_EVIDENCE_SCHEMA_VERSION,
+    ordering: "durable-sequence", linkage, eventCount: rows.length };
+}
 
 /** A Trace contains durable identifiers and safe status codes, never Provider payloads. */
 export interface CausalTraceInput {
@@ -14,10 +44,13 @@ export interface CausalTraceInput {
   imageArtifactId?: string;
   runStatus?: string;
   stepStatus?: string;
+  diagnostic?: TraceSafeDiagnostic;
 }
 
 /** Append inside the same transaction as the state change, so sequence and cause cannot diverge. */
 export async function appendCausalTrace(tx: Knex.Transaction, input: CausalTraceInput): Promise<void> {
+  const diagnostic = input.diagnostic && validateTraceSafeDiagnostic(input.diagnostic, "trace");
+  if (diagnostic && !diagnostic.ok) throw new Error("Trace diagnostic violates safe contract");
   const links = [
     ["o_agentRunStep", input.stepId],
     ["o_agentRunAttempt", input.attemptId],
@@ -61,6 +94,8 @@ export async function appendCausalTrace(tx: Knex.Transaction, input: CausalTrace
     .orderBy("sequence", "desc").first("id", "sequence");
   await tx("o_agentTrace").insert({
     ...input,
+    diagnostic: diagnostic ? JSON.stringify(diagnostic.value) : null,
+    diagnosticSchemaVersion: diagnostic?.value.schemaVersion ?? null,
     sequence: Number(previous?.sequence ?? 0) + 1,
     predecessorTraceId: previous?.id ?? null,
   });

@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
+import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
 import {
   AGENT_RUN_CHECKPOINT_SCHEMA_VERSION,
@@ -22,6 +23,15 @@ import {
 
 export const BILLABLE_IMAGE_RUN_SCOPE = "approved-billable-image-v1" as const;
 export const BILLABLE_IMAGE_RUN_ROLE = "productionAgent" as const;
+
+const unknownVendorEffect = (() => {
+  const projected = projectTraceSafeDiagnostic({
+    failureClass: "Vendor", stage: "vendor-request", kind: "executionFailed", severity: "error",
+    certainty: "unknown-effect", expectedness: "unexpected", retryDisposition: "reconcile-first",
+  }, "trace");
+  if (!projected.ok) throw new Error("Unknown Vendor effect diagnostic is invalid");
+  return projected.value;
+})();
 
 export interface BillableImageLedgerDependencies {
   work: DatabaseWork;
@@ -82,7 +92,7 @@ export async function recoverAmbiguousBillableImageRequests(db: Knex, recoveredA
       await appendCausalTrace(tx, { id: `recovery:${request.id}`, runId: run.id, stepId: call.stepId,
         attemptId: call.attemptId, toolReceiptId: call.receiptId, toolCallId: call.id, vendorRequestId: request.id,
         eventType: "vendor.request.unknown-on-recovery", runStatus: "waiting", stepStatus: "waiting",
-        createdAt: recoveredAt });
+        diagnostic: unknownVendorEffect, createdAt: recoveredAt });
     });
   }
 }
@@ -288,7 +298,7 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
         await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
           stepId: call.stepId, attemptId: call.attemptId, toolReceiptId: call.receiptId,
           toolCallId: call.id, vendorRequestId: request.id, eventType: "vendor.request.submission-unknown",
-          runStatus: "waiting", createdAt: now });
+          runStatus: "waiting", diagnostic: unknownVendorEffect, createdAt: now });
       }));
     },
 
