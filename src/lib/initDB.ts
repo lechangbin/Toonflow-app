@@ -685,6 +685,32 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.index(["runId", "createdAt"]);
       },
     },
+    // Tool Approval：固定一次受监督写操作的内容、预览、有效期和决策
+    {
+      name: "o_agentToolApproval",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("receiptId").notNullable().references("id").inTable("o_agentToolReceipt");
+        table.text("operationId").notNullable();
+        table.text("toolRevision").notNullable();
+        table.text("contractHash").notNullable();
+        table.text("payloadJson").notNullable();
+        table.text("payloadHash").notNullable();
+        table.text("targetStateHash").notNullable();
+        table.text("previewJson").notNullable();
+        table.text("status").notNullable();
+        table.integer("expiresAt").notNullable();
+        table.text("decisionKind");
+        table.text("decisionCommandId");
+        table.integer("decisionExpectedVersion");
+        table.integer("decidedByUserId");
+        table.integer("decidedAt");
+        table.integer("createdAt").notNullable();
+        table.unique(["runId", "operationId"]);
+        table.unique(["receiptId"]);
+      },
+    },
     // Agent Step：Run 内有序、可独立检查的执行步骤
     {
       name: "o_agentRunStep",
@@ -1381,6 +1407,24 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       BEFORE DELETE ON o_agentToolDefinition
       BEGIN
         SELECT RAISE(ABORT, 'Agent Tool definitions are immutable');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentToolApproval")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentToolApproval_bind_immutable
+      BEFORE UPDATE OF runId, receiptId, operationId, toolRevision, contractHash,
+        payloadJson, payloadHash, targetStateHash, previewJson, expiresAt, createdAt
+      ON o_agentToolApproval
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Tool approval binding is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentToolApproval_prevent_delete
+      BEFORE DELETE ON o_agentToolApproval
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Tool approvals are durable evidence');
       END
     `);
   }

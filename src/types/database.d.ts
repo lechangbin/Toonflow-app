@@ -1,4 +1,4 @@
-// @db-hash 31784df5fade555f66801963a39fa26b
+// @db-hash 86d5745a051298c12648198d28cae6ea
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -112,6 +112,26 @@ export interface o_agentRunStep {
   'runId': string;
   'startedAt'?: number | null;
   'status': string;
+}
+export interface o_agentToolApproval {
+  'contractHash': string;
+  'createdAt': number;
+  'decidedAt'?: number | null;
+  'decidedByUserId'?: number | null;
+  'decisionCommandId'?: string | null;
+  'decisionExpectedVersion'?: number | null;
+  'decisionKind'?: string | null;
+  'expiresAt': number;
+  'id'?: string;
+  'operationId': string;
+  'payloadHash': string;
+  'payloadJson': string;
+  'previewJson': string;
+  'receiptId': string;
+  'runId': string;
+  'status': string;
+  'targetStateHash': string;
+  'toolRevision': string;
 }
 export interface o_agentToolDefinition {
   'contractHash': string;
@@ -463,6 +483,7 @@ export interface DB {
   "o_agentRunCommand": o_agentRunCommand;
   "o_agentRunOutput": o_agentRunOutput;
   "o_agentRunStep": o_agentRunStep;
+  "o_agentToolApproval": o_agentToolApproval;
   "o_agentToolDefinition": o_agentToolDefinition;
   "o_agentToolReceipt": o_agentToolReceipt;
   "o_agentTrace": o_agentTrace;

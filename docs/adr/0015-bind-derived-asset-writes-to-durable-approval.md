@@ -1,6 +1,6 @@
 # Bind Derived Asset writes to durable approval and an atomic effect commit
 
-Status: proposed
+Status: accepted
 
 T08 adds `upsert_derived_asset` to the Controlled Tool Runtime without granting the read-only Script Agent scope production-write authority. The write Tool belongs to a distinct Production Agent scope. Its request is a strict, bounded Derived Asset payload: Project-scoped parent Asset ID, optional existing Derived Asset ID, expected target version, display name and description, and a `DerivedChangeInstruction`. The server, not model input, resolves Project, parent type, target ownership, and the effect preview. The proposed operation has one stable Run-scoped identity and one immutable normalized payload hash.
 
