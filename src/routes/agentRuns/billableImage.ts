@@ -119,6 +119,13 @@ export function createBillableImageRouter(runtime: Runtime) {
       actorUserId, req.body.requestId) })); }
     catch (error) { fail(res, error, next); }
   });
+  router.post("/artifact/recover", validateFields({ projectId: targetFields.projectId,
+    requestId: z.string().min(1).max(128) }), async (req, res, next) => {
+    const actorUserId = withActor(req, res); if (actorUserId === null) return;
+    try { res.send(success({ artifact: await runtime.artifact.recoverPending(req.body.projectId,
+      actorUserId, req.body.requestId) })); }
+    catch (error) { fail(res, error, next); }
+  });
   return router;
 }
 

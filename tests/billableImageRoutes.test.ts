@@ -43,7 +43,7 @@ test("billable image HTTP flow uses authenticated actor and persisted scope, not
     execute: async (input: unknown) => { executeInput = input; return { status: "unknown", requestId: "request" }; },
     ledger: { requestCancellation: async () => undefined, stopWithoutReplay: async () => undefined },
     commit: { commit: async () => null },
-    artifact: { inspect: async () => null },
+    artifact: { inspect: async () => null, recoverPending: async () => null },
   };
   const app = appWith(fake);
   const decided = await post(app, "/decide", { projectId: 7, runId: "run", approvalId: "approval",
@@ -67,7 +67,8 @@ test("billable image HTTP flow rejects missing actor and stale commands", async 
     ledger: { requestCancellation: async () => undefined,
       stopWithoutReplay: async () => { throw new BillableImageLedgerConflictError(); } },
     commit: { commit: async () => { throw new BillableImageLedgerConflictError(); } },
-    artifact: { inspect: async () => null } };
+    artifact: { inspect: async () => null,
+      recoverPending: async () => { throw new BillableImageLedgerConflictError(); } } };
   const body = { projectId: 7, runId: "run", approvalId: "approval",
     clientCommandId: "command", expectedVersion: 1, decision: "approve" };
   assert.equal((await post(appWith(fake, 0), "/decide", body)).status, 403);
@@ -77,6 +78,8 @@ test("billable image HTTP flow rejects missing actor and stale commands", async 
     requestId: "request", expectedVersion: 2 })).status, 409);
   assert.equal((await post(appWith(fake), "/stop", { projectId: 7,
     requestId: "request", expectedVersion: 2 })).status, 409);
+  assert.equal((await post(appWith(fake), "/artifact/recover", { projectId: 7,
+    requestId: "request" })).status, 409);
 });
 
 test("observed-artifact commit endpoint always uses the authenticated actor", async () => {
@@ -86,7 +89,7 @@ test("observed-artifact commit endpoint always uses the authenticated actor", as
       decide: async () => null, approvedScope: async () => null }, execute: async () => null,
     ledger: { requestCancellation: async () => undefined, stopWithoutReplay: async () => undefined },
     commit: { commit: async (input: unknown) => { received = input; return { assetId: 9, imageId: 3 }; } },
-    artifact: { inspect: async () => null } };
+    artifact: { inspect: async () => null, recoverPending: async () => null } };
   const result = await post(appWith(fake), "/commit", { projectId: 7,
     requestId: "request", expectedVersion: 2, actorUserId: 999 });
   assert.equal(result.status, 200);

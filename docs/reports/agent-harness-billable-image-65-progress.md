@@ -22,6 +22,6 @@ Issue: `lechangbin/Toonflow-app#65`. Branch: `codex/harness-t09-billable-image-2
 
 ## 尚未实现，不能宣称完成
 
-受控单资产审批界面已在独立 Web 分支实现，但尚未跨仓验收或连接 Agent 自动提案，也未验证真实 Provider 行为。现有 Vendor 同步接口没有向 Harness 暴露 Provider task ID，因此实际轮询恢复尚不能兑现；未知请求只能保持待人工核对，不能自动重发。`write_pending` 能追踪本地未完成媒体写入，但进程重启后尚无自动重读文件并完成观察的恢复器；需要同一回调重到或操作员后续恢复能力，不能宣称全自动恢复。旧批量 `generateAssetImage` 对超时的图片失败状态，不能作为 T09 的无计费证明。Issue #65 和 ADR-0016 应保持开放/proposed。
+受控单资产审批界面已在独立 Web 分支实现，但尚未跨仓验收或连接 Agent 自动提案，也未验证真实 Provider 行为。现有 Vendor 同步接口没有向 Harness 暴露 Provider task ID，因此实际轮询恢复尚不能兑现；未知请求只能保持待人工核对，不能自动重发。`write_pending` 能追踪本地未完成媒体写入，操作员可从既有媒体路径重读并按内容哈希核对、恢复本地观察；文件未落盘时仍须保持待处理，不能宣称全自动恢复。旧批量 `generateAssetImage` 对超时的图片失败状态，不能作为 T09 的无计费证明。Issue #65 和 ADR-0016 应保持开放/proposed。
 
 下一步应接入审批卡与操作员恢复动作；明确同步 Vendor 无任务 ID 时的不可轮询边界，处理孤儿媒体，完成跨模块定向契约验证。T09 完成后再写正式深化说明、导学与面经；简历内容由用户自行决定。

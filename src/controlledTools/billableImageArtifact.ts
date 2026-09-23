@@ -13,6 +13,7 @@ export interface BillableImageArtifactDependencies {
   now(): number;
   createId(): string;
   writeMedia(path: string, base64: string): Promise<void>;
+  readMedia(path: string): Promise<Buffer>;
 }
 
 export interface BillableImageArtifactObservation {
@@ -133,6 +134,28 @@ export function createBillableImageArtifactRuntime(dependencies: BillableImageAr
           status: artifact.status === "write_pending" ? "write_pending"
             : artifact.status === "late" ? "late" : "observed", duplicate: false };
       });
+    },
+
+    /** Reinspect only a recorded local media intent. This never crosses the Vendor boundary. */
+    async recoverPending(projectId: number, actorUserId: number, requestId: string): Promise<BillableImageArtifactObservation> {
+      if (!Number.isSafeInteger(projectId) || projectId <= 0
+        || !Number.isSafeInteger(actorUserId) || actorUserId <= 0
+        || !/^[A-Za-z0-9._:-]{1,128}$/.test(requestId)) return reject();
+      const pending = await dependencies.work(async (db) => {
+        if (!await db("o_project").where({ id: projectId, userId: actorUserId }).first("id")) return reject();
+        const request = await db("o_agentVendorRequest").where({ projectId, requestId }).first();
+        if (!request) return reject();
+        return db("o_agentImageArtifact").where({ vendorRequestId: request.id,
+          status: "write_pending" }).first();
+      });
+      if (!pending || !/^[a-f0-9]{64}$/.test(pending.contentHash)
+        || !/^\/[1-9]\d*\/agent-image\/[A-Za-z0-9._:-]{1,128}\/[a-f0-9]{64}\.(?:png|jpg|gif|webp)$/.test(pending.mediaPath)
+        || !pending.mediaPath.startsWith(`/${projectId}/agent-image/${requestId}/${pending.contentHash}.`)) return reject();
+      let media: Buffer;
+      try { media = await dependencies.readMedia(pending.mediaPath); }
+      catch { return reject(); }
+      if (media.length > 15_000_000 || createHash("sha256").update(media).digest("hex") !== pending.contentHash) return reject();
+      return this.observe(requestId, media.toString("base64"));
     },
   };
 }

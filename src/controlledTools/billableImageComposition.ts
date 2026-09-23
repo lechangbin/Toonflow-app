@@ -24,7 +24,8 @@ export function createConfiguredBillableImageRuntime(quote: BillableImageApprova
   const ledger = createBillableImageLedger({ work: (operation) => getDatabaseRuntime().work(operation),
     now: Date.now, createId: uuid, verifyPreflight });
   const artifact = createBillableImageArtifactRuntime({ work: (operation) => getDatabaseRuntime().work(operation),
-    now: Date.now, createId: uuid, writeMedia: (path, base64) => oss.writeFile(path, base64) });
+    now: Date.now, createId: uuid, writeMedia: (path, base64) => oss.writeFile(path, base64),
+    readMedia: (path) => oss.getFile(path) });
   const commit = createBillableImageCommitRuntime({ work: (operation) => getDatabaseRuntime().work(operation),
     now: Date.now, createId: uuid, verifyPreflight });
   const execute = createBillableImageExecution({

@@ -57,7 +57,8 @@ function runtimes(db: Knex) {
     verifyPreflight: async () => "state" });
   const writes: string[] = [];
   const artifact = createBillableImageArtifactRuntime({ work, now: () => 101,
-    createId: () => `artifact-${++id}`, writeMedia: async (path) => { writes.push(path); } });
+    createId: () => `artifact-${++id}`, writeMedia: async (path) => { writes.push(path); },
+    readMedia: async () => Buffer.from(png, "base64") });
   const commit = createBillableImageCommitRuntime({ work, now: () => 102,
     createId: () => `commit-${++id}`, verifyPreflight: async () => "state" });
   return { ledger, artifact, commit, writes };
@@ -89,10 +90,15 @@ test("a failed local media write leaves an inspectable pending intent, not a suc
     const dispatched = await ledger.dispatch({ projectId: 7, actorUserId: 1,
       runId: "run", approvalId: "approval", expectedVersion: 1 });
     let failWrite = true;
+    let storedMedia: Buffer | null = null;
     let id = 0;
     const artifact = createBillableImageArtifactRuntime({
       work: async (operation) => operation(db), now: () => 101, createId: () => `pending-${++id}`,
-      writeMedia: async () => { if (failWrite) throw new Error("local storage unavailable"); },
+      writeMedia: async (_path, base64) => {
+        storedMedia = Buffer.from(base64, "base64");
+        if (failWrite) throw new Error("local storage unavailable");
+      },
+      readMedia: async () => { if (!storedMedia) throw new Error("missing"); return storedMedia; },
     });
     await assert.rejects(artifact.observe(dispatched.requestId, png), /local storage unavailable/);
     assert.equal((await artifact.inspect(7, 1, dispatched.requestId))?.status, "write_pending");
@@ -100,7 +106,11 @@ test("a failed local media write leaves an inspectable pending intent, not a suc
     assert.equal((await db("o_agentVendorRequest").where({ requestId: dispatched.requestId }).first()).artifactHash, null);
     assert.equal((await db("o_image").where({ id: dispatched.imageId }).first()).state, "等待中");
     failWrite = false;
-    assert.equal((await artifact.observe(dispatched.requestId, png)).status, "observed");
+    await assert.rejects(artifact.recoverPending(7, 2, dispatched.requestId), BillableImageLedgerConflictError);
+    storedMedia = Buffer.from(otherPng, "base64");
+    await assert.rejects(artifact.recoverPending(7, 1, dispatched.requestId), BillableImageLedgerConflictError);
+    storedMedia = Buffer.from(png, "base64");
+    assert.equal((await artifact.recoverPending(7, 1, dispatched.requestId)).status, "observed");
     assert.equal((await db("o_agentImageArtifact").where({ vendorRequestId: dispatched.vendorRequestId })).length, 1);
   } finally { await db.destroy(); }
 });
