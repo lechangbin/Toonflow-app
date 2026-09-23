@@ -41,7 +41,7 @@ export interface BillableImageApprovalDependencies {
   now(): number;
   createId(): string;
   /** The estimate comes from a server-side policy/catalogue, not an Agent or browser claim. */
-  quote(target: BillableImageTarget): Promise<BillableImageQuote>;
+  quote(target: BillableImageTarget, db: Knex): Promise<BillableImageQuote>;
   /** Checks Project/Asset ownership, prompt/reference/media readiness and the selected Vendor/Model configuration. */
   preflight(tx: Knex.Transaction, scope: BillableImageScope): Promise<BillableImagePreflight>;
   approvalTtlMs?: number;
@@ -186,7 +186,7 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
           await expireDueBillableImageApprovals(db, input.projectId, dependencies.now(), dependencies.createId);
           return (await snapshot(db, input.projectId, prior.id)) ?? conflict();
         }
-        const quote = await dependencies.quote(targetOf(input));
+        const quote = await dependencies.quote(targetOf(input), db);
         const scope = assertScope({ ...targetOf(input), ...quote, maxCalls: 1 });
         const scopeHash = billableImageScopeHash(scope);
         const contractHash = toolDefinitionContractHash(BILLABLE_IMAGE_TOOL_DEFINITION);

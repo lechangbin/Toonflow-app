@@ -10,6 +10,7 @@ Issue: `lechangbin/Toonflow-app#65`. Branch: `codex/harness-t09-billable-image-2
 - 观察到可信 Provider task ID 时先记录 checkpoint，再允许后续按 task ID 核对。数据库就绪恢复把没有确认结果的 `dispatch_recorded` 停在 unknown；不自动重发可能计费的请求。恢复读链校验 VendorRequest 与 checkpoint 的对应关系。
 - 新增计费提案与决定运行时：服务端报价形成最多一次调用的 scope，冻结 Tool 修订、内容 hash、目标状态指纹和用户可读预览；项目 Owner 才能提案、检查和决定。拒绝、过期、目标漂移不产生 VendorRequest。重复提案即使报价策略更新也返回原审批；重复决定保持幂等。
 - 图片前置校验按 Asset 所属、用户所选且已配置的 Image Model、提示词修订和实际参考图/父资产锚点媒体内容计算指纹；记录只保存摘要，不保存提示词、Base64 或媒体路径。单资产弹窗可选择不同于 Project 默认值的模型，因此 Project 默认值不作为此操作的前置条件或指纹维度。
+- 报价读取和 Vendor 模型检查复用外层当前数据库连接/事务，不在审批事务里再次申请数据库工作租约；防止维护队列与内层租约互等。
 - dispatch 同事务创建与 VendorRequest 相关联的 `o_image` 占位，但尚不改写 Asset 当前选中的图片。内部产物观察模块对媒体做 MIME/Hash 校验，用请求身份派生存储路径；先记录 `write_pending` 媒体意图，再写入字节并提交观察状态。中断或写入失败留下可检查的待写入记录，不被当作成功；同一回调可恢复本地写入，冲突内容拒绝替换。取消后的迟到产物留为 `late` 证据，不改写已取消图片或 Asset 绑定。
 - 正常产物接受路径重查 Project Owner、审批绑定、未取消状态、当前图片与目标指纹；在同一 SQLite 事务内提交 Image 完成态、Asset 当前图、Artifact 接受态、ToolCall/Receipt、Run Output、Checkpoint 与 Trace。重复提交只返回原结果；恢复校验最终输出与被接受的 Artifact 关联。
 - 操作员可在受控入口重新提交已观察、未取消的本地产物；该动作只运行本地接受事务，不再次调用供应商。取消后可“结束跟踪但不重发”，Run 进入取消终态，保留请求与可能计费的注意标记；结束后的迟到产物仍可观察，但不复活 Run 或绑定资产。

@@ -31,7 +31,7 @@ test("preflight binds configured target, fresh prompt and actual reference bytes
     let media = png;
     let modelAvailable = true;
     const preflight = createBillableImagePreflight({ resolve: async () => current,
-      readMedia: async () => media, isConfiguredImageModel: async (_vendorId, modelId) => modelAvailable && modelId === "model" });
+      readMedia: async () => media, isConfiguredImageModel: async (_tx, _vendorId, modelId) => modelAvailable && modelId === "model" });
     await db.transaction(async (tx) => {
       const first = await preflight(tx, scope);
       assert.equal(first.preview.estimatedMaxCostMicros, 200_000);

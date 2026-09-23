@@ -30,5 +30,10 @@ test("missing quote fails closed; only Project owner can set versioned local est
     const revised = await policy.set({ ...input, expectedRevision: 1, estimatedMaxCostMicros: 300_000 });
     assert.equal(revised.revision, 2);
     assert.equal((await policy.get(target, 1))?.estimatedMaxCostMicros, 300_000);
+    const sameConnection = createBillableImageQuotePolicy({ work: async () => {
+      throw new Error("nested lease forbidden");
+    }, now: () => 100, createId: () => "unused" });
+    assert.deepEqual(await sameConnection.quote({ ...target, assetId: 10 }, db),
+      { estimatedMaxCostMicros: 300_000, currency: "USD" });
   } finally { await db.destroy(); }
 });

@@ -1,3 +1,5 @@
+import type { Knex } from "knex";
+
 import type { DatabaseWork } from "@/database";
 
 import type { BillableImageQuote, BillableImageTarget } from "./billableImageApproval";
@@ -43,15 +45,16 @@ export function createBillableImageQuotePolicy(dependencies: BillableImageQuoteP
     },
 
     /** The proposal runtime calls this only after its own Project-owner gate. */
-    async quote(target: BillableImageTarget): Promise<BillableImageQuote> {
+    async quote(target: BillableImageTarget, currentDb?: Knex): Promise<BillableImageQuote> {
       if (!validTarget(target)) return conflict();
-      return dependencies.work(async (db) => {
+      const read = async (db: Knex) => {
         const row = await db("o_agentImageQuotePolicy").where({ projectId: target.projectId,
           vendorId: target.vendorId, modelId: target.modelId, resolution: target.resolution }).first();
         if (!row || !Number.isSafeInteger(row.estimatedMaxCostMicros) || row.estimatedMaxCostMicros <= 0
           || !/^[A-Z]{3}$/.test(row.currency)) return conflict();
         return { estimatedMaxCostMicros: row.estimatedMaxCostMicros, currency: row.currency };
-      });
+      };
+      return currentDb ? read(currentDb) : dependencies.work(read);
     },
 
     async set(input: SetBillableImageQuoteInput): Promise<BillableImageQuoteSnapshot> {

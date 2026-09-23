@@ -9,7 +9,7 @@ import {
   type ResolvedAssetGenerationInput,
 } from "@/assets/assetPromptOrchestration";
 import oss from "@/utils/oss";
-import { getDefaultConfiguredVendor } from "@/vendor";
+import { inspectConfiguredImageModelWithDb } from "@/vendor";
 
 import type { BillableImagePreflight } from "./billableImageApproval";
 import type { BillableImageScope } from "./billableImageLifecycle";
@@ -17,7 +17,7 @@ import type { BillableImageScope } from "./billableImageLifecycle";
 export interface BillableImagePreflightDependencies {
   resolve(tx: Knex.Transaction, projectId: number, assetId: number): Promise<ResolvedAssetGenerationInput>;
   readMedia(path: string): Promise<Buffer>;
-  isConfiguredImageModel(vendorId: string, modelId: string): Promise<boolean>;
+  isConfiguredImageModel(tx: Knex.Transaction, vendorId: string, modelId: string): Promise<boolean>;
 }
 
 export class BillableImagePreflightError extends Error {
@@ -42,7 +42,7 @@ export function createBillableImagePreflight(dependencies: BillableImagePrefligh
     if (!asset) throw new BillableImagePreflightError("asset");
     // The single-Asset dialog selects an Image Model independently of Project defaults.
     // The approved scope binds that selection; the Vendor catalogue validates availability.
-    if (!(await dependencies.isConfiguredImageModel(scope.vendorId, scope.modelId))) {
+    if (!(await dependencies.isConfiguredImageModel(tx, scope.vendorId, scope.modelId))) {
       throw new BillableImagePreflightError("model");
     }
     let entry: ResolvedAssetGenerationInput;
@@ -95,10 +95,9 @@ export function createDefaultBillableImagePreflight() {
       return result.value[0];
     },
     readMedia: (path) => oss.getFile(path),
-    isConfiguredImageModel: async (vendorId, modelId) => {
+    isConfiguredImageModel: async (tx, vendorId, modelId) => {
       try {
-        const vendor = await getDefaultConfiguredVendor().inspectVendor(vendorId);
-        return vendor.models.some((model) => model.type === "image" && model.modelName === modelId);
+        return await inspectConfiguredImageModelWithDb(tx, vendorId, modelId);
       } catch { return false; }
     },
   });
