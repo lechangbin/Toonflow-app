@@ -31,7 +31,7 @@ test("preflight binds configured target, fresh prompt and actual reference bytes
     let media = png;
     let modelAvailable = true;
     const preflight = createBillableImagePreflight({ resolve: async () => current,
-      readMedia: async () => media, isConfiguredImageModel: async () => modelAvailable });
+      readMedia: async () => media, isConfiguredImageModel: async (_vendorId, modelId) => modelAvailable && modelId === "model" });
     await db.transaction(async (tx) => {
       const first = await preflight(tx, scope);
       assert.equal(first.preview.estimatedMaxCostMicros, 200_000);
@@ -49,6 +49,9 @@ test("preflight binds configured target, fresh prompt and actual reference bytes
       await assert.rejects(preflight(tx, scope), BillableImagePreflightError);
       modelAvailable = true;
       await assert.rejects(preflight(tx, { ...scope, modelId: "other" }), BillableImagePreflightError);
+      await tx("o_project").where({ id: 7 }).update({ imageModel: "different:default", imageQuality: "4K" });
+      assert.equal((await preflight(tx, scope)).targetStateHash, first.targetStateHash,
+        "changing an unrelated Project default must not invalidate the selected approved model");
     });
   } finally { await db.destroy(); }
 });

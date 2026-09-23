@@ -21,7 +21,7 @@ export interface BillableImagePreflightDependencies {
 }
 
 export class BillableImagePreflightError extends Error {
-  constructor(readonly reason: "project" | "asset" | "selection" | "prompt" | "media" | "model") {
+  constructor(readonly reason: "project" | "asset" | "prompt" | "media" | "model") {
     super(`Billable image preflight rejected: ${reason}`);
     this.name = "BillableImagePreflightError";
   }
@@ -31,18 +31,17 @@ function hash(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-/** The hash binds fresh prompt, selected references, parent anchor and Project target without persisting their content. */
+/** The hash binds fresh prompt, selected references and parent anchor without persisting their content. */
 export function createBillableImagePreflight(dependencies: BillableImagePreflightDependencies) {
   return async (tx: Knex.Transaction, scope: BillableImageScope): Promise<BillableImagePreflight> => {
     const [project, asset] = await Promise.all([
-      tx("o_project").where({ id: scope.projectId }).first("id", "imageModel", "imageQuality"),
+      tx("o_project").where({ id: scope.projectId }).first("id"),
       tx("o_assets").where({ id: scope.assetId, projectId: scope.projectId }).first(),
     ]);
     if (!project) throw new BillableImagePreflightError("project");
     if (!asset) throw new BillableImagePreflightError("asset");
-    if (project.imageModel !== `${scope.vendorId}:${scope.modelId}` || project.imageQuality !== scope.resolution) {
-      throw new BillableImagePreflightError("selection");
-    }
+    // The single-Asset dialog selects an Image Model independently of Project defaults.
+    // The approved scope binds that selection; the Vendor catalogue validates availability.
     if (!(await dependencies.isConfiguredImageModel(scope.vendorId, scope.modelId))) {
       throw new BillableImagePreflightError("model");
     }
@@ -72,7 +71,7 @@ export function createBillableImagePreflight(dependencies: BillableImagePrefligh
         contentHash: hash(media) };
     }
     const targetStateHash = hash(JSON.stringify({
-      project: { id: project.id, imageModel: project.imageModel, imageQuality: project.imageQuality },
+      project: { id: project.id },
       asset: { id: asset.id, projectId: asset.projectId, scriptId: asset.scriptId,
         parentAssetId: asset.assetsId, type: asset.type, name: asset.name, describe: asset.describe,
         imageId: asset.imageId },

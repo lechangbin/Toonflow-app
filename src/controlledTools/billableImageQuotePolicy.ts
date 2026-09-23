@@ -26,7 +26,8 @@ function conflict(): never { throw new BillableImageLedgerConflictError(); }
 function validTarget(input: BillableImageQuoteTarget): boolean {
   return Number.isSafeInteger(input.projectId) && input.projectId > 0
     && [input.vendorId, input.modelId, input.resolution].every((value) =>
-      typeof value === "string" && /^[A-Za-z0-9._:-]{1,100}$/.test(value));
+      typeof value === "string" && value === value.trim()
+      && /^[^\u0000-\u001f\u007f]{1,100}$/.test(value));
 }
 
 export function createBillableImageQuotePolicy(dependencies: BillableImageQuotePolicyDependencies) {

@@ -42,7 +42,7 @@ export interface BillableImageApprovalDependencies {
   createId(): string;
   /** The estimate comes from a server-side policy/catalogue, not an Agent or browser claim. */
   quote(target: BillableImageTarget): Promise<BillableImageQuote>;
-  /** Checks Project/Asset ownership, current prompt/reference/media readiness and Vendor/Model configuration. */
+  /** Checks Project/Asset ownership, prompt/reference/media readiness and the selected Vendor/Model configuration. */
   preflight(tx: Knex.Transaction, scope: BillableImageScope): Promise<BillableImagePreflight>;
   approvalTtlMs?: number;
 }
