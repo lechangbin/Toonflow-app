@@ -1,5 +1,6 @@
 import { devToolsMiddleware } from "@ai-sdk/devtools";
 import { extractReasoningMiddleware, generateText, stepCountIs, streamText, wrapLanguageModel } from "ai";
+import type { Knex } from "knex";
 
 import { getDatabaseRuntime } from "@/database";
 import getPath from "@/utils/getPath";
@@ -71,14 +72,26 @@ export function createConfiguredVendor(dependencies: ConfiguredVendorDependencie
 }
 
 export function createDefaultConfiguredVendor(): ConfiguredVendor {
+  return createConfiguredVendor(defaultConfiguredVendorDependencies(
+    (operation) => getDatabaseRuntime().work(operation)));
+}
+
+function defaultConfiguredVendorDependencies(work: ConfiguredVendorDependencies["work"]): ConfiguredVendorDependencies {
   const dataRoot = getPath();
-  return createConfiguredVendor({
-    work: (operation) => getDatabaseRuntime().work(operation),
+  return {
+    work,
     readVendorSource: (vendorId) => readVendorSourceFile(vendorId, dataRoot),
     writeVendorSource: (vendorId, source) => writeVendorSourceFile(vendorId, source, dataRoot),
     deleteVendorSource: (vendorId) => deleteVendorSourceFile(vendorId, dataRoot),
     promptProfiles: VideoPromptProfileRegistry.load(getPath(["promptProfiles", "video"])),
-  });
+  };
+}
+
+/** Read the configured Image Model through an existing transaction; do not open a nested database lease. */
+export async function inspectConfiguredImageModelWithDb(db: Knex, vendorId: string, modelId: string): Promise<boolean> {
+  const dependencies = defaultConfiguredVendorDependencies(async (operation) => operation(db));
+  const loaded = await loadConfiguredVendor(dependencies, vendorId);
+  return loaded.models.some((model) => model.type === "image" && model.modelName === modelId);
 }
 
 let defaultConfiguredVendor: ConfiguredVendor | undefined;

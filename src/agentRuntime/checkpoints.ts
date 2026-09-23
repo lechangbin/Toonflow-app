@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 
 export const AGENT_RUN_CHECKPOINT_SCHEMA_VERSION = "toonflow.agent-run-checkpoint.v1" as const;
-export const AGENT_RUN_CHECKPOINT_KINDS = ["run-created", "attempt-created", "model-call-intent", "step-committed"] as const;
+export const AGENT_RUN_CHECKPOINT_KINDS = [
+  "run-created", "attempt-created", "model-call-intent", "vendor-request-intent", "provider-task-observed", "step-committed",
+] as const;
 export type AgentRunCheckpointKind = (typeof AGENT_RUN_CHECKPOINT_KINDS)[number];
 
 interface CheckpointEnvelope {
@@ -20,6 +22,8 @@ export type AgentRunCheckpointPayload = CheckpointEnvelope & (
   | { kind: "run-created"; requestFingerprint: string }
   | { kind: "attempt-created"; reason: string; predecessorAttemptId: string }
   | { kind: "model-call-intent"; invocationFingerprint: string; resolvedTargetFingerprint: string }
+  | { kind: "vendor-request-intent"; requestId: string; scopeHash: string }
+  | { kind: "provider-task-observed"; requestId: string; providerTaskId: string }
   | { kind: "step-committed"; outputId: string; outputContentHash: string }
 );
 
@@ -71,6 +75,10 @@ export function parseCheckpointPayload(value: unknown, expectedKind?: AgentRunCh
       ? { ...common, kind: record.kind, predecessorAttemptId: record.predecessorAttemptId, reason: record.reason } : null;
     case "model-call-intent": return typeof record.invocationFingerprint === "string" && typeof record.resolvedTargetFingerprint === "string"
       ? { ...common, kind: record.kind, invocationFingerprint: record.invocationFingerprint, resolvedTargetFingerprint: record.resolvedTargetFingerprint } : null;
+    case "vendor-request-intent": return typeof record.requestId === "string" && typeof record.scopeHash === "string"
+      ? { ...common, kind: record.kind, requestId: record.requestId, scopeHash: record.scopeHash } : null;
+    case "provider-task-observed": return typeof record.requestId === "string" && typeof record.providerTaskId === "string"
+      ? { ...common, kind: record.kind, requestId: record.requestId, providerTaskId: record.providerTaskId } : null;
     case "step-committed": return typeof record.outputContentHash === "string" && typeof record.outputId === "string"
       ? { ...common, kind: record.kind, outputContentHash: record.outputContentHash, outputId: record.outputId } : null;
     default: return null;

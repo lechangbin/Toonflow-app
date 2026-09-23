@@ -1,4 +1,4 @@
-// @db-hash 86d5745a051298c12648198d28cae6ea
+// @db-hash eb3ee73c4523b5e8f3a01b03fc6b9119
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -24,6 +24,29 @@ export interface o_agentDeploy {
   'name'?: string | null;
   'temperature'?: number | null;
   'vendorId'?: string | null;
+}
+export interface o_agentImageArtifact {
+  'assetId': number;
+  'contentHash': string;
+  'createdAt': number;
+  'id'?: string;
+  'imageId'?: number | null;
+  'mediaPath'?: string | null;
+  'status': string;
+  'updatedAt': number;
+  'vendorRequestId': string;
+}
+export interface o_agentImageQuotePolicy {
+  'currency': string;
+  'estimatedMaxCostMicros': number;
+  'id'?: string;
+  'modelId': string;
+  'projectId': number;
+  'resolution': string;
+  'revision': number;
+  'updatedAt': number;
+  'updatedByUserId': number;
+  'vendorId': string;
 }
 export interface o_agentRun {
   'allowedActions': string;
@@ -133,6 +156,20 @@ export interface o_agentToolApproval {
   'targetStateHash': string;
   'toolRevision': string;
 }
+export interface o_agentToolCall {
+  'approvalId': string;
+  'attemptId': string;
+  'createdAt': number;
+  'id'?: string;
+  'inputHash': string;
+  'receiptId': string;
+  'runId': string;
+  'status': string;
+  'stepId': string;
+  'toolName': string;
+  'toolRevision': string;
+  'updatedAt': number;
+}
 export interface o_agentToolDefinition {
   'contractHash': string;
   'createdAt': number;
@@ -167,6 +204,29 @@ export interface o_agentTrace {
   'stepId'?: string | null;
   'stepStatus'?: string | null;
   'toolReceiptId'?: string | null;
+}
+export interface o_agentVendorRequest {
+  'artifactHash'?: string | null;
+  'assetId': number;
+  'cancellationRequestedAt'?: number | null;
+  'createdAt': number;
+  'currency': string;
+  'estimatedMaxCostMicros': number;
+  'id'?: string;
+  'imageId'?: number | null;
+  'maxCalls': number;
+  'modelId': string;
+  'projectId': number;
+  'providerTaskId'?: string | null;
+  'requestId': string;
+  'resolution': string;
+  'runId': string;
+  'scopeHash': string;
+  'status': string;
+  'toolCallId': string;
+  'updatedAt': number;
+  'vendorId': string;
+  'version': number;
 }
 export interface o_agentWorkData {
   'createTime'?: number | null;
@@ -403,7 +463,16 @@ export interface o_skillAttribution {
   'skillId'?: string;
 }
 export interface o_skillList {
-  'id'?: string | null;
+  'createTime': number;
+  'description': string;
+  'embedding'?: string | null;
+  'id'?: string;
+  'md5': string;
+  'name': string;
+  'path': string;
+  'state': number;
+  'type': string;
+  'updateTime': number;
 }
 export interface o_storyboard {
   'createTime'?: number | null;
@@ -477,6 +546,8 @@ export interface o_videoTrack {
 export interface DB {
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
+  "o_agentImageArtifact": o_agentImageArtifact;
+  "o_agentImageQuotePolicy": o_agentImageQuotePolicy;
   "o_agentRun": o_agentRun;
   "o_agentRunAttempt": o_agentRunAttempt;
   "o_agentRunCheckpoint": o_agentRunCheckpoint;
@@ -484,9 +555,11 @@ export interface DB {
   "o_agentRunOutput": o_agentRunOutput;
   "o_agentRunStep": o_agentRunStep;
   "o_agentToolApproval": o_agentToolApproval;
+  "o_agentToolCall": o_agentToolCall;
   "o_agentToolDefinition": o_agentToolDefinition;
   "o_agentToolReceipt": o_agentToolReceipt;
   "o_agentTrace": o_agentTrace;
+  "o_agentVendorRequest": o_agentVendorRequest;
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;
   "o_artStyle": o_artStyle;

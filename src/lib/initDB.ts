@@ -711,6 +711,89 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["receiptId"]);
       },
     },
+    // 一次受审批 Tool 调用：与可能收费的 VendorRequest 分离，保留 Run 因果关系。
+    {
+      name: "o_agentToolCall",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("stepId").notNullable().references("id").inTable("o_agentRunStep");
+        table.text("attemptId").notNullable().references("id").inTable("o_agentRunAttempt");
+        table.text("receiptId").notNullable().references("id").inTable("o_agentToolReceipt");
+        table.text("approvalId").notNullable().references("id").inTable("o_agentToolApproval");
+        table.text("toolName").notNullable();
+        table.text("toolRevision").notNullable();
+        table.text("inputHash").notNullable();
+        table.string("status").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["receiptId"]);
+        table.unique(["approvalId"]);
+      },
+    },
+    // 计费请求账本：requestId 在外部调用之前落库；Provider task ID 仅能在实际观察后填写。
+    {
+      name: "o_agentVendorRequest",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("toolCallId").notNullable().references("id").inTable("o_agentToolCall");
+        table.integer("projectId").notNullable();
+        table.integer("assetId").notNullable();
+        table.text("requestId").notNullable();
+        table.text("scopeHash").notNullable();
+        table.text("vendorId").notNullable();
+        table.text("modelId").notNullable();
+        table.text("resolution").notNullable();
+        table.integer("maxCalls").notNullable();
+        table.integer("estimatedMaxCostMicros").notNullable();
+        table.text("currency").notNullable();
+        table.string("status").notNullable();
+        table.text("providerTaskId");
+        table.integer("imageId");
+        table.text("artifactHash");
+        table.integer("cancellationRequestedAt");
+        table.integer("version").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["requestId"]);
+        table.unique(["toolCallId"]);
+        table.index(["projectId", "createdAt"]);
+      },
+    },
+    // 观察到的媒体证据与用户可见的 o_image 绑定是两个不同的提交阶段。
+    {
+      name: "o_agentImageArtifact",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("vendorRequestId").notNullable().references("id").inTable("o_agentVendorRequest");
+        table.integer("assetId").notNullable();
+        table.integer("imageId");
+        table.text("mediaPath");
+        table.text("contentHash").notNullable();
+        table.string("status").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["vendorRequestId", "contentHash"]);
+      },
+    },
+    // 项目所有者显式配置的审批估算；不表示供应商报价或实际扣费保证。
+    {
+      name: "o_agentImageQuotePolicy",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.integer("projectId").notNullable();
+        table.text("vendorId").notNullable();
+        table.text("modelId").notNullable();
+        table.text("resolution").notNullable();
+        table.integer("estimatedMaxCostMicros").notNullable();
+        table.text("currency").notNullable();
+        table.integer("revision").notNullable();
+        table.integer("updatedByUserId").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["projectId", "vendorId", "modelId", "resolution"]);
+      },
+    },
     // Agent Step：Run 内有序、可独立检查的执行步骤
     {
       name: "o_agentRunStep",
@@ -1425,6 +1508,47 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       BEFORE DELETE ON o_agentToolApproval
       BEGIN
         SELECT RAISE(ABORT, 'Agent Tool approvals are durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentVendorRequest")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVendorRequest_identity_immutable
+      BEFORE UPDATE OF runId, toolCallId, projectId, assetId, requestId, scopeHash,
+        vendorId, modelId, resolution, maxCalls, estimatedMaxCostMicros, currency, createdAt
+      ON o_agentVendorRequest
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Vendor request identity is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVendorRequest_observation_immutable
+      BEFORE UPDATE OF providerTaskId, artifactHash ON o_agentVendorRequest
+      WHEN (OLD.providerTaskId IS NOT NULL AND NEW.providerTaskId IS NOT OLD.providerTaskId)
+        OR (OLD.artifactHash IS NOT NULL AND NEW.artifactHash IS NOT OLD.artifactHash)
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Vendor observations cannot be replaced');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentToolCall")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentToolCall_identity_immutable
+      BEFORE UPDATE OF runId, stepId, attemptId, receiptId, approvalId,
+        toolName, toolRevision, inputHash, createdAt
+      ON o_agentToolCall
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Tool call identity is immutable');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentImageArtifact")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentImageArtifact_identity_immutable
+      BEFORE UPDATE OF vendorRequestId, assetId, contentHash, createdAt
+      ON o_agentImageArtifact
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Image artifact identity is immutable');
       END
     `);
   }
