@@ -36,6 +36,8 @@ export interface BillableImageDispatchInput {
   runId: string;
   approvalId: string;
   expectedVersion: number;
+  /** Prepared media/prompt must still match the preflight state when request intent commits. */
+  preparedStateHash?: string;
 }
 
 export interface BillableImageDispatch {
@@ -152,6 +154,7 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
         if (!step || !attempt || !prior) return reject();
         const currentStateHash = await dependencies.verifyPreflight(tx, scope);
         if (currentStateHash !== approval.targetStateHash) return reject();
+        if (input.preparedStateHash !== undefined && currentStateHash !== input.preparedStateHash) return reject();
         const now = dependencies.now();
         const requestId = dependencies.createId();
         const toolCallId = dependencies.createId();

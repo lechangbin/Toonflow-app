@@ -321,6 +321,30 @@ function buildImageGenerationInput(
   };
 }
 
+/** Controlled billable execution reuses the same prompt/reference/anchor preparation as the legacy path.
+ * This helper performs no Provider call and creates no image or Asset mutation.
+ */
+export async function prepareAssetImageVendorRequest(
+  dependencies: AssetImageGenerationDependencies,
+  input: Pick<GenerateAssetImageInput, "projectId" | "assetsId" | "model" | "resolution">,
+): Promise<AssetImageGenerationResult<ImageGenerationRequest>> {
+  const parsed = parseImageGenerationTarget(input.model, input.resolution);
+  if (!parsed.ok) return parsed;
+  const resolved = await dependencies.resolveGenerationInputs({ projectId: input.projectId,
+    assetsIds: [input.assetsId] });
+  if (!resolved.ok || resolved.value.length !== 1) return resolved.ok
+    ? { ok: false, failure: imageFailure("assetNotFound", "资产生成输入不存在") }
+    : { ok: false, failure: resolved.failure };
+  const entry = resolved.value[0];
+  const references = await prepareReferenceMedia(dependencies, entry);
+  if (!references.ok) return references;
+  const anchor = await prepareParentAnchorMedia(dependencies, entry);
+  if (!anchor.ok) return anchor;
+  return { ok: true, value: { target: parsed.value.target,
+    input: buildImageGenerationInput(entry, references.value, parsed.value.resolution,
+      anchor.value?.base64 ?? null) } };
+}
+
 /** 衍生资产父锚点媒体准备：读取 + magic-byte 校验，全部在外部调用前完成。 */
 async function prepareParentAnchorMedia(
   dependencies: AssetImageGenerationDependencies,
