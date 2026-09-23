@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { derivedChangeInstructionSchema } from "@/assets/derivedChangeInstruction";
+import { billableImageScopeSchema } from "./billableImageLifecycle";
 
 const novelIdInput = z.strictObject({ novelId: z.number().int().positive() });
 const novelTextOutput = z.strictObject({
@@ -100,7 +101,37 @@ export const DERIVED_ASSET_TOOL_DEFINITION = Object.freeze({
   adapterId: "derived-asset-local-write-v1",
 });
 
-export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION): string {
+export const BILLABLE_IMAGE_TOOL_DEFINITION = Object.freeze({
+  name: "generate_asset_image",
+  revision: "toonflow.tool.generate-asset-image.v1",
+  inputSchema: billableImageScopeSchema,
+  outputSchema: z.strictObject({
+    assetId: z.number().int().positive(),
+    imageId: z.number().int().positive(),
+    artifactHash: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "project-artifact", externalCost: "billable", completion: "asynchronous" }),
+    capabilities: Object.freeze(["generate:asset-image"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["approved-billable-image-v1"]),
+    scope: "run-project",
+    approval: "per-request-exact-billable-scope",
+    idempotency: "one-dispatch-per-approval",
+    retries: "new-operation-and-approval-only",
+    timeoutMs: 0,
+    cancellation: "intent-does-not-revoke-provider-effect",
+    concurrency: "one-vendor-request-per-tool-call",
+    commit: "request-intent-before-external-call-artifact-before-success",
+    reconciliation: "verified-provider-task-or-manual-no-auto-replay",
+    compensation: "none",
+    redaction: "fail-closed",
+    contextProjection: "typed-bounded-output",
+  }),
+  adapterId: "billable-asset-image-v1",
+});
+
+export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION | typeof BILLABLE_IMAGE_TOOL_DEFINITION): string {
   return createHash("sha256").update(JSON.stringify({
     name: definition.name,
     revision: definition.revision,

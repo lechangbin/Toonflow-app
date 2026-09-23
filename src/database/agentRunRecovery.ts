@@ -190,6 +190,19 @@ async function validateCheckpointChain(
       && attempt.invocationFingerprint !== parsedPayload.invocationFingerprint) {
       throw new Error("Agent Run checkpoint invocation fingerprint is invalid");
     }
+    if (row.kind === "vendor-request-intent" && parsedPayload.kind === "vendor-request-intent") {
+      const request = await trx("o_agentVendorRequest as request")
+        .join("o_agentToolCall as call", "call.id", "request.toolCallId")
+        .where({ "request.runId": run.id, "request.requestId": parsedPayload.requestId,
+          "request.scopeHash": parsedPayload.scopeHash, "call.stepId": row.stepId,
+          "call.attemptId": row.attemptId }).first("request.id");
+      if (!request) throw new Error("Agent Run Vendor request checkpoint has no matching intent");
+    }
+    if (row.kind === "provider-task-observed" && parsedPayload.kind === "provider-task-observed") {
+      const request = await trx("o_agentVendorRequest").where({ runId: run.id,
+        requestId: parsedPayload.requestId, providerTaskId: parsedPayload.providerTaskId }).first("id");
+      if (!request) throw new Error("Agent Run Provider task checkpoint has no matching observation");
+    }
     if (row.kind === "step-committed" && parsedPayload.kind === "step-committed") {
       const output = outputById.get(parsedPayload.outputId);
       if (!output || output.stepId !== row.stepId || output.contentHash !== parsedPayload.outputContentHash
