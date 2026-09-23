@@ -76,6 +76,8 @@ export interface BillableImageApprovalSnapshot {
   scopeHash: string;
   contractHash: string;
   preview: BillableImagePreflight["preview"];
+  vendorRequest: null | { requestId: string; status: string; providerTaskId: string | null;
+    artifactHash: string | null; cancellationRequested: boolean; imageId: number };
 }
 
 export async function expireDueBillableImageApprovals(
@@ -142,10 +144,14 @@ async function snapshot(tx: Knex | Knex.Transaction, projectId: number, runId: s
   if (!approval) return null;
   let preview: BillableImagePreflight["preview"];
   try { preview = JSON.parse(approval.previewJson); } catch { return conflict(); }
+  const request = await tx("o_agentVendorRequest").where({ runId, projectId }).first();
   return { id: approval.id, runId, receiptId: approval.receiptId, operationId: approval.operationId,
     status: approval.status, runVersion: run.version, runStatus: run.status,
     allowedActions: JSON.parse(run.allowedActions), expiresAt: approval.expiresAt,
-    scopeHash: approval.payloadHash, contractHash: approval.contractHash, preview };
+    scopeHash: approval.payloadHash, contractHash: approval.contractHash, preview,
+    vendorRequest: request ? { requestId: request.requestId, status: request.status,
+      providerTaskId: request.providerTaskId ?? null, artifactHash: request.artifactHash ?? null,
+      cancellationRequested: request.cancellationRequestedAt != null, imageId: request.imageId } : null };
 }
 
 function assertScope(value: unknown): BillableImageScope {
@@ -246,6 +252,38 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
       return dependencies.work(async (db) => { await owner(db, projectId, actorUserId);
         await expireDueBillableImageApprovals(db, projectId, dependencies.now(), dependencies.createId);
         return snapshot(db, projectId, runId); });
+    },
+
+    async list(projectId: number, actorUserId: number): Promise<BillableImageApprovalSnapshot[]> {
+      return dependencies.work(async (db) => {
+        await owner(db, projectId, actorUserId);
+        await expireDueBillableImageApprovals(db, projectId, dependencies.now(), dependencies.createId);
+        const rows = await db("o_agentRun as run")
+          .join("o_agentToolApproval as approval", "approval.runId", "run.id")
+          .where({ "run.projectId": projectId, "run.role": BILLABLE_IMAGE_RUN_ROLE,
+            "run.scope": BILLABLE_IMAGE_RUN_SCOPE })
+          .orderByRaw("CASE approval.status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END")
+          .orderBy("run.createdAt", "desc").limit(20).select("run.id");
+        const snapshots = await Promise.all(rows.map((row) => snapshot(db, projectId, row.id)));
+        return snapshots.filter((row): row is BillableImageApprovalSnapshot => row !== null);
+      });
+    },
+
+    /** Server-only read: browser never chooses or changes the normalized billable scope after approval. */
+    async approvedScope(projectId: number, runId: string, approvalId: string, actorUserId: number): Promise<BillableImageScope> {
+      return dependencies.work(async (db) => {
+        await owner(db, projectId, actorUserId);
+        const run = await db("o_agentRun").where({ id: runId, projectId,
+          role: BILLABLE_IMAGE_RUN_ROLE, scope: BILLABLE_IMAGE_RUN_SCOPE }).first();
+        const approval = run && await db("o_agentToolApproval").where({ id: approvalId, runId,
+          status: "approved" }).first();
+        if (!approval) return conflict();
+        let raw: unknown;
+        try { raw = JSON.parse(approval.payloadJson); } catch { return conflict(); }
+        const scope = assertScope(raw);
+        if (billableImageScopeHash(scope) !== approval.payloadHash || scope.projectId !== projectId) return conflict();
+        return scope;
+      });
     },
 
     async decide(input: DecideBillableImageInput): Promise<BillableImageApprovalSnapshot | null> {

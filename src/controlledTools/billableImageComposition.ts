@@ -10,6 +10,7 @@ import { createBillableImageCommitRuntime } from "./billableImageCommit";
 import { createBillableImageExecution } from "./billableImageExecution";
 import { createBillableImageLedger } from "./billableImageLedger";
 import { createDefaultBillableImagePreflight } from "./billableImagePreflight";
+import { createBillableImageQuotePolicy } from "./billableImageQuotePolicy";
 
 /** Production composition. Quote is deliberately injected until an explicit, reviewed price policy exists. */
 export function createConfiguredBillableImageRuntime(quote: BillableImageApprovalDependencies["quote"]) {
@@ -64,4 +65,11 @@ export function createConfiguredBillableImageRuntime(quote: BillableImageApprova
     commit: commit.commit,
   });
   return { approval, ledger, artifact, commit, execute };
+}
+
+export function createDefaultBillableImageRuntime() {
+  const quotePolicy = createBillableImageQuotePolicy({
+    work: (operation) => getDatabaseRuntime().work(operation), now: Date.now, createId: uuid,
+  });
+  return { ...createConfiguredBillableImageRuntime(quotePolicy.quote), quotePolicy };
 }

@@ -777,6 +777,23 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["vendorRequestId", "contentHash"]);
       },
     },
+    // 项目所有者显式配置的审批估算；不表示供应商报价或实际扣费保证。
+    {
+      name: "o_agentImageQuotePolicy",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.integer("projectId").notNullable();
+        table.text("vendorId").notNullable();
+        table.text("modelId").notNullable();
+        table.text("resolution").notNullable();
+        table.integer("estimatedMaxCostMicros").notNullable();
+        table.text("currency").notNullable();
+        table.integer("revision").notNullable();
+        table.integer("updatedByUserId").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["projectId", "vendorId", "modelId", "resolution"]);
+      },
+    },
     // Agent Step：Run 内有序、可独立检查的执行步骤
     {
       name: "o_agentRunStep",
