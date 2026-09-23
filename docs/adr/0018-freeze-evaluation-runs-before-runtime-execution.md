@@ -1,0 +1,7 @@
+# Freeze Evaluation Runs before case execution
+
+Status: accepted for the T11 foundation; full case execution and paired acceptance remain open.
+
+T02's checked-in Golden Eval result is an immutable historical baseline from before Agent Runtime existed, not a candidate run to replay through a new implementation. T11 freezes the case manifest and explicit Runtime, Tool, Context, Skill, Model, Vendor, rubric and schema revisions into a durable Evaluation Run before executing any case. Each future candidate case result must link an actual production Agent Run; a pending case has no result and cannot be counted as passed. This rejects a parallel evaluator-only execution path while preserving the historical baseline as comparison input.
+
+The alternative of importing T02 cases as if they were Agent Runs would invent provenance. The alternative of accepting direct domain-scenario results for new candidates would preserve the very split T11 is meant to remove. The current read-only Agent Runtime cannot yet execute all Script-to-Asset-to-Image scenarios, so schema/freeze delivery must not be reported as 18-case migration or a paired quality win. Later execution adapters must expand production Runtime capabilities without silently substituting T02's direct-domain adapter.

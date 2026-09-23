@@ -905,6 +905,45 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["runId", "sequence"]);
       },
     },
+    // Evaluation Run freezes one manifest and its production revision contract before case execution.
+    {
+      name: "o_evaluationRun",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("suiteId").notNullable();
+        table.text("manifestSchemaVersion").notNullable();
+        table.text("manifestHash").notNullable();
+        table.text("manifestJson").notNullable();
+        table.text("revisionContractJson").notNullable();
+        table.text("revisionContractHash").notNullable();
+        table.text("recordSchemaVersion").notNullable();
+        table.text("status").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("completedAt");
+        table.index(["suiteId", "createdAt"]);
+      },
+    },
+    // Pending cases are not results: a future result must cite a real production Agent Run.
+    {
+      name: "o_evaluationCase",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("evaluationRunId").notNullable().references("id").inTable("o_evaluationRun");
+        table.text("caseId").notNullable();
+        table.text("partition").notNullable();
+        table.text("agentRunId");
+        table.text("status").notNullable();
+        table.text("hardGateResultsJson");
+        table.text("qualityReviewJson");
+        table.text("artifactRefsJson");
+        table.text("failuresJson");
+        table.integer("elapsedMs");
+        table.integer("costMicros");
+        table.integer("createdAt").notNullable();
+        table.integer("completedAt");
+        table.unique(["evaluationRunId", "caseId"]);
+      },
+    },
     //视频
     {
       name: "o_video",
@@ -1566,6 +1605,34 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       ON o_agentImageArtifact
       BEGIN
         SELECT RAISE(ABORT, 'Agent Image artifact identity is immutable');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_evaluationRun")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_evaluationRun_contract_immutable
+      BEFORE UPDATE OF suiteId, manifestSchemaVersion, manifestHash, manifestJson,
+        revisionContractJson, revisionContractHash, recordSchemaVersion, createdAt
+      ON o_evaluationRun
+      BEGIN
+        SELECT RAISE(ABORT, 'Evaluation Run contract is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_evaluationRun_no_delete
+      BEFORE DELETE ON o_evaluationRun
+      BEGIN
+        SELECT RAISE(ABORT, 'Evaluation Run evidence cannot be deleted');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_evaluationCase")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_evaluationCase_identity_immutable
+      BEFORE UPDATE OF evaluationRunId, caseId, partition, createdAt
+      ON o_evaluationCase
+      BEGIN
+        SELECT RAISE(ABORT, 'Evaluation Case identity is immutable');
       END
     `);
   }
