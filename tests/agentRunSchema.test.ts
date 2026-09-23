@@ -440,6 +440,7 @@ test("readiness recovery parks an interrupted Model call with attention and one 
     const traces = await knex("o_agentTrace").where("runId", "run-interrupted").orderBy("sequence", "asc");
     assert.equal(traces.length, 2, "recovery is idempotent after the Run leaves running");
     assert.equal(traces[1].sequence, 2);
+    assert.equal(traces[1].predecessorTraceId, traces[0].id);
     assert.equal(traces[1].eventType, "interrupted-model-call");
     const diagnostic = JSON.parse(traces[1].diagnostic);
     assert.equal(diagnostic.schemaVersion, "toonflow.trace-safe-diagnostic.v1");
@@ -623,6 +624,8 @@ test("checkpoint recovery creates one causal successor Attempt only before model
     assert.equal(payload.predecessorCheckpointId, checkpoints[0].id);
     assert.equal(payload.predecessorPayloadHash, checkpoints[0].payloadHash);
     assert.equal(payload.predecessorAttemptId, attempts[0].id);
+    const recoveryTrace = await knex("o_agentTrace").where({ runId: run.id }).orderBy("sequence", "desc").first();
+    assert.equal(recoveryTrace.attemptId, attempts[1].id, "pre-intent recovery points to the successor Attempt");
   } finally {
     await dispose(directory, knex);
   }

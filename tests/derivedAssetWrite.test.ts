@@ -53,8 +53,9 @@ async function database(): Promise<Knex> {
     t.text("contentHash"); t.text("schemaVersion"); t.integer("createdAt");
   });
   await db.schema.createTable("o_agentTrace", (t) => {
-    t.text("id").primary(); t.text("runId"); t.text("toolReceiptId"); t.integer("sequence");
-    t.text("eventType"); t.integer("createdAt"); t.unique(["runId", "sequence"]);
+    t.text("id").primary(); t.text("runId"); t.text("toolReceiptId"); t.text("predecessorTraceId"); t.integer("sequence");
+    t.text("eventType"); t.text("diagnostic"); t.text("diagnosticSchemaVersion");
+    t.integer("createdAt"); t.unique(["runId", "sequence"]);
   });
   await db.schema.createTable("o_agentToolDefinition", (t) => {
     t.text("id").primary(); t.text("name"); t.text("revision"); t.text("contractHash");
@@ -118,7 +119,9 @@ test("approval atomically commits one Derived Asset, instruction, receipt, check
     assert.equal((await db("o_assets")).length, 3);
     assert.equal((await db("o_derivedChangeInstruction")).length, 1);
     assert.deepEqual((await db("o_agentRunCheckpoint").orderBy("sequence")).map((row) => row.kind), ["run-created", "step-committed"]);
-    assert.deepEqual((await db("o_agentTrace").orderBy("sequence")).map((row) => row.eventType), ["tool.approval.requested", "tool.approval.committed"]);
+    const traces = await db("o_agentTrace").orderBy("sequence");
+    assert.deepEqual(traces.map((row) => row.eventType), ["tool.approval.requested", "tool.approval.committed"]);
+    assert.equal(traces[1].predecessorTraceId, traces[0].id);
     assert.deepEqual(await write.decide(decision(pending)), approved);
     assert.equal((await db("o_assets")).length, 3, "duplicate approval must not create another asset");
     assert.deepEqual(await write.propose(proposal), approved, "duplicate proposal projects the durable result");

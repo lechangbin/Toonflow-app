@@ -41,7 +41,7 @@ async function createDatabase(): Promise<Knex> {
     table.unique(["runId", "operationId"]);
   });
   await db.schema.createTable("o_agentTrace", (table) => {
-    table.text("id").primary(); table.text("runId"); table.text("toolReceiptId");
+    table.text("id").primary(); table.text("runId"); table.text("toolReceiptId"); table.text("predecessorTraceId");
     table.integer("sequence"); table.text("eventType"); table.text("runStatus"); table.text("diagnosticSchemaVersion");
     table.text("diagnostic"); table.integer("createdAt"); table.unique(["runId", "sequence"]);
   });
@@ -89,6 +89,7 @@ test("controlled read Tools persist bounded outputs, immutable revisions, receip
     const traces = await db("o_agentTrace").orderBy("sequence");
     assert.deepEqual(traces.map((row) => row.sequence), [1, 2, 3, 4]);
     assert.deepEqual(traces.map((row) => row.eventType), ["tool.started", "tool.succeeded", "tool.started", "tool.succeeded"]);
+    assert.deepEqual(traces.map((row) => row.predecessorTraceId), [null, traces[0].id, traces[1].id, traces[2].id]);
     assert.ok(traces.every((row) => !JSON.stringify(row).includes("小说正文")), "Trace never copies project text");
     assert.equal(traces[1].toolReceiptId, text.receipt.id);
   } finally { await db.destroy(); }

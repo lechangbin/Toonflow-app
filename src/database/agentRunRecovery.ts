@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import type { Knex } from "knex";
+import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 
 import {
   AGENT_RUN_CHECKPOINT_KINDS,
@@ -238,11 +239,6 @@ async function validateCheckpointChain(
   return validated;
 }
 
-async function nextTraceSequence(trx: Knex.Transaction, runId: string): Promise<number> {
-  const latest = await trx("o_agentTrace").where("runId", runId).max<{ sequence?: number }>("sequence as sequence").first();
-  return (latest?.sequence ?? 0) + 1;
-}
-
 async function parkInvalidCheckpointRun(
   trx: Knex.Transaction,
   run: InterruptedRunRow,
@@ -266,12 +262,14 @@ async function parkInvalidCheckpointRun(
     leaseOwnerId: null, leaseEpoch: null, leaseExpiresAt: null,
   });
   if (changed !== 1) throw new Error("Invalid Agent Run checkpoint recovery lost its state/version precondition");
-  await trx("o_agentTrace").insert({
-    id: randomUUID(), runId: run.id, stepId: stepId ?? null,
-    sequence: await nextTraceSequence(trx, run.id), eventType: reason,
-    runStatus: isActive ? "waiting" : run.status, stepStatus: isActive && stepId ? "waiting" : null,
-    diagnosticSchemaVersion: evidenceDiagnostic.schemaVersion,
-    diagnostic: JSON.stringify(evidenceDiagnostic), createdAt: recoveredAt,
+  const activeAttempt = stepId && await trx("o_agentRunAttempt").where({ runId: run.id, stepId })
+    .orderBy("ordinal", "desc").first("id");
+  await appendCausalTrace(trx, {
+    id: randomUUID(), runId: run.id, ...(stepId ? { stepId } : {}),
+    ...(activeAttempt ? { attemptId: activeAttempt.id } : {}), eventType: reason,
+    runStatus: isActive ? "waiting" : run.status,
+    ...(isActive && stepId ? { stepStatus: "waiting" } : {}),
+    diagnostic: evidenceDiagnostic, createdAt: recoveredAt,
   });
 }
 
@@ -292,11 +290,10 @@ async function parkLegacyRun(trx: Knex.Transaction, run: InterruptedRunRow, reco
     leaseOwnerId: null, leaseEpoch: null, leaseExpiresAt: null,
   });
   if (changedStep !== 1 || changedRun !== 1) throw new Error("Interrupted Agent Run recovery lost its state/version precondition");
-  await trx("o_agentTrace").insert({
+  await appendCausalTrace(trx, {
     id: randomUUID(), runId: run.id, stepId: activeStep.id,
-    sequence: await nextTraceSequence(trx, run.id), eventType: reason,
-    runStatus: "waiting", stepStatus: "waiting", diagnosticSchemaVersion: projected.schemaVersion,
-    diagnostic: JSON.stringify(projected), createdAt: recoveredAt,
+    eventType: reason, runStatus: "waiting", stepStatus: "waiting",
+    diagnostic: projected, createdAt: recoveredAt,
   });
 }
 
@@ -322,8 +319,10 @@ async function recoverCheckpointedRun(trx: Knex.Transaction, run: InterruptedRun
   });
   if (changedRun !== 1) throw new Error("Interrupted Agent Run recovery lost its state/version precondition");
 
+  let traceAttemptId = attempt.id;
   if (!unknownEffect) {
     const successorId = randomUUID();
+    traceAttemptId = successorId;
     await trx("o_agentRunAttempt").insert({
       id: successorId, runId: run.id, stepId: step.id, ordinal: attempt.ordinal + 1,
       predecessorAttemptId: attempt.id, reason: "restart-recovery", status: "preparing", createdAt: recoveredAt,
@@ -342,11 +341,10 @@ async function recoverCheckpointedRun(trx: Knex.Transaction, run: InterruptedRun
       payload: canonicalCheckpointPayload(payload), payloadHash: hashCheckpointPayload(payload), createdAt: recoveredAt,
     });
   }
-  await trx("o_agentTrace").insert({
-    id: randomUUID(), runId: run.id, stepId: step.id,
-    sequence: await nextTraceSequence(trx, run.id), eventType: reason,
-    runStatus: "waiting", stepStatus: "waiting", diagnosticSchemaVersion: projected.schemaVersion,
-    diagnostic: JSON.stringify(projected), createdAt: recoveredAt,
+  await appendCausalTrace(trx, {
+    id: randomUUID(), runId: run.id, stepId: step.id, attemptId: traceAttemptId,
+    eventType: reason, runStatus: "waiting", stepStatus: "waiting",
+    diagnostic: projected, createdAt: recoveredAt,
   });
 }
 

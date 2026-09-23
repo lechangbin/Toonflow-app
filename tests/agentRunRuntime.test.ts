@@ -238,6 +238,10 @@ test("identical starts return one durable Agent Run and execute one Model Step",
     assert.equal(completed?.status, "succeeded");
     assert.equal(completed?.outputs[0]?.content, "只读建议");
     assert.equal(completed?.lastCommittedStepId, completed?.steps[0]?.id);
+    assert.equal(completed?.traceEvidence.linkage, "linked");
+    assert.deepEqual(completed?.traces.map((trace) => trace.predecessorTraceId),
+      [undefined, completed?.traces[0]?.id, completed?.traces[1]?.id]);
+    assert.equal(completed?.traces[0]?.attemptId, completed?.attempts[0]?.id);
     assert.deepEqual(completed?.attempts.map(({ ordinal, status }) => ({ ordinal, status })), [{ ordinal: 1, status: "succeeded" }]);
     assert.deepEqual(completed?.checkpoints.map((checkpoint) => checkpoint.kind), ["run-created", "model-call-intent", "step-committed"]);
     assert.equal(completed?.checkpoints.some((checkpoint) => "payload" in checkpoint), false);

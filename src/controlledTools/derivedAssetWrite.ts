@@ -24,6 +24,7 @@ import {
   hashCheckpointPayload,
   type AgentRunCheckpointPayload,
 } from "@/agentRuntime";
+import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 
 import { DERIVED_ASSET_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
 
@@ -174,15 +175,9 @@ async function assertNoEquivalent(db: Knex.Transaction, projectId: number, paylo
   if (existing !== null) throw new DerivedAssetWriteRejectedError("equivalent");
 }
 
-async function nextTraceSequence(db: Knex.Transaction, runId: string): Promise<number> {
-  const row = await db("o_agentTrace").where({ runId }).max<{ sequence?: number }>("sequence as sequence").first();
-  return Number(row?.sequence ?? 0) + 1;
-}
-
 async function addTrace(db: Knex.Transaction, runId: string, receiptId: string, eventType: string, now: number, createId: () => string): Promise<void> {
-  await db("o_agentTrace").insert({
-    id: createId(), runId, toolReceiptId: receiptId,
-    sequence: await nextTraceSequence(db, runId), eventType, createdAt: now,
+  await appendCausalTrace(db, {
+    id: createId(), runId, toolReceiptId: receiptId, eventType, createdAt: now,
   });
 }
 
