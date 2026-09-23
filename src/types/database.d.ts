@@ -1,4 +1,4 @@
-// @db-hash 5d18091977279f01e21e9b7d16e39b33
+// @db-hash 51f970257328f2871d5d3cdf86bf0a77
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -24,6 +24,9 @@ export interface o_agentDeploy {
   'name'?: string | null;
   'temperature'?: number | null;
   'vendorId'?: string | null;
+}
+export interface o_agentEvidenceDeletionPermit {
+  'runId'?: string;
 }
 export interface o_agentImageArtifact {
   'assetId': number;
@@ -551,6 +554,7 @@ export interface o_videoTrack {
 export interface DB {
   "memories": memories;
   "o_agentDeploy": o_agentDeploy;
+  "o_agentEvidenceDeletionPermit": o_agentEvidenceDeletionPermit;
   "o_agentImageArtifact": o_agentImageArtifact;
   "o_agentImageQuotePolicy": o_agentImageQuotePolicy;
   "o_agentRun": o_agentRun;

@@ -2,8 +2,10 @@ import type { DatabaseWork } from "@/database";
 import { inspectTraceSafePayload, validateTraceSafeDiagnostic, type TraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
 import { auditCausalTraceTimeline, type TraceTimelineEvidence } from "./causalTrace";
+import { AGENT_EVIDENCE_RETENTION_POLICY } from "./retention";
 
 export const AGENT_TRACE_EXPORT_SCHEMA_VERSION = "toonflow.agent-trace-export.v1" as const;
+export const TRACE_REDACTION_EVIDENCE_SCHEMA_VERSION = "toonflow.trace-redaction-evidence.v1" as const;
 const IDENTIFIER = /^[A-Za-z0-9._:-]{1,128}$/;
 const EVENT = /^[a-z][a-z0-9.-]{0,95}$/;
 const MAX_EVENTS = 5000;
@@ -34,6 +36,8 @@ export interface AgentTraceExport {
   projectId: number;
   runId: string;
   timeline: TraceTimelineEvidence;
+  retention: typeof AGENT_EVIDENCE_RETENTION_POLICY;
+  redaction: { schemaVersion: typeof TRACE_REDACTION_EVIDENCE_SCHEMA_VERSION; result: "passed" };
   events: AgentTraceExportEvent[];
 }
 
@@ -104,10 +108,14 @@ export function createAgentTraceEvidenceRuntime(work: DatabaseWork) {
         const timeline = auditCausalTraceTimeline(rows);
         if (timeline.linkage === "corrupt") throw new AgentTraceExportUnavailableError();
         const result: AgentTraceExport = { schemaVersion: AGENT_TRACE_EXPORT_SCHEMA_VERSION,
-          projectId: input.projectId, runId: input.runId, timeline, events: rows.map(projectEvent) };
+          projectId: input.projectId, runId: input.runId, timeline,
+          retention: AGENT_EVIDENCE_RETENTION_POLICY,
+          redaction: { schemaVersion: TRACE_REDACTION_EVIDENCE_SCHEMA_VERSION, result: "passed" },
+          events: rows.map(projectEvent) };
         const inspected = inspectTraceSafePayload(result, { allowedTopLevelKeys: ["schemaVersion", "projectId",
-          "runId", "timeline", "events"], allowedNestedKeys: ["schemaVersion", "ordering", "linkage",
-          "eventCount", ...eventKeys, ...diagnosticKeys] });
+          "runId", "timeline", "retention", "redaction", "events"], allowedNestedKeys: ["schemaVersion",
+          "ordering", "linkage", "eventCount", "databaseRetention", "databaseDeletion", "mediaDeletion",
+          "redactedExportRetention", "result", ...eventKeys, ...diagnosticKeys] });
         if (!inspected.ok) throw new AgentTraceExportUnavailableError();
         return result;
       });

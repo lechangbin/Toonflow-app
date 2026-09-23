@@ -26,6 +26,7 @@ const AGENT_TABLES = [
   "o_agentToolDefinition",
   "o_agentToolReceipt",
   "o_agentToolApproval",
+  "o_agentEvidenceDeletionPermit",
   "o_agentTrace",
 ] as const;
 

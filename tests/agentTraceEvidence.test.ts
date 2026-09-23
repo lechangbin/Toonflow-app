@@ -36,6 +36,8 @@ test("owner-only export uses sequence, excludes payload fields and rejects corru
     const exported = await runtime.export(input);
     assert.equal(exported?.schemaVersion, "toonflow.agent-trace-export.v1");
     assert.equal(exported?.timeline.linkage, "linked");
+    assert.equal(exported?.retention.databaseRetention, "project-lifetime");
+    assert.equal(exported?.redaction.result, "passed");
     assert.deepEqual(exported?.events.map((event) => event.id), ["trace-1", "trace-2"]);
     assert.ok(exported!.events[1].createdAt < exported!.events[0].createdAt);
     assert.equal(JSON.stringify(exported).includes("mediaPath"), false);
