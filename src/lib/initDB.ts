@@ -652,6 +652,39 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["runId", "clientCommandId"]);
       },
     },
+    // Agent Tool Definition：每个修订的契约指纹不可被后续部署改写
+    {
+      name: "o_agentToolDefinition",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("name").notNullable();
+        table.text("revision").notNullable();
+        table.text("contractHash").notNullable();
+        table.text("policy").notNullable();
+        table.integer("createdAt").notNullable();
+        table.unique(["name", "revision"]);
+      },
+    },
+    // Tool Receipt：一次 Run 内稳定 operation identity 的持久执行结果
+    {
+      name: "o_agentToolReceipt",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("operationId").notNullable();
+        table.text("toolName").notNullable();
+        table.text("toolRevision").notNullable();
+        table.text("inputHash").notNullable();
+        table.text("status").notNullable();
+        table.text("outputJson");
+        table.text("outputHash");
+        table.text("diagnostic");
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["runId", "operationId"]);
+        table.index(["runId", "createdAt"]);
+      },
+    },
     // Agent Step：Run 内有序、可独立检查的执行步骤
     {
       name: "o_agentRunStep",
@@ -739,6 +772,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("id").notNullable();
         table.text("runId").notNullable().references("id").inTable("o_agentRun");
         table.text("stepId").references("id").inTable("o_agentRunStep");
+        table.text("toolReceiptId").references("id").inTable("o_agentToolReceipt");
         table.integer("sequence").notNullable();
         table.string("eventType").notNullable();
         table.string("runStatus");
@@ -1331,6 +1365,22 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       BEFORE UPDATE ON o_agentRunCheckpoint
       BEGIN
         SELECT RAISE(ABORT, 'Agent Run checkpoints are immutable');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentToolDefinition")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentToolDefinition_prevent_update
+      BEFORE UPDATE ON o_agentToolDefinition
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Tool definitions are immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentToolDefinition_prevent_delete
+      BEFORE DELETE ON o_agentToolDefinition
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Tool definitions are immutable');
       END
     `);
   }

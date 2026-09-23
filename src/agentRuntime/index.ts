@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { tool } from "ai";
 import type { Knex } from "knex";
 import { v4 as uuid } from "uuid";
 
@@ -15,6 +16,12 @@ import {
 import type { AIMessage } from "@/socket/chatMessagesData";
 import { getDefaultConfiguredVendor, type ConfiguredTextCall, type TextModelTarget } from "@/vendor";
 import { getDatabaseRuntime } from "@/database";
+import {
+  createControlledToolRuntime,
+  TOOL_DEFINITIONS,
+  toolDefinitionContractHash,
+  type ControlledToolName,
+} from "@/controlledTools";
 
 import {
   assertAgentRunStepTransition,
@@ -56,7 +63,8 @@ const PROMPT_VERSION = "toonflow.read-only-project-guidance.v1";
 const DEFAULT_PROCESS_EPOCH = uuid();
 const SYSTEM_PROMPT = [
   "你是 Toonflow 的只读项目顾问。",
-  "只能依据给出的项目事实回答用户，不得声称已修改项目，不得请求或调用工具。",
+  "只能依据给出的项目事实和受控只读工具结果回答用户，不得声称已修改项目。",
+  "需要章节原文或事件时，只能调用 get_novel_text 或 get_novel_events；不得猜测其他项目的数据。",
   "当事实不足时明确说明缺少信息。",
 ].join("\n");
 
@@ -198,6 +206,7 @@ export interface AgentRunDependencies {
   workerId?: string;
   processEpoch?: string;
   leaseDurationMs?: number;
+  controlledTools?: ReturnType<typeof createControlledToolRuntime>;
 }
 
 export class AgentRunConflictError extends Error {
@@ -523,6 +532,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   const workerId = dependencies.workerId ?? uuid();
   const processEpoch = dependencies.processEpoch ?? DEFAULT_PROCESS_EPOCH;
   const leaseDurationMs = dependencies.leaseDurationMs ?? DEFAULT_AGENT_RUN_LEASE_MS;
+  const controlledTools = dependencies.controlledTools ?? createControlledToolRuntime({
+    work: dependencies.work, now: dependencies.now, createId: dependencies.createId,
+  });
   async function inspect(input: InspectAgentRunInput): Promise<AgentRunSnapshot | null> {
     return dependencies.work((db) => readSnapshot(db, input.runId, input.projectId));
   }
@@ -703,10 +715,13 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         videoRatio?: string | null;
       } | undefined;
       let chapterRow: { count?: number } | undefined;
+      let availableChapters: Array<{ id: number; chapterIndex: number | null }> = [];
       try {
-        [project, chapterRow] = await Promise.all([
+        [project, chapterRow, availableChapters] = await Promise.all([
           dependencies.work((db) => db("o_project").where("id", prepared.projectId).first()),
           dependencies.work((db) => db("o_novel").where("projectId", prepared.projectId).count<{ count: number }[]>("id as count").first()),
+          dependencies.work((db) => db("o_novel").where("projectId", prepared.projectId)
+            .orderBy("chapterIndex", "asc").orderBy("id", "asc").limit(20).select("id", "chapterIndex")),
         ]);
       } catch (error) {
         throw new ClassifiedAgentRunError({
@@ -736,6 +751,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         `视觉风格：${project.artStyle ?? "无"}`,
         `视频画幅：${project.videoRatio ?? "16:9"}`,
         `章节数量：${Number(chapterRow?.count ?? 0)}`,
+        `可读取章节记录ID与编号：${availableChapters.map((chapter) => `${chapter.id}:${chapter.chapterIndex ?? "未知"}`).join("、") || "无"}${Number(chapterRow?.count ?? 0) > 20 ? "（仅列前20条）" : ""}`,
       ].join("\n");
       const invocation = {
         messages: [
@@ -744,7 +760,10 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           { role: "user" as const, content: prepared.input.content },
         ],
       };
-      const invocationFingerprint = fingerprint({ target: call.target, invocation });
+      const toolContracts = Object.values(TOOL_DEFINITIONS).map((definition) => ({
+        name: definition.name, revision: definition.revision, contractHash: toolDefinitionContractHash(definition),
+      }));
+      const invocationFingerprint = fingerprint({ target: call.target, invocation, toolContracts });
       try {
         intentCommitted = await dependencies.work((db) => db.transaction(async (trx) => {
           const run = await trx("o_agentRun").where({ id: runId, status: "queued" }).first();
@@ -795,8 +814,35 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       await renewal;
       if (heartbeatFailed) throw new AgentRunLeaseLostError();
       await dependencies.work((db) => db.transaction((trx) => assertAgentRunLease(trx, lease, dependencies.now())));
+      const toolProjectId = prepared.projectId;
+      const toolLease = lease;
+      async function invokeReadTool(toolName: ControlledToolName, novelId: number, operationId: string): Promise<unknown> {
+        try {
+          const result = await controlledTools.execute({
+            runId, projectId: toolProjectId, operationId, toolName,
+            revision: TOOL_DEFINITIONS[toolName].revision, input: { novelId }, lease: toolLease,
+          });
+          return result.status === "recorded" && result.receipt.status === "succeeded"
+            ? result.receipt.output
+            : { status: "unavailable", kind: result.status === "recorded" ? result.receipt.diagnostic?.kind : result.diagnostic.kind };
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
       const result = await call.invokeText({
         messages: invocation.messages,
+        tools: {
+          get_novel_text: tool({
+            description: "读取当前项目中指定章节的原文；输入为章节记录 ID。",
+            inputSchema: TOOL_DEFINITIONS.get_novel_text.inputSchema,
+            execute: async ({ novelId }, options) => invokeReadTool("get_novel_text", novelId, options.toolCallId),
+          }),
+          get_novel_events: tool({
+            description: "读取当前项目中指定章节关联的事件；输入为章节记录 ID。",
+            inputSchema: TOOL_DEFINITIONS.get_novel_events.inputSchema,
+            execute: async ({ novelId }, options) => invokeReadTool("get_novel_events", novelId, options.toolCallId),
+          }),
+        },
       });
       const content = result.text;
       const persistableOutput = inspectPersistableText(content);

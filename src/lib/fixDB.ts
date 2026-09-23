@@ -108,6 +108,7 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   await addColumn("o_agentRun", "fence", "integer", 0);
   await addColumn("o_agentRun", "cancellationRequestedAt", "integer");
   await addColumn("o_agentRun", "cancellationCommandId", "text");
+  await addColumn("o_agentTrace", "toolReceiptId", "text");
   //检测是否包含新增音色绑定提示词
   const existAudioPrompt = await knex("o_prompt").where("type", "audioBindPrompt").first();
   if (!existAudioPrompt)
