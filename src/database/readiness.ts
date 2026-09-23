@@ -113,6 +113,8 @@ export async function recoverInterruptedWork(context: ReadinessContext): Promise
   await failInterruptedVideoProduction(context.knex);
   await recoverInterruptedAgentRuns(context.knex);
   await recoverPendingControlledTools(context.knex);
+  const { expireDueDerivedAssetApprovals } = await import("@/controlledTools/derivedAssetWrite");
+  await expireDueDerivedAssetApprovals(context.knex, null, Date.now(), uuid);
 }
 
 /** Phase 6: validate the database and the required runtime invariants. */

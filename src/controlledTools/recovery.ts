@@ -3,6 +3,10 @@ import type { Knex } from "knex";
 
 import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
+import { TOOL_DEFINITIONS } from "./definitions";
+
+const recoverableReadNames = Object.keys(TOOL_DEFINITIONS);
+
 function interruptionDiagnostic(audience: "toolReceipt" | "trace") {
   const result = projectTraceSafeDiagnostic({
     failureClass: "Tool", stage: "tool-call", kind: "executionFailed", severity: "warning",
@@ -17,6 +21,7 @@ export async function recoverPendingControlledTools(db: Knex, recoveredAt = Date
   const candidates = await db("o_agentToolReceipt as receipt")
     .join("o_agentRun as run", "run.id", "receipt.runId")
     .where("receipt.status", "pending")
+    .whereIn("receipt.toolName", recoverableReadNames)
     .where((query) => query.whereNull("run.leaseExpiresAt").orWhere("run.leaseExpiresAt", "<=", recoveredAt))
     .select("receipt.id");
   for (const candidate of candidates) {
@@ -24,6 +29,7 @@ export async function recoverPendingControlledTools(db: Knex, recoveredAt = Date
       const current = await trx("o_agentToolReceipt as receipt")
         .join("o_agentRun as run", "run.id", "receipt.runId")
         .where({ "receipt.id": candidate.id, "receipt.status": "pending" })
+        .whereIn("receipt.toolName", recoverableReadNames)
         .select("receipt.id", "receipt.runId", "run.leaseExpiresAt", "run.status")
         .first();
       if (!current || Number(current.leaseExpiresAt ?? 0) > recoveredAt) return;

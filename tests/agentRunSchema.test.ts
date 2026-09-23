@@ -25,6 +25,7 @@ const AGENT_TABLES = [
   "o_agentRunCommand",
   "o_agentToolDefinition",
   "o_agentToolReceipt",
+  "o_agentToolApproval",
   "o_agentTrace",
 ] as const;
 
@@ -240,6 +241,32 @@ test("ToolDefinition revisions cannot be updated or deleted", async () => {
     });
     await assert.rejects(knex("o_agentToolDefinition").where("id", "definition-1").update({ contractHash: "b".repeat(64) }), /immutable/i);
     await assert.rejects(knex("o_agentToolDefinition").where("id", "definition-1").del(), /immutable/i);
+  } finally { await dispose(directory, knex); }
+});
+
+test("T08 approval binding is immutable and upgrades without rewriting old Runs", async () => {
+  const { directory, knex } = createTemporaryDatabase();
+  try {
+    await initializeSchema(knex);
+    await knex("o_agentRun").insert({
+      id: "prior-run", projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "prior-request", requestFingerprint: "a".repeat(64), input: "{}",
+      status: "succeeded", allowedActions: JSON.stringify(["inspect"]), version: 3,
+      createdAt: 90, updatedAt: 99, completedAt: 99,
+    });
+    await knex.schema.dropTable("o_agentToolApproval");
+    await initDB(knex);
+    assert.equal(await knex.schema.hasTable("o_agentToolApproval"), true);
+    assert.equal((await knex("o_agentRun").where("id", "prior-run").first()).version, 3);
+    await knex("o_agentToolApproval").insert({
+      id: "approval-1", runId: "prior-run", receiptId: "receipt-1", operationId: "operation-1",
+      toolRevision: "v1", contractHash: "a".repeat(64), payloadJson: "{}",
+      payloadHash: "b".repeat(64), targetStateHash: "c".repeat(64), previewJson: "{}",
+      status: "pending", expiresAt: 200, createdAt: 100,
+    });
+    await assert.rejects(knex("o_agentToolApproval").where("id", "approval-1").update({ payloadHash: "d".repeat(64) }), /immutable/i);
+    await assert.rejects(knex("o_agentToolApproval").where("id", "approval-1").del(), /durable evidence/i);
+    assert.equal(await knex("o_agentToolApproval").where("id", "approval-1").update({ status: "approved" }), 1);
   } finally { await dispose(directory, knex); }
 });
 
