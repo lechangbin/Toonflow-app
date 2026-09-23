@@ -78,7 +78,10 @@ test("a fresh database owns durable Run, Step, Attempt, Output, Checkpoint and T
     for (const tableName of AGENT_TABLES) assert.equal(await knex.schema.hasTable(tableName), true);
 
     const runColumns = await knex("o_agentRun").columnInfo();
-    assert.ok((await knex("o_agentTrace").columnInfo()).toolReceiptId);
+    const traceColumns = await knex("o_agentTrace").columnInfo();
+    for (const column of ["toolReceiptId", "attemptId", "toolCallId", "vendorRequestId", "imageArtifactId", "predecessorTraceId"]) {
+      assert.ok(traceColumns[column], `o_agentTrace owns ${column}`);
+    }
     for (const required of [
       "id",
       "projectId",
@@ -283,11 +286,17 @@ test("T07 upgrade creates Tool tables and adds Trace receipt link without rewrit
     await knex.schema.dropTable("o_agentToolReceipt");
     await knex.schema.dropTable("o_agentToolDefinition");
     await knex.schema.alterTable("o_agentTrace", (table) => table.dropColumn("toolReceiptId"));
+    for (const column of ["attemptId", "toolCallId", "vendorRequestId", "imageArtifactId", "predecessorTraceId"]) {
+      await knex.schema.alterTable("o_agentTrace", (table) => table.dropColumn(column));
+    }
     await initDB(knex);
     await fixDB(knex, directory);
     assert.equal(await knex.schema.hasTable("o_agentToolDefinition"), true);
     assert.equal(await knex.schema.hasTable("o_agentToolReceipt"), true);
-    assert.ok((await knex("o_agentTrace").columnInfo()).toolReceiptId);
+    const upgradedTraceColumns = await knex("o_agentTrace").columnInfo();
+    for (const column of ["toolReceiptId", "attemptId", "toolCallId", "vendorRequestId", "imageArtifactId", "predecessorTraceId"]) {
+      assert.ok(upgradedTraceColumns[column], `upgraded o_agentTrace owns ${column}`);
+    }
     const old = await knex("o_agentRun").where("id", "old-run").first();
     assert.equal(old.status, "succeeded");
     assert.equal(old.version, 3);

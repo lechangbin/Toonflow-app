@@ -109,6 +109,12 @@ export default async (knex: Knex, dataRoot = getPath()): Promise<void> => {
   await addColumn("o_agentRun", "cancellationRequestedAt", "integer");
   await addColumn("o_agentRun", "cancellationCommandId", "text");
   await addColumn("o_agentTrace", "toolReceiptId", "text");
+  // T10: nullable correlations preserve historical Trace rows without inventing causality.
+  await addColumn("o_agentTrace", "attemptId", "text");
+  await addColumn("o_agentTrace", "toolCallId", "text");
+  await addColumn("o_agentTrace", "vendorRequestId", "text");
+  await addColumn("o_agentTrace", "imageArtifactId", "text");
+  await addColumn("o_agentTrace", "predecessorTraceId", "text");
   //检测是否包含新增音色绑定提示词
   const existAudioPrompt = await knex("o_prompt").where("type", "audioBindPrompt").first();
   if (!existAudioPrompt)

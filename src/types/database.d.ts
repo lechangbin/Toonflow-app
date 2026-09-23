@@ -1,4 +1,4 @@
-// @db-hash eb3ee73c4523b5e8f3a01b03fc6b9119
+// @db-hash 5d18091977279f01e21e9b7d16e39b33
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -193,17 +193,22 @@ export interface o_agentToolReceipt {
   'updatedAt': number;
 }
 export interface o_agentTrace {
+  'attemptId'?: string | null;
   'createdAt': number;
   'diagnostic'?: string | null;
   'diagnosticSchemaVersion'?: string | null;
   'eventType': string;
   'id'?: string;
+  'imageArtifactId'?: string | null;
+  'predecessorTraceId'?: string | null;
   'runId': string;
   'runStatus'?: string | null;
   'sequence': number;
   'stepId'?: string | null;
   'stepStatus'?: string | null;
+  'toolCallId'?: string | null;
   'toolReceiptId'?: string | null;
+  'vendorRequestId'?: string | null;
 }
 export interface o_agentVendorRequest {
   'artifactHash'?: string | null;

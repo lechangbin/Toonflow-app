@@ -66,6 +66,11 @@ test("dispatch atomically records ToolCall, VendorRequest and request-identity c
     assert.equal(first.scope.vendorId, "test-vendor");
     assert.equal((await db("o_agentToolCall")).length, 1);
     assert.equal((await db("o_agentVendorRequest")).length, 1);
+    const trace = await db("o_agentTrace").where({ runId: "run-1" }).orderBy("sequence");
+    assert.deepEqual(trace.map((row) => row.eventType), ["vendor.request.intent-recorded"]);
+    assert.equal(trace[0].toolCallId, first.toolCallId);
+    assert.equal(trace[0].vendorRequestId, first.vendorRequestId);
+    assert.equal(trace[0].attemptId, "attempt-1");
     assert.equal((await db("o_image").where({ id: first.imageId }).first()).state, "等待中");
     const checkpoints = await db("o_agentRunCheckpoint").orderBy("sequence");
     assert.deepEqual(checkpoints.map((row) => row.kind), ["run-created", "vendor-request-intent"]);
@@ -129,7 +134,11 @@ test("startup parks a committed dispatch intent as unknown without issuing anoth
     assert.equal((await db("o_agentVendorRequest").where({ id: dispatched.vendorRequestId }).first()).status, "unknown");
     assert.equal((await db("o_agentRunStep").where({ id: "step-1" }).first()).status, "waiting");
     assert.equal((await db("o_agentRunAttempt").where({ id: "attempt-1" }).first()).status, "waiting");
-    assert.equal((await db("o_agentTrace")).length, 1);
+    const traces = await db("o_agentTrace").where({ runId: "run-1" }).orderBy("sequence");
+    assert.deepEqual(traces.map((row) => row.eventType),
+      ["vendor.request.intent-recorded", "vendor.request.unknown-on-recovery"]);
+    assert.equal(traces[1].predecessorTraceId, traces[0].id);
+    assert.equal(traces[1].vendorRequestId, dispatched.vendorRequestId);
     assert.equal((await db("o_agentRun").where({ id: "run-1" }).first()).attentionReason, "vendor-reconciliation-required");
     assert.equal((await ledger(db).dispatch(command)).maySubmit, false);
   } finally { await db.destroy(); }

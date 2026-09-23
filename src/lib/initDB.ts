@@ -881,7 +881,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("id").notNullable();
         table.text("runId").notNullable().references("id").inTable("o_agentRun");
         table.text("stepId").references("id").inTable("o_agentRunStep");
+        table.text("attemptId").references("id").inTable("o_agentRunAttempt");
         table.text("toolReceiptId").references("id").inTable("o_agentToolReceipt");
+        table.text("toolCallId").references("id").inTable("o_agentToolCall");
+        table.text("vendorRequestId").references("id").inTable("o_agentVendorRequest");
+        table.text("imageArtifactId").references("id").inTable("o_agentImageArtifact");
+        table.text("predecessorTraceId").references("id").inTable("o_agentTrace");
         table.integer("sequence").notNullable();
         table.string("eventType").notNullable();
         table.string("runStatus");

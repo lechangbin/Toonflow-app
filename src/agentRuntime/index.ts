@@ -123,6 +123,12 @@ export interface AgentRunOutputSnapshot {
 export interface AgentTraceSnapshot {
   id: string;
   stepId?: string;
+  attemptId?: string;
+  toolReceiptId?: string;
+  toolCallId?: string;
+  vendorRequestId?: string;
+  imageArtifactId?: string;
+  predecessorTraceId?: string;
   sequence: number;
   eventType: string;
   runStatus?: AgentRunStatus;
@@ -481,6 +487,12 @@ async function readSnapshot(db: Knex | Knex.Transaction, runId: string, projectI
     traces: traces.map((trace) => ({
       id: trace.id,
       ...(trace.stepId ? { stepId: trace.stepId } : {}),
+      ...(trace.attemptId ? { attemptId: trace.attemptId } : {}),
+      ...(trace.toolReceiptId ? { toolReceiptId: trace.toolReceiptId } : {}),
+      ...(trace.toolCallId ? { toolCallId: trace.toolCallId } : {}),
+      ...(trace.vendorRequestId ? { vendorRequestId: trace.vendorRequestId } : {}),
+      ...(trace.imageArtifactId ? { imageArtifactId: trace.imageArtifactId } : {}),
+      ...(trace.predecessorTraceId ? { predecessorTraceId: trace.predecessorTraceId } : {}),
       sequence: trace.sequence,
       eventType: trace.eventType,
       ...(trace.runStatus ? { runStatus: parseAgentRunStatus(trace.runStatus) } : {}),

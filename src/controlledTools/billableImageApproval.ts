@@ -9,6 +9,7 @@ import {
   type AgentRunCheckpointPayload,
 } from "@/agentRuntime";
 import type { DatabaseWork } from "@/database";
+import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 
 import { BILLABLE_IMAGE_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
 import { billableImageScopeHash, billableImageScopeSchema, type BillableImageScope } from "./billableImageLifecycle";
@@ -115,10 +116,9 @@ export async function expireDueBillableImageApprovals(
         .update({ status: "cancelled", updatedAt: now });
       await tx("o_agentRunStep").where({ runId: approval.runId }).update({ status: "waiting" });
       await tx("o_agentRunAttempt").where({ runId: approval.runId }).update({ status: "waiting" });
-      const latest = await tx("o_agentTrace").where({ runId: approval.runId })
-        .max<{ sequence?: number }>("sequence as sequence").first();
-      await tx("o_agentTrace").insert({ id: createId(), runId: approval.runId,
-        toolReceiptId: approval.receiptId, sequence: Number(latest?.sequence ?? 0) + 1,
+      const attempt = await tx("o_agentRunAttempt").where({ runId: approval.runId }).first("id", "stepId");
+      await appendCausalTrace(tx, { id: createId(), runId: approval.runId,
+        stepId: attempt?.stepId, attemptId: attempt?.id, toolReceiptId: approval.receiptId,
         eventType: "tool.billing-approval.expired", runStatus: "waiting", stepStatus: "waiting", createdAt: now });
     });
   }
@@ -245,8 +245,8 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
         await tx("o_agentRunCheckpoint").insert({ id: dependencies.createId(), runId, stepId, attemptId,
           sequence: 1, kind: "run-created", schemaVersion: checkpoint.schemaVersion, runVersion: 1,
           payload: canonicalCheckpointPayload(checkpoint), payloadHash: hashCheckpointPayload(checkpoint), createdAt: now });
-        await tx("o_agentTrace").insert({ id: dependencies.createId(), runId, stepId, toolReceiptId: receiptId,
-          sequence: 1, eventType: "tool.billing-approval.requested", runStatus: "waiting", stepStatus: "waiting", createdAt: now });
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId, stepId, attemptId, toolReceiptId: receiptId,
+          eventType: "tool.billing-approval.requested", runStatus: "waiting", stepStatus: "waiting", createdAt: now });
         return (await snapshot(tx, input.projectId, runId)) ?? conflict();
         });
       });
@@ -337,9 +337,10 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
           await tx("o_agentRunStep").where({ runId: run.id }).update({ status: "cancelled", completedAt: now });
           await tx("o_agentRunAttempt").where({ runId: run.id }).update({ status: "cancelled", completedAt: now });
         }
-        const latest = await tx("o_agentTrace").where({ runId: run.id }).max<{ sequence?: number }>("sequence as sequence").first();
-        await tx("o_agentTrace").insert({ id: dependencies.createId(), runId: run.id, toolReceiptId: approval.receiptId,
-          sequence: Number(latest?.sequence ?? 0) + 1, eventType: `tool.billing-approval.${input.decision}`,
+        const attempt = await tx("o_agentRunAttempt").where({ runId: run.id }).first("id", "stepId");
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: attempt?.stepId, attemptId: attempt?.id, toolReceiptId: approval.receiptId,
+          eventType: `tool.billing-approval.${input.decision}`,
           runStatus: nextStatus, createdAt: now });
         return snapshot(tx, input.projectId, run.id);
         });

@@ -155,7 +155,12 @@ async function createDatabase(filename = ":memory:"): Promise<Knex> {
     table.text("id").primary();
     table.text("runId").notNullable();
     table.text("stepId");
+    table.text("attemptId");
     table.text("toolReceiptId");
+    table.text("toolCallId");
+    table.text("vendorRequestId");
+    table.text("imageArtifactId");
+    table.text("predecessorTraceId");
     table.integer("sequence").notNullable();
     table.text("eventType").notNullable();
     table.text("runStatus");
@@ -272,6 +277,7 @@ test("the read-only Agent Run invokes novel Tools only through controlled receip
     assert.deepEqual(snapshot?.traces.map((trace) => trace.eventType), [
       "run.created", "run.started", "tool.started", "tool.succeeded", "run.succeeded",
     ]);
+    assert.equal(snapshot?.traces.find((trace) => trace.eventType === "tool.succeeded")?.toolReceiptId, receipt.id);
     assert.equal(JSON.stringify(snapshot?.traces).includes("小说正文"), false);
   } finally { await db.destroy(); }
 });
