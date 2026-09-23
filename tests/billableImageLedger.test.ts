@@ -66,12 +66,14 @@ test("dispatch atomically records ToolCall, VendorRequest and request-identity c
     assert.equal(first.scope.vendorId, "test-vendor");
     assert.equal((await db("o_agentToolCall")).length, 1);
     assert.equal((await db("o_agentVendorRequest")).length, 1);
+    assert.equal((await db("o_image").where({ id: first.imageId }).first()).state, "等待中");
     const checkpoints = await db("o_agentRunCheckpoint").orderBy("sequence");
     assert.deepEqual(checkpoints.map((row) => row.kind), ["run-created", "vendor-request-intent"]);
     assert.equal(JSON.parse(checkpoints[1].payload).requestId, first.requestId);
     const afterRestart = await ledger(db).dispatch(command);
     assert.equal(afterRestart.maySubmit, false, "a restarted caller may inspect but not resubmit");
     assert.equal(afterRestart.requestId, first.requestId);
+    assert.equal(afterRestart.imageId, first.imageId);
     assert.equal((await db("o_agentVendorRequest")).length, 1);
   } finally { await db.destroy(); }
 });
@@ -130,5 +132,26 @@ test("startup parks a committed dispatch intent as unknown without issuing anoth
     assert.equal((await db("o_agentTrace")).length, 1);
     assert.equal((await db("o_agentRun").where({ id: "run-1" }).first()).attentionReason, "vendor-reconciliation-required");
     assert.equal((await ledger(db).dispatch(command)).maySubmit, false);
+  } finally { await db.destroy(); }
+});
+
+test("cancellation records intent and freezes the image without claiming a Provider refund", async () => {
+  const db = await database();
+  try {
+    const runtime = ledger(db);
+    const dispatched = await runtime.dispatch(command);
+    const version = (await db("o_agentRun").where({ id: "run-1" }).first()).version;
+    await assert.rejects(runtime.requestCancellation({ projectId: 7, actorUserId: 2,
+      requestId: dispatched.requestId, expectedVersion: version }), BillableImageLedgerConflictError);
+    await runtime.requestCancellation({ projectId: 7, actorUserId: 1,
+      requestId: dispatched.requestId, expectedVersion: version });
+    assert.equal((await db("o_image").where({ id: dispatched.imageId }).first()).state, "已取消");
+    const request = await db("o_agentVendorRequest").where({ requestId: dispatched.requestId }).first();
+    assert.equal(request.status, "cancelled");
+    assert.ok(request.cancellationRequestedAt);
+    assert.equal((await db("o_agentRun").where({ id: "run-1" }).first()).status, "waiting");
+    await runtime.requestCancellation({ projectId: 7, actorUserId: 1,
+      requestId: dispatched.requestId, expectedVersion: version });
+    assert.equal((await db("o_agentVendorRequest").where({ requestId: dispatched.requestId }).first()).version, request.version);
   } finally { await db.destroy(); }
 });

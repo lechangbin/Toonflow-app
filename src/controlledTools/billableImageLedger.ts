@@ -42,6 +42,7 @@ export interface BillableImageDispatch {
   requestId: string;
   vendorRequestId: string;
   toolCallId: string;
+  imageId: number;
   scope: BillableImageScope;
   /** Only the caller that durably created the request may cross the Provider boundary. */
   maySubmit: boolean;
@@ -141,7 +142,7 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
             runId: run.id, projectId: input.projectId, scopeHash: approval.payloadHash }).first();
           if (!existingRequest) return reject();
           return { requestId: existingRequest.requestId, vendorRequestId: existingRequest.id,
-            toolCallId: existingCall.id, scope, maySubmit: false };
+            toolCallId: existingCall.id, imageId: existingRequest.imageId, scope, maySubmit: false };
         }
         if (run.version !== input.expectedVersion || run.cancellationRequestedAt != null
           || !["waiting", "running"].includes(run.status) || receipt.status !== "pending") return reject();
@@ -155,6 +156,11 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
         const requestId = dependencies.createId();
         const toolCallId = dependencies.createId();
         const vendorRequestId = dependencies.createId();
+        const [imageId] = await tx("o_image").insert({
+          assetsId: scope.assetId, type: (await tx("o_assets").where({ id: scope.assetId,
+            projectId: scope.projectId }).first("type"))?.type,
+          state: "等待中", model: scope.modelId, resolution: scope.resolution,
+        });
         const checkpoint = nextCheckpoint(prior, run, step, attempt, requestId, approval.payloadHash);
         await tx("o_agentToolCall").insert({
           id: toolCallId, runId: run.id, stepId: step.id, attemptId: attempt.id,
@@ -167,7 +173,7 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
           requestId, scopeHash: approval.payloadHash, vendorId: scope.vendorId, modelId: scope.modelId,
           resolution: scope.resolution, maxCalls: scope.maxCalls,
           estimatedMaxCostMicros: scope.estimatedMaxCostMicros, currency: scope.currency,
-          status: "dispatch_recorded", version: 1, createdAt: now, updatedAt: now,
+          status: "dispatch_recorded", imageId, version: 1, createdAt: now, updatedAt: now,
         });
         await tx("o_agentRunCheckpoint").insert({
           id: dependencies.createId(), runId: run.id, stepId: step.id, attemptId: attempt.id,
@@ -184,7 +190,7 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
         if (updated !== 1) return reject();
         await tx("o_agentRunStep").where({ id: step.id }).update({ status: "running" });
         await tx("o_agentRunAttempt").where({ id: attempt.id }).update({ status: "running" });
-        return { requestId, vendorRequestId, toolCallId, scope, maySubmit: true };
+        return { requestId, vendorRequestId, toolCallId, imageId, scope, maySubmit: true };
       }));
     },
 
@@ -264,6 +270,39 @@ export function createBillableImageLedger(dependencies: BillableImageLedgerDepen
         const changedRun = await tx("o_agentRun").where({ id: run.id, version: run.version }).update({
           status: "waiting", waitingReason: "vendor-submission-unknown", attentionReason: "vendor-reconciliation-required",
           allowedActions: JSON.stringify(billableImageAllowedActions(next)), version: run.version + 1, updatedAt: now,
+        });
+        if (changedRun !== 1) return reject();
+      }));
+    },
+
+    /** Cancellation is an intent; the Provider may still produce a paid, late artifact. */
+    async requestCancellation(input: { projectId: number; actorUserId: number; requestId: string;
+      expectedVersion: number }): Promise<void> {
+      if (!Number.isSafeInteger(input.projectId) || !Number.isSafeInteger(input.actorUserId)
+        || !Number.isSafeInteger(input.expectedVersion) || !/^[A-Za-z0-9._:-]{1,128}$/.test(input.requestId)) return reject();
+      await dependencies.work((db) => db.transaction(async (tx) => {
+        const project = await tx("o_project").where({ id: input.projectId, userId: input.actorUserId }).first("id");
+        const request = await tx("o_agentVendorRequest").where({ requestId: input.requestId,
+          projectId: input.projectId }).first();
+        if (!project || !request) return reject();
+        const run = await tx("o_agentRun").where({ id: request.runId, projectId: input.projectId }).first();
+        if (!run) return reject();
+        if (request.cancellationRequestedAt != null) return;
+        if (run.version !== input.expectedVersion) return reject();
+        let next: BillableImageState;
+        try { next = transitionBillableImage(stateOf(request), { kind: "cancel" }); }
+        catch { return reject(); }
+        const now = dependencies.now();
+        const changed = await tx("o_agentVendorRequest").where({ id: request.id, version: request.version }).update({
+          status: next.status, cancellationRequestedAt: now, version: request.version + 1, updatedAt: now,
+        });
+        if (changed !== 1) return reject();
+        await tx("o_image").where({ id: request.imageId, assetsId: request.assetId })
+          .whereIn("state", ["等待中", "生成中", "下载中"]).update({ state: "已取消" });
+        const changedRun = await tx("o_agentRun").where({ id: run.id, version: run.version }).update({
+          cancellationRequestedAt: now, status: "waiting", waitingReason: "vendor-cancellation-unconfirmed",
+          attentionReason: "vendor-effect-may-arrive", allowedActions: JSON.stringify(billableImageAllowedActions(next)),
+          version: run.version + 1, updatedAt: now,
         });
         if (changedRun !== 1) return reject();
       }));
