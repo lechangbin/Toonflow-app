@@ -15,6 +15,7 @@ import { generateDatabaseTypes } from "./developmentTypes";
 import { recoverInterruptedAgentRuns } from "./agentRunRecovery";
 import { recoverPendingControlledTools } from "@/controlledTools/recovery";
 import { recoverAmbiguousBillableImageRequests } from "@/controlledTools/billableImageLedger";
+import { expireDueBillableImageApprovals } from "@/controlledTools/billableImageApproval";
 
 export const DEFAULT_DATABASE_FILE_NAME = "db2.sqlite";
 
@@ -115,6 +116,7 @@ export async function recoverInterruptedWork(context: ReadinessContext): Promise
   await recoverInterruptedAgentRuns(context.knex);
   await recoverPendingControlledTools(context.knex);
   await recoverAmbiguousBillableImageRequests(context.knex, Date.now());
+  await expireDueBillableImageApprovals(context.knex, null, Date.now(), uuid);
   const { expireDueDerivedAssetApprovals } = await import("@/controlledTools/derivedAssetWrite");
   await expireDueDerivedAssetApprovals(context.knex, null, Date.now(), uuid);
 }
