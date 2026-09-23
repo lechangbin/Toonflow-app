@@ -19,6 +19,6 @@
 
 ## 阶段验证与未完成项
 
-本轮更新后，`tests/agentRunSchema.test.ts`、`tests/agentRunRuntime.test.ts`、`tests/controlledTools.test.ts`、`tests/derivedAssetWrite.test.ts` 共 65 个定向用例通过；`tests/agentTraceEvidence.test.ts`、`tests/agentEvidenceRetention.test.ts` 共 5 个定向用例通过；`yarn lint`（TypeScript `--noEmit`）通过。Web 抽屉和删除提醒此前已有 4 个定向单测及类型检查通过，但没有浏览器端到端。
+本轮更新后，`tests/agentRunSchema.test.ts`、`tests/agentRunRuntime.test.ts`、`tests/controlledTools.test.ts`、`tests/derivedAssetWrite.test.ts` 共 65 个定向用例通过；`tests/agentTraceEvidence.test.ts`、`tests/agentEvidenceRetention.test.ts` 共 5 个定向用例通过；受影响的 `tests/causalTrace.test.ts` 与计费图片 Ledger、执行、产物、审批单测共 20 个定向用例通过；`yarn lint`（TypeScript `--noEmit`）通过。Web 抽屉用例本轮重跑 2 个通过，抽屉与删除提醒的 4 个定向用例及类型检查此前通过，但没有浏览器端到端。
 
 T21 最终验收仍需：全量单测与构建、跨仓浏览器交互、真实 Provider 成功/未知/迟到对账、跨进程并发、磁盘清理故障、敏感信息抓包审查和长期存储容量测量。此阶段不运行这些全量测试，也不宣称线上效果。面试准备材料见 `docs/interview/导学-Agent-Harness-T10.md` 与 `docs/interview/面经-Agent-Harness-T10.md`；简历由用户自行编写。
