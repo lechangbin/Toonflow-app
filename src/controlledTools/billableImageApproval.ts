@@ -10,6 +10,7 @@ import {
 } from "@/agentRuntime";
 import type { DatabaseWork } from "@/database";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
+import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
 import { BILLABLE_IMAGE_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
 import { billableImageScopeHash, billableImageScopeSchema, type BillableImageScope } from "./billableImageLifecycle";
@@ -17,6 +18,15 @@ import { BILLABLE_IMAGE_RUN_ROLE, BILLABLE_IMAGE_RUN_SCOPE, BillableImageLedgerC
 
 const IDENTIFIER = /^[A-Za-z0-9._:-]{1,128}$/;
 export const BILLABLE_IMAGE_APPROVAL_TTL_MS = 10 * 60_000;
+
+const expiredApprovalDiagnostic = (() => {
+  const projected = projectTraceSafeDiagnostic({
+    failureClass: "Tool", stage: "tool-call", kind: "authorizationFailed", severity: "warning",
+    certainty: "known-no-effect", expectedness: "expected", retryDisposition: "never",
+  }, "trace");
+  if (!projected.ok) throw new Error("Expired approval diagnostic is invalid");
+  return projected.value;
+})();
 
 export interface BillableImageTarget {
   projectId: number;
@@ -119,7 +129,8 @@ export async function expireDueBillableImageApprovals(
       const attempt = await tx("o_agentRunAttempt").where({ runId: approval.runId }).first("id", "stepId");
       await appendCausalTrace(tx, { id: createId(), runId: approval.runId,
         stepId: attempt?.stepId, attemptId: attempt?.id, toolReceiptId: approval.receiptId,
-        eventType: "tool.billing-approval.expired", runStatus: "waiting", stepStatus: "waiting", createdAt: now });
+        eventType: "tool.billing-approval.expired", runStatus: "waiting", stepStatus: "waiting",
+        diagnostic: expiredApprovalDiagnostic, createdAt: now });
     });
   }
 }
