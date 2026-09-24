@@ -20,6 +20,8 @@ import { createBillableImageExecution, type BillableImageExecutionDependencies }
   "../src/controlledTools/billableImageExecution";
 import { createBillableImageLedger } from
   "../src/controlledTools/billableImageLedger";
+import { createDerivedAssetWriteRuntime } from
+  "../src/controlledTools/derivedAssetWrite";
 import { billableImageScopeSchema } from
   "../src/controlledTools/billableImageLifecycle";
 import initDB from "../src/lib/initDB";
@@ -58,8 +60,9 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       skillId: definition.id, semanticVersion: "1.0.0",
       compatibleRoles: ["productionAgent"], intents: ["read-only-guidance"],
       dependencies: [], requestedTools: ["get_production_workspace_text",
-        "propose_asset_image_generation"],
-      requestedCapabilities: ["read:production-workspace", "propose:billable-image"],
+        "propose_asset_image_generation", "propose_derived_asset_write"],
+      requestedCapabilities: ["read:production-workspace", "propose:billable-image",
+        "propose:derived-asset"],
       resources: [],
       routing: { priority: 1, keywords: [] }, attribution: "T17 定向测试" };
     const draft = await skills.saveDraft({ skillId: definition.id,
@@ -73,6 +76,10 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
         expectedVersion: 0, active: true });
     await projectGrants.setProposeBillableImage({ projectId: 7, actorUserId: 1,
         expectedVersion: 0, active: true });
+    await projectGrants.setProposeDerivedAsset({ projectId: 7, actorUserId: 1,
+        expectedVersion: 0, active: true });
+    const derivedAsset = createDerivedAssetWriteRuntime({ work,
+      now: () => 200, createId });
     const imageApproval = createBillableImageApprovalRuntime({ work,
       now: () => 200, createId,
       quote: async () => ({ estimatedMaxCostMicros: 200_000,
@@ -94,6 +101,7 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       prepareRun: (tx, input) => prepareProductionSkillRun(tx, input, createId),
       skillMode: { grants: resolveProductionSkillGrants },
       proposeBillableImage: (input) => imageApproval.proposeFromAgent(input),
+      proposeDerivedAsset: (input) => derivedAsset.proposeFromAgent(input),
       openTextCall: async (target) => {
         assert.deepEqual(target, { kind: "logical", key: "productionAgent:decisionAgent" });
         return { target: { vendorId: "fake", modelId: "text-v1",
@@ -107,7 +115,7 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
               return { text: "迟到的模型结果不应提交" } as any;
             }
             assert.deepEqual(Object.keys(callInput.tools!), ["get_production_workspace_text",
-              "propose_asset_image_generation"]);
+              "propose_asset_image_generation", "propose_derived_asset_write"]);
             const result = await callInput.tools!.get_production_workspace_text.execute!(
               { scriptId: 11, key: "scriptPlan" },
               { toolCallId: "production-read-one", messages: [] });
@@ -154,6 +162,36 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
                 resolution: "1024x1024" },
               { toolCallId: "production-image-proposal-two", messages: [] });
             assert.equal((denied as { status?: string }).status, "denied");
+            const derivedPayload = { parentAssetId: 21, assetId: null,
+              expectedVersion: 0, scriptId: 11, name: "主角蓝衣版本",
+              description: "第一集服装变化", changeInstruction: {
+                dimensions: ["wardrobe"], evidence: ["剧本第一场更换外套"],
+                preserve: ["面部身份"], change: ["外套改为蓝色"], exclude: [],
+              } };
+            const derived = await callInput.tools!.propose_derived_asset_write.execute!(
+              derivedPayload, { toolCallId: "production-derived-one", messages: [] });
+            assert.equal((derived as { status?: string }).status, "pending");
+            assert.deepEqual(await callInput.tools!.propose_derived_asset_write.execute!(
+              derivedPayload, { toolCallId: "production-derived-one", messages: [] }), derived);
+            const derivedChanged = await callInput.tools!.propose_derived_asset_write.execute!(
+              { ...derivedPayload, name: "另一个版本" },
+              { toolCallId: "production-derived-one", messages: [] });
+            assert.equal((derivedChanged as { status?: string }).status, "unavailable",
+              "one operation cannot change the pending derived Asset payload");
+            await assert.rejects(derivedAsset.proposeFromAgent({ projectId: 7,
+              parentRunId: parent.id, skillId: definition.id,
+              lease: { runId: parent.id, ownerId: parent.leaseOwnerId,
+                epoch: parent.leaseEpoch, fence: parent.fence + 1,
+                expiresAt: parent.leaseExpiresAt },
+              operationId: "forged-lease-derived-proposal", payload: derivedPayload }),
+            /所有权已失效/);
+            assert.equal((await db("o_assets")).length, 2,
+              "model proposal must not write a derived Asset");
+            await projectGrants.setProposeDerivedAsset({ projectId: 7,
+              actorUserId: 1, expectedVersion: 1, active: false });
+            const derivedDenied = await callInput.tools!.propose_derived_asset_write.execute!(
+              derivedPayload, { toolCallId: "production-derived-two", messages: [] });
+            assert.equal((derivedDenied as { status?: string }).status, "denied");
             return { text: "拍摄计划已核对；未执行生成" } as any;
           } };
       } });
@@ -178,7 +216,20 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       actorUserId: 1 }))?.status, "succeeded");
     assert.equal((await db("o_agentToolReceipt").where({ runId: run.id,
       toolName: "get_production_workspace_text", status: "succeeded" })).length, 1);
-    assert.equal((await db("o_agentSkillPermissionDecision").where({ runId: run.id })).length, 4);
+    assert.equal((await db("o_agentSkillPermissionDecision").where({ runId: run.id })).length, 6);
+    const derivedRun = await db("o_agentRun").where({ projectId: 7,
+      scope: "approved-derived-asset-write-v1" }).first();
+    assert.ok(derivedRun);
+    const pendingDerived = await derivedAsset.inspect(7, derivedRun.id, 1);
+    assert.equal(pendingDerived?.sourceRunId, run.id);
+    assert.equal(pendingDerived?.sourceOperationId, "production-derived-one");
+    assert.equal(pendingDerived?.status, "pending");
+    const approvedDerived = await derivedAsset.decide({ projectId: 7,
+      runId: derivedRun.id, approvalId: pendingDerived!.id,
+      clientCommandId: "approve-production-derived", expectedVersion: pendingDerived!.runVersion,
+      actorUserId: 1, decision: "approve" });
+    assert.equal(approvedDerived?.status, "approved");
+    assert.equal((await db("o_assets").where({ assetsId: 21 })).length, 1);
     const imageProposals = await db("o_agentRun")
       .where({ projectId: 7, scope: "approved-billable-image-v1" });
     const imageProposal = imageProposals.find((row) =>

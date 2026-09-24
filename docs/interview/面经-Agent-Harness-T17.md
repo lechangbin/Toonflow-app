@@ -4,7 +4,7 @@
 
 ## 一面：先把边界讲准
 
-1. 问：T17 到底做完了什么？答：建立独立生产 Harness Run，冻结已发布 Skill，可通过受控 Tool 读取拍摄计划/分镜表文本，并在独立 grant 下提出单资产图片生成候选。候选会创建 T09 的待 Owner 审批子 Run；它不等于生成完成。追问“证据在哪”：看 `src/agentRuntime/index.ts`、`src/agents/productionAgent/harnessPreparation.ts`、`tests/productionHarnessRun.test.ts`。
+1. 问：T17 到底做完了什么？答：建立独立生产 Harness Run，冻结已发布 Skill，可通过受控 Tool 读取拍摄计划/分镜表文本，并在独立 grant 下分别提出单资产图片生成和派生资产写入候选。候选会创建 T09 或 T08 的待 Owner 审批子 Run；它不等于生成或写入完成。追问“证据在哪”：看 `src/agentRuntime/index.ts`、`src/agents/productionAgent/harnessPreparation.ts`、`tests/productionHarnessRun.test.ts`。
 2. 问：为何不让模型直接调用旧的图片生成 Tool？答：旧 Socket 流程没有完整的受控租约、审批、请求账本和恢复证据。模型建议只是意图，不能代替 Owner 授权成本。这里让模型停在 proposal，后续沿用 T09 审批与 Vendor ledger。追问“代价”：多一次 Owner 处理，而且目前只覆盖单资产，旧路径仍需迁移。
 3. 问：为什么生产工作区读 Tool 只开放两个文本字段？答：剧本 `scriptPlan` 和 `storyboardTable` 是当前指导 Run 需要的有界只读信息；资产数组和生成状态包含不同的隐私、写入和外部成本语义，不应塞进一个宽 Tool。适配器按 Project/剧本键核对并拒绝重复行、不合规文本。证据：`src/agents/productionAgent/harnessWorkspaceRead.ts` 与对应单测。
 
@@ -15,6 +15,8 @@
 6. 问：模型重试同一个 Tool 调用会重复计费吗？答：提案本身不计费。同一父 Run 和 operation ID 派生确定性请求键，子 Run 的指纹约束目标；不同目标是冲突，不会悄悄复用。真正提交由 T09 Owner 审批与 Vendor ledger 控制。假 Provider 超时被记为未知，重复执行不会再次调用，取消后的迟到图片保留证据但不链接 Asset；真实 Provider 的迟到和对账仍待 T21。
 7. 问：如何证明一条审批来自被授权的父 Run？答：子 Run 冻结父 Run ID、操作 ID、Skill ID 和 Tool 合约哈希；父 Run 有同操作的权限判定。inspect 时复核父 scope、判定哈希、allow 结果和审批操作一致性；数据库不允许改写审批绑定。前端需要的效果状态另由 Owner-only 的只读投影从父判定定位子 Run，不取模型自述。证据：`src/controlledTools/billableImageApproval.ts`、`src/agents/productionAgent/harnessEffects.ts`、`docs/adr/0023-production-agent-image-proposal-boundary.md`。
 8. 问：父 Run 已成功，Owner 后续处理子审批，会把父 Run 状态改写吗？答：不会。父 Run 的成功只表示模型指导步骤完成，子 Run 是独立的计费效果决策。定向测试验证非 Owner 不能批准；Owner 批准后，假 Provider 只调用一次，图片证据和 Asset 关联在子 Run 提交，父 Run 仍成功。拒绝路径由 T09 审批单测覆盖；面试时必须分别描述两个状态。
+8a. 问：派生资产只是本地写表，为何还要审批？答：本地写入虽然没有 Vendor 成本，却会改变 Project 的资产关系和视觉派生指令，错误内容可能被后续生成消费。模型只持有 `propose:derived-asset`，没有 `write:derived-asset`；T08 审批时再次检查精确 payload、目标版本、等价状态和目标状态哈希。定向测试在模型提案后确认资产表没有新增，Owner 批准后只新增一条，撤销 grant 后新提案被拒绝。证据：`src/controlledTools/derivedAssetWrite.ts`、`tests/productionHarnessRun.test.ts`、`docs/adr/0024-production-agent-derived-asset-proposal-boundary.md`。
+8b. 问：派生资产提案怎么避免冒用父 Run？答：子 Run 创建和父 Run 权限判定在同一事务内进行；校验父 Run 的运行状态、Owner 身份与有效 lease，冻结 Skill 必须请求该 Tool 与独立能力，Project grant 必须当前有效。子 Run 保存父 Run、操作、Skill 和提案合约哈希；inspect 再复核权限判定哈希与 operation ID。相同操作派生确定性请求键，变更 payload 冲突。这证明本地持久绑定，不代表已经通过跨进程或恶意数据库篡改验收。
 
 ## 三面：反例、取舍与未完成项
 

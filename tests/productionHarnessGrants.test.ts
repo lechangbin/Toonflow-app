@@ -8,8 +8,10 @@ import knexFactory from "knex";
 import initDB from "../src/lib/initDB";
 import { createSetReadProductionWorkspaceGrantRouter } from
   "../src/routes/agentRuns/setReadProductionWorkspaceGrant";
+import { createSetProposeDerivedAssetGrantRouter } from
+  "../src/routes/agentRuns/setProposeDerivedAssetGrant";
 import { createProjectSkillGrantRuntime, resolveProductionImageProposalGrants,
-  resolveProductionSkillGrants,
+  resolveProductionDerivedAssetProposalGrants, resolveProductionSkillGrants,
   resolveReadOnlyScriptSkillGrants } from "../src/skillRuntime/grants";
 
 test("Production read grant is owner-only, revocable and separate from Script", async () => {
@@ -36,7 +38,11 @@ test("Production read grant is owner-only, revocable and separate from Script", 
     const imageProposalGrants = () => db.transaction((tx) =>
       resolveProductionImageProposalGrants(tx, { runId: "production-grant-run",
         projectId: 7 }));
+    const derivedProposalGrants = () => db.transaction((tx) =>
+      resolveProductionDerivedAssetProposalGrants(tx, { runId: "production-grant-run",
+        projectId: 7 }));
     assert.deepEqual((await imageProposalGrants()).projectGrants, []);
+    assert.deepEqual((await derivedProposalGrants()).projectGrants, []);
     await assert.rejects(grants.setReadProductionWorkspace({ projectId: 7,
       actorUserId: 2, expectedVersion: 0, active: true }), /Project owner/);
     const enabled = await grants.setReadProductionWorkspace({ projectId: 7,
@@ -67,7 +73,45 @@ test("Production read grant is owner-only, revocable and separate from Script", 
     await grants.setProposeBillableImage({ projectId: 7,
       actorUserId: 1, expectedVersion: 1, active: false });
     assert.deepEqual((await imageProposalGrants()).projectGrants, []);
+    await assert.rejects(grants.setProposeDerivedAsset({ projectId: 7,
+      actorUserId: 2, expectedVersion: 0, active: true }), /Project owner/);
+    await grants.setProposeDerivedAsset({ projectId: 7,
+      actorUserId: 1, expectedVersion: 0, active: true });
+    assert.deepEqual((await derivedProposalGrants()).projectGrants,
+      ["propose:derived-asset"]);
+    assert.deepEqual((await imageProposalGrants()).projectGrants, [],
+      "derived Asset proposal grant cannot restore billable image proposal");
+    await grants.setProposeDerivedAsset({ projectId: 7,
+      actorUserId: 1, expectedVersion: 1, active: false });
+    assert.deepEqual((await derivedProposalGrants()).projectGrants, []);
   } finally { await db.destroy(); }
+});
+
+test("Derived Asset proposal grant HTTP takes authenticated actor", async () => {
+  let received: unknown;
+  const app = express();
+  app.use(express.json(), (req, _res, next) => {
+    (req as typeof req & { user: { id: number } }).user = { id: 5 };
+    next();
+  }, createSetProposeDerivedAssetGrantRouter({ setProposeDerivedAsset: async (input) => {
+    received = input;
+    return { projectId: input.projectId, capability: "propose:derived-asset" as const,
+      state: "active", version: 1, updatedAt: 100 };
+  } }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await once(server, "listening");
+    const address = server.address();
+    assert(address && typeof address === "object");
+    const response = await fetch(`http://127.0.0.1:${address.port}/`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projectId: 7, expectedVersion: 0,
+        active: true, actorUserId: 99 }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { projectId: 7, expectedVersion: 0,
+      active: true, actorUserId: 5 });
+  } finally { server.close(); await once(server, "close"); }
 });
 
 test("Production grant HTTP takes actor from authentication middleware", async () => {

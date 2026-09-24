@@ -3,8 +3,6 @@ import test from "node:test";
 
 import knexFactory, { type Knex } from "knex";
 
-import { createAgentRuntime } from "../src/agentRuntime";
-
 import {
   createDerivedAssetWriteRuntime,
   expireDueDerivedAssetApprovals,
@@ -256,21 +254,20 @@ test("a failed instruction insert rolls back the Asset and leaves the approval p
   } finally { await db.destroy(); }
 });
 
-test("the shared Agent Run inspector reprojects approval and committed checkpoint after restart", async () => {
+test("the Derived Asset inspector reprojects approval and committed checkpoint after restart", async () => {
   const db = await database();
   try {
     const write = runtime(db);
     const pending = await write.propose(proposal);
-    const agent = createAgentRuntime({ work: async (operation) => operation(db),
-      openTextCall: async () => { throw new Error("model must not execute"); },
-      schedule: () => { throw new Error("scheduler must not execute"); },
-      now: () => 100, createId: () => "unused" });
-    assert.equal((await agent.inspect({ projectId: 7, runId: pending.runId }))?.status, "waiting");
+    const restarted = runtime(db);
+    assert.equal((await restarted.inspect(7, pending.runId, 1))?.runStatus, "waiting");
     await write.decide(decision(pending));
-    const restored = await agent.inspect({ projectId: 7, runId: pending.runId });
-    assert.equal(restored?.status, "succeeded");
-    assert.deepEqual(restored?.checkpoints.map((checkpoint) => checkpoint.kind), ["run-created", "step-committed"]);
-    assert.equal(restored?.outputs.length, 1);
+    const restored = await restarted.inspect(7, pending.runId, 1);
+    assert.equal(restored?.runStatus, "succeeded");
+    assert.deepEqual((await db("o_agentRunCheckpoint")
+      .where({ runId: pending.runId }).orderBy("sequence")).map((checkpoint) => checkpoint.kind),
+    ["run-created", "step-committed"]);
+    assert.equal(restored?.receiptOutput?.effect, "created");
   } finally { await db.destroy(); }
 });
 

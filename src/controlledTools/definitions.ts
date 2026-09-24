@@ -299,9 +299,34 @@ export const PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION = Object.freeze({
   adapterId: "billable-image-approval-proposal-v1",
 });
 
+/** A model can suggest a derived Asset change, but only the T08 Owner approval commits it. */
+export const PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION = Object.freeze({
+  name: "propose_derived_asset_write",
+  revision: "toonflow.tool.propose-derived-asset-write.v1",
+  inputSchema: DERIVED_ASSET_TOOL_DEFINITION.inputSchema,
+  outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+    approvalId: z.string().min(1), status: z.literal("pending") }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "none", externalCost: "none", completion: "synchronous" }),
+    capabilities: Object.freeze(["propose:derived-asset"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["production-harness-v1"]),
+    scope: "run-project", approval: "proposal-only-owner-decision-required",
+    idempotency: "run-operation-id", retries: "explicit-new-operation",
+    timeoutMs: 0, cancellation: "proposal-survives-parent-run-cancellation",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "child-derived-asset-approval-run-before-model-result",
+    reconciliation: "inspect-child-approval-run",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "bounded-approval-preview",
+  }),
+  adapterId: "derived-asset-approval-proposal-v1",
+});
+
 export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION
   | typeof BILLABLE_IMAGE_TOOL_DEFINITION | typeof SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION
   | typeof PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION
+  | typeof PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION
   | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION
   | (typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS)[keyof typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS]): string {
   return createHash("sha256").update(JSON.stringify({

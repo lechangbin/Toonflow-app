@@ -24,6 +24,7 @@ import {
   HARNESS_TOOL_DEFINITIONS,
   SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
   PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION,
   toolDefinitionContractHash,
   type ControlledToolName,
   type ControlledToolDependencies,
@@ -254,6 +255,10 @@ export interface AgentRunDependencies {
   proposeBillableImage?: (input: { projectId: number; parentRunId: string;
     skillId: string; lease: AgentRunLease; operationId: string;
     assetId: number; vendorId: string; modelId: string; resolution: string }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
+  proposeDerivedAsset?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    payload: unknown }) => Promise<
       { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
 }
 
@@ -591,6 +596,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   if (dependencies.proposeBillableImage && !dependencies.productionMode) {
     throw new TypeError("Billable image proposal Tool requires Production Harness mode");
   }
+  if (dependencies.proposeDerivedAsset && !dependencies.productionMode) {
+    throw new TypeError("Derived Asset proposal Tool requires Production Harness mode");
+  }
   if (dependencies.skillMode && (!dependencies.prepareRun || dependencies.controlledTools)) {
     throw new TypeError("Skill mode requires atomic preparation and its own guarded Tool runtime");
   }
@@ -870,7 +878,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       const modelToolDefinitions = dependencies.productionMode
         ? { get_production_workspace_text: HARNESS_TOOL_DEFINITIONS.get_production_workspace_text,
           ...(dependencies.proposeBillableImage
-            ? { propose_asset_image_generation: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION } : {}) }
+            ? { propose_asset_image_generation: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION } : {}),
+          ...(dependencies.proposeDerivedAsset
+            ? { propose_derived_asset_write: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION } : {}) }
         : dependencies.skillMode
         ? { get_novel_text: HARNESS_TOOL_DEFINITIONS.get_novel_text,
           get_novel_events: HARNESS_TOOL_DEFINITIONS.get_novel_events,
@@ -1007,6 +1017,18 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           return { status: "unavailable", kind: "executionFailed" };
         }
       }
+      async function proposeDerivedAsset(payload: unknown, operationId: string): Promise<unknown> {
+        if (!dependencies.proposeDerivedAsset || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeDerivedAsset({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
       const result = await call.invokeText({
         messages: invocation.messages,
         tools: {
@@ -1041,6 +1063,11 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             description: "仅提出单次资产图片生成候选；不提交 Vendor、不扣费、不写入图片。",
             inputSchema: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION.inputSchema,
             execute: async (payload, options) => proposeBillableImage(payload, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeDerivedAsset ? { propose_derived_asset_write: tool({
+            description: "仅提出派生资产创建或更新候选；不会写入，Owner 审批后才可能生效。",
+            inputSchema: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION.inputSchema,
+            execute: async (payload, options) => proposeDerivedAsset(payload, options.toolCallId),
           }) } : {}),
           ...(dependencies.proposeScriptWrite ? { propose_script_workspace_write: tool({
             description: "仅提出当前项目单个规划字段的待审批候选；不会写入，Owner 查看全文并批准后才可能生效。",

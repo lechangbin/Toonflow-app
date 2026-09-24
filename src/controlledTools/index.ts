@@ -22,6 +22,7 @@ import { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, getControlledToolDefinition
 
 export { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
   PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION, getControlledToolDefinition,
+  PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION,
   toolDefinitionContractHash } from "./definitions";
 export type { ControlledToolName } from "./definitions";
 
