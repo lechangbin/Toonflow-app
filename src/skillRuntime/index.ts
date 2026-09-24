@@ -70,6 +70,52 @@ export async function routeAndBindSkillRunInTransaction(tx: Knex.Transaction, in
 /** Durable publication and binding boundary. Routing/permission resolution belongs to later T14/T15 slices. */
 export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): number; createId(): string }) {
   return {
+    async listForAdministration() {
+      return dependencies.work(async (db) => {
+        const definitions = await db("o_agentSkillDefinition")
+          .orderBy("createdAt", "desc").orderBy("id", "asc")
+          .select("id", "name", "description", "createdAt");
+        const bindings = await db("o_agentSkillBinding")
+          .select("skillId", "activeRevisionId", "version", "updatedAt");
+        const revisions = await db("o_agentSkillRevision")
+          .orderBy("createdAt", "desc").orderBy("id", "asc")
+          .select("id", "skillId", "semanticVersion", "status",
+            "contentHash", "manifestHash", "createdAt", "publishedAt");
+        return definitions.map((definition) => ({ ...definition,
+          binding: bindings.find((entry) => entry.skillId === definition.id) ?? null,
+          revisions: revisions.filter((entry) => entry.skillId === definition.id),
+        }));
+      });
+    },
+    async inspectRevisionForAdministration(revisionId: string) {
+      if (!IDENTIFIER.test(revisionId)) throw new TypeError("Skill Revision identity is invalid");
+      return dependencies.work(async (db) => {
+        const revision = await db("o_agentSkillRevision")
+          .where({ id: revisionId }).first();
+        if (!revision) return null;
+        if (hash(revision.content) !== revision.contentHash
+          || hash(revision.manifestJson) !== revision.manifestHash) {
+          throw new Error("Skill Revision evidence is corrupt");
+        }
+        const manifest = validateSkillManifest(JSON.parse(revision.manifestJson),
+          revision.skillId, revision.semanticVersion);
+        return { id: revision.id, skillId: revision.skillId,
+          semanticVersion: revision.semanticVersion, status: revision.status,
+          content: revision.content, manifest,
+          contentHash: revision.contentHash, manifestHash: revision.manifestHash,
+          createdAt: revision.createdAt, publishedAt: revision.publishedAt };
+      });
+    },
+    validateDraft(input: { skillId: string; semanticVersion: string;
+      content: string; manifest: SkillManifest }) {
+      if (!IDENTIFIER.test(input.skillId) || !VERSION.test(input.semanticVersion)) {
+        throw new TypeError("Skill draft identity is invalid");
+      }
+      const checked = checkedAuthoring(input.content, input.manifest,
+        input.skillId, input.semanticVersion);
+      return { skillId: input.skillId, semanticVersion: input.semanticVersion,
+        contentHash: checked.contentHash, manifestHash: checked.manifestHash };
+    },
     async createDefinition(input: { name: string; description: string }) {
       if (!/^[A-Za-z0-9._-]{1,80}$/.test(input.name) || !input.description.trim()
         || input.description.length > 500 || !inspectPersistableText(input.description).ok) {
