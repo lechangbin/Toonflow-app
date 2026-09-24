@@ -162,5 +162,14 @@ test("Script write rejection, expiry, and commit failure leave Project data unch
       "pending");
     assert.equal((await db("o_agentToolReceipt").where({ runId: rollback.runId }).first()).status,
       "pending");
+    now = 310;
+    assert.equal((await runtime.inspect(7, rollback.runId, 1))?.status, "expired");
+    assert.equal((await runtime.list(7, 1)).some((item) =>
+      item.runId === rollback.runId && item.status === "expired"), true);
+    assert.equal((await db("o_agentTrace").where({ runId: rollback.runId,
+      eventType: "tool.approval.expired" })).length, 1,
+    "reconnect expiry is a single durable transition");
+    assert.equal((await db("o_agentWorkData").where("id", 11).first()).data,
+      JSON.stringify({ storySkeleton: "旧骨架" }));
   } finally { await db.destroy(); }
 });

@@ -22,10 +22,11 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 后端目标状态读取器已区分工作区缺失/唯一/重复行、剧本创建时同名竞争与更新时 ID 所属 Project；对旧表的相关当前字段计算哈希，后续审批提交必须在事务中重算并比对。定向测试覆盖旧入口直接修改后哈希变化、跨 Project ID 拒绝、同名冲突。此时仍无审批命令，不能把“可检测冲突”说成“已防止并发写入”。
 - 写入 Runtime 的提案事务冻结候选负载/目标状态/ToolDefinition，并创建 waiting Run/Step/Attempt、pending ToolReceipt/ToolApproval、`run-created` Checkpoint 与审批请求 Trace。相同请求身份幂等返回原提案；不同负载复用身份被拒，Owner 错误、跨 Project 剧本 ID 和同名创建在持久化前失败。Owner 决策命令已在同一事务中重检目标哈希：批准后提交工作区单字段或剧本创建/更新、成功回执、Output、终态 Checkpoint 和 Trace；拒绝、过期、冲突只结算安全失败状态。注入 Output 持久化失败时 Project 写入整体回滚。尚未接入模型侧写 Tool。
 - 独立 HTTP 适配器现提供 Owner 作用域的 propose/inspect/list/decide，四个命令都只从已认证请求身份派生操作者，忽略 body 伪造的用户 ID；Router 已按仓库生成规则更新。尚未接入 App/Web 审批界面，也没有把写提案作为模型侧 Tool 接入主 Script Run。
+- 到期 pending 审批在 inspect/list 和数据库就绪恢复时结算为 expired，失败回执与 `tool.approval.expired` Trace 同事务落盘；重复读取不重复追加事件，且不会改动工作区或剧本。实际杀进程重启验收与端到端 UI 重连仍留到 T21。
 
 ## 阶段验证与边界
 
-最近一轮写入审批 Runtime、HTTP 身份边界与 Router 共 4 个定向单元测试通过，涵盖批准、重复命令、冲突、拒绝、过期与注入提交失败；写入候选和目标状态另有 5 个定向用例通过，`yarn lint`（TypeScript noEmit）通过。此前受控 Tool、Skill 权限、Project grant、Script 准备及 Router 的定向用例通过；剧本读取默认拒绝、授权后本项目读取及跨项目 ID 拒绝有定向断言。未运行全量测试、构建、浏览器或真实 Provider。
+最近一轮写入审批 Runtime 与数据库就绪模块共 9 个定向单元测试通过，涵盖批准、重复命令、冲突、拒绝、过期、注入提交失败与就绪流程；HTTP 身份边界及 Router 的定向测试此前通过。写入候选和目标状态另有 5 个定向用例通过，`yarn lint`（TypeScript noEmit）通过。此前受控 Tool、Skill 权限、Project grant、Script 准备等相关定向用例也通过。未运行全量测试、构建、浏览器或真实 Provider。
 
 新入口目前覆盖只读指导、规划工作区和剧本读取，另有独立后端监督写入 Runtime 及 Owner HTTP 审批入口；还需把写入提案接到 Agent Tool、接入前端切换/重连与审批界面、迁移旧 Socket 行为，验证运行中停止/真实进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
 
@@ -50,3 +51,4 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 17. 问：没有数据库版本列，如何发现旧界面在审批等待期间改过目标？答：后端在提案时读取并哈希当前工作区或剧本相关字段，审批提交在同一事务中重新读取比对；工作区重复行、跨 Project 剧本 ID 与同名竞争被明确拒绝。定向测试在提案后让旧入口改动剧本，审批进入 conflicted 而不覆盖旧入口的结果。该机制仍依赖所有最终写入都在同一个 SQLite 事务序列里；完整 App/Web 并发验收留到 T21。
 18. 问：怎样证明提案不会提前写入剧本，批准后又不会写一半？答：提案事务只持久化审批证据与等待中的 Agent Run；测试前后核对原字段、Run/回执/Checkpoint/Trace 的存在。批准时，Project 写入与回执、Output、Checkpoint、Trace 同事务提交；测试故意让 Output 插入失败，验证域数据与审批/回执状态一并回滚。重复批准命令返回原结果，不重复创建剧本。HTTP 适配器已有定向测试，模型侧写 Tool 与真实重启仍未验证。
 19. 问：为什么请求体里传一个 Owner ID 不能直接批准？答：HTTP 适配器只从认证中间件读取 actor，并在调用 Runtime 时覆盖 body 中任何同名字段；Runtime 再按 Project 当前 Owner 校验，因此前端传来的 ID 不是授权来源。定向路由测试核对 propose、inspect、list、decide 四个入口都使用认证身份。测试使用注入的假认证中间件，生产端完整鉴权链还需最终跨边界验收。
+20. 问：用户一直不处理审批，刷新或重启后会不会仍能批准过期内容？答：Runtime inspect/list 和数据库就绪恢复都会筛选到期且仍 pending 的审批，在单一事务中把审批置为 expired、回执置失败、Run 留在需要关注状态并追加安全 Trace；再次读取不重复结算。定向测试在到期后调用 inspect/list 核对事件只出现一次、Project 内容未改变。这里验证了恢复函数和就绪测试，真实进程重启的跨边界验收仍留待 T21。

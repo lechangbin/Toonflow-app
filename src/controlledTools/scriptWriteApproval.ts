@@ -149,6 +149,53 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number,
     preview, runVersion: run.version, runStatus: run.status };
 }
 
+/** Reconnect settles expired pending proposals without granting any write effect. */
+export async function expireDueScriptWriteApprovals(db: Knex,
+  projectId: number | null, now: number, createId: () => string): Promise<void> {
+  const due = db("o_agentToolApproval as approval")
+    .join("o_agentRun as run", "run.id", "approval.runId")
+    .where({ "approval.status": "pending", "run.role": "scriptAgent",
+      "run.scope": SCRIPT_WRITE_RUN_SCOPE, "run.status": "waiting" })
+    .where("approval.expiresAt", "<=", now);
+  if (projectId !== null) due.where("run.projectId", projectId);
+  const rows = await due.select("approval.id");
+  for (const row of rows) {
+    await db.transaction(async (tx) => {
+      const current = await tx("o_agentToolApproval as approval")
+        .join("o_agentRun as run", "run.id", "approval.runId")
+        .where({ "approval.id": row.id, "approval.status": "pending",
+          "run.role": "scriptAgent", "run.scope": SCRIPT_WRITE_RUN_SCOPE,
+          "run.status": "waiting" })
+        .where("approval.expiresAt", "<=", now)
+        .select("approval.id", "approval.receiptId", "approval.runId",
+          "run.projectId", "run.version").first();
+      if (!current || (projectId !== null && current.projectId !== projectId)) return;
+      const changed = await tx("o_agentToolApproval")
+        .where({ id: current.id, status: "pending" })
+        .update({ status: "expired", decidedAt: now });
+      if (changed !== 1) return;
+      const receiptChanged = await tx("o_agentToolReceipt")
+        .where({ id: current.receiptId, status: "pending" })
+        .update({ status: "failed",
+          diagnostic: JSON.stringify(denialDiagnostic("toolReceipt")),
+          updatedAt: now });
+      const runChanged = await tx("o_agentRun")
+        .where({ id: current.runId, version: current.version, status: "waiting" })
+        .update({ waitingReason: "tool-approval-expired",
+          attentionReason: "tool-approval-expired",
+          allowedActions: JSON.stringify(["inspect"]),
+          version: current.version + 1, updatedAt: now });
+      if (receiptChanged !== 1 || runChanged !== 1) {
+        throw new ScriptWriteProposalRejectedError("evidence");
+      }
+      await appendCausalTrace(tx, { id: createId(), runId: current.runId,
+        toolReceiptId: current.receiptId,
+        eventType: "tool.approval.expired", createdAt: now,
+        diagnostic: denialDiagnostic("trace") });
+    });
+  }
+}
+
 /** Proposal only: freezes an exact candidate and target; it cannot mutate production artifacts. */
 export function createScriptWriteApprovalRuntime(dependencies: {
   work: DatabaseWork; now(): number; createId(): string; approvalTtlMs?: number;
@@ -264,12 +311,16 @@ export function createScriptWriteApprovalRuntime(dependencies: {
       actorUserId: number): Promise<ScriptWriteApprovalSnapshot | null> {
       return dependencies.work(async (db) => {
         await assertOwner(db, projectId, actorUserId);
+        await expireDueScriptWriteApprovals(db, projectId,
+          dependencies.now(), dependencies.createId);
         return readSnapshot(db, projectId, runId);
       });
     },
     async list(projectId: number, actorUserId: number): Promise<ScriptWriteApprovalSnapshot[]> {
       return dependencies.work(async (db) => {
         await assertOwner(db, projectId, actorUserId);
+        await expireDueScriptWriteApprovals(db, projectId,
+          dependencies.now(), dependencies.createId);
         const rows = await db("o_agentRun as run")
           .where({ "run.projectId": projectId, "run.role": "scriptAgent",
             "run.scope": SCRIPT_WRITE_RUN_SCOPE })
