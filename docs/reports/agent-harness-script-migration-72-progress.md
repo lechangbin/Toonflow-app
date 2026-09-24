@@ -23,6 +23,7 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 写入 Runtime 的提案事务冻结候选负载/目标状态/ToolDefinition，并创建 waiting Run/Step/Attempt、pending ToolReceipt/ToolApproval、`run-created` Checkpoint 与审批请求 Trace。相同请求身份幂等返回原提案；不同负载复用身份被拒，Owner 错误、跨 Project 剧本 ID 和同名创建在持久化前失败。Owner 决策命令已在同一事务中重检目标哈希：批准后提交工作区单字段或剧本创建/更新、成功回执、Output、终态 Checkpoint 和 Trace；拒绝、过期、冲突只结算安全失败状态。注入 Output 持久化失败时 Project 写入整体回滚。尚未接入模型侧写 Tool。
 - 独立 HTTP 适配器现提供 Owner 作用域的 propose/inspect/list/decide，四个命令都只从已认证请求身份派生操作者，忽略 body 伪造的用户 ID；Router 已按仓库生成规则更新。尚未接入 App/Web 审批界面，也没有把写提案作为模型侧 Tool 接入主 Script Run。
 - 到期 pending 审批在 inspect/list 和数据库就绪恢复时结算为 expired，失败回执与 `tool.approval.expired` Trace 同事务落盘；重复读取不重复追加事件，且不会改动工作区或剧本。实际杀进程重启验收与端到端 UI 重连仍留到 T21。
+- 审批快照读取现在复核 approval/receipt/Run 状态组合、成功回执输出哈希及 Tool 输出 schema；若回执被篡改，inspect 拒绝投影，而不会向重连客户端虚报成功。定向测试故意改坏已批准回执哈希并验证拒绝。
 
 ## 阶段验证与边界
 
@@ -52,3 +53,4 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 18. 问：怎样证明提案不会提前写入剧本，批准后又不会写一半？答：提案事务只持久化审批证据与等待中的 Agent Run；测试前后核对原字段、Run/回执/Checkpoint/Trace 的存在。批准时，Project 写入与回执、Output、Checkpoint、Trace 同事务提交；测试故意让 Output 插入失败，验证域数据与审批/回执状态一并回滚。重复批准命令返回原结果，不重复创建剧本。HTTP 适配器已有定向测试，模型侧写 Tool 与真实重启仍未验证。
 19. 问：为什么请求体里传一个 Owner ID 不能直接批准？答：HTTP 适配器只从认证中间件读取 actor，并在调用 Runtime 时覆盖 body 中任何同名字段；Runtime 再按 Project 当前 Owner 校验，因此前端传来的 ID 不是授权来源。定向路由测试核对 propose、inspect、list、decide 四个入口都使用认证身份。测试使用注入的假认证中间件，生产端完整鉴权链还需最终跨边界验收。
 20. 问：用户一直不处理审批，刷新或重启后会不会仍能批准过期内容？答：Runtime inspect/list 和数据库就绪恢复都会筛选到期且仍 pending 的审批，在单一事务中把审批置为 expired、回执置失败、Run 留在需要关注状态并追加安全 Trace；再次读取不重复结算。定向测试在到期后调用 inspect/list 核对事件只出现一次、Project 内容未改变。这里验证了恢复函数和就绪测试，真实进程重启的跨边界验收仍留待 T21。
+21. 问：如果数据库里的审批回执被改成“成功”，重连会不会照单全收？答：快照读取不只看一个 status；它对照 approval、ToolReceipt 与 Run 的合法状态组合，并对成功回执重新计算输出哈希、验证版本化输出 schema。定向测试在成功后篡改回执哈希，inspect 直接拒绝投影。该检查防止错误呈现，不等于对数据库物理篡改具备恢复能力；完整证据链审计还要在最终验收覆盖。

@@ -73,6 +73,14 @@ test("Script write proposal freezes exact target and approval without mutating P
     assert.equal((await db("o_agentRunCheckpoint").where({ runId: proposed.runId })).length, 2);
     await assert.rejects(runtime.decide({ ...workspaceDecision,
       clientCommandId: "approve-workspace-twice" }), /identity conflicts/);
+    const approvedReceipt = await db("o_agentToolReceipt")
+      .where({ runId: proposed.runId }).first();
+    await db("o_agentToolReceipt").where("id", approvedReceipt.id)
+      .update({ outputHash: "tampered" });
+    await assert.rejects(runtime.inspect(7, proposed.runId, 1), /evidence/,
+      "reconnect must not project a forged success receipt");
+    await db("o_agentToolReceipt").where("id", approvedReceipt.id)
+      .update({ outputHash: approvedReceipt.outputHash });
     await assert.rejects(runtime.propose({ projectId: 7, actorUserId: 1,
       clientRequestId: "foreign-script", operationId: "operation-2",
       kind: "script", payload: { effect: "update", scriptId: 22,

@@ -129,6 +129,27 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number,
     || receipt.operationId !== approval.operationId) {
     throw new ScriptWriteProposalRejectedError("evidence");
   }
+  const status = approval.status;
+  const validStatus = status === "pending" && receipt.status === "pending"
+    && run.status === "waiting"
+    || status === "approved" && receipt.status === "succeeded"
+      && run.status === "succeeded"
+    || status === "rejected" && receipt.status === "failed"
+      && run.status === "cancelled"
+    || ["expired", "conflicted", "corrupt"].includes(status)
+      && receipt.status === "failed" && run.status === "waiting";
+  if (!validStatus) throw new ScriptWriteProposalRejectedError("evidence");
+  if (status === "approved") {
+    try {
+      if (typeof receipt.outputJson !== "string"
+        || sha256(receipt.outputJson) !== receipt.outputHash) {
+        throw new Error("invalid approved receipt");
+      }
+      tool.outputSchema.parse(JSON.parse(receipt.outputJson));
+    } catch { throw new ScriptWriteProposalRejectedError("evidence"); }
+  } else if (receipt.outputJson != null || receipt.outputHash != null) {
+    throw new ScriptWriteProposalRejectedError("evidence");
+  }
   let preview: unknown;
   try {
     const payload = JSON.parse(approval.payloadJson);
