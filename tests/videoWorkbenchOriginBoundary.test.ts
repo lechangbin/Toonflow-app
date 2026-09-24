@@ -15,6 +15,8 @@ import { createBatchGeneratePromptRouter } from
   "../src/routes/production/workbench/batchGeneratePrompt";
 import { createUpdateVideoPromptRouter } from
   "../src/routes/production/workbench/updateVideoPrompt";
+import { createUploadVideoInputImageRouter } from
+  "../src/routes/production/workbench/uploadVideoInputImage";
 import { createWorkbenchOwnerCheck } from "../src/video/workbenchOwner";
 
 const item = { trackId: 31, vendorId: "agnes", modelId: "video-v1",
@@ -125,6 +127,12 @@ test("Video workbench mutations require the authenticated Project Owner", async 
     app.use("/revision", createUpdateVideoPromptRouter(fake as never, authorize));
     app.use("/video", createGenerateVideoRouter(fakeVideo as never, authorize));
     app.use("/batch-video", createBatchGenerateVideoRouter(fakeVideo as never, authorize));
+    const uploads: unknown[] = [];
+    app.use("/upload", createUploadVideoInputImageRouter(authorize,
+      (async (_dependencies: unknown, input: unknown) => {
+        uploads.push(input);
+        return { filePath: "/7/video-inputs/11/fixed-id.png", url: "/oss/7/video-inputs/11/fixed-id.png" };
+      }) as never));
     const { promptRevisionId: _promptRevisionId, ...selection } = item;
     const prompt = { ...selection, projectId: 7, strategy: "standard",
       brief: { subject: "A lantern", motion: "Slowly sways in the wind" } };
@@ -137,10 +145,16 @@ test("Video workbench mutations require the authenticated Project Owner", async 
       scriptId: 11, item }), 403);
     assert.equal(await post(app, "/batch-video", { projectId: 8,
       scriptId: 11, requestedBy: "user", items: [item] }), 403);
+    assert.equal(await post(app, "/upload", { projectId: 8,
+      scriptId: 11, base64Data: "data:image/png;base64,AA==" }), 403);
     assert.equal(called.length, 0, "mixed-owner batch must have no partial Prompt effects");
     assert.equal(videoCalls.length, 0, "non-Owner cannot dispatch a Video Vendor request");
+    assert.equal(uploads.length, 0, "non-Owner cannot write Video input files");
     assert.equal(await post(app, "/prompt", prompt), 200);
+    assert.equal(await post(app, "/upload", { projectId: 7,
+      scriptId: 11, base64Data: "data:image/png;base64,AA==" }), 200);
     assert.equal(called.length, 1);
+    assert.equal(uploads.length, 1);
     await assert.rejects(authorize({} as express.Request, 7));
   } finally { await db.destroy(); }
 });
