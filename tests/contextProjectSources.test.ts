@@ -88,3 +88,32 @@ test("Novel evidence slice uses Unicode code-point offsets and hashes the comple
       excerpts: { 3: { startCodePoint: 0, lengthCodePoints: 1 } } }), /invalid/);
   } finally { await db.destroy(); }
 });
+
+test("Project chapter catalog uses explicit pages and records the selected range", async () => {
+  const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
+  try {
+    await db.schema.createTable("o_project", (table) => {
+      table.integer("id").primary(); table.text("name"); table.text("type"); table.text("intro");
+      table.text("artStyle"); table.text("videoRatio");
+    });
+    await db.schema.createTable("o_novel", (table) => {
+      table.integer("id").primary(); table.integer("projectId"); table.integer("chapterIndex");
+    });
+    await db("o_project").insert({ id: 7, name: "长篇项目" });
+    await db("o_novel").insert(Array.from({ length: 25 }, (_, index) => ({
+      id: index + 1, projectId: 7, chapterIndex: index + 1,
+    })));
+    const loader = createProjectContextSourceLoader(async (operation) => operation(db));
+    const first = await loader.load({ projectId: 7, novelIds: [] });
+    const second = await loader.load({ projectId: 7, novelIds: [], chapterCatalogOffset: 20 });
+    assert.deepEqual(first[0].transform, { kind: "catalog-page.v1", offset: 0, limit: 20, total: 25 });
+    assert.deepEqual(second[0].transform, { kind: "catalog-page.v1", offset: 20, limit: 20, total: 25 });
+    assert.ok(first[0].content.includes('"id":20'));
+    assert.equal(first[0].content.includes('"id":21'), false);
+    assert.ok(second[0].content.includes('"id":21'));
+    assert.equal(second[0].content.includes('"id":20'), false);
+    assert.notEqual(first[0].revision, second[0].revision);
+    await assert.rejects(loader.load({ projectId: 7, novelIds: [], chapterCatalogOffset: 25 }),
+      /outside the source/);
+  } finally { await db.destroy(); }
+});

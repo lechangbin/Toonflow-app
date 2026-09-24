@@ -17,7 +17,8 @@ export interface ContextCandidateSource {
   authorityRank: number;
   relevanceRank: number;
   transform?: { kind: "locatable-evidence-slice.v1"; startCodePoint: number;
-    endCodePoint: number; sourceTextHash: string };
+    endCodePoint: number; sourceTextHash: string }
+    | { kind: "catalog-page.v1"; offset: number; limit: number; total: number };
 }
 
 export interface ContextSourceRequest {
@@ -47,7 +48,7 @@ export interface ContextSourceSelection {
   selected: ContextSourceEntry[];
   omissions: Array<{ id: string; reason: ContextOmissionReason }>;
   compactionActions: Array<{ sourceId: string; action:
-    "typed-projection" | "evidence-slice" | "deduplicated" | "omitted-over-budget" }>;
+    "typed-projection" | "pagination" | "evidence-slice" | "deduplicated" | "omitted-over-budget" }>;
   selectedContent: string[];
 }
 
@@ -92,11 +93,17 @@ export function selectEligibleContextSources(
       || !Number.isSafeInteger(source.relevanceRank) || source.relevanceRank < 0
       || !["authoritative", "toolResults", "recentInteraction", "memory"].includes(source.category)
       || !["current", "historical"].includes(source.freshness)
-      || (source.transform !== undefined && (source.transform.kind !== "locatable-evidence-slice.v1"
-        || !Number.isSafeInteger(source.transform.startCodePoint) || source.transform.startCodePoint < 0
-        || !Number.isSafeInteger(source.transform.endCodePoint)
-        || source.transform.endCodePoint <= source.transform.startCodePoint
-        || !HASH.test(source.transform.sourceTextHash)))) {
+      || (source.transform !== undefined && (source.transform.kind === "locatable-evidence-slice.v1"
+        ? (!Number.isSafeInteger(source.transform.startCodePoint) || source.transform.startCodePoint < 0
+          || !Number.isSafeInteger(source.transform.endCodePoint)
+          || source.transform.endCodePoint <= source.transform.startCodePoint
+          || !HASH.test(source.transform.sourceTextHash))
+        : source.transform.kind === "catalog-page.v1"
+          ? (!Number.isSafeInteger(source.transform.offset) || source.transform.offset < 0
+            || !Number.isSafeInteger(source.transform.limit) || source.transform.limit <= 0
+            || !Number.isSafeInteger(source.transform.total) || source.transform.total < 0
+            || (source.transform.total > 0 && source.transform.offset >= source.transform.total))
+          : true))) {
       throw new Error("Context source evidence is corrupt");
     }
     const previous = seen.get(source.id);
@@ -137,6 +144,9 @@ export function selectEligibleContextSources(
     selectedContent.push(source.content);
     if (source.id.startsWith("project:")) {
       compactionActions.push({ sourceId: source.id, action: "typed-projection" });
+    }
+    if (source.transform?.kind === "catalog-page.v1") {
+      compactionActions.push({ sourceId: source.id, action: "pagination" });
     }
     if (source.transform?.kind === "locatable-evidence-slice.v1") {
       compactionActions.push({ sourceId: source.id, action: "evidence-slice" });
