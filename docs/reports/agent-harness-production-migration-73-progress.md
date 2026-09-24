@@ -45,6 +45,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 候选第二切片：共享视频编排的 Model/Capability、Prompt Profile、图片输入与命令校验已抽为 `prepareVideoGenerationCommand`，手动生成仍调用同一准备路径。`prepareControlledVideoProposal` 将它与单轨道候选冻结组合，在异步 Vendor 检查后重读目标状态，若目标中途变化则拒绝，并只对脱敏命令快照返回哈希，不提交外部请求。8 个相关定向用例与 App TypeScript 检查通过，覆盖正常手动生成、供应商失败兼容行为、无副作用准备、缺失 Model 与并发目标漂移。下一步 Owner 审批及 Vendor 请求意图尚未实现；这一准备接口不应被前端或模型当成生成完成。
 
+受控 Video 报价策略切片：新增按 Project、Vendor、Model、text-to-video 能力及完整 output/audio 选型精确匹配的 `o_agentVideoQuotePolicy`。只有 Project Owner 可以用期望 revision 设置本地费用上限估算，缺失、损坏或与选型不符的配置拒绝作为未来审批依据；同一策略重建数据库结构不会覆盖 Owner 的值。2 个定向 SQLite 用例及 App TypeScript 检查通过。此值不是供应商实时报价或实际账单，目前没有设置它的 HTTP/UI，也没有审批、提交意图或 Vendor 调用；不得把策略表存在解释为视频已获授权。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。

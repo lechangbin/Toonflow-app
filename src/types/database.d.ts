@@ -362,6 +362,17 @@ export interface o_agentVendorRequest {
   'vendorId': string;
   'version': number;
 }
+export interface o_agentVideoQuotePolicy {
+  'currency': string;
+  'estimatedMaxCostMicros': number;
+  'id'?: string;
+  'projectId': number;
+  'revision': number;
+  'scopeJson': string;
+  'scopeKey': string;
+  'updatedAt': number;
+  'updatedByUserId': number;
+}
 export interface o_agentWorkData {
   'createTime'?: number | null;
   'data'?: string | null;
@@ -708,6 +719,7 @@ export interface DB {
   "o_agentToolReceipt": o_agentToolReceipt;
   "o_agentTrace": o_agentTrace;
   "o_agentVendorRequest": o_agentVendorRequest;
+  "o_agentVideoQuotePolicy": o_agentVideoQuotePolicy;
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;
   "o_artStyle": o_artStyle;

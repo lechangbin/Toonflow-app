@@ -801,6 +801,22 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["projectId", "vendorId", "modelId", "resolution"]);
       },
     },
+    // Owner-configured Video approval estimate; not a Vendor quote or invoice.
+    {
+      name: "o_agentVideoQuotePolicy",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.integer("projectId").notNullable();
+        table.text("scopeKey").notNullable();
+        table.text("scopeJson").notNullable();
+        table.integer("estimatedMaxCostMicros").notNullable();
+        table.text("currency").notNullable();
+        table.integer("revision").notNullable();
+        table.integer("updatedByUserId").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["projectId", "scopeKey"]);
+      },
+    },
     // Agent Step：Run 内有序、可独立检查的执行步骤
     {
       name: "o_agentRunStep",
