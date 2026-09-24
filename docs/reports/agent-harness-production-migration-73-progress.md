@@ -1,6 +1,6 @@
 # Agent Harness T17 · 生产生成迁移（阶段进度）
 
-Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端验收的 T16 上；以下是生产只读指导 Run、工作区读取和单资产计费图片提案接缝，不是生产 Agent 生成黄金链路迁移完成。阶段源码导学与追问见 `docs/interview/导学-Agent-Harness-T17.md`、`docs/interview/面经-Agent-Harness-T17.md`；简历由用户自行完成。
+Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端验收的 T16 上；目前有生产指导 Run、工作区读取、单资产图片/派生资产/单分镜受控提案，以及无副作用的单轨道 Video 候选预检；不是生产 Agent 生成黄金链路迁移完成。阶段源码导学与追问见 `docs/interview/导学-Agent-Harness-T17.md`、`docs/interview/面经-Agent-Harness-T17.md`；简历由用户自行完成。
 
 ## 本次改动
 
@@ -40,6 +40,8 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 生产模型系统契约同步升为 `toonflow.production-harness-guidance.v2`：明确区分受控指导、模型候选、Owner 批准和效果提交，列出目前三类模型提案；不再把已有提案能力描述成纯只读。生产模型仍不得声称待审请求已经生成或保存。相关生产 Run 定向用例及类型检查通过；没有改变旧 Socket 生成行为。
 
 Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手动 HTTP 路由会直接进入异步 Vendor 调用，异常被记录为失败，尚无 T09 式“提交可能已发生”的防重放账本。因此本阶段不把它包装为模型 Tool；先收紧单条/批量视频生成、单条/批量 Prompt 生成与人工 Prompt Revision 共五个工作台路由，只允许 `requestedBy: "user"`（缺省为 user），浏览器不能自称 `project-agent`。共享生产模块仍保留可信调用者的 `project-agent` 类型，供未来受控编排复用。两个定向路由用例验证伪造来源在触达生成编排或 Prompt 写入前被拒，正常用户请求仍通过；另有旧 Socket 回调和生产 Run 相关五例、App 类型检查通过。这只是来源防伪接缝，不等于 Owner 授权；视频生成的持久审批、未知结果恢复和真实 Provider 验收仍待完成。
+
+受控 Video 候选第一切片：`videoGenerationProposalContract.ts` 仅冻结 Project/Script/现有 Video Track 的单轨道 text-to-video 候选；要求当前 Track 选择与候选一致、选中的是该 Track 的 active Prompt Revision、尚无已有 Video，且不接受上传路径或图片输入。摘要与目标状态哈希可供下一步审批前复核，但此阶段不建待审 Run、不请求 Vendor、不创建 Production Action/Generation Task，也不检查 Vendor 当前 Capability。3 个 SQLite 定向用例和 App TypeScript 检查通过，覆盖跨 Project、已有 Video、非文本输入、Prompt Revision 与选型漂移、损坏的持久 JSON。设计见 ADR-0026；不得称其为视频生成迁移完成。
 
 ## 阶段追问准备（非最终面经）
 
