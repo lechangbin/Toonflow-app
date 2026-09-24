@@ -13,7 +13,7 @@ import { createBillableImageArtifactRuntime } from
   "../src/controlledTools/billableImageArtifact";
 import { createBillableImageCommitRuntime } from
   "../src/controlledTools/billableImageCommit";
-import { createBillableImageExecution } from
+import { createBillableImageExecution, type BillableImageExecutionDependencies } from
   "../src/controlledTools/billableImageExecution";
 import { createBillableImageLedger } from
   "../src/controlledTools/billableImageLedger";
@@ -26,7 +26,7 @@ import { createProjectSkillGrantRuntime, resolveProductionSkillGrants } from
 import { SKILL_MANIFEST_SCHEMA_VERSION, type SkillManifest } from
   "../src/skillRuntime/manifest";
 
-test("opt-in Production guidance Run freezes Skill and reads workspace through a guarded Tool", async () => {
+test("Production Run links guarded reads, owner-approved image effects and ambiguous Vendor outcomes", async () => {
   const db = knexFactory({ client: "better-sqlite3",
     connection: { filename: ":memory:" }, useNullAsDefault: true });
   try {
@@ -40,6 +40,8 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
       content: "剧本内容" });
     await db("o_assets").insert({ id: 21, projectId: 7,
       type: "role", name: "主角" });
+    await db("o_assets").insert({ id: 22, projectId: 7,
+      type: "role", name: "配角" });
     await db("o_agentWorkData").insert({ projectId: 7, episodesId: 11,
       key: "productionAgent", data: JSON.stringify({ scriptPlan: "三段拍摄计划" }) });
     let serial = 0;
@@ -113,6 +115,11 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
               { toolCallId: "production-image-proposal-one", messages: [] });
             assert.equal((changedTarget as { status?: string }).status, "unavailable",
               "the same operation cannot silently change its target");
+            const timeoutCandidate = await callInput.tools!.propose_asset_image_generation.execute!(
+              { assetId: 22, vendorId: "vendor", modelId: "image-v1",
+                resolution: "1024x1024" },
+              { toolCallId: "production-image-proposal-timeout", messages: [] });
+            assert.equal((timeoutCandidate as { status?: string }).status, "pending");
             assert.equal((await db("o_agentVendorRequest")).length, 0,
               "model proposal cannot submit to Vendor");
             const parent = await db("o_agentRun").where({ role: PRODUCTION_HARNESS_ROLE,
@@ -157,10 +164,15 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
       actorUserId: 1 }))?.status, "succeeded");
     assert.equal((await db("o_agentToolReceipt").where({ runId: run.id,
       toolName: "get_production_workspace_text", status: "succeeded" })).length, 1);
-    assert.equal((await db("o_agentSkillPermissionDecision").where({ runId: run.id })).length, 3);
-    const imageProposal = await db("o_agentRun")
-      .where({ projectId: 7, scope: "approved-billable-image-v1" }).first();
+    assert.equal((await db("o_agentSkillPermissionDecision").where({ runId: run.id })).length, 4);
+    const imageProposals = await db("o_agentRun")
+      .where({ projectId: 7, scope: "approved-billable-image-v1" });
+    const imageProposal = imageProposals.find((row) =>
+      JSON.parse(row.input).parentOperationId === "production-image-proposal-one");
+    const timeoutProposal = imageProposals.find((row) =>
+      JSON.parse(row.input).parentOperationId === "production-image-proposal-timeout");
     assert.ok(imageProposal);
+    assert.ok(timeoutProposal);
     const pendingImage = await imageApproval.inspect(7, imageProposal.id, 1);
     assert.equal(pendingImage?.sourceRunId, run.id);
     await assert.rejects(db("o_agentToolApproval")
@@ -169,7 +181,7 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
     /Agent Tool approval binding is immutable/,
     "the database must reject a rewritten source operation");
     assert.equal((await db("o_agentRun").where({ projectId: 7,
-      scope: "approved-billable-image-v1" })).length, 1,
+      scope: "approved-billable-image-v1" })).length, 2,
     "revocation cannot create another approval Run");
     assert.equal((await db("o_agentVendorRequest")).length, 0);
     await assert.rejects(imageApproval.decide({ projectId: 7, actorUserId: 2,
@@ -193,7 +205,7 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
     const commit = createBillableImageCommitRuntime({ work, now: () => 212,
       createId, verifyPreflight: async () => "a".repeat(64) });
     let providerCalls = 0;
-    const execute = createBillableImageExecution({
+    const executionDependencies: BillableImageExecutionDependencies = {
       prepare: async () => ({ target: { vendorId: "vendor", modelId: "image-v1" },
         input: { prompt: "已冻结的单资产图片生成提示", size: "1K", aspectRatio: "1:1" } }),
       preflight: async () => "a".repeat(64),
@@ -204,7 +216,8 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
       currentRunVersion: async (runId, projectId) => Number((await db("o_agentRun")
         .where({ id: runId, projectId }).first("version")).version),
       commit: (input) => commit.commit(input),
-    });
+    };
+    const execute = createBillableImageExecution(executionDependencies);
     const approvalRecord = await db("o_agentToolApproval")
       .where({ runId: imageProposal.id }).first("payloadJson");
     const scope = billableImageScopeSchema.parse(JSON.parse(approvalRecord.payloadJson));
@@ -227,6 +240,36 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
       eventType: "tool.billable-image.committed" }).first("vendorRequestId", "imageArtifactId");
     assert.ok(acceptedTrace?.vendorRequestId);
     assert.ok(acceptedTrace?.imageArtifactId);
+    const pendingTimeout = await imageApproval.inspect(7, timeoutProposal.id, 1);
+    assert.equal(pendingTimeout?.sourceRunId, run.id);
+    const approvedTimeout = await imageApproval.decide({ projectId: 7,
+      actorUserId: 1, runId: timeoutProposal.id, approvalId: pendingTimeout!.id,
+      clientCommandId: "owner-approve-timeout", expectedVersion: pendingTimeout!.runVersion,
+      decision: "approve" });
+    const timeoutRecord = await db("o_agentToolApproval")
+      .where({ runId: timeoutProposal.id }).first("payloadJson");
+    const timeoutScope = billableImageScopeSchema.parse(JSON.parse(timeoutRecord.payloadJson));
+    let timeoutProviderCalls = 0;
+    const timeoutExecute = createBillableImageExecution({ ...executionDependencies,
+      invoke: async () => { timeoutProviderCalls++; throw new Error("ambiguous provider timeout"); } });
+    const timeoutCommand = { projectId: 7, actorUserId: 1,
+      runId: timeoutProposal.id, approvalId: pendingTimeout!.id,
+      expectedVersion: approvedTimeout!.runVersion, scope: timeoutScope };
+    const unknown = await timeoutExecute(timeoutCommand);
+    assert.equal(unknown.status, "unknown");
+    assert.equal(timeoutProviderCalls, 1);
+    assert.equal((await timeoutExecute(timeoutCommand)).status, "not-dispatched");
+    assert.equal(timeoutProviderCalls, 1, "an ambiguous submission cannot be replayed");
+    const requestId = unknown.requestId;
+    assert.equal((await db("o_agentVendorRequest").where({ requestId }).first()).status,
+      "unknown");
+    const timeoutRun = await db("o_agentRun").where({ id: timeoutProposal.id }).first();
+    await ledger.requestCancellation({ projectId: 7, actorUserId: 1,
+      requestId, expectedVersion: timeoutRun.version });
+    assert.equal((await artifact.observe(requestId, media)).status, "late");
+    assert.equal((await db("o_assets").where({ id: 22 }).first()).imageId, null);
+    assert.notEqual((await db("o_agentRun").where({ id: timeoutProposal.id }).first()).status,
+      "succeeded", "late media is evidence, not a completed effect");
     assert.equal((await runtime.inspect({ runId: run.id, projectId: 7,
       actorUserId: 1 }))?.status, "succeeded",
     "Owner decision on the child must not rewrite the parent guidance result");

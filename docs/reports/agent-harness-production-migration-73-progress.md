@@ -14,9 +14,9 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 
 ## 定向验证与剩余边界
 
-`tests/productionHarnessWorkspaceRead.test.ts` 覆盖独立 Tool 修订/角色/scope、跨 Project 剧本拒绝、重复行拒绝、缺失草稿、无效 JSON、超长内容和提案 Tool 风险声明。`tests/productionHarnessGrants.test.ts` 覆盖默认拒绝、非 Owner 拒绝、版本冲突、撤销、Script 授权隔离和 HTTP actor 来源。`tests/productionHarnessRun.test.ts` 用假模型验证 Skill 冻结、读取和图片提案、权限判定、伪造租约拒绝、授权撤销后拒绝、审批绑定不可变、同操作幂等与变更目标冲突、非 Owner 不能批准子审批，以及 Owner 批准后通过假 Image Provider、T09 请求账本与 Artifact/Asset 提交完成一条局部链路；同一审批重复执行不会再次调用 Provider，父 Run 仍保持独立成功状态。T09 审批/路由测试作为相关回归；本轮 11 个定向用例通过，`yarn lint`（TypeScript `--noEmit`）通过。这不视作全量验收；未运行构建、浏览器或真实 Provider。
+`tests/productionHarnessWorkspaceRead.test.ts` 覆盖独立 Tool 修订/角色/scope、跨 Project 剧本拒绝、重复行拒绝、缺失草稿、无效 JSON、超长内容和提案 Tool 风险声明。`tests/productionHarnessGrants.test.ts` 覆盖默认拒绝、非 Owner 拒绝、版本冲突、撤销、Script 授权隔离和 HTTP actor 来源。`tests/productionHarnessRun.test.ts` 用假模型验证 Skill 冻结、读取和图片提案、权限判定、伪造租约拒绝、授权撤销后拒绝、审批绑定不可变、同操作幂等与变更目标冲突、非 Owner 不能批准子审批。两条独立 Asset 分支在同一父 Run 下测试：一条经 Owner 批准、假 Image Provider、T09 请求账本与 Artifact/Asset 提交成功；另一条模拟供应商超时，记为 unknown 且重复执行不再次调用 Provider，取消后迟到图片只保留证据、不链接 Asset。父 Run 始终保持独立成功状态。T09 审批/路由测试作为相关回归；本轮 11 个定向用例通过，`yarn lint`（TypeScript `--noEmit`）通过。这不视作全量验收；未运行构建、浏览器或真实 Provider。
 
-待完成：把生产生成效果表达为父 Run 可恢复的 typed Steps、多阶段模型与 Vendor 组合、分镜/资产写操作审批和回执、批量图片与视频生成迁移、真实重启/租约/迟到结果的跨边界恢复，以及 Web 状态投影和兼容回退。当前只有经 Owner 批准的单资产图片子 Run 可以沿 T09 路径提交并关联 Artifact；父指导 Run 本身不能自行批准或提交计费请求，更不能把待审批意图描述成已生成图片、视频或分镜效果；不得描述为生产生成黄金链路迁移完成。
+待完成：把生产生成效果表达为父 Run 可恢复的 typed Steps、多阶段模型与 Vendor 组合、分镜/资产写操作审批和回执、批量图片与视频生成迁移、真实进程重启/跨进程租约接管/迟到结果的跨边界恢复，以及 Web 状态投影和兼容回退。当前只有经 Owner 批准的单资产图片子 Run 可以沿 T09 路径提交并关联 Artifact；本地假 Provider 测试覆盖 unknown、禁止重放与迟到证据，但不证明真实供应商行为。父指导 Run 本身不能自行批准或提交计费请求，更不能把待审批意图描述成已生成图片、视频或分镜效果；不得描述为生产生成黄金链路迁移完成。
 
 ## 阶段追问准备（非最终面经）
 
