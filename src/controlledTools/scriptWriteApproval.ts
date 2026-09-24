@@ -5,12 +5,14 @@ import { v4 as uuid } from "uuid";
 
 import {
   AGENT_RUN_CHECKPOINT_SCHEMA_VERSION,
+  AGENT_RUN_OUTPUT_SCHEMA_VERSION,
   canonicalCheckpointPayload, hashCheckpointPayload,
   type AgentRunCheckpointPayload,
 } from "@/agentRuntime";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import type { DatabaseWork } from "@/database";
 import { getDatabaseRuntime } from "@/database";
+import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
 import {
   SCRIPT_CONTENT_WRITE_TOOL_DEFINITION,
@@ -21,7 +23,8 @@ import {
   freezeScriptWritePayload, scriptContentWriteInput, scriptContentWritePreview,
   scriptWorkspaceWriteInput, scriptWorkspaceWritePreview,
 } from "./scriptWriteContract";
-import { scriptContentTargetState, scriptWorkspaceTargetState } from "./scriptWriteState";
+import { ScriptWriteTargetConflictError,
+  scriptContentTargetState, scriptWorkspaceTargetState } from "./scriptWriteState";
 
 export const SCRIPT_WRITE_RUN_SCOPE = "approved-script-write-v1" as const;
 export const SCRIPT_WRITE_APPROVAL_TTL_MS = 10 * 60_000;
@@ -37,6 +40,16 @@ export interface ProposeScriptWriteInput {
   operationId: string;
   kind: ScriptWriteKind;
   payload: unknown;
+}
+
+export interface DecideScriptWriteInput {
+  projectId: number;
+  actorUserId: number;
+  runId: string;
+  approvalId: string;
+  clientCommandId: string;
+  expectedVersion: number;
+  decision: "approve" | "reject";
 }
 
 export interface ScriptWriteApprovalSnapshot {
@@ -67,6 +80,16 @@ export class ScriptWriteProposalConflictError extends Error {
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function denialDiagnostic(audience: "toolReceipt" | "trace") {
+  const projected = projectTraceSafeDiagnostic({
+    failureClass: "Tool", stage: "tool-call", kind: "authorizationFailed",
+    severity: "error", certainty: "known-no-effect", expectedness: "expected",
+    retryDisposition: "never",
+  }, audience);
+  if (!projected.ok) throw new ScriptWriteProposalRejectedError("evidence");
+  return projected.value;
 }
 
 function toolFor(kind: ScriptWriteKind): WriteTool {
@@ -243,6 +266,200 @@ export function createScriptWriteApprovalRuntime(dependencies: {
         await assertOwner(db, projectId, actorUserId);
         return readSnapshot(db, projectId, runId);
       });
+    },
+    async decide(input: DecideScriptWriteInput): Promise<ScriptWriteApprovalSnapshot | null> {
+      if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
+        || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0
+        || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion <= 0
+        || !/^[A-Za-z0-9._:-]{1,128}$/u.test(input.clientCommandId)
+        || !["approve", "reject"].includes(input.decision)) {
+        throw new ScriptWriteProposalRejectedError("contract");
+      }
+      const now = dependencies.now();
+      return dependencies.work((db) => db.transaction(async (tx) => {
+        await assertOwner(tx, input.projectId, input.actorUserId);
+        const run = await tx("o_agentRun").where({ id: input.runId,
+          projectId: input.projectId, role: "scriptAgent",
+          scope: SCRIPT_WRITE_RUN_SCOPE }).first();
+        if (!run) return null;
+        const approval = await tx("o_agentToolApproval").where({ id: input.approvalId,
+          runId: run.id }).first();
+        if (!approval) return null;
+        if (approval.decisionCommandId === input.clientCommandId) {
+          if (approval.decisionExpectedVersion !== input.expectedVersion
+            || approval.decisionKind !== input.decision) {
+            throw new ScriptWriteProposalConflictError();
+          }
+          return readSnapshot(tx, input.projectId, run.id);
+        }
+        if (approval.decisionCommandId || run.version !== input.expectedVersion
+          || run.status !== "waiting" || approval.status !== "pending"
+          || run.cancellationRequestedAt != null) {
+          throw new ScriptWriteProposalConflictError();
+        }
+        const snapshot = await readSnapshot(tx, input.projectId, run.id);
+        if (!snapshot) throw new ScriptWriteProposalRejectedError("evidence");
+        const receipt = await tx("o_agentToolReceipt").where({ id: approval.receiptId,
+          runId: run.id, status: "pending" }).first();
+        if (!receipt) throw new ScriptWriteProposalRejectedError("evidence");
+        const workspacePayload = snapshot.kind === "workspace"
+          ? scriptWorkspaceWriteInput.parse(JSON.parse(approval.payloadJson)) : null;
+        const scriptPayload = snapshot.kind === "script"
+          ? scriptContentWriteInput.parse(JSON.parse(approval.payloadJson)) : null;
+        let failure: "rejected" | "expired" | "conflicted" | null =
+          now >= approval.expiresAt ? "expired"
+            : input.decision === "reject" ? "rejected" : null;
+        let target: { rowId?: number | null; scriptId?: number | null;
+          stateHash: string } | null = null;
+        if (!failure) {
+          try {
+            target = workspacePayload
+              ? await scriptWorkspaceTargetState(tx, input.projectId, workspacePayload)
+              : await scriptContentTargetState(tx, input.projectId, scriptPayload!);
+            if (target.stateHash !== approval.targetStateHash) failure = "conflicted";
+          } catch (error) {
+            if (error instanceof ScriptWriteTargetConflictError) failure = "conflicted";
+            else throw error;
+          }
+        }
+        if (failure) {
+          await tx("o_agentToolApproval").where("id", approval.id).update({
+            status: failure, decisionKind: input.decision,
+            decisionCommandId: input.clientCommandId,
+            decisionExpectedVersion: input.expectedVersion,
+            decidedByUserId: input.actorUserId, decidedAt: now,
+          });
+          await tx("o_agentToolReceipt").where("id", receipt.id).update({
+            status: "failed", diagnostic: JSON.stringify(denialDiagnostic("toolReceipt")),
+            updatedAt: now,
+          });
+          const rejected = failure === "rejected";
+          await tx("o_agentRun").where("id", run.id).update({
+            status: rejected ? "cancelled" : "waiting",
+            waitingReason: rejected ? null : `tool-approval-${failure}`,
+            attentionReason: rejected ? null : `tool-approval-${failure}`,
+            allowedActions: JSON.stringify(["inspect"]), version: run.version + 1,
+            updatedAt: now, ...(rejected ? { completedAt: now } : {}),
+          });
+          if (rejected) {
+            await tx("o_agentRunStep").where({ runId: run.id }).update({
+              status: "cancelled", completedAt: now });
+            await tx("o_agentRunAttempt").where({ runId: run.id }).update({
+              status: "cancelled", completedAt: now });
+          }
+          await appendCausalTrace(tx, { id: dependencies.createId(),
+            runId: run.id, toolReceiptId: receipt.id,
+            eventType: `tool.approval.${failure}`, createdAt: now,
+            ...(rejected ? {} : { diagnostic: denialDiagnostic("trace") }),
+          });
+          return readSnapshot(tx, input.projectId, run.id);
+        }
+        let result: { key: "storySkeleton" | "adaptationStrategy";
+          contentHash: string } | { scriptId: number;
+          effect: "created" | "updated"; contentHash: string };
+        if (workspacePayload) {
+          const row = target?.rowId === null ? null : await tx("o_agentWorkData")
+            .where({ id: target?.rowId, projectId: input.projectId,
+              key: "scriptAgent" }).first();
+          let data: Record<string, unknown> = {};
+          if (row) {
+            const parsed: unknown = JSON.parse(row.data ?? "{}");
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+              throw new ScriptWriteProposalRejectedError("evidence");
+            }
+            data = parsed as Record<string, unknown>;
+          }
+          const nextData = { ...data, [workspacePayload.key]: workspacePayload.content };
+          if (row) {
+            const changed = await tx("o_agentWorkData").where({ id: row.id,
+              projectId: input.projectId, key: "scriptAgent" })
+              .update({ data: JSON.stringify(nextData), updateTime: now });
+            if (changed !== 1) throw new ScriptWriteProposalConflictError();
+          } else {
+            await tx("o_agentWorkData").insert({ projectId: input.projectId,
+              key: "scriptAgent", data: JSON.stringify(nextData),
+              createTime: now, updateTime: now });
+          }
+          result = { key: workspacePayload.key,
+            contentHash: sha256(workspacePayload.content) };
+        } else {
+          const payload = scriptPayload!;
+          let scriptId: number;
+          if (payload.effect === "create") {
+            const [id] = await tx("o_script").insert({ projectId: input.projectId,
+              name: payload.name, content: payload.content, createTime: now });
+            scriptId = id;
+          } else {
+            const changed = await tx("o_script").where({ id: payload.scriptId,
+              projectId: input.projectId }).update({ name: payload.name,
+                content: payload.content });
+            if (changed !== 1) throw new ScriptWriteProposalConflictError();
+            scriptId = payload.scriptId;
+          }
+          result = { scriptId, effect: payload.effect === "create" ? "created" : "updated",
+            contentHash: sha256(payload.content) };
+        }
+        const tool = toolFor(snapshot.kind);
+        const validatedResult = snapshot.kind === "workspace"
+          ? SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION.outputSchema.parse(result)
+          : SCRIPT_CONTENT_WRITE_TOOL_DEFINITION.outputSchema.parse(result);
+        const outputJson = JSON.stringify(validatedResult);
+        const step = await tx("o_agentRunStep").where({ runId: run.id }).first();
+        const attempt = await tx("o_agentRunAttempt").where({ runId: run.id }).first();
+        const predecessor = await tx("o_agentRunCheckpoint")
+          .where({ runId: run.id }).orderBy("sequence", "desc").first();
+        if (!step || !attempt || !predecessor || predecessor.kind !== "run-created") {
+          throw new ScriptWriteProposalRejectedError("evidence");
+        }
+        const outputId = dependencies.createId();
+        const outputContent = `${tool.name} committed`;
+        const outputContentHash = sha256(JSON.stringify(outputContent));
+        await tx("o_agentToolApproval").where("id", approval.id).update({
+          status: "approved", decisionKind: input.decision,
+          decisionCommandId: input.clientCommandId,
+          decisionExpectedVersion: input.expectedVersion,
+          decidedByUserId: input.actorUserId, decidedAt: now,
+        });
+        await tx("o_agentToolReceipt").where("id", receipt.id).update({
+          status: "succeeded", outputJson, outputHash: sha256(outputJson),
+          updatedAt: now,
+        });
+        await tx("o_agentRunOutput").insert({ id: outputId,
+          runId: run.id, stepId: step.id, kind: "assistant-text",
+          content: outputContent, contentHash: outputContentHash,
+          schemaVersion: AGENT_RUN_OUTPUT_SCHEMA_VERSION, createdAt: now });
+        await tx("o_agentRunStep").where("id", step.id).update({
+          status: "succeeded", completedAt: now });
+        await tx("o_agentRunAttempt").where("id", attempt.id).update({
+          status: "succeeded", completedAt: now });
+        await tx("o_agentRun").where("id", run.id).update({
+          status: "succeeded", waitingReason: null, attentionReason: null,
+          allowedActions: JSON.stringify(["inspect"]), version: run.version + 1,
+          lastCommittedStepId: step.id, updatedAt: now, completedAt: now,
+        });
+        const checkpoint: AgentRunCheckpointPayload = {
+          schemaVersion: AGENT_RUN_CHECKPOINT_SCHEMA_VERSION,
+          kind: "step-committed", runId: run.id, stepId: step.id,
+          attemptId: attempt.id, sequence: predecessor.sequence + 1,
+          runVersion: run.version + 1, lastCommittedStepId: step.id,
+          predecessorCheckpointId: predecessor.id,
+          predecessorPayloadHash: predecessor.payloadHash,
+          outputId, outputContentHash,
+        };
+        await tx("o_agentRunCheckpoint").insert({ id: dependencies.createId(),
+          runId: run.id, stepId: step.id, attemptId: attempt.id,
+          sequence: checkpoint.sequence, kind: "step-committed",
+          schemaVersion: AGENT_RUN_CHECKPOINT_SCHEMA_VERSION,
+          runVersion: checkpoint.runVersion, lastCommittedStepId: step.id,
+          predecessorCheckpointId: predecessor.id,
+          payload: canonicalCheckpointPayload(checkpoint),
+          payloadHash: hashCheckpointPayload(checkpoint), createdAt: now });
+        await appendCausalTrace(tx, { id: dependencies.createId(),
+          runId: run.id, stepId: step.id, attemptId: attempt.id,
+          toolReceiptId: receipt.id,
+          eventType: "tool.approval.committed", createdAt: now });
+        return readSnapshot(tx, input.projectId, run.id);
+      }));
     },
   };
 }
