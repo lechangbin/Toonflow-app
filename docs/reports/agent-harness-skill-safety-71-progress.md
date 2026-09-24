@@ -1,6 +1,6 @@
 # Agent Harness T15 · Skill 安全解析（阶段进度）
 
-Issue：`lechangbin/Toonflow-app#71`。本分支以 T14 Skill 基础为父，并本地合入尚未验收的 T13 Project Memory 基础；GitHub PR 尚未合并。这里记录的是依赖、权限、资源和路由的第一组拒绝边界，不代表完整 T15 或 T21 验收。
+Issue：`lechangbin/Toonflow-app#71`。本分支以 T14 Skill 基础为父，并本地合入尚未验收的 T13 Project Memory 基础；GitHub PR 尚未合并。这里记录阶段性拒绝边界，不代表完整 T15 或 T21 验收。
 
 ## 已实现
 
@@ -16,22 +16,24 @@ Issue：`lechangbin/Toonflow-app#71`。本分支以 T14 Skill 基础为父，并
 - 新增 `routeAndBindRun`，同一事务里做 Run/Project/角色校验、写入路由决定、解析所选根的依赖闭包并冻结所有 Revision；若最高分并列，只写入 `needs-attention` 路由决定，不绑定任何 Skill。定向测试核对选中 Revision 与冻结根一致、并列不绑定、重复调用拒绝。生产启动仍待选择此唯一入口。
 - 资源成功加载时，在同一事务中追加不可变 ResourceAccess 记录，关联 Run、SkillRevision、Resource ID 与内容哈希，不重复保存正文。跨 Project、未绑定或撤销后的拒绝不会伪造成成功访问；相关记录随 Project 删除事务清理。历史资源正文仍由不可变 ResourceRevision 保管。
 - `bindResolvedRun` 与 `routeAndBindRun` 现在还在冻结事务内写入不可变 RunSkillResolution：根 Skill、精确修订清单、依赖边、内容与 manifest 哈希都保留为带整体哈希的计划快照。并列路由不产生闭包记录；旧 `bindRun` 仍没有此证据，应在迁移时禁止其作为新 Agent 路径。
+- 只读 `read:novel` 能力增加明确的 Project grant 行：不存在即拒绝，Project Owner 才能经版本 CAS 启用/撤销；HTTP 入口从已验证 JWT 上下文取得操作者，不信任 body 中的身份。受控 Tool 的可信 grant 解析器在执行事务中重新读取 Project 当前状态；平台、角色、Run 范围由代码策略确定，Project 则由持久授权确定。当前只覆盖 Script Agent 两个只读 Tool，其他能力未开放；撤销会影响既有 Run 的后续 Tool 调用。
 
 ## 阶段验证与未完成边界
 
-生命周期切片后，`skillResolution.test.ts`、`skillPermissions.test.ts`、`skillResources.test.ts`、`skillRouting.test.ts`、`skillRuntime.test.ts` 共 6 个定向用例通过；Skill 基础和 Memory 集成 7 个定向回归此前通过。TypeScript `--noEmit` 通过。未运行全量测试、构建、浏览器或真实 Provider。
+最近一轮 `skillProjectGrants.test.ts` 两个定向用例、`skillPermissions.test.ts` 两个定向用例及 TypeScript `--noEmit` 通过；此前各 Skill 解析、资源、路由、Run 绑定与 Memory 集成切片分别做过定向验证。未运行全量测试、构建、浏览器或真实 Provider。
 
-尚未把原子依赖闭包绑定和持久路由入口接入生产 Run 启动；Skill Tool 闸门虽已接入可配置的 ControlledToolRuntime，但旧 Agent 未启用，也没有持久化的可信平台/Project/Run grant 来源。没有 Skill ID 或冻结绑定时拒绝执行，但此类早期拒绝尚未写入 PermissionDecision。管理 UI/API、依赖/资源升级生命周期和旧 Agent 迁移仍未完成；当前结果不能描述成端到端 Skill 授权闭环。
+尚未把原子依赖闭包绑定和持久路由入口接入生产 Run 启动；Skill Tool 闸门虽已接入可配置的 ControlledToolRuntime，旧 Agent 尚未启用。当前可信 grant 解析只覆盖 Script Agent 的 `read:novel`，其他能力及管理 UI 未开放。没有 Skill ID 或冻结绑定时拒绝执行，但此类早期拒绝尚未写入 PermissionDecision。依赖/资源升级生命周期和旧 Agent 迁移仍未完成；当前结果不能描述成端到端 Skill 授权闭环。
 
 ## 阶段追问准备（非最终面经）
 
-1. 问：为什么依赖必须固定精确 Revision？答：如果 A 依赖 B 的“当前版本”，B 激活新版本后 A 的同一运行可能得到不同指令。解析器把根的激活版本与每条依赖的 exact semanticVersion 分开，逐节点复验已发布状态和哈希，按稳定顺序生成闭包。测试覆盖三节点 DAG、缺失、循环和角色不兼容。它尚未原子绑定到真实 Run，因此不能声称执行期依赖冻结已完整交付。
+1. 问：为什么依赖必须固定精确 Revision？答：如果 A 依赖 B 的“当前版本”，B 激活新版本后 A 的同一运行可能得到不同指令。解析器把根的激活版本与每条依赖的 exact semanticVersion 分开，逐节点复验已发布状态和哈希，按稳定顺序生成闭包。测试覆盖三节点 DAG、缺失、循环和角色不兼容；`bindResolvedRun` / `routeAndBindRun` 可原子冻结 Run 闭包，但旧直接绑定入口仍在，生产 Run 启动尚未强制走新路径。
 2. 问：Skill 写了 `read:novel`，为什么仍可能被拒？答：manifest 只表达请求。权限决策还要平台、Project、Run 和角色每层都允许 Tool 所需 capability，少任意一层都会列出缺口；Skill 不能靠文本声明把自己升级为可调用 Tool。当前这是可测试的纯规则，审批与 Tool Runtime 接线仍未完成。
 3. 问：为什么资源必须按 ID 与哈希加载？答：运行时文件路径会随着编辑和工作目录变化，也可能形成路径穿越。资源在草稿发布前固定 ID、媒体类型和内容哈希，发布检查齐全，Run 通过冻结修订查该 ID；测试拒绝跨 Project、未声明资源与路径形式输入。这样证明了新资源加载边界的确定性，不等于旧 Socket Agent 已停止读 Markdown 路径。
 4. 问：弃用与撤销为什么不同？答：弃用阻止未来选择，但已经冻结修订的 Run 可以继续读取资源，避免发布策略变动破坏可复现性；撤销处理安全事件，立即拒绝历史 Run 的资源访问。策略状态独立于不可变内容，数据库触发器阻止逆向转移，应用层又用版本 CAS 防并发误操作。定向测试覆盖旧 Run、新 Run、重新激活、依赖解析及路由拒绝理由；这仍不等于实际 Tool 执行已获得同等保护。
 5. 问：怎样避免依赖解析和 Run 冻结之间的版本竞态？答：`bindResolvedRun` 在一次数据库事务内读取 queued Run、解析根和所有精确依赖，再逐条写入冻结绑定。测试对三节点闭包核对 Revision 集合，并让底层依赖弃用，验证新 Run 失败且没有部分写入。该入口仍待接入生产启动路径；现有直接 `bindRun` 可绕过闭包，不能声称所有 Run 已有此保证。
 6. 问：怎样解释一次没有选中 Skill 的路由？答：`routeForRun` 将候选 Revision、优先级、关键词命中数和 `role`、`intent`、`deprecated`、`revoked` 等原因作为不可变决定记录，而不是只留下最终空结果。它只保存查询哈希，不保存原始用户文本；测试覆盖并列待人工处理、跨 Project 拒绝、记录不可篡改及 Project 删除清理。生产入口仍待接线，不能声称每次路由已有该审计。
-7. 问：Skill 声明的能力怎样变成真正的 Tool 拒绝？答：可配置的 Tool 闸门在受控 Tool 的同一准备事务里验证 Run 冻结的 SkillRevision 内容哈希、manifest 哈希、角色与撤销策略，再把 Skill 请求和四层外部 grant 对 Tool 必需能力取交。定向测试证明缺 Skill ID、错绑定、缺 Project grant 和撤销都会在适配器调用前拒绝，并持久记录有绑定时的允许/拒绝判定。旧 Agent 尚未启用这一配置，grant 的可信持久来源亦待完成，因此不能说生产 Agent 已全面强制该策略。
+7. 问：Skill 声明的能力怎样变成真正的 Tool 拒绝？答：可配置的 Tool 闸门在受控 Tool 的同一准备事务里验证 Run 冻结的 SkillRevision 内容哈希、manifest 哈希、角色与撤销策略，再把 Skill 请求和四层外部 grant 对 Tool 必需能力取交。定向测试证明缺 Skill ID、错绑定、缺 Project grant 和撤销都会在适配器调用前拒绝，并持久记录有绑定时的允许/拒绝判定。已新增只读 `read:novel` 的可信 Project grant 来源，但旧 Agent 尚未启用、其他能力尚无策略，不能说生产 Agent 已全面强制该策略。
 8. 问：路由与依赖绑定为何必须同事务？答：如果先路由、后按“当前激活版本”解析，两个动作之间的激活变化可能让决策审计指向 A 修订、实际 Run 却绑定 B 修订。`routeAndBindRun` 在一个事务内计算决定与闭包，还显式比较所选 Revision 与解析根 Revision；并列只留待处理决定，不做猜测式绑定。测试证明并列没有绑定、单选身份一致且不可重复绑定；生产入口切换仍未完成。
 9. 问：怎样证明一个 Run 真正读取了哪个 Skill 资源？答：`loadResource` 先在 Project 范围核对 Run 冻结绑定、已发布 Revision 的内容/manifest 哈希、撤销状态和资源声明，再在同一事务里追加 ResourceAccess；记录只含 Run、修订、资源 ID 与哈希，不复制正文。测试核对成功访问可追溯、跨 Project 拒绝不产生成功记录且记录不可修改。拒绝访问目前没有单独的访问失败记录，因此审计结论应限于成功加载。
 10. 问：只有 RunSkillBinding 表为什么不够？答：绑定表能指出 Run 冻结了哪些修订，却不能直接表述根 Skill 与依赖边，事后重算会受到发布策略或激活指针变化影响。RunSkillResolution 在同一事务保存当时解析出的根、节点、边与哈希，并用数据库触发器禁止更新。测试核对三节点闭包以及并列路由无闭包；旧直接绑定入口仍可不产生该证据，生产迁移必须排除它。
+11. 问：Project grant 为什么不能来自 Model 请求或前端 body？答：Tool 的有效能力必须由服务端权威来源决定，前端和 Skill manifest 最多表达请求。这里 Owner 的 JWT 身份通过 HTTP 中间件传入，命令再核对 `o_project.userId`；持久 grant 默认不存在，执行时在 Tool 准备事务读取当前状态，撤销马上使既有 Run 的后续调用失败。版本 CAS 防止覆盖并发改动。现阶段仅 `read:novel` 两个只读 Tool，不能把它外推为写工具或计费工具的授权。

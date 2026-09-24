@@ -950,6 +950,19 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("updatedAt").notNullable();
       },
     },
+    // Project 对 Skill Tool 能力的显式授权；不存在即默认拒绝
+    {
+      name: "o_agentProjectCapabilityGrant",
+      builder: (table) => {
+        table.integer("projectId").notNullable();
+        table.text("capability").notNullable();
+        table.text("state").notNullable();
+        table.integer("version").notNullable();
+        table.integer("changedByUserId").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.primary(["projectId", "capability"]);
+      },
+    },
     // Skill Binding：一次激活指向已发布修订；回滚也只改变这里
     {
       name: "o_agentSkillBinding",
