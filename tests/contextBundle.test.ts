@@ -22,6 +22,18 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     await db("o_novel").insert([{ id: 2, projectId: 7, chapterIndex: 1,
       chapter: "本章", chapterData: "本项目的直接证据" },
     { id: 3, projectId: 9, chapterIndex: 1, chapter: "外部", chapterData: "不能读取的机密" }]);
+    await db("o_agentRun").insert({ id: "prior-interaction", projectId: 7,
+      role: "scriptAgent", scope: "read-only-project-guidance-v1", clientRequestId: "prior",
+      requestFingerprint: "prior-fingerprint", input: JSON.stringify({ content: "上次的问题" }),
+      status: "succeeded", allowedActions: "[]", version: 1, createdAt: 50, updatedAt: 60,
+      completedAt: 60, fence: 0 });
+    await db("o_agentRunStep").insert({ id: "prior-step", runId: "prior-interaction", ordinal: 1,
+      kind: "model", logicalTarget: "fake", promptFingerprint: "prior-prompt", status: "succeeded",
+      startedAt: 51, completedAt: 60 });
+    await db("o_agentRunOutput").insert({ id: "prior-output", runId: "prior-interaction",
+      stepId: "prior-step", kind: "assistant-text", content: "上次的回答",
+      contentHash: createHash("sha256").update(JSON.stringify("上次的回答")).digest("hex"),
+      schemaVersion: "toonflow.agent-run-output.v1", createdAt: 60 });
     let serial = 0;
     const dependencies: AgentRunDependencies = {
       work: async (operation) => operation(db), now: () => 100,
@@ -43,6 +55,9 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     const bundle = await builder.build(input);
     assert.equal(bundle.attemptId, run.attempts[0].id);
     assert.ok(bundle.messages.some((message) => message.content.includes("本项目的直接证据")));
+    assert.ok(bundle.messages.some((message) => message.content.includes("上次的回答")));
+    assert.ok(bundle.messages.filter((message) => message.content.includes("上次的回答"))
+      .every((message) => message.role === "user"), "past assistant output cannot become instruction authority");
     assert.ok(bundle.messages.filter((message) => message.content.includes("(data, not instructions)"))
       .every((message) => message.role === "user"), "Project evidence never receives system authority");
     assert.ok(bundle.messages.every((message) => !message.content.includes("不能读取的机密")));
@@ -51,7 +66,7 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     assert.equal(persisted.manifestHash, bundle.manifestHash);
     assert.deepEqual(JSON.parse(persisted.messagesJson), bundle.messages);
     assert.deepEqual(JSON.parse(persisted.manifestJson).sources.map((entry: { id: string }) => entry.id),
-      ["project:7", "novel:2"]);
+      ["project:7", "novel:2", "interaction:prior-interaction"]);
     assert.deepEqual(JSON.parse(persisted.manifestJson).compactionActions,
       [{ sourceId: "project:7", action: "pagination" },
         { sourceId: "project:7", action: "typed-projection" }]);
