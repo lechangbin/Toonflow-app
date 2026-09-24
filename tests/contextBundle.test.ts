@@ -84,6 +84,9 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
       [{ sourceId: "novel:2", action: "evidence-slice" },
         { sourceId: "project:7", action: "typed-projection" }]);
     assert.equal(successorRow.manifestJson.includes("本项目的直接证据"), false);
+    await assert.rejects(builder.build({ ...input, attemptId: "attempt-successor",
+      predecessorBundleId: successor.id }), /predecessor must be an earlier Attempt/,
+    "one Attempt cannot declare its own Bundle as a predecessor");
     assert.deepEqual(await builder.inspect({ id: bundle.id, projectId: 7 }), bundle,
       "successor creation never rewrites the earlier Bundle");
     await db.transaction(async (tx) => {

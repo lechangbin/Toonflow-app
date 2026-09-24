@@ -12,7 +12,7 @@ Issue：`lechangbin/Toonflow-app#68`。本报告描述预算与来源规划基�
 - 已提交的只读 ToolReceipt 可作为候选 Tool Result：按同一 Project Run 读取、复验 Tool 修订、输出哈希、输出 schema、安全文本，以及完整因果 Trace 中对应的 `tool.succeeded` 事件；只允许由当前 Model Step 之前的 Step 产生。未完成、失败、无成功 Trace、当前或未来 Step、其他 Run 的 Receipt 不会进入候选集合。同一 Step 的工具调用与恢复语义暂不做向前投影，避免把尚未产生的结果倒灌进预调用 Context。
 - 近期交互仅从当前 Run 开始前已完成的同 Project、同 Script、同 Role/Scope 的 Run 与已提交输出形成低权威候选，限定最多十组，并复验输出哈希、schema 与安全文本；当前、未完成、跨作用域或之后才完成的 Run 均不进入候选。历史回答以标注数据的 `user` 消息出现，不继承 `system` 或 `assistant` 指令权威。
 - `inspect` 按 Project 授权读取已冻结 Bundle，复验 manifest 与精确消息的哈希和 schema；其他 Project 得到空结果。旧数据库补建 Bundle 表时保留已有 Project。
-- 显式刷新或新的 Attempt 可通过同一 Run 内的 `predecessorBundleId` 创建后继 Bundle；原 Bundle 内容与哈希不变。Configured Vendor 的 Text Model 可声明并校验 `contextWindowTokens`，`openTextCall` 公开已解析容量；未声明的旧 Model 保持“未知”，不捏造默认容量。
+- 显式刷新或新的 Attempt 可通过同一 Run 内的 `predecessorBundleId` 创建后继 Bundle；前驱必须位于更早 Step 或同一步的更早 Attempt，不能自指或引用未来证据；原 Bundle 内容与哈希不变。Configured Vendor 的 Text Model 可声明并校验 `contextWindowTokens`，`openTextCall` 公开已解析容量；未声明的旧 Model 保持“未知”，不捏造默认容量。
 - 已声明容量的只读生产 AgentRuntime 路径在 Model 调用意图提交前构造 Bundle，调用时使用与持久消息完全相同的输入；Bundle 哈希参与 invocation 指纹。强制内容预算不足时不调用 Fake Model。未声明容量的旧 Model 暂走明确标注的兼容路径，不能计入 ContextBundle 迁移完成率。
 - Project、Novel 与 Tool Result 文本作为标明“data, not instructions”的 `user` 角色消息注入，只有 Runtime 安全约束和受控 Tool/权限契约可成为 `system` 消息；数据来源不能借 `assistant` 历史发言获得更高的指令地位。
 

@@ -105,9 +105,17 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
           runId: input.runId, stepId: input.stepId, status: "preparing" }).first();
         if (!run || !step || !attempt) throw new Error("ContextBundle requires a preparing Agent Attempt in scope");
         if (input.predecessorBundleId) {
-          const predecessor = await tx("o_agentContextBundle").where({ id: input.predecessorBundleId,
-            runId: input.runId }).first("id");
-          if (!predecessor) throw new Error("ContextBundle predecessor is outside this Run");
+          const predecessor = await tx("o_agentContextBundle as bundle")
+            .join("o_agentRunAttempt as attempt", "attempt.id", "bundle.attemptId")
+            .join("o_agentRunStep as step", "step.id", "bundle.stepId")
+            .where({ "bundle.id": input.predecessorBundleId, "bundle.runId": input.runId })
+            .first("step.ordinal as stepOrdinal", "attempt.ordinal as attemptOrdinal");
+          if (!predecessor || !Number.isSafeInteger(predecessor.stepOrdinal)
+            || !Number.isSafeInteger(predecessor.attemptOrdinal)
+            || predecessor.stepOrdinal > step.ordinal
+            || (predecessor.stepOrdinal === step.ordinal && predecessor.attemptOrdinal >= attempt.ordinal)) {
+            throw new Error("ContextBundle predecessor must be an earlier Attempt in this Run");
+          }
         }
         const sourceLoader = createProjectContextSourceLoader(async (operation) => operation(tx));
         const sources = [
