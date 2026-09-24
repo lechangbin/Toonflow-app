@@ -5,6 +5,8 @@ import { success } from "@/lib/responseFormat";
 import { startVideoGenerationBatch, videoGenerationItemSchema } from "@/video/production";
 import { assertWorkbenchUserOrigin, WorkbenchAgentOriginRejectedError } from
   "@/video/workbenchOrigin";
+import { assertWorkbenchProjectOwner, WorkbenchOwnerRejectedError,
+  type WorkbenchOwnerCheck } from "@/video/workbenchOwner";
 
 const requestSchema = z
   .object({
@@ -17,12 +19,14 @@ const requestSchema = z
 
 export function createGenerateVideoRouter(
   start: typeof startVideoGenerationBatch = startVideoGenerationBatch,
+  authorize: WorkbenchOwnerCheck = assertWorkbenchProjectOwner,
 ) {
   const router = express.Router();
   return router.post("/", async (req, res, next) => {
     try {
       const request = requestSchema.parse(req.body);
       assertWorkbenchUserOrigin(request);
+      await authorize(req, request.projectId);
       const started = await start({
         projectId: request.projectId,
         scriptId: request.scriptId,
@@ -32,6 +36,10 @@ export function createGenerateVideoRouter(
       void started.completion.catch(() => console.error("Video Production Action completion update failed"));
       res.status(200).send(success({ actionId: started.actionId, ...started.tasks[0] }));
     } catch (error) {
+      if (error instanceof WorkbenchOwnerRejectedError) {
+        res.status(403).send({ message: error.message });
+        return;
+      }
       if (error instanceof WorkbenchAgentOriginRejectedError) {
         res.status(422).send({ message: error.message });
         return;
