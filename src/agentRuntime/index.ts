@@ -3,8 +3,11 @@ import { createHash } from "node:crypto";
 import { tool } from "ai";
 import type { Knex } from "knex";
 import { v4 as uuid } from "uuid";
+import { z } from "zod";
 
 import type { DatabaseWork } from "@/database";
+import { createContextBuilder } from "@/context";
+import { estimateContextTokens } from "@/context/budget";
 import {
   inspectPersistableText,
   projectTraceSafeDiagnostic,
@@ -723,34 +726,6 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         return { input: parseJson<{ content: string }>(run.input, { content: "" }), projectId: run.projectId };
       });
       if (!prepared) return;
-      let project: {
-        name?: string | null;
-        type?: string | null;
-        intro?: string | null;
-        artStyle?: string | null;
-        videoRatio?: string | null;
-      } | undefined;
-      let chapterRow: { count?: number } | undefined;
-      let availableChapters: Array<{ id: number; chapterIndex: number | null }> = [];
-      try {
-        [project, chapterRow, availableChapters] = await Promise.all([
-          dependencies.work((db) => db("o_project").where("id", prepared.projectId).first()),
-          dependencies.work((db) => db("o_novel").where("projectId", prepared.projectId).count<{ count: number }[]>("id as count").first()),
-          dependencies.work((db) => db("o_novel").where("projectId", prepared.projectId)
-            .orderBy("chapterIndex", "asc").orderBy("id", "asc").limit(20).select("id", "chapterIndex")),
-        ]);
-      } catch (error) {
-        throw new ClassifiedAgentRunError({
-          failureClass: "Context", stage: "context-build", kind: "executionFailed", severity: "error",
-          certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry",
-        }, error);
-      }
-      if (!project) {
-        throw new ClassifiedAgentRunError({
-          failureClass: "Context", stage: "context-build", kind: "contextMissing", severity: "error",
-          certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "never",
-        }, new AgentRunProjectNotFoundError(prepared.projectId));
-      }
       let call: ConfiguredTextCall;
       try {
         call = await dependencies.openTextCall(LOGICAL_TARGET);
@@ -760,26 +735,70 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry",
         }, error);
       }
-      const projectFacts = [
-        `项目名称：${project.name ?? "未知"}`,
-        `项目类型：${project.type ?? "未知"}`,
-        `项目简介：${project.intro ?? "无"}`,
-        `视觉风格：${project.artStyle ?? "无"}`,
-        `视频画幅：${project.videoRatio ?? "16:9"}`,
-        `章节数量：${Number(chapterRow?.count ?? 0)}`,
-        `可读取章节记录ID与编号：${availableChapters.map((chapter) => `${chapter.id}:${chapter.chapterIndex ?? "未知"}`).join("、") || "无"}${Number(chapterRow?.count ?? 0) > 20 ? "（仅列前20条）" : ""}`,
-      ].join("\n");
-      const invocation = {
-        messages: [
-          { role: "system" as const, content: SYSTEM_PROMPT },
-          { role: "assistant" as const, content: projectFacts },
-          { role: "user" as const, content: prepared.input.content },
-        ],
-      };
+      const invocation: { messages: Array<{ role: "system" | "assistant" | "user"; content: string }> } = { messages: [] };
+      if (call.target.contextWindowTokens === undefined) {
+        // Compatibility path for configured Models that have no declared Context capacity yet.
+        let project: { name?: string | null; type?: string | null; intro?: string | null;
+          artStyle?: string | null; videoRatio?: string | null } | undefined;
+        let chapterRow: { count?: number } | undefined;
+        let availableChapters: Array<{ id: number; chapterIndex: number | null }> = [];
+        try {
+          [project, chapterRow, availableChapters] = await Promise.all([
+            dependencies.work((db) => db("o_project").where("id", prepared.projectId).first()),
+            dependencies.work((db) => db("o_novel").where("projectId", prepared.projectId).count<{ count: number }[]>("id as count").first()),
+            dependencies.work((db) => db("o_novel").where("projectId", prepared.projectId)
+              .orderBy("chapterIndex", "asc").orderBy("id", "asc").limit(20).select("id", "chapterIndex")),
+          ]);
+        } catch (error) {
+          throw new ClassifiedAgentRunError({ failureClass: "Context", stage: "context-build", kind: "executionFailed",
+            severity: "error", certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry" }, error);
+        }
+        if (!project) {
+          throw new ClassifiedAgentRunError({ failureClass: "Context", stage: "context-build", kind: "contextMissing",
+            severity: "error", certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "never" },
+          new AgentRunProjectNotFoundError(prepared.projectId));
+        }
+        const projectFacts = [
+          `项目名称：${project.name ?? "未知"}`, `项目类型：${project.type ?? "未知"}`,
+          `项目简介：${project.intro ?? "无"}`, `视觉风格：${project.artStyle ?? "无"}`,
+          `视频画幅：${project.videoRatio ?? "16:9"}`, `章节数量：${Number(chapterRow?.count ?? 0)}`,
+          `可读取章节记录ID与编号：${availableChapters.map((chapter) => `${chapter.id}:${chapter.chapterIndex ?? "未知"}`).join("、") || "无"}${Number(chapterRow?.count ?? 0) > 20 ? "（仅列前20条）" : ""}`,
+        ].join("\n");
+        invocation.messages = [{ role: "system", content: SYSTEM_PROMPT },
+          { role: "assistant", content: projectFacts }, { role: "user", content: prepared.input.content }];
+      }
       const toolContracts = Object.values(TOOL_DEFINITIONS).map((definition) => ({
         name: definition.name, revision: definition.revision, contractHash: toolDefinitionContractHash(definition),
       }));
-      const invocationFingerprint = fingerprint({ target: call.target, invocation, toolContracts });
+      let contextBundleHash: string | undefined;
+      if (call.target.contextWindowTokens !== undefined) {
+        try {
+          const toolAndPermissionContract = JSON.stringify(Object.values(TOOL_DEFINITIONS).map((definition) => ({
+            name: definition.name, revision: definition.revision,
+            inputSchema: z.toJSONSchema(definition.inputSchema), policy: definition.policy,
+          })));
+          const bundle = await createContextBuilder({ work: dependencies.work,
+            now: dependencies.now, createId: dependencies.createId }).build({
+            runId, stepId, attemptId, projectId: prepared.projectId, role: READ_ONLY_AGENT_ROLE,
+            systemContract: SYSTEM_PROMPT, stepIntent: prepared.input.content,
+            toolAndPermissionContract, modelRevision: `${call.target.vendorId}:${call.target.modelId}`,
+            budget: { contextWindowTokens: call.target.contextWindowTokens,
+              policyMaxInputTokens: 8_192,
+              outputReserveTokens: call.target.maxOutputTokens && call.target.maxOutputTokens > 0
+                ? call.target.maxOutputTokens : 2_048,
+              toolProtocolReserveTokens: estimateContextTokens(toolAndPermissionContract), risk: "standard" },
+            novelIds: [], requiredNovelIds: [], expectedRevisions: {},
+          });
+          invocation.messages = bundle.messages;
+          contextBundleHash = bundle.manifestHash;
+        } catch (error) {
+          throw new ClassifiedAgentRunError({
+            failureClass: "Context", stage: "context-build", kind: "executionFailed", severity: "error",
+            certainty: "known-no-effect", expectedness: "unexpected", retryDisposition: "safe-retry",
+          }, error);
+        }
+      }
+      const invocationFingerprint = fingerprint({ target: call.target, invocation, toolContracts, contextBundleHash });
       try {
         intentCommitted = await dependencies.work((db) => db.transaction(async (trx) => {
           const run = await trx("o_agentRun").where({ id: runId, status: "queued" }).first();

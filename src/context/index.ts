@@ -140,6 +140,19 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
           modelRevision: input.modelRevision, budget, sources: selection.selected,
           omissions: selection.omissions, promptHash });
         const manifestHash = hash(manifestJson);
+        const existing = await tx("o_agentContextBundle").where({ attemptId: input.attemptId }).first();
+        if (existing) {
+          if (existing.runId !== input.runId || existing.stepId !== input.stepId
+            || existing.predecessorBundleId !== (input.predecessorBundleId ?? null)
+            || existing.manifestHash !== manifestHash || existing.promptHash !== promptHash
+            || hash(existing.manifestJson) !== existing.manifestHash
+            || hash(existing.messagesJson) !== existing.promptHash) {
+            throw new Error("ContextBundle Attempt identity was reused with different input");
+          }
+          return { id: existing.id, runId: input.runId, stepId: input.stepId,
+            attemptId: input.attemptId, predecessorBundleId: input.predecessorBundleId ?? null,
+            manifestHash, promptHash, messages, createdAt: existing.createdAt };
+        }
         await tx("o_agentContextBundle").insert({ id, runId: input.runId, stepId: input.stepId,
           attemptId: input.attemptId, predecessorBundleId: input.predecessorBundleId ?? null,
           schemaVersion: CONTEXT_BUNDLE_SCHEMA_VERSION, manifestJson, manifestHash,

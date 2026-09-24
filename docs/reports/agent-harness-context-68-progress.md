@@ -11,9 +11,10 @@ Issue：`lechangbin/Toonflow-app#68`。本报告描述预算与来源规划基�
 - 已提交的只读 ToolReceipt 可作为候选 Tool Result：按同一 Project Run 读取、复验 Tool 修订、输出哈希、输出 schema 与安全文本；未完成、失败或其他 Run 的 Receipt 不会进入候选集合。尚未建立“此 Receipt 早于当前 Model Step”的因果序号约束，因此未宣称完整的后续 Step 投影。
 - `inspect` 按 Project 授权读取已冻结 Bundle，复验 manifest 与精确消息的哈希和 schema；其他 Project 得到空结果。旧数据库补建 Bundle 表时保留已有 Project。
 - 显式刷新或新的 Attempt 可通过同一 Run 内的 `predecessorBundleId` 创建后继 Bundle；原 Bundle 内容与哈希不变。Configured Vendor 的 Text Model 可声明并校验 `contextWindowTokens`，`openTextCall` 公开已解析容量；未声明的旧 Model 保持“未知”，不捏造默认容量。
+- 已声明容量的只读生产 AgentRuntime 路径在 Model 调用意图提交前构造 Bundle，调用时使用与持久消息完全相同的输入；Bundle 哈希参与 invocation 指纹。强制内容预算不足时不调用 Fake Model。未声明容量的旧 Model 暂走明确标注的兼容路径，不能计入 ContextBundle 迁移完成率。
 
 ## 阶段验证与边界
 
-六个 `tests/context*.test.ts` 文件的 12 个定向用例覆盖预算公式、风险配比、向上回流、强制内容溢出、跨 Project/Script 筛选、修订与保留状态、损坏/冲突来源、分配不足时不截断、真实 SQLite 来源读取、已提交 ToolReceipt 筛选、准备中 Agent Attempt 的不可变 Bundle、后继 Bundle、Project 授权读取与删除生命周期、旧库增表、Model 容量声明校验。另对 `configuredVendor.test.ts` 的 `openTextCall` 定向用例验证容量透出。TypeScript `--noEmit` 检查通过；未运行全量测试、构建、浏览器或真实 Provider。
+六个 `tests/context*.test.ts` 文件的 13 个定向用例覆盖预算公式、风险配比、向上回流、强制内容溢出、跨 Project/Script 筛选、修订与保留状态、损坏/冲突来源、分配不足时不截断、真实 SQLite 来源读取、已提交 ToolReceipt 筛选、准备中 Agent Attempt 的不可变 Bundle、后继 Bundle、Project 授权读取与删除生命周期、旧库增表、Model 容量声明校验，以及真实 AgentRuntime 在调用前冻结与超额阻断。另对 `configuredVendor.test.ts` 的 `openTextCall` 定向用例验证容量透出；`agentRunRuntime.test.ts` 的 28 个 Runtime 定向回归通过。TypeScript `--noEmit` 检查通过；未运行全量测试、构建、浏览器或真实 Provider。
 
-目前 Builder 只装载 Project 概览、指定 Novel Chapter 与已提交的只读 Tool Result；近期交互、Memory、Skill 指令、完整压缩链、总结 provenance 及 Tool Result 的跨 Step 因果先后约束仍待完成。Model 容量元数据虽可声明并透出，内置/既有配置尚未全面补齐。现有 AgentRuntime 尚未把 Bundle 接入 Model 调用前的意图提交，旧 Socket Agent 更未迁移。测试证明了 Builder 的本地契约，不是端到端防泄漏或 Agent 迁移验收；无容量元数据的 Model 必须显式处理，不能用任意默认窗口伪装为真实能力。
+目前 Builder 只装载 Project 概览、指定 Novel Chapter 与已提交的只读 Tool Result；近期交互、Memory、Skill 指令、完整压缩链、总结 provenance 及 Tool Result 的跨 Step 因果先后约束仍待完成。Model 容量元数据虽可声明并透出，内置/既有配置尚未全面补齐；因此只读 Runtime 仍有无 Bundle 的兼容分支，旧 Socket Agent 更未迁移。测试证明了已声明容量分支的本地调用前冻结，不是整个 Agent 系统的端到端防泄漏或迁移验收；无容量元数据的 Model 必须显式处理，不能用任意默认窗口伪装为真实能力。

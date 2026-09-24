@@ -56,7 +56,8 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     await assert.rejects(db("o_agentContextBundle").where({ id: bundle.id }).update({ promptHash: "forged" }),
       /immutable/);
     await assert.rejects(db("o_agentContextBundle").where({ id: bundle.id }).delete(), /durable evidence/);
-    await assert.rejects(builder.build(input), /UNIQUE constraint failed/);
+    assert.deepEqual(await builder.build(input), bundle, "a repeated pre-intent build reuses the same frozen Bundle");
+    await assert.rejects(builder.build({ ...input, stepIntent: "不同的请求" }), /reused with different input/);
     await assert.rejects(builder.build({ ...input, requiredNovelIds: [3] }),
       /Required Context source is unavailable/);
     await db("o_agentRunAttempt").where({ id: run.attempts[0].id }).update({ status: "failed" });
@@ -93,5 +94,55 @@ test("existing Project data survives a ContextBundle table upgrade", async () =>
     try { await initDB(db); } finally { console.log = originalLog; }
     assert.equal(await db.schema.hasTable("o_agentContextBundle"), true);
     assert.equal((await db("o_project").where({ id: 7 }).first()).name, "升级前的 Project");
+  } finally { await db.destroy(); }
+});
+
+test("a capacity-declared production AgentRuntime freezes Bundle before invoking its Model", async () => {
+  const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
+  try {
+    await db.raw("PRAGMA foreign_keys = OFF");
+    await db.schema.createTable("o_skillList", (table) => table.text("id").primary());
+    const originalLog = console.log;
+    console.log = () => undefined;
+    try { await initDB(db); } finally { console.log = originalLog; }
+    await db("o_project").insert({ id: 7, userId: 1, name: "可核验项目" });
+    const queue: Array<() => Promise<void>> = [];
+    let serial = 0;
+    let invoked = 0;
+    const runtime = createAgentRuntime({ work: async (operation) => operation(db),
+      now: () => 1_000 + serial, createId: () => `capacity-${++serial}`,
+      schedule: (work) => queue.push(work),
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "text-v1",
+        maxOutputTokens: 256, contextWindowTokens: 50_000 },
+      invokeText: async (input) => {
+        invoked++;
+        const bundle = await db("o_agentContextBundle").first();
+        assert.ok(bundle, "Bundle must be durable before the external Model call");
+        assert.deepEqual(input.messages, JSON.parse(bundle.messagesJson));
+        return { text: "已核对" } as any;
+      } }) });
+    const started = await runtime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+      projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "capacity-runtime", content: "请核对本项目" });
+    while (queue.length) await queue.shift()!();
+    assert.equal(invoked, 1);
+    const completed = await runtime.inspect({ runId: started.id, projectId: 7 });
+    assert.equal(completed?.status, "succeeded");
+    assert.equal((await db("o_agentContextBundle").where({ runId: started.id })).length, 1);
+    const shortQueue: Array<() => Promise<void>> = [];
+    let shortSerial = 0;
+    let shortCalls = 0;
+    const shortRuntime = createAgentRuntime({ work: async (operation) => operation(db),
+      now: () => 2_000 + shortSerial, createId: () => `short-${++shortSerial}`,
+      schedule: (work) => shortQueue.push(work),
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "too-small",
+        contextWindowTokens: 512 }, invokeText: async () => { shortCalls++; return { text: "unsafe" } as any; } }) });
+    const shortRun = await shortRuntime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+      projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "small-capacity", content: "这条请求不能越过强制内容预算" });
+    while (shortQueue.length) await shortQueue.shift()!();
+    assert.equal(shortCalls, 0, "mandatory overflow must fail before inference");
+    assert.equal((await shortRuntime.inspect({ runId: shortRun.id, projectId: 7 }))?.status, "failed");
+    assert.equal((await db("o_agentContextBundle").where({ runId: shortRun.id })).length, 0);
   } finally { await db.destroy(); }
 });
