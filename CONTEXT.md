@@ -77,8 +77,8 @@ The specialist Agent role that turns Scripts into Assets, Storyboards, productio
 _Avoid_: Video Agent
 
 **Agent Memory**:
-Project-isolated retained conversation knowledge used to maintain continuity across Agent sessions.
-_Avoid_: Chat history
+Typed, Project-authorized continuity evidence derived from a committed Agent Step, with source revision and location. Legacy Socket-session `memories` rows remain unverified compatibility data and are not promoted by isolation-key matching alone.
+_Avoid_: Chat history, raw legacy Memory row
 
 **Agent Run**:
 A durable execution of one scoped request by an Agent role, with an authoritative lifecycle that survives transport disconnects and process restarts.

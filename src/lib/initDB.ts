@@ -900,6 +900,31 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.index(["runId", "createdAt"]);
       },
     },
+    // Project Memory：仅从已提交 Agent Step Output 捕获的有来源定位的连续性证据
+    {
+      name: "o_agentProjectMemory",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.integer("projectId").notNullable();
+        table.integer("scriptId");
+        table.text("role").notNullable();
+        table.text("kind").notNullable();
+        table.text("status").notNullable();
+        table.text("sourceRunId").notNullable().references("id").inTable("o_agentRun");
+        table.text("sourceStepId").notNullable().references("id").inTable("o_agentRunStep");
+        table.text("sourceOutputId").notNullable().references("id").inTable("o_agentRunOutput");
+        table.text("sourceOutputHash").notNullable();
+        table.integer("startCodePoint").notNullable();
+        table.integer("endCodePoint").notNullable();
+        table.text("content").notNullable();
+        table.text("contentHash").notNullable();
+        table.text("revision").notNullable();
+        table.text("confidence").notNullable();
+        table.integer("createdAt").notNullable();
+        table.unique(["sourceOutputId", "kind", "startCodePoint", "endCodePoint"]);
+        table.index(["projectId", "status", "createdAt"]);
+      },
+    },
     // Agent Trace：Run 内单调有序的安全生命周期与诊断事件
     {
       name: "o_agentTrace",

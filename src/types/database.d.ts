@@ -1,4 +1,4 @@
-// @db-hash c7ea22fe2542698e4fca56b45731b5cd
+// @db-hash a20b701604537e78f3203527a1a731e7
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -63,6 +63,25 @@ export interface o_agentImageQuotePolicy {
   'updatedAt': number;
   'updatedByUserId': number;
   'vendorId': string;
+}
+export interface o_agentProjectMemory {
+  'confidence': string;
+  'content': string;
+  'contentHash': string;
+  'createdAt': number;
+  'endCodePoint': number;
+  'id'?: string;
+  'kind': string;
+  'projectId': number;
+  'revision': string;
+  'role': string;
+  'scriptId'?: number | null;
+  'sourceOutputHash': string;
+  'sourceOutputId': string;
+  'sourceRunId': string;
+  'sourceStepId': string;
+  'startCodePoint': number;
+  'status': string;
 }
 export interface o_agentRun {
   'allowedActions': string;
@@ -571,6 +590,7 @@ export interface DB {
   "o_agentEvidenceDeletionPermit": o_agentEvidenceDeletionPermit;
   "o_agentImageArtifact": o_agentImageArtifact;
   "o_agentImageQuotePolicy": o_agentImageQuotePolicy;
+  "o_agentProjectMemory": o_agentProjectMemory;
   "o_agentRun": o_agentRun;
   "o_agentRunAttempt": o_agentRunAttempt;
   "o_agentRunCheckpoint": o_agentRunCheckpoint;
