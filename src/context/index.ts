@@ -5,6 +5,7 @@ import { inspectPersistableText } from "@/diagnostics/traceSafeDiagnostics";
 
 import { estimateContextTokens, planContextBudget, type ContextBudgetInput } from "./budget";
 import { createProjectContextSourceLoader } from "./projectSources";
+import { createRecentInteractionSourceLoader } from "./recentInteractionSources";
 import { selectEligibleContextSources } from "./sourceSelection";
 import { createCommittedToolContextSourceLoader } from "./toolSources";
 
@@ -116,6 +117,9 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
             runId: input.runId, stepId: input.stepId, projectId: input.projectId,
             receiptIds: input.toolReceiptIds ?? [],
           }),
+          ...await createRecentInteractionSourceLoader(async (operation) => operation(tx)).load({
+            runId: input.runId, projectId: input.projectId,
+          }),
         ];
         const mandatoryMessages = [
           { role: "system" as const, content: input.systemContract },
@@ -128,10 +132,12 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
             .reduce((sum, source) => sum + estimateContextTokens(source.content), 0),
           toolResults: sources.filter((source) => source.category === "toolResults")
             .reduce((sum, source) => sum + estimateContextTokens(source.content), 0),
-          recentInteraction: 0, memory: 0,
+          recentInteraction: sources.filter((source) => source.category === "recentInteraction")
+            .reduce((sum, source) => sum + estimateContextTokens(source.content), 0), memory: 0,
         };
         const budget = planContextBudget({ ...input.budget, mandatoryTokens, optionalDemandTokens });
-        const selection = selectEligibleContextSources({ projectId: input.projectId, role: input.role,
+        const selection = selectEligibleContextSources({ projectId: input.projectId,
+          ...(run.scriptId == null ? {} : { scriptId: run.scriptId }), role: input.role,
           requiredSourceIds: [`project:${input.projectId}`, ...input.requiredNovelIds.map((novelId) => `novel:${novelId}`),
             ...(input.requiredToolReceiptIds ?? []).map((receiptId) => `tool:${receiptId}`)],
           expectedRevisions: input.expectedRevisions }, sources, budget);
