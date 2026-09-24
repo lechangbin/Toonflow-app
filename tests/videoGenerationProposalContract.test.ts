@@ -1,10 +1,25 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import test from "node:test";
 
 import knexFactory, { type Knex } from "knex";
 
 import { freezeVideoGenerationProposal, VideoGenerationProposalContractError } from
   "../src/controlledTools/videoGenerationProposalContract";
+import { prepareControlledVideoProposal } from
+  "../src/controlledTools/videoGenerationPreparation";
+import { VideoPromptProfileRegistry } from "../src/video/promptProfile";
+import type { VideoModelSummary } from "../src/vendor";
+import { workOf } from "./databaseTestSupport";
+
+const model: VideoModelSummary = { name: "Agnes Video V2.0",
+  modelName: "agnes-video-v2.0", type: "video", capabilities: [{
+    id: "text-to-video", promptProfileId: "agnes/text-v1", inputs: [],
+    audio: { generation: "native", policy: "always" },
+    outputPresets: [{ id: "720p", resolution: "720p",
+      durations: { kind: "integer-range", min: 1, max: 18, step: 1 },
+      aspectRatios: ["16:9"] }],
+  }] };
 
 const selection = {
   vendorId: "agnes", modelId: "agnes-video-v2.0", capabilityId: "text-to-video",
@@ -43,8 +58,8 @@ async function database(): Promise<Knex> {
     outputSelection: JSON.stringify(selection.output),
     audioSelection: JSON.stringify(selection.audio) });
   await db("o_promptRevision").insert({ id: 51, projectId: 7,
-    videoTrackId: 31, status: "active", profileId: "text-to-video-v1",
-    strategy: "standard", brief: '{"subject":"A lantern"}',
+    videoTrackId: 31, status: "active", profileId: "agnes/text-v1",
+    strategy: "custom", brief: '{"subject":"A lantern"}',
     draft: '{"motion":"Sways"}',
     renderedPrompt: "A lantern sways in the wind" });
   return db;
@@ -61,6 +76,49 @@ test("single text-to-video candidate freezes exact Track and Prompt Revision wit
     assert.equal(await db("o_video").count("id as count").first().then((row) => Number(row?.count)), 0);
     assert.equal(await db("o_videoTrack").where("id", 31).first("state")
       .then((row) => row?.state), "已完成");
+  } finally { await db.destroy(); }
+});
+
+test("controlled Video preparation validates the configured capability without effects", async () => {
+  const db = await database();
+  try {
+    const profiles = VideoPromptProfileRegistry.load(path.join(process.cwd(),
+      "data", "promptProfiles", "video"));
+    let submitted = 0;
+    const dependencies = { db: workOf(db), profiles,
+      vendor: { inspectVendor: async () => ({ vendorId: "agnes", name: "Agnes",
+        inputs: [], models: [model] }),
+      generateVideo: async () => { submitted++; return "VIDEO_BASE64"; } },
+      readImage: async () => { throw new Error("text-to-video must not read images"); } };
+    const prepared = await prepareControlledVideoProposal(dependencies, 7, payload);
+    assert.match(prepared.commandHash, /^[0-9a-f]{64}$/);
+    assert.equal(prepared.preview.trackId, 31);
+    assert.equal(submitted, 0);
+    assert.equal((await db("o_video")).length, 0);
+    assert.equal((await db("o_videoTrack").where("id", 31).first()).state, "已完成");
+    const missingModel = { ...dependencies, vendor: { ...dependencies.vendor,
+      inspectVendor: async () => ({ vendorId: "agnes", name: "Agnes", inputs: [], models: [] }) } };
+    await assert.rejects(prepareControlledVideoProposal(missingModel, 7, payload), /未找到 Video Model/);
+    assert.equal(submitted, 0);
+  } finally { await db.destroy(); }
+});
+
+test("controlled Video preparation rejects target drift during asynchronous Vendor inspection", async () => {
+  const db = await database();
+  try {
+    const profiles = VideoPromptProfileRegistry.load(path.join(process.cwd(),
+      "data", "promptProfiles", "video"));
+    const dependencies = { db: workOf(db), profiles,
+      vendor: { inspectVendor: async () => {
+        await db("o_promptRevision").where("id", 51)
+          .update({ renderedPrompt: "Changed while inspecting Vendor" });
+        return { vendorId: "agnes", name: "Agnes", inputs: [], models: [model] };
+      }, generateVideo: async () => { throw new Error("must not submit"); } },
+      readImage: async () => { throw new Error("must not read images"); } };
+    await assert.rejects(prepareControlledVideoProposal(dependencies, 7, payload),
+      (error) => error instanceof VideoGenerationProposalContractError
+        && error.reason === "version");
+    assert.equal((await db("o_video")).length, 0);
   } finally { await db.destroy(); }
 });
 

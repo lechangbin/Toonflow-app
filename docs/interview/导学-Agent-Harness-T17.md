@@ -13,6 +13,7 @@
 | 父子证据链 | `src/controlledTools/billableImageApproval.ts`、`docs/adr/0023-production-agent-image-proposal-boundary.md` | 父 Run 成功后如何追溯待处理的图片请求？ |
 | 本地写入审批 | `src/controlledTools/derivedAssetWrite.ts`、`docs/adr/0024-production-agent-derived-asset-proposal-boundary.md` | 模型为何只能创建待审派生资产，不能直接写入？ |
 | 分镜写入候选 | `src/controlledTools/storyboardWriteContract.ts`、`docs/adr/0025-supervise-production-storyboard-writes.md` | 为什么先限定已有 Video Track 的单条分镜？ |
+| Video 无副作用准备 | `src/controlledTools/videoGenerationPreparation.ts`、`src/video/production.ts`、ADR-0026 | 为什么校验命令与供应商提交必须分开？ |
 
 ## 源码阅读顺序
 
@@ -23,6 +24,7 @@
 5. 读 `src/controlledTools/billableImageLedger.ts`：Owner 决策之后才可能形成 Vendor 请求意图，未知外部结果不能简单重发。
 5a. 读 `src/controlledTools/derivedAssetWrite.ts`：派生资产提案复用 T08 的目标状态与等价状态校验，Owner 决策才提交本地 Asset 与 Instruction。
 5b. 读 `src/controlledTools/storyboardWriteContract.ts`、`storyboardWriteApproval.ts` 和 `storyboardWriteEffect.ts`：空 Track 单分镜候选冻结目标，模型只提案；Owner 决策在一个事务中提交分镜、关联及持久证据。
+5c. 读 `src/controlledTools/videoGenerationProposalContract.ts`、`videoGenerationPreparation.ts` 和 `src/video/production.ts`：单轨道 Video 候选冻结目标，复用手动生成的 Vendor/Prompt/Capability 命令校验，但尚无审批或外部提交。
 6. 读 `src/agents/productionAgent/harnessEffects.ts`、`src/routes/agentRuns/productionHarness.ts` 与 `src/routes/agentRuns/storyboardWriteApproval.ts`：只读效果投影从三类持久子审批读状态，不从模型回复猜测结果；Owner 审批从认证请求获取身份。
 7. 对照 `tests/productionHarnessRun.test.ts`、`tests/productionHarnessGrants.test.ts`、`tests/billableImageApproval.test.ts` 和阶段报告 `docs/reports/agent-harness-production-migration-73-progress.md`，区分已测与待测。
 
@@ -40,6 +42,7 @@
 | 冻结来源关联 | 仅展示模型回复文本 | 文本不能证明一次请求来自哪个受权操作 | 子 Run 记录父 ID/操作/Skill，检查时复核判定哈希；效果投影由数据库重建，审批绑定不可变 |
 | 派生资产独立审批 | 复用图片授权或让模型直接写表 | 本地资产变更与计费图片属于不同风险；代价是第二种 Owner grant 和审批记录 | 假模型提案时资产数量不变，Owner 批准后只提交一条；撤销授权后新提案拒绝 |
 | 空轨道单分镜审批 | 让模型调用旧批量 Socket 写入 | 旧流程先写分镜再创建轨道，可能部分提交；先限制到已有空轨道和相同时长，代价是暂不支持多分镜分组与新建轨道 | 假模型提案时无分镜写入；Owner 决策单事务提交，关联失败整体回滚；浏览器待验收 |
+| Video 准备与提交分离 | 将旧异步生成函数直接作为模型 Tool | 旧函数在落库后立即请求 Vendor，超时后的失败不等于无外部效果；代价是受控 Video 当前只有无副作用准备 | 假 Vendor 单测证明准备不写 Production Action/Generation Task、不提交 Vendor；异步检查中目标变化被拒 |
 
 ## 自测与边界
 
