@@ -50,6 +50,9 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     assert.deepEqual(JSON.parse(persisted.manifestJson).sources.map((entry: { id: string }) => entry.id),
       ["project:7", "novel:2"]);
     assert.equal(persisted.manifestJson.includes("本项目的直接证据"), false);
+    assert.deepEqual(await builder.inspect({ id: bundle.id, projectId: 7 }), bundle);
+    assert.equal(await builder.inspect({ id: bundle.id, projectId: 9 }), null,
+      "another Project cannot inspect frozen Model input");
     await assert.rejects(db("o_agentContextBundle").where({ id: bundle.id }).update({ promptHash: "forged" }),
       /immutable/);
     await assert.rejects(db("o_agentContextBundle").where({ id: bundle.id }).delete(), /durable evidence/);
@@ -62,5 +65,22 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     });
     assert.equal(await db("o_agentContextBundle").where({ id: bundle.id }).first(), undefined,
       "Project deletion removes its durable ContextBundle through the authorized lifecycle");
+  } finally { await db.destroy(); }
+});
+
+test("existing Project data survives a ContextBundle table upgrade", async () => {
+  const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
+  try {
+    await db.raw("PRAGMA foreign_keys = OFF");
+    await db.schema.createTable("o_skillList", (table) => table.text("id").primary());
+    const originalLog = console.log;
+    console.log = () => undefined;
+    try { await initDB(db); } finally { console.log = originalLog; }
+    await db("o_project").insert({ id: 7, userId: 1, name: "升级前的 Project" });
+    await db.schema.dropTable("o_agentContextBundle");
+    console.log = () => undefined;
+    try { await initDB(db); } finally { console.log = originalLog; }
+    assert.equal(await db.schema.hasTable("o_agentContextBundle"), true);
+    assert.equal((await db("o_project").where({ id: 7 }).first()).name, "升级前的 Project");
   } finally { await db.destroy(); }
 });

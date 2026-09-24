@@ -46,6 +46,39 @@ export interface FrozenContextBundle {
 /** Production seam: build from current SQLite sources and freeze the exact Model input for one Attempt. */
 export function createContextBuilder(dependencies: { work: DatabaseWork; now(): number; createId(): string }) {
   return {
+    async inspect(input: { id: string; projectId: number }): Promise<FrozenContextBundle | null> {
+      if (!IDENTIFIER.test(input.id) || !Number.isSafeInteger(input.projectId) || input.projectId <= 0) {
+        throw new TypeError("ContextBundle inspection scope is invalid");
+      }
+      return dependencies.work(async (db) => {
+        const row = await db("o_agentContextBundle as bundle")
+          .join("o_agentRun as run", "run.id", "bundle.runId")
+          .where({ "bundle.id": input.id, "run.projectId": input.projectId })
+          .first("bundle.*");
+        if (!row) return null;
+        if (row.schemaVersion !== CONTEXT_BUNDLE_SCHEMA_VERSION
+          || hash(row.manifestJson) !== row.manifestHash
+          || hash(row.messagesJson) !== row.promptHash) {
+          throw new Error("ContextBundle evidence is corrupt");
+        }
+        let manifest: { schemaVersion?: string; promptHash?: string };
+        let messages: FrozenContextBundle["messages"];
+        try {
+          manifest = JSON.parse(row.manifestJson);
+          messages = JSON.parse(row.messagesJson);
+        } catch { throw new Error("ContextBundle evidence is corrupt"); }
+        if (manifest.schemaVersion !== CONTEXT_BUNDLE_SCHEMA_VERSION
+          || manifest.promptHash !== row.promptHash || !Array.isArray(messages)
+          || messages.length < 3 || messages.some((message) =>
+            !["system", "assistant", "user"].includes(message.role)
+            || typeof message.content !== "string" || !inspectPersistableText(message.content).ok)) {
+          throw new Error("ContextBundle evidence is corrupt");
+        }
+        return { id: row.id, runId: row.runId, stepId: row.stepId, attemptId: row.attemptId,
+          predecessorBundleId: row.predecessorBundleId ?? null, manifestHash: row.manifestHash,
+          promptHash: row.promptHash, messages, createdAt: row.createdAt };
+      });
+    },
     async build(input: BuildContextBundleInput): Promise<FrozenContextBundle> {
       if (![input.runId, input.stepId, input.attemptId, input.modelRevision].every((id) => IDENTIFIER.test(id))
         || (input.predecessorBundleId !== undefined && !IDENTIFIER.test(input.predecessorBundleId))
