@@ -9,6 +9,16 @@ import { prepareProductionSkillRun } from
   "../src/agents/productionAgent/harnessPreparation";
 import { createBillableImageApprovalRuntime } from
   "../src/controlledTools/billableImageApproval";
+import { createBillableImageArtifactRuntime } from
+  "../src/controlledTools/billableImageArtifact";
+import { createBillableImageCommitRuntime } from
+  "../src/controlledTools/billableImageCommit";
+import { createBillableImageExecution } from
+  "../src/controlledTools/billableImageExecution";
+import { createBillableImageLedger } from
+  "../src/controlledTools/billableImageLedger";
+import { billableImageScopeSchema } from
+  "../src/controlledTools/billableImageLifecycle";
 import initDB from "../src/lib/initDB";
 import { createSkillRuntime } from "../src/skillRuntime";
 import { createProjectSkillGrantRuntime, resolveProductionSkillGrants } from
@@ -91,6 +101,18 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
                 resolution: "1024x1024" },
               { toolCallId: "production-image-proposal-one", messages: [] });
             assert.equal((proposed as { status?: string }).status, "pending");
+            const repeated = await callInput.tools!.propose_asset_image_generation.execute!(
+              { assetId: 21, vendorId: "vendor", modelId: "image-v1",
+                resolution: "1024x1024" },
+              { toolCallId: "production-image-proposal-one", messages: [] });
+            assert.deepEqual(repeated, proposed,
+              "repeating one model operation returns the same durable child approval");
+            const changedTarget = await callInput.tools!.propose_asset_image_generation.execute!(
+              { assetId: 21, vendorId: "vendor", modelId: "image-v1",
+                resolution: "512x512" },
+              { toolCallId: "production-image-proposal-one", messages: [] });
+            assert.equal((changedTarget as { status?: string }).status, "unavailable",
+              "the same operation cannot silently change its target");
             assert.equal((await db("o_agentVendorRequest")).length, 0,
               "model proposal cannot submit to Vendor");
             const parent = await db("o_agentRun").where({ role: PRODUCTION_HARNESS_ROLE,
@@ -152,14 +174,59 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
     assert.equal((await db("o_agentVendorRequest")).length, 0);
     await assert.rejects(imageApproval.decide({ projectId: 7, actorUserId: 2,
       runId: imageProposal.id, approvalId: pendingImage!.id,
-      clientCommandId: "foreign-reject", expectedVersion: pendingImage!.runVersion,
-      decision: "reject" }), /billable image ledger conflict/i);
-    const rejectedImage = await imageApproval.decide({ projectId: 7,
+      clientCommandId: "foreign-approve", expectedVersion: pendingImage!.runVersion,
+      decision: "approve" }), /billable image ledger conflict/i);
+    const approvedImage = await imageApproval.decide({ projectId: 7,
       actorUserId: 1, runId: imageProposal.id, approvalId: pendingImage!.id,
-      clientCommandId: "owner-reject", expectedVersion: pendingImage!.runVersion,
-      decision: "reject" });
-    assert.equal(rejectedImage?.status, "rejected");
+      clientCommandId: "owner-approve", expectedVersion: pendingImage!.runVersion,
+      decision: "approve" });
+    assert.equal(approvedImage?.status, "approved");
     assert.equal((await db("o_agentVendorRequest")).length, 0);
+    const ledger = createBillableImageLedger({ work, now: () => 210, createId,
+      verifyPreflight: async () => "a".repeat(64) });
+    const media = Buffer.from("89504e470d0a1a0a", "hex").toString("base64");
+    const storedMedia = new Map<string, Buffer>();
+    const artifact = createBillableImageArtifactRuntime({ work, now: () => 211,
+      createId, writeMedia: async (path, base64) => {
+        storedMedia.set(path, Buffer.from(base64, "base64"));
+      }, readMedia: async (path) => storedMedia.get(path)! });
+    const commit = createBillableImageCommitRuntime({ work, now: () => 212,
+      createId, verifyPreflight: async () => "a".repeat(64) });
+    let providerCalls = 0;
+    const execute = createBillableImageExecution({
+      prepare: async () => ({ target: { vendorId: "vendor", modelId: "image-v1" },
+        input: { prompt: "已冻结的单资产图片生成提示", size: "1K", aspectRatio: "1:1" } }),
+      preflight: async () => "a".repeat(64),
+      dispatch: (input) => ledger.dispatch(input),
+      invoke: async () => { providerCalls++; return media; },
+      markSubmissionAmbiguous: (requestId) => ledger.markSubmissionAmbiguous(requestId),
+      observe: (requestId, base64) => artifact.observe(requestId, base64),
+      currentRunVersion: async (runId, projectId) => Number((await db("o_agentRun")
+        .where({ id: runId, projectId }).first("version")).version),
+      commit: (input) => commit.commit(input),
+    });
+    const approvalRecord = await db("o_agentToolApproval")
+      .where({ runId: imageProposal.id }).first("payloadJson");
+    const scope = billableImageScopeSchema.parse(JSON.parse(approvalRecord.payloadJson));
+    const completedImage = await execute({ projectId: 7, actorUserId: 1,
+      runId: imageProposal.id, approvalId: pendingImage!.id,
+      expectedVersion: approvedImage!.runVersion, scope });
+    assert.equal(completedImage.status, "succeeded");
+    assert.equal(providerCalls, 1);
+    assert.equal((await db("o_agentVendorRequest")).length, 1);
+    assert.equal((await db("o_agentImageArtifact")).length, 1);
+    assert.equal((await db("o_assets").where({ id: 21 }).first()).imageId,
+      completedImage.status === "succeeded" ? completedImage.output.imageId : -1);
+    assert.equal((await db("o_agentRun").where({ id: imageProposal.id }).first()).status,
+      "succeeded");
+    assert.equal((await execute({ projectId: 7, actorUserId: 1,
+      runId: imageProposal.id, approvalId: pendingImage!.id,
+      expectedVersion: approvedImage!.runVersion, scope })).status, "not-dispatched");
+    assert.equal(providerCalls, 1, "a completed child approval never replays the Provider");
+    const acceptedTrace = await db("o_agentTrace").where({ runId: imageProposal.id,
+      eventType: "tool.billable-image.committed" }).first("vendorRequestId", "imageArtifactId");
+    assert.ok(acceptedTrace?.vendorRequestId);
+    assert.ok(acceptedTrace?.imageArtifactId);
     assert.equal((await runtime.inspect({ runId: run.id, projectId: 7,
       actorUserId: 1 }))?.status, "succeeded",
     "Owner decision on the child must not rewrite the parent guidance result");

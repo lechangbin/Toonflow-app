@@ -14,7 +14,7 @@
 5. 问：父 Run 在模型请求时失去租约，会怎样？答：创建子审批的同一数据库事务会用 Run ID、owner/epoch、fence、过期时间检查租约；失效时不落子审批。假模型单测伪造 fence 验证拒绝。不能据此宣称已完成真实多进程故障验收。
 6. 问：模型重试同一个 Tool 调用会重复计费吗？答：提案本身不计费。同一父 Run 和 operation ID 派生确定性请求键，子 Run 的指纹约束目标；不同目标是冲突，不会悄悄复用。真正提交由 T09 Owner 审批与 Vendor ledger 控制；未知外部结果不能自动重发。真实 Provider 的迟到和对账仍待 T21。
 7. 问：如何证明一条审批来自被授权的父 Run？答：子 Run 冻结父 Run ID、操作 ID、Skill ID 和 Tool 合约哈希；父 Run 有同操作的权限判定。inspect 时复核父 scope、判定哈希、allow 结果和审批操作一致性；数据库不允许改写审批绑定。证据：`src/controlledTools/billableImageApproval.ts`、`docs/adr/0023-production-agent-image-proposal-boundary.md`。
-8. 问：父 Run 已成功，Owner 拒绝子审批，会把父 Run 改为失败吗？答：不会。父 Run 的成功只表示模型指导步骤完成，子 Run 是独立的计费效果决策。定向测试验证非 Owner 不能拒绝，Owner 拒绝后无 VendorRequest 且父 Run 仍成功。面试时必须分别描述两个状态。
+8. 问：父 Run 已成功，Owner 后续处理子审批，会把父 Run 状态改写吗？答：不会。父 Run 的成功只表示模型指导步骤完成，子 Run 是独立的计费效果决策。定向测试验证非 Owner 不能批准；Owner 批准后，假 Provider 只调用一次，图片证据和 Asset 关联在子 Run 提交，父 Run 仍成功。拒绝路径由 T09 审批单测覆盖；面试时必须分别描述两个状态。
 
 ## 三面：反例、取舍与未完成项
 
@@ -23,4 +23,4 @@
 
 ## 练习与证据缺口
 
-自测时画两条时间线：A）模型提案→Owner 拒绝，B）模型提案→Owner 批准→Vendor 提交结果未知；分别标出 Run 状态和每一步的权限主体。当前可核验的是 11 个相关定向用例与 TypeScript 检查；尚无浏览器、真实供应商、完整回归或线上指标。每个回答如需提数字，必须先找到对应测试/日志/报告，找不到就说“待测”。
+自测时画两条时间线：A）模型提案→Owner 拒绝，B）模型提案→Owner 批准→Vendor 提交结果未知；分别标出 Run 状态和每一步的权限主体。当前可核验的是本轮定向单测、局部假 Provider 成功路径与 TypeScript 检查；尚无浏览器、真实供应商、完整回归或线上指标。每个回答如需提数字，必须先找到对应测试/日志/报告，找不到就说“待测”。
