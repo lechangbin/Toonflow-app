@@ -9,6 +9,7 @@ import { createProductionHarnessRouter } from "../src/routes/agentRuns/productio
 
 test("Production transport derives actor from authentication and cannot cancel another scope", async () => {
   let startInput: unknown;
+  let effectsInput: unknown;
   let cancelCalls = 0;
   const runtime = { start: async (input: unknown) => {
     startInput = input;
@@ -21,7 +22,10 @@ test("Production transport derives actor from authentication and cannot cancel a
   app.use(express.json(), (req, _res, next) => {
     (req as typeof req & { user: { id: number } }).user = { id: 5 };
     next();
-  }, createProductionHarnessRouter(runtime));
+  }, createProductionHarnessRouter(runtime, async (input) => {
+    effectsInput = input;
+    return { runId: input.runId, effects: [] };
+  }));
   const server = app.listen(0, "127.0.0.1");
   try {
     await once(server, "listening");
@@ -40,5 +44,9 @@ test("Production transport derives actor from authentication and cannot cancel a
     assert.equal((await post("/cancel", { projectId: 7, runId: "script-one",
       clientCommandId: "cancel-other-scope", expectedVersion: 1 })).status, 404);
     assert.equal(cancelCalls, 0);
+    assert.equal((await post("/effects", { projectId: 7, runId: "production-one",
+      actorUserId: 99 })).status, 200);
+    assert.deepEqual(effectsInput, { projectId: 7,
+      runId: "production-one", actorUserId: 5 });
   } finally { server.close(); await once(server, "close"); }
 });

@@ -151,6 +151,12 @@ export async function expireDueBillableImageApprovals(
 function conflict(): never { throw new BillableImageLedgerConflictError(); }
 function hash(value: string): string { return createHash("sha256").update(value).digest("hex"); }
 
+/** Stable child lookup for one model Tool operation; no target or price is trusted from the caller. */
+export function billableImageProposalClientRequestId(parentRunId: string, operationId: string): string {
+  if (!IDENTIFIER.test(parentRunId) || !IDENTIFIER.test(operationId)) return conflict();
+  return `billable-model:${hash(JSON.stringify({ parentRunId, operationId })).slice(0, 48)}`;
+}
+
 function targetOf(input: ProposeBillableImageInput): BillableImageTarget {
   return { projectId: input.projectId, assetId: input.assetId, vendorId: input.vendorId,
     modelId: input.modelId, resolution: input.resolution };
@@ -375,8 +381,8 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
         return Number(project?.userId);
       });
       const result = await persistProposal({ projectId: source.projectId,
-        actorUserId, clientRequestId: `billable-model:${hash(JSON.stringify({
-          parentRunId: source.parentRunId, operationId: source.operationId })).slice(0, 48)}`,
+        actorUserId, clientRequestId: billableImageProposalClientRequestId(
+          source.parentRunId, source.operationId),
         operationId: source.operationId, assetId: source.assetId,
         vendorId: source.vendorId, modelId: source.modelId,
         resolution: source.resolution }, source);

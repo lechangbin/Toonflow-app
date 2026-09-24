@@ -10,7 +10,12 @@ import {
 } from "@/agentRuntime";
 import { ProductionHarnessOwnershipError, ProductionSkillSelectionError } from
   "@/agents/productionAgent/harnessPreparation";
+import { createProductionHarnessEffects, ProductionHarnessEffectsConflictError,
+  ProductionHarnessEffectsNotFoundError } from
+  "@/agents/productionAgent/harnessEffects";
 import { getDefaultProductionHarnessRuntime } from "@/agents/productionAgent/harnessRuntime";
+import { createDefaultBillableImageRuntime } from "@/controlledTools/billableImageComposition";
+import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 
@@ -20,7 +25,13 @@ function actorUserId(req: express.Request): number | null {
 }
 
 /** Opt-in production guidance transport; legacy generation remains a separate path. */
-export function createProductionHarnessRouter(runtime: AgentRuntime) {
+type Effects = ReturnType<typeof createProductionHarnessEffects>;
+const billableImage = createDefaultBillableImageRuntime();
+export function createProductionHarnessRouter(runtime: AgentRuntime,
+  effects: Effects = createProductionHarnessEffects({
+    work: (operation) => getDatabaseRuntime().work(operation),
+    inspectBillable: billableImage.approval.inspect,
+  })) {
   const router = express.Router();
   router.post("/start", validateFields({
     schemaVersion: z.literal(AGENT_RUN_START_SCHEMA_VERSION),
@@ -74,6 +85,22 @@ export function createProductionHarnessRouter(runtime: AgentRuntime) {
         currentMessage: result.current ? projectAgentRunToChatMessage(result.current) : null,
         recentMessages: result.recent.map(projectAgentRunToChatMessage) }));
     } catch (error) { next(error); }
+  });
+  router.post("/effects", validateFields({ projectId: z.number().int().positive(),
+    runId: z.string().trim().min(1).max(128) }), async (req, res, next) => {
+    const actor = actorUserId(req);
+    if (!actor) { res.status(403).send({ message: "操作人身份无效" }); return; }
+    try {
+      res.status(200).send(success(await effects({ ...req.body, actorUserId: actor })));
+    } catch (error) {
+      if (error instanceof ProductionHarnessEffectsNotFoundError) {
+        res.status(404).send({ message: "Production Harness Run 不存在" }); return;
+      }
+      if (error instanceof ProductionHarnessEffectsConflictError) {
+        res.status(409).send({ message: "Production Harness 效果证据不完整" }); return;
+      }
+      next(error);
+    }
   });
   router.post("/cancel", validateFields({ projectId: z.number().int().positive(),
     runId: z.string().trim().min(1).max(128),

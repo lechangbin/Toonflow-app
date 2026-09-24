@@ -19,7 +19,8 @@
 3. 读 `src/agents/productionAgent/harnessWorkspaceRead.ts`：后端按 Project 与剧本归属读取单一文本字段，歧义和不合规内容拒绝。
 4. 读 `src/skillRuntime/grants.ts` 与 `src/controlledTools/billableImageApproval.ts`：图片提案在同一事务内核对运行租约、Skill 请求、Project grant 和权限判定，再创建 T09 待审批子 Run。
 5. 读 `src/controlledTools/billableImageLedger.ts`：Owner 决策之后才可能形成 Vendor 请求意图，未知外部结果不能简单重发。
-6. 对照 `tests/productionHarnessRun.test.ts`、`tests/productionHarnessGrants.test.ts`、`tests/billableImageApproval.test.ts` 和阶段报告 `docs/reports/agent-harness-production-migration-73-progress.md`，区分已测与待测。
+6. 读 `src/agents/productionAgent/harnessEffects.ts` 与 `src/routes/agentRuns/productionHarness.ts`：只读效果投影从持久判定和子 Run 读状态，不从模型回复猜测结果。
+7. 对照 `tests/productionHarnessRun.test.ts`、`tests/productionHarnessGrants.test.ts`、`tests/billableImageApproval.test.ts` 和阶段报告 `docs/reports/agent-harness-production-migration-73-progress.md`，区分已测与待测。
 
 ## 本阶段真实调用链
 
@@ -32,7 +33,7 @@
 | 新旧生产路径并行 | 直接替换旧 Socket 生成 | 生成工具尚未全部具备持久 Step、审批与恢复契约；并行期间仍有未迁移入口 | 生产 Run 和旧路径均保留；报告列出未迁移项 |
 | 提案复用 T09 子审批 | 模型直接调用 Vendor | 模型建议不等于 Owner 承担费用；多一层人工处理 | 假模型提案后 VendorRequest 为零；Owner 批准后假 Provider 才调用一次并提交 Asset；超时未知不重放 |
 | 独立提案 grant | 复用读取或 Script grant | 读取数据与提出计费候选是不同能力 | 默认拒绝、非 Owner、撤销及跨角色定向测试 |
-| 冻结来源关联 | 仅展示模型回复文本 | 文本不能证明一次请求来自哪个受权操作 | 子 Run 记录父 ID/操作/Skill，检查时复核判定哈希；审批绑定不可变 |
+| 冻结来源关联 | 仅展示模型回复文本 | 文本不能证明一次请求来自哪个受权操作 | 子 Run 记录父 ID/操作/Skill，检查时复核判定哈希；效果投影由数据库重建，审批绑定不可变 |
 
 ## 自测与边界
 

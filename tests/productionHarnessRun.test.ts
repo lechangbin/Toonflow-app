@@ -7,6 +7,9 @@ import { createAgentRuntime, PRODUCTION_HARNESS_ROLE,
   PRODUCTION_HARNESS_SCOPE } from "../src/agentRuntime";
 import { prepareProductionSkillRun } from
   "../src/agents/productionAgent/harnessPreparation";
+import { createProductionHarnessEffects,
+  ProductionHarnessEffectsNotFoundError } from
+  "../src/agents/productionAgent/harnessEffects";
 import { createBillableImageApprovalRuntime } from
   "../src/controlledTools/billableImageApproval";
 import { createBillableImageArtifactRuntime } from
@@ -270,6 +273,21 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
     assert.equal((await db("o_assets").where({ id: 22 }).first()).imageId, null);
     assert.notEqual((await db("o_agentRun").where({ id: timeoutProposal.id }).first()).status,
       "succeeded", "late media is evidence, not a completed effect");
+    const effects = createProductionHarnessEffects({ work,
+      inspectBillable: (projectId, runId, actorUserId) =>
+        imageApproval.inspect(projectId, runId, actorUserId) });
+    await assert.rejects(effects({ projectId: 7, actorUserId: 2,
+      runId: run.id }), ProductionHarnessEffectsNotFoundError);
+    const projected = await effects({ projectId: 7, actorUserId: 1, runId: run.id });
+    assert.equal(projected.effects.length, 3);
+    assert.equal(projected.effects.find((item) =>
+      item.operationId === "production-image-proposal-two")?.status, "denied");
+    assert.equal(projected.effects.find((item) =>
+      item.operationId === "production-image-proposal-one")?.approval?.runStatus,
+    "succeeded");
+    assert.equal(projected.effects.find((item) =>
+      item.operationId === "production-image-proposal-timeout")?.approval?.vendorRequest?.status,
+    "late_artifact_observed");
     assert.equal((await runtime.inspect({ runId: run.id, projectId: 7,
       actorUserId: 1 }))?.status, "succeeded",
     "Owner decision on the child must not rewrite the parent guidance result");

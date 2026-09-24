@@ -13,7 +13,7 @@
 4. 问：Skill manifest 请求了图片 Tool，模型就能提案吗？答：不能。还需当前 Owner 显式授予 `propose:billable-image`；运行时检查生产 role/scope、冻结 Skill 请求和 Project grant 的交集。grant 与 `read:production-workspace` 独立，撤销后新操作被拒绝。证据：`src/skillRuntime/grants.ts`、`tests/productionHarnessGrants.test.ts`。
 5. 问：父 Run 在模型请求时失去租约，会怎样？答：创建子审批的同一数据库事务会用 Run ID、owner/epoch、fence、过期时间检查租约；失效时不落子审批。假模型单测伪造 fence 验证拒绝。不能据此宣称已完成真实多进程故障验收。
 6. 问：模型重试同一个 Tool 调用会重复计费吗？答：提案本身不计费。同一父 Run 和 operation ID 派生确定性请求键，子 Run 的指纹约束目标；不同目标是冲突，不会悄悄复用。真正提交由 T09 Owner 审批与 Vendor ledger 控制。假 Provider 超时被记为未知，重复执行不会再次调用，取消后的迟到图片保留证据但不链接 Asset；真实 Provider 的迟到和对账仍待 T21。
-7. 问：如何证明一条审批来自被授权的父 Run？答：子 Run 冻结父 Run ID、操作 ID、Skill ID 和 Tool 合约哈希；父 Run 有同操作的权限判定。inspect 时复核父 scope、判定哈希、allow 结果和审批操作一致性；数据库不允许改写审批绑定。证据：`src/controlledTools/billableImageApproval.ts`、`docs/adr/0023-production-agent-image-proposal-boundary.md`。
+7. 问：如何证明一条审批来自被授权的父 Run？答：子 Run 冻结父 Run ID、操作 ID、Skill ID 和 Tool 合约哈希；父 Run 有同操作的权限判定。inspect 时复核父 scope、判定哈希、allow 结果和审批操作一致性；数据库不允许改写审批绑定。前端需要的效果状态另由 Owner-only 的只读投影从父判定定位子 Run，不取模型自述。证据：`src/controlledTools/billableImageApproval.ts`、`src/agents/productionAgent/harnessEffects.ts`、`docs/adr/0023-production-agent-image-proposal-boundary.md`。
 8. 问：父 Run 已成功，Owner 后续处理子审批，会把父 Run 状态改写吗？答：不会。父 Run 的成功只表示模型指导步骤完成，子 Run 是独立的计费效果决策。定向测试验证非 Owner 不能批准；Owner 批准后，假 Provider 只调用一次，图片证据和 Asset 关联在子 Run 提交，父 Run 仍成功。拒绝路径由 T09 审批单测覆盖；面试时必须分别描述两个状态。
 
 ## 三面：反例、取舍与未完成项
