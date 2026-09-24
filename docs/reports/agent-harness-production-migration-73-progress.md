@@ -6,11 +6,12 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 
 - 为 `productionAgent` 定义独立 `get_production_workspace_text` Tool v1，限定 `production-harness-v1` scope 与 `read:production-workspace` 能力；仅允许读取单个剧本的 `scriptPlan` 或 `storyboardTable`，不包含资产数组、图片生成、分镜写入或旧 Socket 回调。
 - 后端适配器同时核对 `o_script` 的 Project 归属与 `o_agentWorkData` 的 Project/剧本/生产 Agent 键；工作区重复行、无效 JSON、过大文本、安全文本不合规时拒绝，缺失工作区只返回空草稿字段。受控 Tool Runtime 仍要求 Run 状态、租约、冻结 Skill 请求与授权交集，不能仅凭模型指令调用。
+- Script Harness 的模型 Tool 契约改为显式四项既有只读 Tool（外加原有可选提案 Tool），不会因生产 Tool 加入共享目录而把生产 Tool 当成 Script 可见能力；Script 路由和准备的定向回归继续通过。
 - 保留现有生产 Socket 路径，不在未迁移的分镜/资产工具上伪造持久 Run 成功状态。当前 Tool 契约是后续迁移的后端读取边界，尚无生产 Harness Run 创建与模型接线。
 
 ## 定向验证与剩余边界
 
-`tests/productionHarnessWorkspaceRead.test.ts` 覆盖独立 Tool 修订/角色/scope、跨 Project 剧本拒绝、重复行拒绝、缺失草稿、无效 JSON 与超长内容；本阶段运行该文件的 2 个单元用例与 `yarn lint`（TypeScript `--noEmit`）。未运行全量测试、构建、浏览器或真实 Provider。
+`tests/productionHarnessWorkspaceRead.test.ts` 覆盖独立 Tool 修订/角色/scope、跨 Project 剧本拒绝、重复行拒绝、缺失草稿、无效 JSON 与超长内容；本阶段运行该文件的 2 个单元用例、`scriptHarnessPreparation.test.ts` 的 1 个相关回归及 `yarn lint`（TypeScript `--noEmit`）。未运行全量测试、构建、浏览器或真实 Provider。
 
 待完成：生产 Agent 的 durable Run/typed Steps、模型与 Vendor 组合、写操作审批/回执、付费生成对账、因果 Trace、重启/租约/取消/迟到结果的跨边界恢复，以及 Web 状态投影和兼容回退。不得将这个只读接缝描述为生产生成迁移完成。
 

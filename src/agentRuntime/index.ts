@@ -838,7 +838,10 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           { role: "assistant", content: projectFacts }, { role: "user", content: prepared.input.content }];
       }
       const modelToolDefinitions = dependencies.skillMode
-        ? { ...HARNESS_TOOL_DEFINITIONS,
+        ? { get_novel_text: HARNESS_TOOL_DEFINITIONS.get_novel_text,
+          get_novel_events: HARNESS_TOOL_DEFINITIONS.get_novel_events,
+          get_script_workspace: HARNESS_TOOL_DEFINITIONS.get_script_workspace,
+          get_script_content: HARNESS_TOOL_DEFINITIONS.get_script_content,
           ...(dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_TOOL_DEFINITIONS : {}) }
         : TOOL_DEFINITIONS;
       const toolContracts = Object.values(modelToolDefinitions).map((definition) => ({
