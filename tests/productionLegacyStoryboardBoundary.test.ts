@@ -36,3 +36,9 @@ test("legacy storyboard callback error is ambiguous, never a success claim", asy
   assert.match(String(await tool.execute(input)), /结果不确定/);
   assert.equal(tool.acknowledged(), true);
 });
+
+test("legacy storyboard success-false acknowledgement is not a success claim", async () => {
+  const tool = storyboardTool({ success: false, message: "database write failed" });
+  assert.match(String(await tool.execute(input)), /结果不确定/);
+  assert.equal(tool.acknowledged(), true);
+});

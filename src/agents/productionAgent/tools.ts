@@ -403,7 +403,9 @@ export default (toolCpnfig: ToolConfig) => {
           () =>
             new Promise((resolve, reject) =>
               socket.emit("addStoryboard", { ...data }, (res: any) => {
-                if (res?.error) return reject(new Error(res.error));
+                if (res?.error || res?.success === false) {
+                  return reject(new Error("legacy storyboard acknowledgement rejected"));
+                }
                 resolve(res);
               }),
             ),
