@@ -217,6 +217,8 @@ export interface AgentRunDependencies {
   processEpoch?: string;
   leaseDurationMs?: number;
   controlledTools?: ReturnType<typeof createControlledToolRuntime>;
+  prepareRun?: (tx: Knex.Transaction, input: { runId: string; projectId: number;
+    role: typeof READ_ONLY_AGENT_ROLE; content: string; createdAt: number }) => Promise<void>;
 }
 
 export class AgentRunConflictError extends Error {
@@ -1018,6 +1020,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         id: traceId, runId, stepId, attemptId, eventType: "run.created",
         runStatus: "queued", stepStatus: "pending", createdAt: now,
       });
+      await dependencies.prepareRun?.(trx, { runId, projectId: input.projectId,
+        role: input.role, content, createdAt: now });
       return { snapshot: await readSnapshot(trx, runId, input.projectId), created: true, stepId, attemptId };
     }));
     let created: { snapshot: AgentRunSnapshot | null; created: boolean; stepId: string; attemptId?: string } | undefined;
