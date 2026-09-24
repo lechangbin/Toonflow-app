@@ -1,4 +1,4 @@
-// @db-hash 51f970257328f2871d5d3cdf86bf0a77
+// @db-hash c7ea22fe2542698e4fca56b45731b5cd
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -12,6 +12,19 @@ export interface memories {
   'role'?: string | null;
   'summarized'?: number | null;
   'type': string;
+}
+export interface o_agentContextBundle {
+  'attemptId': string;
+  'createdAt': number;
+  'id'?: string;
+  'manifestHash': string;
+  'manifestJson': string;
+  'messagesJson': string;
+  'predecessorBundleId'?: string | null;
+  'promptHash': string;
+  'runId': string;
+  'schemaVersion': string;
+  'stepId': string;
 }
 export interface o_agentDeploy {
   'desc'?: string | null;
@@ -553,6 +566,7 @@ export interface o_videoTrack {
 
 export interface DB {
   "memories": memories;
+  "o_agentContextBundle": o_agentContextBundle;
   "o_agentDeploy": o_agentDeploy;
   "o_agentEvidenceDeletionPermit": o_agentEvidenceDeletionPermit;
   "o_agentImageArtifact": o_agentImageArtifact;

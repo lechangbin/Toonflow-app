@@ -881,6 +881,25 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["runId", "stepId"]);
       },
     },
+    // ContextBundle：一次 Model Attempt 的不可变输入与无原文来源清单
+    {
+      name: "o_agentContextBundle",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("stepId").notNullable().references("id").inTable("o_agentRunStep");
+        table.text("attemptId").notNullable().references("id").inTable("o_agentRunAttempt");
+        table.text("predecessorBundleId").references("id").inTable("o_agentContextBundle");
+        table.text("schemaVersion").notNullable();
+        table.text("manifestJson").notNullable();
+        table.text("manifestHash").notNullable();
+        table.text("messagesJson").notNullable();
+        table.text("promptHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.unique(["attemptId"]);
+        table.index(["runId", "createdAt"]);
+      },
+    },
     // Agent Trace：Run 内单调有序的安全生命周期与诊断事件
     {
       name: "o_agentTrace",
@@ -1486,6 +1505,23 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       BEFORE UPDATE ON o_agentRunCheckpoint
       BEGIN
         SELECT RAISE(ABORT, 'Agent Run checkpoints are immutable');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentContextBundle")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentContextBundle_prevent_update
+      BEFORE UPDATE ON o_agentContextBundle
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent ContextBundle is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentContextBundle_prevent_delete
+      BEFORE DELETE ON o_agentContextBundle
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent ContextBundle is durable evidence');
       END
     `);
   }
