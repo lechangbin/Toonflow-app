@@ -59,6 +59,19 @@ export function createScriptWriteApprovalsRouter(runtime: Runtime) {
       res.status(200).send(success(snapshot));
     } catch (error) { handleError(error, res, next); }
   });
+  router.post("/review", validateFields({ projectId: z.number().int().positive(),
+    runId: z.string().trim().min(1).max(128),
+    approvalId: z.string().trim().min(1).max(128) }), async (req, res, next) => {
+    const actor = actorUserId(req);
+    if (!actor) { res.status(403).send({ message: "操作人身份无效" }); return; }
+    try {
+      const review = await runtime.review(req.body.projectId, req.body.runId,
+        req.body.approvalId, actor);
+      if (!review) { res.status(404).send({ message: "Script write 提案不存在" }); return; }
+      res.set("Cache-Control", "no-store");
+      res.status(200).send(success(review));
+    } catch (error) { handleError(error, res, next); }
+  });
   router.post("/list", validateFields({ projectId: z.number().int().positive() }),
     async (req, res, next) => {
       const actor = actorUserId(req);

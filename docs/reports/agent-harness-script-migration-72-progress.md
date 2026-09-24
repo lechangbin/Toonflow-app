@@ -27,10 +27,11 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 对照 Web 的现有 Socket auth 后修正兼容边界：Web 传十进制字符串 Project ID，旧 Socket 验证现在同时接受正整数或规范十进制字符串，再用归一化 ID 核对 Owner 与 `projectId:scriptAgent` Memory 键；`07`、混入字符或不匹配隔离键仍拒绝。定向测试覆盖该回归，未改动 Web 源码。
 - Web 独立工作树已增加版本化 Script Harness HTTP 客户端及显式「试用只读 Harness」入口：默认仍连接旧 Socket；用户切换时断开旧连接，新模式只通过 HTTP 启动、查询、取消只读 Run 并显示状态/输出。请求失败不会隐式回退旧链路，切回才重新连接。Web Draft PR `lechangbin/Toonflow-web#7`；当前没有浏览器端验收，编辑规划/剧本的旧 UI 尚未迁移。
 - 同一 Web Draft PR 增加独立写入提案列表及 Owner 批准/拒绝操作：界面展示后端的无正文预览，用确定的 approval ID、Run 版本及命令 ID 提交决策；过期或已结算提案不能在客户端重放，服务端仍做最终 Owner、版本与目标哈希检查。此列表只会显示已有独立提案；当前只读模型 Run 不会自动生成它们。
+- 为避免 Owner 仅看长度与哈希就盲批，App 增加单独的 Owner 正文复核命令：先重新验证持久审批证据、状态与过期时间，再只向认证 Owner 返回该提案的原始待写入正文，HTTP 响应禁止缓存；列表和 Trace 仍不带创作正文。Web 必须先读取并显示与当前 approval ID、Run 版本、负载哈希一致的正文，才解锁「批准」，拒绝仍可直接执行。App/Web 定向测试覆盖越权读取、已结算读取拒绝、版本不匹配与命令身份。
 
 ## 阶段验证与边界
 
-最近一轮写入审批 Runtime 与数据库就绪模块共 9 个定向单元测试通过，涵盖批准、重复命令、冲突、拒绝、过期、注入提交失败与就绪流程；HTTP 身份边界及 Router 的定向测试此前通过。写入候选和目标状态另有 5 个定向用例通过，`yarn lint`（TypeScript noEmit）通过。此前受控 Tool、Skill 权限、Project grant、Script 准备等相关定向用例也通过。Web Harness/审批客户端共 4 个定向测试和无输出类型检查通过；普通 `yarn type-check` 在这个 Web 工作树的链接依赖下碰到其他既有文件的 TS2742 声明可移植性错误，未当作通过。未运行全量测试、构建、浏览器或真实 Provider。
+最近一轮写入审批 Runtime 与数据库就绪模块共 9 个定向单元测试通过，涵盖批准、重复命令、冲突、拒绝、过期、注入提交失败与就绪流程；新增正文复核后，审批 Runtime/HTTP 适配器 3 个定向测试通过，`yarn lint`（TypeScript noEmit）通过。写入候选和目标状态另有 5 个定向用例此前通过；受控 Tool、Skill 权限、Project grant、Script 准备等相关定向用例也通过。Web Harness/审批客户端共 5 个定向测试和无输出类型检查通过；普通 `yarn type-check` 在这个 Web 工作树的链接依赖下碰到其他既有文件的 TS2742 声明可移植性错误，未当作通过。未运行全量测试、构建、浏览器或真实 Provider。
 
 新入口目前覆盖只读指导、规划工作区和剧本读取，另有独立后端监督写入 Runtime 及 Owner HTTP 审批入口；Web 已接入只读切换/刷新/取消与独立审批列表，还需把写入提案接到 Agent Tool、迁移旧 Socket 行为，验证运行中停止/真实进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
 
@@ -60,3 +61,4 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 22. 问：旧 Socket 边界要求数字 Project ID，会不会把现有 Web 客户端挡掉？答：源码核对显示现有 Web store 用字符串 Project ID 构造 Socket auth。修补后后端接受规范十进制字符串或正整数，归一化后再核验签名 token 对应 Owner 与 Memory 键；不会接受前导零或非数字字符串。定向回归同时覆盖合法 Web 形式和伪造形式。新 Harness 的 HTTP 契约仍是独立版本，不因此宣称页面已切换。
 23. 问：新 Web 入口如何避免与旧 Socket 的状态混淆？答：页面默认维持旧链路，用户显式切入只读模式时断开旧 Socket；新模式的 start/inspect/list/cancel 只走版本化 HTTP 客户端，失败留在新模式显示错误而不自动回退。切出才重新连接旧 Socket。定向契约测试验证规范 Project ID 和没有 Socket 回退；尚未做浏览器下的交互与重连验收，不能称完全兼容。
 24. 问：审批列表出现一条 pending，前端能单方面让写入生效吗？答：不能。Web 只提交当前后端快照的 approval ID、Run ID、版本和一次性命令 ID，不提供操作者身份字段；服务端从认证请求取 Owner，再在提交事务中复核版本、过期时间及目标状态哈希。Web 测试确认命令形状及已结算审批不重放，App 的定向测试覆盖冲突/拒绝/回滚。当前只读模型不会提出这些写入候选，界面是独立提案的处理接缝。
+25. 问：预览不含正文，Owner 如何知道批准的内容是什么？答：列表/Trace 只保留目标、长度与哈希以降低创作内容扩散；另设 Owner-only 的 `/review`，在返回正文前重新校验提案证据、状态、过期时间和 Owner，并发送 `Cache-Control: no-store`。Web 先显示完整正文，再依据同一 approval ID、Run 版本和负载哈希开放批准；过期或版本变化要重新复核。定向测试验证越权/已结算不可读和版本不匹配时不能把旧复核结果用于批准。浏览器端视觉及缓存行为尚待 T21 验收。

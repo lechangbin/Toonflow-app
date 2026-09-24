@@ -54,6 +54,11 @@ test("Script write proposal freezes exact target and approval without mutating P
       payload: { key: "storySkeleton", content: "偷偷更换" } }), /identity conflicts/);
     assert.equal(await runtime.inspect(7, proposed.runId, 2).catch(() => null), null);
     assert.deepEqual(await runtime.inspect(7, proposed.runId, 1), proposed);
+    await assert.rejects(runtime.review(7, proposed.runId, proposed.id, 2), /scope/);
+    assert.deepEqual(await runtime.review(7, proposed.runId, proposed.id, 1), {
+      approval: proposed, payload: { key: "storySkeleton", content: "新骨架" },
+    });
+    assert.equal(await runtime.review(7, proposed.runId, "wrong-approval", 1), null);
     const workspaceDecision = { projectId: 7, actorUserId: 1,
       runId: proposed.runId, approvalId: proposed.id,
       clientCommandId: "approve-workspace-1", expectedVersion: 1,
@@ -66,6 +71,7 @@ test("Script write proposal freezes exact target and approval without mutating P
     assert.equal(approved?.status, "approved");
     assert.equal(approved?.runStatus, "succeeded");
     assert.equal(approved?.runVersion, 2);
+    await assert.rejects(runtime.review(7, proposed.runId, proposed.id, 1), /identity conflicts/);
     assert.deepEqual(JSON.parse((await db("o_agentWorkData").where("id", 11).first()).data),
       { storySkeleton: "新骨架", adaptationStrategy: "旧策略" });
     assert.deepEqual(await runtime.decide(workspaceDecision), approved);

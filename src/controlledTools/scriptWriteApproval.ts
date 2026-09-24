@@ -68,6 +68,12 @@ export interface ScriptWriteApprovalSnapshot {
   runStatus: string;
 }
 
+export interface ScriptWriteApprovalReview {
+  approval: ScriptWriteApprovalSnapshot;
+  payload: ReturnType<typeof scriptWorkspaceWriteInput.parse>
+    | ReturnType<typeof scriptContentWriteInput.parse>;
+}
+
 export class ScriptWriteProposalRejectedError extends Error {
   constructor(readonly reason: "contract" | "scope" | "evidence") {
     super(`Script write proposal rejected: ${reason}`);
@@ -335,6 +341,25 @@ export function createScriptWriteApprovalRuntime(dependencies: {
         await expireDueScriptWriteApprovals(db, projectId,
           dependencies.now(), dependencies.createId);
         return readSnapshot(db, projectId, runId);
+      });
+    },
+    /** Owner-only full-text review, deliberately separate from content-free list/trace. */
+    async review(projectId: number, runId: string, approvalId: string,
+      actorUserId: number): Promise<ScriptWriteApprovalReview | null> {
+      return dependencies.work(async (db) => {
+        await assertOwner(db, projectId, actorUserId);
+        await expireDueScriptWriteApprovals(db, projectId,
+          dependencies.now(), dependencies.createId);
+        const snapshot = await readSnapshot(db, projectId, runId);
+        if (!snapshot || snapshot.id !== approvalId) return null;
+        if (snapshot.status !== "pending") throw new ScriptWriteProposalConflictError();
+        const approval = await db("o_agentToolApproval")
+          .where({ id: approvalId, runId, status: "pending" }).first("payloadJson");
+        if (!approval) throw new ScriptWriteProposalRejectedError("evidence");
+        const payload = snapshot.kind === "workspace"
+          ? scriptWorkspaceWriteInput.parse(JSON.parse(approval.payloadJson))
+          : scriptContentWriteInput.parse(JSON.parse(approval.payloadJson));
+        return { approval: snapshot, payload };
       });
     },
     async list(projectId: number, actorUserId: number): Promise<ScriptWriteApprovalSnapshot[]> {

@@ -19,6 +19,9 @@ test("Script write HTTP adapter uses authenticated Owner identity for all comman
   const runtime = {
     propose: async (input: unknown) => { calls.push(["propose", input]); return snapshot; },
     inspect: async (...args: unknown[]) => { calls.push(["inspect", args]); return snapshot; },
+    review: async (...args: unknown[]) => { calls.push(["review", args]); return {
+      approval: snapshot, payload: { key: "storySkeleton", content: "新骨架" },
+    }; },
     list: async (...args: unknown[]) => { calls.push(["list", args]); return [snapshot]; },
     decide: async (input: unknown) => { calls.push(["decide", input]); return snapshot; },
   } as unknown as Runtime;
@@ -45,6 +48,10 @@ test("Script write HTTP adapter uses authenticated Owner identity for all comman
       actorUserId: 99 })).status, 200);
     assert.equal((await post("/inspect", { projectId: 7,
       runId: "run-1", actorUserId: 99 })).status, 200);
+    const review = await post("/review", { projectId: 7,
+      runId: "run-1", approvalId: "approval-1", actorUserId: 99 });
+    assert.equal(review.status, 200);
+    assert.equal(review.headers.get("cache-control"), "no-store");
     assert.equal((await post("/list", { projectId: 7,
       actorUserId: 99 })).status, 200);
     assert.equal((await post("/decide", { projectId: 7,
@@ -56,6 +63,7 @@ test("Script write HTTP adapter uses authenticated Owner identity for all comman
         operationId: "operation-1", kind: "workspace",
         payload: { key: "storySkeleton", content: "新骨架" }, actorUserId: 5 }],
       ["inspect", [7, "run-1", 5]],
+      ["review", [7, "run-1", "approval-1", 5]],
       ["list", [7, 5]],
       ["decide", { projectId: 7, runId: "run-1",
         approvalId: "approval-1", clientCommandId: "approve-1",
