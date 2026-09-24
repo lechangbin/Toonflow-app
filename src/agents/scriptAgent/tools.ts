@@ -1,9 +1,15 @@
 import { tool, jsonSchema, Tool } from "ai";
 import { z } from "zod";
 import _ from "lodash";
+import type { Knex } from "knex";
 import ResTool from "@/socket/resTool";
 
 import { getDatabaseRuntime } from "@/database";
+
+export function readLegacyScriptContents(db: Knex, projectId: number, ids: string[]) {
+  return db("o_script").where("projectId", projectId).whereIn("id", ids)
+    .select("content", "name");
+}
 export const ScriptSchema = z.object({
   name: z.string().describe("剧本名称"),
   content: z.string().describe("剧本内容"),
@@ -106,7 +112,8 @@ export default (toolCpnfig: ToolConfig) => {
       execute: async ({ ids }) => {
         console.log("[tools] get_script_content", "[tools] get_script_content", ids);
         const thinking = msg.thinking(`正在获取脚本内容...`);
-        const data = await getDatabaseRuntime().work((db) => db("o_script").whereIn("id", ids).select("content", "name"));
+        const data = await getDatabaseRuntime().work((db) =>
+          readLegacyScriptContents(db, resTool.data.projectId, ids));
         const text = data && data.length ? data.map((d) => `<scriptItem name="${d.name}">${d.content}</scriptItem>`).join("\n") : "";
         thinking.appendText(`获取到脚本内容:\n` + JSON.stringify(data, null, 2));
         thinking.updateTitle(`获取脚本内容完成`);
