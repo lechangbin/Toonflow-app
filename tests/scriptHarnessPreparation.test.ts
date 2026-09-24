@@ -119,6 +119,29 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
       projectId: 7 }), null, "legacy inspect without actor cannot read a Harness Run");
     assert.equal((await guardedRuntime.inspect({ runId: guarded.id,
       projectId: 7, actorUserId: 1 }))?.status, "succeeded");
+    const cancelled = await guardedRuntime.start({ ...input,
+      scope: "script-harness-guidance-v1", clientRequestId: "cancel-before-model-run" });
+    assert.equal((await guardedRuntime.cancel({ runId: cancelled.id, projectId: 7,
+      actorUserId: 1, clientCommandId: "cancel-before-model", expectedVersion: 1 }))?.status,
+    "cancelled");
+    assert.equal((await guardedRuntime.start({ ...input,
+      scope: "script-harness-guidance-v1", clientRequestId: "cancel-before-model-run" })).id,
+    cancelled.id, "repeated start cannot revive a cancelled Run");
+    while (queue.length) await queue.shift()!();
+    assert.equal(modelCalls, 1, "queued callback after cancellation does not invoke Model");
+    assert.equal((await db("o_agentToolReceipt").where({ runId: cancelled.id })).length, 0);
+    assert.ok((await guardedRuntime.inspect({ runId: cancelled.id,
+      projectId: 7, actorUserId: 1 }))?.traces.some((trace) => trace.eventType === "run.cancelled"));
+    const reconnectedRuntime = createAgentRuntime({ work, now: () => 325,
+      createId, schedule: () => { throw new Error("read-only reconnect must not schedule"); },
+      prepareRun: (tx, prepared) => prepareScriptSkillRun(tx, prepared, createId),
+      skillMode: { grants: resolveReadOnlyScriptSkillGrants },
+      openTextCall: async () => { throw new Error("read-only reconnect must not call Model"); } });
+    assert.equal((await reconnectedRuntime.inspect({ runId: cancelled.id,
+      projectId: 7, actorUserId: 1 }))?.status, "cancelled");
+    assert.ok((await reconnectedRuntime.list({ projectId: 7, role: "scriptAgent",
+      scope: "script-harness-guidance-v1", actorUserId: 1 })).recent
+      .some((entry) => entry.id === guarded.id && entry.status === "succeeded"));
     const permission = await db("o_agentSkillPermissionDecision")
       .where({ runId: guarded.id, operationId: "guarded-tool-call" }).first();
     assert.equal(JSON.parse(permission.decisionJson).allowed, false);
