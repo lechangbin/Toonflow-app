@@ -28,7 +28,10 @@ function validateRouteInput(input: RouteInput): void {
   }
 }
 
-async function decide(db: Knex | Knex.Transaction, input: RouteInput): Promise<SkillRoutingDecision> {
+export async function routeSkillsInTransaction(
+  db: Knex | Knex.Transaction, input: RouteInput,
+): Promise<SkillRoutingDecision> {
+  validateRouteInput(input);
   const rows = await db("o_agentSkillBinding as binding")
     .join("o_agentSkillRevision as revision", "revision.id", "binding.activeRevisionId")
     .join("o_agentSkillRevisionPolicy as policy", "policy.revisionId", "revision.id")
@@ -74,7 +77,7 @@ export function createSkillRouter(work: DatabaseWork, evidence?: { now(): number
   return {
     async route(input: RouteInput): Promise<SkillRoutingDecision> {
       validateRouteInput(input);
-      return work((db) => decide(db, input));
+      return work((db) => routeSkillsInTransaction(db, input));
     },
     async routeForRun(input: { runId: string; projectId: number; intent: string; query: string }) {
       if (!evidence || !IDENTIFIER.test(input.runId) || !Number.isSafeInteger(input.projectId)
@@ -90,7 +93,7 @@ export function createSkillRouter(work: DatabaseWork, evidence?: { now(): number
         if (!run) throw new Error("Skill routing requires a queued Run in Project scope");
         const routeInput = { role: run.role, intent: input.intent, query: input.query };
         validateRouteInput(routeInput);
-        const decision = await decide(tx, routeInput);
+        const decision = await routeSkillsInTransaction(tx, routeInput);
         const decisionJson = JSON.stringify(decision);
         await tx("o_agentSkillRouteDecision").insert({ id, runId: input.runId,
           projectId: input.projectId, schemaVersion: SKILL_ROUTING_SCHEMA_VERSION,

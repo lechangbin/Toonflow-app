@@ -5,6 +5,7 @@ import { inspectPersistableText } from "@/diagnostics/traceSafeDiagnostics";
 
 import { validateSkillManifest, type SkillManifest } from "./manifest";
 import { resolveSkillDependenciesInTransaction } from "./resolution";
+import { SKILL_ROUTING_SCHEMA_VERSION, routeSkillsInTransaction } from "./routing";
 
 const IDENTIFIER = /^[A-Za-z0-9._:@-]{1,128}$/;
 const VERSION = /^\d+\.\d+\.\d+$/;
@@ -290,6 +291,47 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
             contentHash: revision.contentHash, manifestHash: revision.manifestHash, boundAt });
         }
         return plan;
+      }));
+    },
+    async routeAndBindRun(input: { runId: string; projectId: number;
+      intent: string; query: string }) {
+      if (!IDENTIFIER.test(input.runId) || !Number.isSafeInteger(input.projectId)
+        || input.projectId <= 0) throw new TypeError("Agent Run Skill routing identity is invalid");
+      const routeId = dependencies.createId();
+      const now = dependencies.now();
+      if (!IDENTIFIER.test(routeId) || !Number.isSafeInteger(now) || now < 0) {
+        throw new TypeError("Agent Run Skill routing evidence identity is invalid");
+      }
+      return dependencies.work((db) => db.transaction(async (tx) => {
+        const run = await tx("o_agentRun").where({ id: input.runId,
+          projectId: input.projectId, status: "queued" }).first("role");
+        if (!run) throw new Error("Skill routing requires a queued Run in Project scope");
+        if (await tx("o_agentRunSkillBinding").where({ runId: input.runId }).first("skillId")) {
+          throw new Error("Agent Run Skill binding set was already frozen");
+        }
+        if (await tx("o_agentSkillRouteDecision").where({ runId: input.runId }).first("id")) {
+          throw new Error("Agent Run Skill routing was already decided");
+        }
+        const decision = await routeSkillsInTransaction(tx,
+          { role: run.role, intent: input.intent, query: input.query });
+        const decisionJson = JSON.stringify(decision);
+        await tx("o_agentSkillRouteDecision").insert({ id: routeId, runId: input.runId,
+          projectId: input.projectId, schemaVersion: SKILL_ROUTING_SCHEMA_VERSION,
+          intent: input.intent, queryHash: hash(input.query), decisionJson,
+          decisionHash: hash(decisionJson), createdAt: now });
+        if (!decision.selected) return { routeId, decision, plan: null };
+        const plan = await resolveSkillDependenciesInTransaction(tx,
+          { role: run.role, rootSkillIds: [decision.selected.skillId] });
+        const root = plan.revisions.find((entry) => entry.skillId === decision.selected!.skillId);
+        if (!root || root.revisionId !== decision.selected.revisionId) {
+          throw new Error("Skill routing and dependency root Revision diverged");
+        }
+        for (const revision of plan.revisions) {
+          await tx("o_agentRunSkillBinding").insert({ runId: input.runId,
+            skillId: revision.skillId, revisionId: revision.revisionId,
+            contentHash: revision.contentHash, manifestHash: revision.manifestHash, boundAt: now });
+        }
+        return { routeId, decision, plan };
       }));
     },
     async loadResource(input: { runId: string; projectId: number;

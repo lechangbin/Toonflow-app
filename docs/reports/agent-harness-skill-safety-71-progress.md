@@ -13,6 +13,7 @@ Issue：`lechangbin/Toonflow-app#71`。本分支以 T14 Skill 基础为父，并
 - 新增 `bindResolvedRun` 显式入口，在同一个数据库事务中验证 queued Run 的 Project/角色、解析精确依赖闭包，并把闭包的每条 Revision/哈希写入 Run 绑定；若任何依赖失效，事务不留下部分绑定。它拒绝对已有绑定重复解析，避免激活指针变化后悄悄重写历史。旧 `bindRun` 仍可直接绑定根 Skill，因此此入口尚未形成唯一的生产接入路径。
 - 新增 `routeForRun` 显式审计入口，在同一事务中校验 queued Run 的 Project/角色、计算路由并追加不可变决定记录；记录包括查询哈希、意图、候选修订、排名与拒绝原因，不保存原始查询文本。普通 `route` 仍为无持久记录的查询入口，生产路径尚未切换。记录随 Project 删除事务清理。
 - 受控只读 Tool 增加可选择启用的 Skill 授权闸门：在原有 Run/Lease/Tool 契约校验后，读取 Run 冻结绑定及已发布 manifest，核对内容/manifest 哈希和撤销状态，再将 Skill 请求与 Tool 所需能力及平台、Project、Run、角色 grant 取交。判定在 Tool 适配器执行前完成；有绑定的允许/拒绝结果以不可变 PermissionDecision 留存，包含操作 ID、修订 ID 和缺失层，不保存 Tool 输入/输出。已拒绝的操作 ID 即使之后 grant 放宽也不能复用。默认旧 Tool 调用不启用此闸门，生产 Agent 迁移仍需显式配置可信 grant 来源与 Skill ID。
+- 新增 `routeAndBindRun`，同一事务里做 Run/Project/角色校验、写入路由决定、解析所选根的依赖闭包并冻结所有 Revision；若最高分并列，只写入 `needs-attention` 路由决定，不绑定任何 Skill。定向测试核对选中 Revision 与冻结根一致、并列不绑定、重复调用拒绝。生产启动仍待选择此唯一入口。
 
 ## 阶段验证与未完成边界
 
@@ -29,3 +30,4 @@ Issue：`lechangbin/Toonflow-app#71`。本分支以 T14 Skill 基础为父，并
 5. 问：怎样避免依赖解析和 Run 冻结之间的版本竞态？答：`bindResolvedRun` 在一次数据库事务内读取 queued Run、解析根和所有精确依赖，再逐条写入冻结绑定。测试对三节点闭包核对 Revision 集合，并让底层依赖弃用，验证新 Run 失败且没有部分写入。该入口仍待接入生产启动路径；现有直接 `bindRun` 可绕过闭包，不能声称所有 Run 已有此保证。
 6. 问：怎样解释一次没有选中 Skill 的路由？答：`routeForRun` 将候选 Revision、优先级、关键词命中数和 `role`、`intent`、`deprecated`、`revoked` 等原因作为不可变决定记录，而不是只留下最终空结果。它只保存查询哈希，不保存原始用户文本；测试覆盖并列待人工处理、跨 Project 拒绝、记录不可篡改及 Project 删除清理。生产入口仍待接线，不能声称每次路由已有该审计。
 7. 问：Skill 声明的能力怎样变成真正的 Tool 拒绝？答：可配置的 Tool 闸门在受控 Tool 的同一准备事务里验证 Run 冻结的 SkillRevision 内容哈希、manifest 哈希、角色与撤销策略，再把 Skill 请求和四层外部 grant 对 Tool 必需能力取交。定向测试证明缺 Skill ID、错绑定、缺 Project grant 和撤销都会在适配器调用前拒绝，并持久记录有绑定时的允许/拒绝判定。旧 Agent 尚未启用这一配置，grant 的可信持久来源亦待完成，因此不能说生产 Agent 已全面强制该策略。
+8. 问：路由与依赖绑定为何必须同事务？答：如果先路由、后按“当前激活版本”解析，两个动作之间的激活变化可能让决策审计指向 A 修订、实际 Run 却绑定 B 修订。`routeAndBindRun` 在一个事务内计算决定与闭包，还显式比较所选 Revision 与解析根 Revision；并列只留待处理决定，不做猜测式绑定。测试证明并列没有绑定、单选身份一致且不可重复绑定；生产入口切换仍未完成。

@@ -68,11 +68,29 @@ test("Skill routing filters role/intent before ranking and pauses on an exact to
       .update({ decisionJson: "{}" }), /immutable/);
     await assert.rejects(db("o_agentSkillRouteDecision").where({ id: audited.id }).delete(),
       /durable evidence/);
+    const tiedRun = await runtime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+      projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "tied-route-bind", content: "并列技能" });
+    const tiedBinding = await skills.routeAndBindRun({ runId: tiedRun.id, projectId: 7,
+      intent: "chapter-guidance", query: "请分析章节" });
+    assert.equal(tiedBinding.decision.status, "needs-attention");
+    assert.equal(tiedBinding.plan, null);
+    assert.equal((await db("o_agentRunSkillBinding").where({ runId: tiedRun.id })).length, 0);
     await db("o_agentSkillBinding").where({ skillId: second.skillId }).delete();
     const selected = await router.route({ role: "scriptAgent", intent: "chapter-guidance",
       query: "请分析章节" });
     assert.equal(selected.status, "selected");
     assert.deepEqual(selected.selected, first);
+    const selectedRun = await runtime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+      projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "selected-route-bind", content: "单一技能" });
+    const selectedBinding = await skills.routeAndBindRun({ runId: selectedRun.id,
+      projectId: 7, intent: "chapter-guidance", query: "请分析章节" });
+    assert.deepEqual(selectedBinding.decision.selected, first);
+    assert.equal(selectedBinding.plan?.revisions.at(-1)?.revisionId, first.revisionId);
+    assert.equal((await db("o_agentRunSkillBinding").where({ runId: selectedRun.id })).length, 1);
+    await assert.rejects(skills.routeAndBindRun({ runId: selectedRun.id,
+      projectId: 7, intent: "chapter-guidance", query: "请分析章节" }), /already frozen/);
     await skills.setRevisionLifecycle({ revisionId: first.revisionId,
       expectedVersion: 1, nextState: "deprecated" });
     const deprecated = await router.route({ role: "scriptAgent", intent: "chapter-guidance",
