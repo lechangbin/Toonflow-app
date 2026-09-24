@@ -49,7 +49,7 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
     const input = { schemaVersion: "toonflow.agent-run.start.v1" as const,
       projectId: 7, role: "scriptAgent" as const,
       scope: "read-only-project-guidance-v1" as const,
-      clientRequestId: "prepared-script-run", content: "分析章节" };
+      clientRequestId: "prepared-script-run", content: "分析章节", actorUserId: 1 };
     const run = await runtime.start(input);
     assert.equal(scheduled, 1);
     assert.equal((await db("o_agentRunSkillBinding").where({ runId: run.id }).first())?.revisionId,
@@ -99,11 +99,23 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
         return { text: "已核对 Skill 授权" } as any;
       } }) });
     const guarded = await guardedRuntime.start({ ...input,
-      clientRequestId: "guarded-script-run" });
+      scope: "script-harness-guidance-v1", clientRequestId: "guarded-script-run" });
+    await assert.rejects(guardedRuntime.start({ ...input,
+      scope: "script-harness-guidance-v1", actorUserId: 2,
+      clientRequestId: "wrong-owner-script-run" }), /Project owner/);
+    assert.equal((await db("o_agentRun").where({ clientRequestId: "wrong-owner-script-run" })).length, 0);
+    assert.equal(await guardedRuntime.inspect({ runId: guarded.id, projectId: 7,
+      actorUserId: 2 }), null);
+    assert.equal(await guardedRuntime.cancel({ runId: guarded.id, projectId: 7,
+      clientCommandId: "unauthorized-cancel", expectedVersion: 1 }), null);
+    assert.deepEqual(await guardedRuntime.list({ projectId: 7, role: "scriptAgent",
+      scope: "script-harness-guidance-v1" }), { current: null, recent: [] });
     while (queue.length) await queue.shift()!();
     assert.equal(modelCalls, 1);
+    assert.equal(await guardedRuntime.inspect({ runId: guarded.id,
+      projectId: 7 }), null, "legacy inspect without actor cannot read a Harness Run");
     assert.equal((await guardedRuntime.inspect({ runId: guarded.id,
-      projectId: 7 }))?.status, "succeeded");
+      projectId: 7, actorUserId: 1 }))?.status, "succeeded");
     const permission = await db("o_agentSkillPermissionDecision")
       .where({ runId: guarded.id, operationId: "guarded-tool-call" }).first();
     assert.equal(JSON.parse(permission.decisionJson).allowed, false);
@@ -118,11 +130,11 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
       openTextCall: async () => ({ target: { vendorId: "fake", modelId: "no-capacity" },
         invokeText: async () => { noCapacityCalls++; return { text: "unsafe" } as any; } }) });
     const noCapacity = await noCapacityRuntime.start({ ...input,
-      clientRequestId: "no-capacity-script-run" });
+      scope: "script-harness-guidance-v1", clientRequestId: "no-capacity-script-run" });
     while (noCapacityQueue.length) await noCapacityQueue.shift()!();
     assert.equal(noCapacityCalls, 0);
     assert.equal((await noCapacityRuntime.inspect({ runId: noCapacity.id,
-      projectId: 7 }))?.status, "failed");
+      projectId: 7, actorUserId: 1 }))?.status, "failed");
     await publish("script-guidance-2");
     await assert.rejects(runtime.start({ ...input,
       clientRequestId: "ambiguous-script-run" }), /unique selection: needs-attention/);

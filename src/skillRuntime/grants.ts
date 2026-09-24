@@ -73,7 +73,8 @@ export async function resolveReadOnlyScriptSkillGrants(tx: Knex.Transaction, inp
   return {
     platformGrants: readTool ? [READ_NOVEL] : [],
     projectGrants: grant ? [READ_NOVEL] : [],
-    runGrants: run.scope === "read-only-project-guidance-v1" ? [READ_NOVEL] : [],
+    runGrants: run.scope === "read-only-project-guidance-v1"
+      || run.scope === "script-harness-guidance-v1" ? [READ_NOVEL] : [],
     roleGrants: run.role === "scriptAgent" ? [READ_NOVEL] : [],
   };
 }

@@ -16,9 +16,11 @@ import {
   type TraceSafeDiagnostic,
 } from "@/diagnostics/traceSafeDiagnostics";
 
-import { TOOL_DEFINITIONS, toolDefinitionContractHash, type ControlledToolName } from "./definitions";
+import { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, getControlledToolDefinition, toolDefinitionContractHash,
+  type ControlledToolName } from "./definitions";
 
-export { TOOL_DEFINITIONS, toolDefinitionContractHash } from "./definitions";
+export { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, getControlledToolDefinition,
+  toolDefinitionContractHash } from "./definitions";
 export type { ControlledToolName } from "./definitions";
 
 export interface ExecuteControlledToolInput {
@@ -109,8 +111,8 @@ async function insertTrace(
 }
 
 function readReceipt(row: any): ToolReceiptSnapshot {
-  const definition = TOOL_DEFINITIONS[row.toolName as ControlledToolName];
-  if (!definition || row.toolRevision !== definition.revision || !["pending", "succeeded", "failed"].includes(row.status)) {
+  const definition = getControlledToolDefinition(row.toolName as ControlledToolName, row.toolRevision);
+  if (!definition || !["pending", "succeeded", "failed"].includes(row.status)) {
     throw new ToolEvidenceCorruptError();
   }
   let output: unknown;
@@ -164,9 +166,11 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
   const adapters = { ...defaultAdapters(dependencies.work), ...dependencies.adapters };
   return {
     async execute(request: ExecuteControlledToolInput): Promise<ControlledToolResult> {
-      const definition = TOOL_DEFINITIONS[request.toolName];
+      const definition = getControlledToolDefinition(request.toolName, request.revision);
       const parsed = definition?.inputSchema.safeParse(request.input);
       if (!definition || request.revision !== definition.revision || !parsed?.success
+        || (HARNESS_TOOL_DEFINITIONS[request.toolName]?.revision === request.revision
+          && !dependencies.skillGrants)
         || !request.runId || !Number.isSafeInteger(request.projectId) || request.projectId <= 0
         || !/^[A-Za-z0-9._:-]{1,128}$/u.test(request.operationId)) {
         return { status: "rejected", diagnostic: safeDiagnostic("contractRejected", "toolReceipt") };

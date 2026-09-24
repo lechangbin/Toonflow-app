@@ -60,8 +60,28 @@ export const TOOL_DEFINITIONS = Object.freeze({
   }),
 });
 
+const harnessReadPolicy = Object.freeze({ ...readPolicy,
+  scopes: Object.freeze(["script-harness-guidance-v1"]) });
+
+/** New scope gets new immutable Tool revisions; legacy v1 contracts remain inspectable. */
+export const HARNESS_TOOL_DEFINITIONS = Object.freeze({
+  get_novel_text: Object.freeze({ ...TOOL_DEFINITIONS.get_novel_text,
+    revision: "toonflow.tool.get-novel-text.v2", policy: harnessReadPolicy }),
+  get_novel_events: Object.freeze({ ...TOOL_DEFINITIONS.get_novel_events,
+    revision: "toonflow.tool.get-novel-events.v2", policy: harnessReadPolicy }),
+});
+
 export type ControlledToolName = keyof typeof TOOL_DEFINITIONS;
-export type ControlledToolDefinition = (typeof TOOL_DEFINITIONS)[ControlledToolName];
+export type ControlledToolDefinition = (typeof TOOL_DEFINITIONS)[ControlledToolName]
+  | (typeof HARNESS_TOOL_DEFINITIONS)[ControlledToolName];
+
+export function getControlledToolDefinition(name: ControlledToolName, revision: string): ControlledToolDefinition | null {
+  const legacy = TOOL_DEFINITIONS[name];
+  const harness = HARNESS_TOOL_DEFINITIONS[name];
+  if (legacy?.revision === revision) return legacy;
+  if (harness?.revision === revision) return harness;
+  return null;
+}
 
 export const DERIVED_ASSET_TOOL_DEFINITION = Object.freeze({
   name: "upsert_derived_asset",

@@ -5,6 +5,9 @@ import knexFactory, { type Knex } from "knex";
 
 import {
   TOOL_DEFINITIONS,
+  HARNESS_TOOL_DEFINITIONS,
+  getControlledToolDefinition,
+  toolDefinitionContractHash,
   ToolOperationConflictError,
   ToolEvidenceCorruptError,
   createControlledToolRuntime,
@@ -92,6 +95,25 @@ test("controlled read Tools persist bounded outputs, immutable revisions, receip
     assert.deepEqual(traces.map((row) => row.predecessorTraceId), [null, traces[0].id, traces[1].id, traces[2].id]);
     assert.ok(traces.every((row) => !JSON.stringify(row).includes("小说正文")), "Trace never copies project text");
     assert.equal(traces[1].toolReceiptId, text.receipt.id);
+  } finally { await db.destroy(); }
+});
+
+test("Harness read Tool uses a distinct revision and refuses an unguarded runtime", async () => {
+  assert.notEqual(toolDefinitionContractHash(TOOL_DEFINITIONS.get_novel_text),
+    toolDefinitionContractHash(HARNESS_TOOL_DEFINITIONS.get_novel_text));
+  assert.equal(getControlledToolDefinition("get_novel_text",
+    TOOL_DEFINITIONS.get_novel_text.revision)?.revision,
+  TOOL_DEFINITIONS.get_novel_text.revision);
+  assert.equal(getControlledToolDefinition("get_novel_text",
+    HARNESS_TOOL_DEFINITIONS.get_novel_text.revision)?.revision,
+  HARNESS_TOOL_DEFINITIONS.get_novel_text.revision);
+  const db = await createDatabase();
+  try {
+    await db("o_agentRun").where({ id: "run-1" }).update({ scope: "script-harness-guidance-v1" });
+    const result = await runtime(db).execute({ ...request("get_novel_text", "unguarded-v2", 10),
+      revision: HARNESS_TOOL_DEFINITIONS.get_novel_text.revision });
+    assert.equal(result.status, "rejected");
+    assert.equal((await db("o_agentToolReceipt")).length, 0);
   } finally { await db.destroy(); }
 });
 

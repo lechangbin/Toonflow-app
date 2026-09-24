@@ -21,6 +21,7 @@ import { getDatabaseRuntime } from "@/database";
 import {
   createControlledToolRuntime,
   TOOL_DEFINITIONS,
+  HARNESS_TOOL_DEFINITIONS,
   toolDefinitionContractHash,
   type ControlledToolName,
   type ControlledToolDependencies,
@@ -62,6 +63,7 @@ export const AGENT_RUN_START_SCHEMA_VERSION = "toonflow.agent-run.start.v1" as c
 export const AGENT_RUN_OUTPUT_SCHEMA_VERSION = "toonflow.agent-run-output.v1" as const;
 export const READ_ONLY_AGENT_ROLE = "scriptAgent" as const;
 export const READ_ONLY_AGENT_SCOPE = "read-only-project-guidance-v1" as const;
+export const SCRIPT_HARNESS_SCOPE = "script-harness-guidance-v1" as const;
 const LOGICAL_TARGET: TextModelTarget = { kind: "logical", key: "scriptAgent:decisionAgent" };
 const PROMPT_VERSION = "toonflow.read-only-project-guidance.v1";
 const DEFAULT_PROCESS_EPOCH = uuid();
@@ -76,14 +78,16 @@ export interface StartAgentRunInput {
   schemaVersion: typeof AGENT_RUN_START_SCHEMA_VERSION;
   projectId: number;
   role: typeof READ_ONLY_AGENT_ROLE;
-  scope: typeof READ_ONLY_AGENT_SCOPE;
+  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE;
   clientRequestId: string;
   content: string;
+  actorUserId?: number;
 }
 
 export interface InspectAgentRunInput {
   runId: string;
   projectId: number;
+  actorUserId?: number;
 }
 
 export interface CancelAgentRunInput extends InspectAgentRunInput {
@@ -94,7 +98,8 @@ export interface CancelAgentRunInput extends InspectAgentRunInput {
 export interface ListAgentRunsInput {
   projectId: number;
   role: typeof READ_ONLY_AGENT_ROLE;
-  scope: typeof READ_ONLY_AGENT_SCOPE;
+  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE;
+  actorUserId?: number;
 }
 
 export interface AgentRunListSnapshot {
@@ -176,7 +181,7 @@ export interface AgentRunSnapshot {
   id: string;
   projectId: number;
   role: typeof READ_ONLY_AGENT_ROLE;
-  scope: typeof READ_ONLY_AGENT_SCOPE;
+  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE;
   clientRequestId: string;
   requestFingerprint: string;
   status: AgentRunStatus;
@@ -219,7 +224,8 @@ export interface AgentRunDependencies {
   leaseDurationMs?: number;
   controlledTools?: ReturnType<typeof createControlledToolRuntime>;
   prepareRun?: (tx: Knex.Transaction, input: { runId: string; projectId: number;
-    role: typeof READ_ONLY_AGENT_ROLE; content: string; createdAt: number }) => Promise<void>;
+    role: typeof READ_ONLY_AGENT_ROLE; content: string; createdAt: number;
+    actorUserId?: number }) => Promise<void>;
   skillMode?: { grants: NonNullable<ControlledToolDependencies["skillGrants"]> };
 }
 
@@ -562,15 +568,31 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     ...(dependencies.skillMode ? { skillGrants: dependencies.skillMode.grants } : {}),
   });
   async function inspect(input: InspectAgentRunInput): Promise<AgentRunSnapshot | null> {
-    return dependencies.work((db) => readSnapshot(db, input.runId, input.projectId));
+    return dependencies.work(async (db) => {
+      const run = await db("o_agentRun").where({ id: input.runId,
+        projectId: input.projectId }).first("scope");
+      if (!run) return null;
+      if (run.scope === SCRIPT_HARNESS_SCOPE
+        && (!Number.isSafeInteger(input.actorUserId) || input.actorUserId! <= 0
+          || !await db("o_project").where({ id: input.projectId,
+            userId: input.actorUserId }).first("id"))) return null;
+      return readSnapshot(db, input.runId, input.projectId);
+    });
   }
 
   async function list(input: ListAgentRunsInput): Promise<AgentRunListSnapshot> {
     if (!Number.isInteger(input.projectId) || input.projectId <= 0
-      || input.role !== READ_ONLY_AGENT_ROLE || input.scope !== READ_ONLY_AGENT_SCOPE) {
+      || input.role !== READ_ONLY_AGENT_ROLE
+      || ![READ_ONLY_AGENT_SCOPE, SCRIPT_HARNESS_SCOPE].includes(input.scope)) {
       throw new TypeError("Agent Run 列表范围无效");
     }
     return dependencies.work(async (db) => {
+      if (input.scope === SCRIPT_HARNESS_SCOPE
+        && (!Number.isSafeInteger(input.actorUserId) || input.actorUserId! <= 0
+          || !await db("o_project").where({ id: input.projectId,
+            userId: input.actorUserId }).first("id"))) {
+        return { current: null, recent: [] };
+      }
       const scope = { projectId: input.projectId, role: input.role, scope: input.scope };
       const [recentRows, currentRow] = await Promise.all([
         db("o_agentRun").where(scope).orderBy("createdAt", "desc").orderBy("id", "desc").limit(20).select("id"),
@@ -599,6 +621,10 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     return dependencies.work((db) => db.transaction(async (trx) => {
       const run = await trx("o_agentRun").where({ id: input.runId, projectId: input.projectId }).first();
       if (!run) return null;
+      if (run.scope === SCRIPT_HARNESS_SCOPE
+        && (!Number.isSafeInteger(input.actorUserId) || input.actorUserId! <= 0
+          || !await trx("o_project").where({ id: input.projectId,
+            userId: input.actorUserId }).first("id"))) return null;
       const previous = await trx("o_agentRunCommand").where({ runId: run.id, clientCommandId }).first();
       if (previous) {
         if (previous.inputFingerprint !== inputFingerprint) throw new AgentRunCommandConflictError();
@@ -796,13 +822,14 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         invocation.messages = [{ role: "system", content: SYSTEM_PROMPT },
           { role: "assistant", content: projectFacts }, { role: "user", content: prepared.input.content }];
       }
-      const toolContracts = Object.values(TOOL_DEFINITIONS).map((definition) => ({
+      const modelToolDefinitions = dependencies.skillMode ? HARNESS_TOOL_DEFINITIONS : TOOL_DEFINITIONS;
+      const toolContracts = Object.values(modelToolDefinitions).map((definition) => ({
         name: definition.name, revision: definition.revision, contractHash: toolDefinitionContractHash(definition),
       }));
       let contextBundleHash: string | undefined;
       if (call.target.contextWindowTokens !== undefined) {
         try {
-          const toolAndPermissionContract = JSON.stringify(Object.values(TOOL_DEFINITIONS).map((definition) => ({
+          const toolAndPermissionContract = JSON.stringify(Object.values(modelToolDefinitions).map((definition) => ({
             name: definition.name, revision: definition.revision,
             inputSchema: z.toJSONSchema(definition.inputSchema), policy: definition.policy,
           })));
@@ -885,7 +912,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         try {
           const result = await controlledTools.execute({
             runId, projectId: toolProjectId, operationId, toolName,
-            revision: TOOL_DEFINITIONS[toolName].revision, input: { novelId }, lease: toolLease,
+            revision: modelToolDefinitions[toolName].revision, input: { novelId }, lease: toolLease,
             ...(preparedSkillId ? { skillId: preparedSkillId } : {}),
           });
           return result.status === "recorded" && result.receipt.status === "succeeded"
@@ -900,12 +927,12 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         tools: {
           get_novel_text: tool({
             description: "读取当前项目中指定章节的原文；输入为章节记录 ID。",
-            inputSchema: TOOL_DEFINITIONS.get_novel_text.inputSchema,
+            inputSchema: modelToolDefinitions.get_novel_text.inputSchema,
             execute: async ({ novelId }, options) => invokeReadTool("get_novel_text", novelId, options.toolCallId),
           }),
           get_novel_events: tool({
             description: "读取当前项目中指定章节关联的事件；输入为章节记录 ID。",
-            inputSchema: TOOL_DEFINITIONS.get_novel_events.inputSchema,
+            inputSchema: modelToolDefinitions.get_novel_events.inputSchema,
             execute: async ({ novelId }, options) => invokeReadTool("get_novel_events", novelId, options.toolCallId),
           }),
         },
@@ -986,8 +1013,16 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   }
 
   async function start(input: StartAgentRunInput): Promise<AgentRunSnapshot> {
-    if (input.schemaVersion !== AGENT_RUN_START_SCHEMA_VERSION || input.role !== READ_ONLY_AGENT_ROLE || input.scope !== READ_ONLY_AGENT_SCOPE) {
+    if (input.schemaVersion !== AGENT_RUN_START_SCHEMA_VERSION || input.role !== READ_ONLY_AGENT_ROLE
+      || ![READ_ONLY_AGENT_SCOPE, SCRIPT_HARNESS_SCOPE].includes(input.scope)) {
       throw new TypeError("不支持的 Agent Run 契约");
+    }
+    if ((input.scope === SCRIPT_HARNESS_SCOPE) !== Boolean(dependencies.skillMode)) {
+      throw new TypeError("Script Harness scope requires guarded Skill mode");
+    }
+    if (dependencies.skillMode && (!Number.isSafeInteger(input.actorUserId)
+      || input.actorUserId! <= 0)) {
+      throw new TypeError("Script Harness requires an authenticated Project actor");
     }
     const clientRequestId = input.clientRequestId.trim();
     const content = input.content.trim();
@@ -1001,6 +1036,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     const requestFingerprint = fingerprint({
       schemaVersion: input.schemaVersion, projectId: input.projectId, role: input.role,
       scope: input.scope, clientRequestId, content,
+      ...(dependencies.skillMode ? { actorUserId: input.actorUserId } : {}),
     });
     const runId = dependencies.createId();
     const stepId = dependencies.createId();
@@ -1050,7 +1086,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         runStatus: "queued", stepStatus: "pending", createdAt: now,
       });
       await dependencies.prepareRun?.(trx, { runId, projectId: input.projectId,
-        role: input.role, content, createdAt: now });
+        role: input.role, content, createdAt: now, actorUserId: input.actorUserId });
       return { snapshot: await readSnapshot(trx, runId, input.projectId), created: true, stepId, attemptId };
     }));
     let created: { snapshot: AgentRunSnapshot | null; created: boolean; stepId: string; attemptId?: string } | undefined;

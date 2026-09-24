@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { auditCausalTraceTimeline } from "@/agentRuntime/causalTrace";
-import { TOOL_DEFINITIONS, type ControlledToolName } from "@/controlledTools";
+import { getControlledToolDefinition, type ControlledToolName } from "@/controlledTools";
 import type { DatabaseWork } from "@/database";
 import { inspectPersistableText } from "@/diagnostics/traceSafeDiagnostics";
 
@@ -43,9 +43,10 @@ export function createCommittedToolContextSourceLoader(work: DatabaseWork) {
         const rows = await db("o_agentToolReceipt").where({ runId: input.runId, status: "succeeded" })
           .whereIn("id", input.receiptIds).orderBy("id", "asc");
         return rows.map((row): ContextCandidateSource => {
-          const definition = TOOL_DEFINITIONS[row.toolName as ControlledToolName];
+          const definition = getControlledToolDefinition(row.toolName as ControlledToolName,
+            row.toolRevision);
           const successTrace = successTraces.get(row.id);
-          if (!definition || definition.revision !== row.toolRevision
+          if (!definition
             || typeof row.outputJson !== "string" || hash(row.outputJson) !== row.outputHash
             || !successTrace || successTrace.createdAt < row.updatedAt
             || !inspectPersistableText(row.outputJson).ok) {
