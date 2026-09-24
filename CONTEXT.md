@@ -108,6 +108,18 @@ _Avoid_: AbortController event, cancelled status, compensation
 An ordered, safe record of lifecycle and diagnostic events that explains an Agent Run without retaining hidden reasoning or raw provider payloads.
 _Avoid_: Application log, transcript, chain of thought
 
+**Evaluation Run**:
+A durable execution of one frozen case manifest against a declared Agent Runtime and revision contract. It is distinct from each Agent Run that executes an individual case.
+_Avoid_: Golden Eval result file, Agent Run, ad-hoc test session
+
+**Evaluation Case**:
+One manifest-defined scenario within an Evaluation Run, retaining its partition and the Agent Run that produced its observed result.
+_Avoid_: Agent Step, fixture file
+
+**Evaluation Report**:
+A comparison of compatible Evaluation Runs that keeps case denominators, hard-gate failures, quality reviews, and missing evidence separate.
+_Avoid_: Composite score, dashboard total
+
 **ToolDefinition**:
 An immutable revision of an Agent-callable capability that states its typed contract, execution policy, risk, and domain adapter identity.
 _Avoid_: Ad-hoc model function, Socket callback, route handler

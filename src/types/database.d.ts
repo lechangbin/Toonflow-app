@@ -1,4 +1,4 @@
-// @db-hash 51f970257328f2871d5d3cdf86bf0a77
+// @db-hash c7744cf9620af8b59f4dea99e218c87d
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -342,6 +342,39 @@ export interface o_derivedChangeInstruction {
   'source'?: string | null;
   'updateTime'?: number | null;
 }
+export interface o_evaluationCase {
+  'agentRunId'?: string | null;
+  'agentRunStatus'?: string | null;
+  'agentRunTraceSequence'?: number | null;
+  'agentRunVersion'?: number | null;
+  'artifactRefsJson'?: string | null;
+  'caseId': string;
+  'completedAt'?: number | null;
+  'costMicros'?: number | null;
+  'createdAt': number;
+  'elapsedMs'?: number | null;
+  'evaluationRunId': string;
+  'failuresJson'?: string | null;
+  'hardGateResultsJson'?: string | null;
+  'id'?: string;
+  'observedAt'?: number | null;
+  'partition': string;
+  'qualityReviewJson'?: string | null;
+  'status': string;
+}
+export interface o_evaluationRun {
+  'completedAt'?: number | null;
+  'createdAt': number;
+  'id'?: string;
+  'manifestHash': string;
+  'manifestJson': string;
+  'manifestSchemaVersion': string;
+  'recordSchemaVersion': string;
+  'revisionContractHash': string;
+  'revisionContractJson': string;
+  'status': string;
+  'suiteId': string;
+}
 export interface o_event {
   'createTime'?: number | null;
   'detail'?: string | null;
@@ -579,6 +612,8 @@ export interface DB {
   "o_assets2Storyboard": o_assets2Storyboard;
   "o_assetsRole2Audio": o_assetsRole2Audio;
   "o_derivedChangeInstruction": o_derivedChangeInstruction;
+  "o_evaluationCase": o_evaluationCase;
+  "o_evaluationRun": o_evaluationRun;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
   "o_generationTask": o_generationTask;
