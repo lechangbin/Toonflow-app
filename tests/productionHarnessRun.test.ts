@@ -23,6 +23,7 @@ import { createBillableImageLedger } from
 import { billableImageScopeSchema } from
   "../src/controlledTools/billableImageLifecycle";
 import initDB from "../src/lib/initDB";
+import { recoverInterruptedAgentRuns } from "../src/database/agentRunRecovery";
 import { createSkillRuntime } from "../src/skillRuntime";
 import { createProjectSkillGrantRuntime, resolveProductionSkillGrants } from
   "../src/skillRuntime/grants";
@@ -84,6 +85,10 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
           currency: scope.currency, disclaimer: "预估费用并非最终账单" } }) });
     const queue: Array<() => Promise<void>> = [];
     let modelCalls = 0;
+    let modelEntered!: () => void;
+    let releaseModel!: () => void;
+    const enteredModel = new Promise<void>((resolve) => { modelEntered = resolve; });
+    const heldModel = new Promise<void>((resolve) => { releaseModel = resolve; });
     const runtime = createAgentRuntime({ work, now: () => 200, createId,
       schedule: (item) => queue.push(item), productionMode: true,
       prepareRun: (tx, input) => prepareProductionSkillRun(tx, input, createId),
@@ -95,6 +100,12 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
           contextWindowTokens: 50_000, maxOutputTokens: 256 },
           invokeText: async (callInput) => {
             modelCalls++;
+            if (callInput.messages?.some((message) =>
+              typeof message.content === "string" && message.content.includes("挂起模型调用"))) {
+              modelEntered();
+              await heldModel;
+              return { text: "迟到的模型结果不应提交" } as any;
+            }
             assert.deepEqual(Object.keys(callInput.tools!), ["get_production_workspace_text",
               "propose_asset_image_generation"]);
             const result = await callInput.tools!.get_production_workspace_text.execute!(
@@ -300,6 +311,34 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
     "cancelled");
     while (queue.length) await queue.shift()!();
     assert.equal(modelCalls, 1, "cancelled queued Run never calls Model");
+    const interrupted = await runtime.start({ ...input,
+      clientRequestId: "production-restart-before-model" });
+    await recoverInterruptedAgentRuns(db, 5_000);
+    assert.equal((await runtime.inspect({ runId: interrupted.id, projectId: 7,
+      actorUserId: 1 }))?.status, "waiting");
+    assert.equal((await db("o_agentRunAttempt")
+      .where({ runId: interrupted.id })).length, 2,
+    "pre-intent restart records a successor Attempt without calling the Model");
+    while (queue.length) await queue.shift()!();
+    assert.equal(modelCalls, 1, "recovered Production Run is not silently replayed");
+    const ambiguousModel = await runtime.start({ ...input,
+      clientRequestId: "production-restart-after-model-intent",
+      content: "挂起模型调用" });
+    const pendingWorker = queue.shift()!().catch(() => undefined);
+    await enteredModel;
+    await recoverInterruptedAgentRuns(db, 70_000);
+    const parked = await runtime.inspect({ runId: ambiguousModel.id,
+      projectId: 7, actorUserId: 1 });
+    assert.equal(parked?.status, "waiting");
+    assert.equal(parked?.attentionReason, "interrupted-model-call");
+    assert.equal((await db("o_agentRunAttempt")
+      .where({ runId: ambiguousModel.id })).length, 1,
+    "post-intent recovery must not create a replay Attempt");
+    releaseModel();
+    await pendingWorker;
+    assert.equal((await runtime.inspect({ runId: ambiguousModel.id,
+      projectId: 7, actorUserId: 1 }))?.status, "waiting");
+    assert.equal(modelCalls, 2, "late Model completion cannot revive the parked Run");
     const scriptRuntime = createAgentRuntime({ work, now: () => 220, createId,
       schedule: () => { throw new Error("default Runtime must not schedule"); },
       openTextCall: async () => { throw new Error("default Runtime must not call Model"); } });
