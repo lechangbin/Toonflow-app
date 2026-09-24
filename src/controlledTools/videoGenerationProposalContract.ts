@@ -89,6 +89,8 @@ export async function freezeVideoGenerationProposal(
     videoId: track.videoId ?? null, selection: proposedSelection,
     promptRevision: { id: revision.id, status: revision.status,
       profileId: revision.profileId, strategy: revision.strategy,
+      briefHash: hash(String(revision.brief ?? "")),
+      draftHash: hash(String(revision.draft ?? "")),
       renderedPromptHash: hash(revision.renderedPrompt) },
   }));
   return { payload, payloadJson, payloadHash, targetStateHash,

@@ -30,7 +30,7 @@ async function database(): Promise<Knex> {
   await db.schema.createTable("o_promptRevision", (t) => {
     t.integer("id").primary(); t.integer("projectId"); t.integer("videoTrackId");
     t.text("status"); t.text("profileId"); t.text("strategy");
-    t.text("renderedPrompt");
+    t.text("brief"); t.text("draft"); t.text("renderedPrompt");
   });
   await db.schema.createTable("o_video", (t) => {
     t.integer("id").primary(); t.integer("projectId"); t.integer("videoTrackId");
@@ -44,7 +44,9 @@ async function database(): Promise<Knex> {
     audioSelection: JSON.stringify(selection.audio) });
   await db("o_promptRevision").insert({ id: 51, projectId: 7,
     videoTrackId: 31, status: "active", profileId: "text-to-video-v1",
-    strategy: "standard", renderedPrompt: "A lantern sways in the wind" });
+    strategy: "standard", brief: '{"subject":"A lantern"}',
+    draft: '{"motion":"Sways"}',
+    renderedPrompt: "A lantern sways in the wind" });
   return db;
 }
 
@@ -90,6 +92,9 @@ test("candidate detects selection or Prompt Revision drift before later approval
     }) });
     assert.equal((await freezeVideoGenerationProposal(db, 7, payload)).targetStateHash,
       original.targetStateHash, "equivalent JSON key order should not look like target drift");
+    await db("o_promptRevision").where("id", 51).update({ draft: '{"motion":"Changes"}' });
+    const changedDraft = await freezeVideoGenerationProposal(db, 7, payload);
+    assert.notEqual(changedDraft.targetStateHash, original.targetStateHash);
     await db("o_promptRevision").where("id", 51)
       .update({ renderedPrompt: "A changed prompt" });
     const changed = await freezeVideoGenerationProposal(db, 7, payload);
