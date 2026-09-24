@@ -921,6 +921,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("revision").notNullable();
         table.text("confidence").notNullable();
         table.integer("createdAt").notNullable();
+        table.integer("revokedAt");
+        table.text("revocationCommandId");
         table.unique(["sourceOutputId", "kind", "startCodePoint", "endCodePoint"]);
         table.index(["projectId", "status", "createdAt"]);
       },
@@ -1547,6 +1549,35 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
       BEGIN
         SELECT RAISE(ABORT, 'Agent ContextBundle is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentProjectMemory")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentProjectMemory_prevent_source_update
+      BEFORE UPDATE OF projectId, scriptId, role, kind, sourceRunId, sourceStepId,
+        sourceOutputId, sourceOutputHash, startCodePoint, endCodePoint, content,
+        contentHash, revision, confidence, createdAt ON o_agentProjectMemory
+      BEGIN
+        SELECT RAISE(ABORT, 'Project Memory source evidence is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentProjectMemory_revoke_only
+      BEFORE UPDATE OF status, revokedAt, revocationCommandId ON o_agentProjectMemory
+      WHEN NOT (OLD.status = 'active' AND NEW.status = 'revoked'
+        AND OLD.revokedAt IS NULL AND NEW.revokedAt IS NOT NULL
+        AND OLD.revocationCommandId IS NULL AND NEW.revocationCommandId IS NOT NULL)
+      BEGIN
+        SELECT RAISE(ABORT, 'Project Memory supports only explicit revocation');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentProjectMemory_prevent_delete
+      BEFORE DELETE ON o_agentProjectMemory
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.sourceRunId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Project Memory is durable evidence');
       END
     `);
   }

@@ -1,4 +1,4 @@
-// @db-hash a20b701604537e78f3203527a1a731e7
+// @db-hash e96654d24ce245c4ebbb400dd43e06d1
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -74,6 +74,8 @@ export interface o_agentProjectMemory {
   'kind': string;
   'projectId': number;
   'revision': string;
+  'revocationCommandId'?: string | null;
+  'revokedAt'?: number | null;
   'role': string;
   'scriptId'?: number | null;
   'sourceOutputHash': string;

@@ -14,7 +14,7 @@ export interface ProjectMemoryRecord {
   scriptId: number | null;
   role: string;
   kind: "source-excerpt";
-  status: "active";
+  status: "active" | "revoked";
   sourceRunId: string;
   sourceStepId: string;
   sourceOutputId: string;
@@ -26,6 +26,8 @@ export interface ProjectMemoryRecord {
   revision: string;
   confidence: "source-verbatim";
   createdAt: number;
+  revokedAt: number | null;
+  revocationCommandId: string | null;
 }
 
 /** Extractive-only first slice: no inference, stream fragment or legacy isolation key becomes Memory. */
@@ -93,9 +95,36 @@ export function createProjectMemoryStore(dependencies: { work: DatabaseWork; now
           scriptId: run.scriptId ?? null, role: run.role, kind: "source-excerpt", status: "active",
           sourceRunId: input.runId, sourceStepId: input.stepId, sourceOutputId: input.outputId,
           sourceOutputHash: output.contentHash, startCodePoint: input.startCodePoint, endCodePoint,
-          content, contentHash, revision, confidence: "source-verbatim", createdAt };
+          content, contentHash, revision, confidence: "source-verbatim", createdAt,
+          revokedAt: null, revocationCommandId: null };
         await tx("o_agentProjectMemory").insert(record);
         return record;
+      }));
+    },
+    async revoke(input: { projectId: number; id: string; expectedRevision: string;
+      commandId: string }): Promise<ProjectMemoryRecord> {
+      if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
+        || ![input.id, input.expectedRevision, input.commandId].every((value) => IDENTIFIER.test(value))) {
+        throw new TypeError("Project Memory revocation request is invalid");
+      }
+      const revokedAt = dependencies.now();
+      if (!Number.isSafeInteger(revokedAt) || revokedAt < 0) {
+        throw new TypeError("Project Memory revocation time is invalid");
+      }
+      return dependencies.work((db) => db.transaction(async (tx) => {
+        const row = await tx("o_agentProjectMemory").where({ id: input.id,
+          projectId: input.projectId }).first();
+        if (!row) throw new Error("Project Memory is outside Project scope");
+        if (row.revision !== input.expectedRevision) throw new Error("Project Memory revision changed");
+        if (row.status === "revoked" && row.revocationCommandId === input.commandId) {
+          return row as ProjectMemoryRecord;
+        }
+        if (row.status !== "active") throw new Error("Project Memory revocation conflicts with lifecycle");
+        const changed = await tx("o_agentProjectMemory").where({ id: input.id, status: "active" })
+          .update({ status: "revoked", revokedAt, revocationCommandId: input.commandId });
+        if (changed !== 1) throw new Error("Project Memory revocation conflicts with lifecycle");
+        return { ...row, status: "revoked", revokedAt,
+          revocationCommandId: input.commandId } as ProjectMemoryRecord;
       }));
     },
   };

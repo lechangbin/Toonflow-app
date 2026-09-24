@@ -4,6 +4,7 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { createAgentRuntime } from "../src/agentRuntime";
+import { deleteProjectAgentEvidence } from "../src/agentRuntime/retention";
 import { createContextBuilder } from "../src/context";
 import initDB from "../src/lib/initDB";
 import { createProjectMemoryContextSourceLoader } from "../src/memory/contextSources";
@@ -78,5 +79,25 @@ test("Project Memory captures only a locatable excerpt of a committed same-Proje
       runId: current.id, projectId: 7, memoryIds: [memory.id], risk: "high",
     }), /no longer authorized or current/,
     "a failed source Attempt cannot remain active Memory evidence");
+    const revoked = await store.revoke({ projectId: 7, id: memory.id,
+      expectedRevision: memory.revision, commandId: "revoke-1" });
+    assert.equal(revoked.status, "revoked");
+    assert.deepEqual(await store.revoke({ projectId: 7, id: memory.id,
+      expectedRevision: memory.revision, commandId: "revoke-1" }), revoked);
+    await assert.rejects(store.revoke({ projectId: 7, id: memory.id,
+      expectedRevision: memory.revision, commandId: "revoke-2" }), /conflicts with lifecycle/);
+    await assert.rejects(db("o_agentProjectMemory").where({ id: memory.id })
+      .update({ content: "伪造的新记忆" }), /immutable/);
+    await assert.rejects(db("o_agentProjectMemory").where({ id: memory.id }).delete(), /durable evidence/);
+    assert.deepEqual(await createProjectMemoryContextSourceLoader(async (operation) => operation(db)).load({
+      runId: current.id, projectId: 7, memoryIds: [memory.id], risk: "high",
+    }), [], "revoked Memory cannot enter Context");
+    await db.transaction(async (tx) => {
+      await tx("o_project").where({ id: 7 }).delete();
+      await deleteProjectAgentEvidence(tx, 7);
+    });
+    assert.equal((await db("o_agentProjectMemory").where({ projectId: 7 })).length, 0,
+      "Project deletion removes derived Memory before its source evidence");
+    assert.equal((await db("o_agentRun").where({ projectId: 7 })).length, 0);
   } finally { await db.destroy(); }
 });
