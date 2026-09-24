@@ -9,11 +9,15 @@ import {
   type AgentRunCheckpointPayload,
 } from "@/agentRuntime";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
+import { assertAgentRunLease, type AgentRunLease } from "@/agentRuntime/lease";
 import type { DatabaseWork } from "@/database";
 import { getDatabaseRuntime } from "@/database";
 import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
+import { resolveProductionStoryboardProposalGrants } from "@/skillRuntime/grants";
+import { authorizeBoundSkillDefinition } from "@/skillRuntime/permissions";
 
-import { STORYBOARD_WRITE_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
+import { PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION,
+  STORYBOARD_WRITE_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
 import { freezeStoryboardWriteProposal, StoryboardWriteContractError,
   storyboardWriteInput, type StoryboardWriteInput } from "./storyboardWriteContract";
 import { insertApprovedStoryboard } from "./storyboardWriteEffect";
@@ -26,16 +30,28 @@ type Status = "pending" | "approved" | "rejected" | "expired" | "conflicted";
 export interface StoryboardWriteApprovalSnapshot {
   id: string; runId: string; receiptId: string; operationId: string;
   status: Status; expiresAt: number; runStatus: string; runVersion: number;
+  allowedActions: string[];
   payloadHash: string; targetStateHash: string;
   preview: { scriptId: number; trackId: number; duration: number;
     assetCount: number; payloadHash: string };
   payload: StoryboardWriteInput;
   receiptOutput?: { storyboardId: number; assetCount: number };
+  sourceRunId?: string; sourceOperationId?: string;
 }
 
 export interface StoryboardProposalInput {
   projectId: number; actorUserId: number; clientRequestId: string;
   operationId: string; payload: unknown;
+}
+
+export interface StoryboardProposalFromAgentInput {
+  projectId: number; parentRunId: string; skillId: string;
+  lease: AgentRunLease; operationId: string; payload: unknown;
+}
+
+export function storyboardProposalClientRequestId(parentRunId: string,
+  operationId: string): string {
+  return `storyboard-proposal:${hash(`${parentRunId}:${operationId}`).slice(0, 64)}`;
 }
 
 export interface StoryboardDecisionInput {
@@ -103,12 +119,42 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number,
     || !["pending", "approved", "rejected", "expired", "conflicted"].includes(approval.status)) {
     throw new StoryboardWriteContractError("unsafe");
   }
-  let runInput: { operationId?: unknown; payloadHash?: unknown };
+  let runInput: { operationId?: unknown; payloadHash?: unknown;
+    parentRunId?: unknown; parentOperationId?: unknown;
+    skillId?: unknown; proposalContractHash?: unknown };
   try { runInput = JSON.parse(run.input); }
   catch { throw new StoryboardWriteContractError("unsafe"); }
   if (runInput.operationId !== approval.operationId
     || runInput.payloadHash !== approval.payloadHash) {
     throw new StoryboardWriteContractError("unsafe");
+  }
+  const hasSource = runInput.parentRunId !== undefined
+    || runInput.parentOperationId !== undefined || runInput.skillId !== undefined
+    || runInput.proposalContractHash !== undefined;
+  if (hasSource) {
+    if (typeof runInput.parentRunId !== "string"
+      || typeof runInput.parentOperationId !== "string"
+      || typeof runInput.skillId !== "string"
+      || runInput.parentOperationId !== approval.operationId
+      || runInput.proposalContractHash !== toolDefinitionContractHash(
+        PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION)) {
+      throw new StoryboardWriteContractError("unsafe");
+    }
+    const parent = await db("o_agentRun").where({ id: runInput.parentRunId,
+      projectId, role: "productionAgent", scope: "production-harness-v1" }).first("id");
+    const binding = parent && await db("o_agentRunSkillBinding")
+      .where({ runId: parent.id, skillId: runInput.skillId }).first("revisionId");
+    const permission = binding && await db("o_agentSkillPermissionDecision")
+      .where({ runId: parent.id, operationId: runInput.parentOperationId,
+        skillId: runInput.skillId,
+        toolName: PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION.name }).first();
+    if (!permission || permission.skillRevisionId !== binding.revisionId
+      || hash(permission.decisionJson) !== permission.decisionHash) {
+      throw new StoryboardWriteContractError("unsafe");
+    }
+    try {
+      if (JSON.parse(permission.decisionJson).allowed !== true) throw new Error("denied");
+    } catch { throw new StoryboardWriteContractError("unsafe"); }
   }
   let receiptOutput: StoryboardWriteApprovalSnapshot["receiptOutput"];
   if (approval.status === "approved") {
@@ -128,8 +174,11 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number,
   return { id: approval.id, runId, receiptId: receipt.id,
     operationId: approval.operationId, status: approval.status,
     expiresAt: approval.expiresAt, runStatus: run.status, runVersion: run.version,
+    allowedActions: JSON.parse(run.allowedActions),
     payloadHash: approval.payloadHash, targetStateHash: approval.targetStateHash,
-    preview, payload: parsed.data, ...(receiptOutput ? { receiptOutput } : {}) };
+    preview, payload: parsed.data, ...(receiptOutput ? { receiptOutput } : {}),
+    ...(hasSource ? { sourceRunId: runInput.parentRunId as string,
+      sourceOperationId: runInput.parentOperationId as string } : {}) };
 }
 
 /** Reconnect settles stale pending approvals without replaying a write. */
@@ -183,21 +232,79 @@ export function createStoryboardWriteApprovalRuntime(dependencies: {
   work: DatabaseWork; now(): number; createId(): string; approvalTtlMs?: number;
 }) {
   const ttl = dependencies.approvalTtlMs ?? STORYBOARD_WRITE_APPROVAL_TTL_MS;
-  return {
-    async propose(input: StoryboardProposalInput): Promise<StoryboardWriteApprovalSnapshot> {
+  async function persistProposal(input: StoryboardProposalInput,
+    source?: StoryboardProposalFromAgentInput): Promise<StoryboardWriteApprovalSnapshot | null> {
       if (!validId(input.clientRequestId) || !validId(input.operationId) || ttl <= 0) {
         throw new StoryboardWriteContractError("scope");
       }
       const now = dependencies.now();
       return dependencies.work((db) => db.transaction(async (tx) => {
         await assertOwner(tx, input.projectId, input.actorUserId);
+        if (source) {
+          const parent = await tx("o_agentRun").where({ id: source.parentRunId,
+            projectId: input.projectId, role: "productionAgent",
+            scope: "production-harness-v1", status: "running" })
+            .whereNull("cancellationRequestedAt").first("id", "input");
+          if (!parent || source.lease.runId !== parent.id) {
+            throw new StoryboardWriteContractError("scope");
+          }
+          let parentActor: unknown;
+          try { parentActor = JSON.parse(parent.input).actorUserId; }
+          catch { throw new StoryboardWriteContractError("unsafe"); }
+          if (parentActor !== input.actorUserId) throw new StoryboardWriteContractError("scope");
+          await assertAgentRunLease(tx, source.lease, now);
+          const proposalTool = PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION;
+          const proposalContractHash = toolDefinitionContractHash(proposalTool);
+          const proposalCatalog = await tx("o_agentToolDefinition")
+            .where({ name: proposalTool.name, revision: proposalTool.revision })
+            .first("contractHash");
+          if (proposalCatalog && proposalCatalog.contractHash !== proposalContractHash) {
+            throw new StoryboardWriteContractError("unsafe");
+          }
+          if (!proposalCatalog) await tx("o_agentToolDefinition").insert({
+            id: dependencies.createId(), name: proposalTool.name,
+            revision: proposalTool.revision, contractHash: proposalContractHash,
+            policy: JSON.stringify(proposalTool.policy), createdAt: now,
+          });
+          const grants = await resolveProductionStoryboardProposalGrants(tx, {
+            runId: parent.id, projectId: input.projectId,
+          });
+          const authority = await authorizeBoundSkillDefinition(tx, {
+            runId: parent.id, projectId: input.projectId,
+            skillId: source.skillId, ...grants,
+          }, proposalTool);
+          const decisionJson = JSON.stringify(authority.decision);
+          const previous = await tx("o_agentSkillPermissionDecision")
+            .where({ runId: parent.id, operationId: source.operationId }).first();
+          if (previous) {
+            if (previous.skillId !== source.skillId
+              || previous.toolName !== proposalTool.name
+              || previous.skillRevisionId !== authority.skillRevisionId
+              || hash(previous.decisionJson) !== previous.decisionHash) {
+              throw new StoryboardWriteContractError("unsafe");
+            }
+            let allowed: unknown;
+            try { allowed = JSON.parse(previous.decisionJson).allowed; }
+            catch { throw new StoryboardWriteContractError("unsafe"); }
+            if (allowed !== true || !authority.decision.allowed) return null;
+          } else {
+            await tx("o_agentSkillPermissionDecision").insert({
+              id: dependencies.createId(), runId: parent.id, skillId: source.skillId,
+              skillRevisionId: authority.skillRevisionId,
+              operationId: source.operationId, toolName: proposalTool.name,
+              decisionJson, decisionHash: hash(decisionJson), createdAt: now,
+            });
+            if (!authority.decision.allowed) return null;
+          }
+        }
         const payload = storyboardWriteInput.parse(input.payload);
         const payloadHash = hash(JSON.stringify(payload));
         const contractHash = toolDefinitionContractHash(tool);
         const requestFingerprint = hash(JSON.stringify({ projectId: input.projectId,
           actorUserId: input.actorUserId, scope: STORYBOARD_WRITE_RUN_SCOPE,
           operationId: input.operationId, toolRevision: tool.revision,
-          payloadHash }));
+          payloadHash, ...(source ? { parentRunId: source.parentRunId,
+            skillId: source.skillId } : {}) }));
         const existing = await tx("o_agentRun").where({ projectId: input.projectId,
           role: "productionAgent", scope: STORYBOARD_WRITE_RUN_SCOPE,
           clientRequestId: input.clientRequestId }).first();
@@ -224,8 +331,13 @@ export function createStoryboardWriteApprovalRuntime(dependencies: {
           scriptId: frozen.payload.scriptId, role: "productionAgent",
           scope: STORYBOARD_WRITE_RUN_SCOPE, clientRequestId: input.clientRequestId,
           requestFingerprint, input: JSON.stringify({ operationId: input.operationId,
-            payloadHash: frozen.payloadHash }), status: "waiting",
-          waitingReason: "tool-approval", attentionReason: "tool-approval-required",
+            payloadHash: frozen.payloadHash,
+            ...(source ? { parentRunId: source.parentRunId,
+              parentOperationId: source.operationId, skillId: source.skillId,
+              proposalContractHash: toolDefinitionContractHash(
+                PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION) } : {}) }),
+          status: "waiting", waitingReason: "tool-approval",
+          attentionReason: "tool-approval-required",
           allowedActions: JSON.stringify(["inspect", "approve", "reject"]),
           version: 1, createdAt: now, updatedAt: now, startedAt: now, fence: 0,
         });
@@ -259,10 +371,32 @@ export function createStoryboardWriteApprovalRuntime(dependencies: {
         await appendCausalTrace(tx, { id: dependencies.createId(), runId,
           stepId, attemptId, toolReceiptId: receiptId,
           eventType: "tool.approval.requested", createdAt: now });
+        if (source) await appendCausalTrace(tx, { id: dependencies.createId(),
+          runId: source.parentRunId, eventType: "tool.proposal.created", createdAt: now });
         const snapshot = await readSnapshot(tx, input.projectId, runId);
         if (!snapshot) throw new StoryboardWriteContractError("unsafe");
         return snapshot;
       }));
+  }
+  return {
+    async propose(input: StoryboardProposalInput): Promise<StoryboardWriteApprovalSnapshot> {
+      const result = await persistProposal(input);
+      if (!result) throw new StoryboardWriteContractError("unsafe");
+      return result;
+    },
+
+    async proposeFromAgent(source: StoryboardProposalFromAgentInput): Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }> {
+      const actorUserId = await dependencies.work(async (db) => {
+        const project = await db("o_project").where({ id: source.projectId }).first("userId");
+        return Number(project?.userId);
+      });
+      const result = await persistProposal({ projectId: source.projectId, actorUserId,
+        clientRequestId: storyboardProposalClientRequestId(source.parentRunId,
+          source.operationId), operationId: source.operationId,
+        payload: source.payload }, source);
+      return result ? { status: "pending", approvalRunId: result.runId,
+        approvalId: result.id } : { status: "denied" };
     },
 
     async inspect(projectId: number, runId: string, actorUserId: number) {

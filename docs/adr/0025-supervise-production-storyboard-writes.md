@@ -1,6 +1,6 @@
 # ADR 0025: Supervise single-Storyboard writes on an existing Video Track
 
-Status: internal Owner-local approval Runtime implemented for the T17 staged migration (Issue #73); model proposal and UI exposure are not yet implemented.
+Status: single-Storyboard supervised slice implemented for the T17 staged migration (Issue #73); the full Production Agent golden path remains incomplete.
 
 ## Context
 
@@ -16,4 +16,4 @@ The legacy Production Agent sends `addStoryboard` through a browser Socket callb
 
 ## Consequences and staged evidence
 
-`src/controlledTools/storyboardWriteContract.ts` validates ownership and freezes hashes. `storyboardWriteApproval.ts` creates a durable pending child Run and requires an Owner decision. The approval transaction rechecks the exact target and atomically inserts the Storyboard and Asset associations with Receipt, Output, Checkpoint and Trace. Reconnection can expire stale pending approvals without replaying a write. Nine focused SQLite tests cover proposal scope, target drift, Owner isolation, rejection, expiry, idempotency, and rollback on association failure. This Runtime is internal: no model-facing proposal Tool, HTTP route, Web approval UI, browser acceptance, or Track creation exists yet. T17 and T21 remain open.
+`src/controlledTools/storyboardWriteContract.ts` validates ownership and freezes hashes. `storyboardWriteApproval.ts` creates a durable pending child Run and requires an Owner decision. The model only sees `propose_storyboard_write`, which requires a published Skill request, `propose:storyboard` Project grant, and a live parent Run lease. The approval transaction rechecks the exact target and atomically inserts the Storyboard and Asset associations with Receipt, Output, Checkpoint and Trace. Startup and Owner inspection expire stale pending approvals without replaying a write. An Owner-only HTTP route and the Web trial panel expose exact-payload review and versioned decisions; the parent effects projection reconstructs status from persisted permission and child approval evidence. Targeted App/Web tests cover scope, target drift, Owner isolation, revocation, forged lease, rejection, expiry, idempotency, and rollback on association failure. Browser acceptance, multi-Storyboard grouping, Track creation, image/video generation, and real process-restart evidence are not yet done. T17 and T21 remain open.

@@ -16,6 +16,7 @@ import { createProductionHarnessEffects, ProductionHarnessEffectsConflictError,
 import { getDefaultProductionHarnessRuntime } from "@/agents/productionAgent/harnessRuntime";
 import { createDefaultBillableImageRuntime } from "@/controlledTools/billableImageComposition";
 import { getDefaultDerivedAssetWriteRuntime } from "@/controlledTools/derivedAssetWrite";
+import { getDefaultStoryboardWriteApprovalRuntime } from "@/controlledTools/storyboardWriteApproval";
 import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -29,11 +30,13 @@ function actorUserId(req: express.Request): number | null {
 type Effects = ReturnType<typeof createProductionHarnessEffects>;
 const billableImage = createDefaultBillableImageRuntime();
 const derivedAsset = getDefaultDerivedAssetWriteRuntime();
+const storyboard = getDefaultStoryboardWriteApprovalRuntime();
 export function createProductionHarnessRouter(runtime: AgentRuntime,
   effects: Effects = createProductionHarnessEffects({
     work: (operation) => getDatabaseRuntime().work(operation),
     inspectBillable: billableImage.approval.inspect,
     inspectDerived: derivedAsset.inspect,
+    inspectStoryboard: storyboard.inspect,
   })) {
   const router = express.Router();
   router.post("/start", validateFields({

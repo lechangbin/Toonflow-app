@@ -4,6 +4,7 @@ import { createAgentRuntime, type AgentRuntime } from "@/agentRuntime";
 import { getDatabaseRuntime } from "@/database";
 import { createDefaultBillableImageRuntime } from "@/controlledTools/billableImageComposition";
 import { getDefaultDerivedAssetWriteRuntime } from "@/controlledTools/derivedAssetWrite";
+import { getDefaultStoryboardWriteApprovalRuntime } from "@/controlledTools/storyboardWriteApproval";
 import { resolveProductionSkillGrants } from "@/skillRuntime/grants";
 import { getDefaultConfiguredVendor } from "@/vendor";
 
@@ -16,6 +17,7 @@ export function getDefaultProductionHarnessRuntime(): AgentRuntime {
   if (!defaultRuntime) {
     const billableImage = createDefaultBillableImageRuntime();
     const derivedAsset = getDefaultDerivedAssetWriteRuntime();
+    const storyboard = getDefaultStoryboardWriteApprovalRuntime();
     defaultRuntime = createAgentRuntime({
       work: (operation) => getDatabaseRuntime().work(operation),
       openTextCall: (target) => getDefaultConfiguredVendor().openTextCall(target),
@@ -29,6 +31,7 @@ export function getDefaultProductionHarnessRuntime(): AgentRuntime {
       productionMode: true,
       proposeBillableImage: (input) => billableImage.approval.proposeFromAgent(input),
       proposeDerivedAsset: (input) => derivedAsset.proposeFromAgent(input),
+      proposeStoryboard: (input) => storyboard.proposeFromAgent(input),
     });
   }
   return defaultRuntime;

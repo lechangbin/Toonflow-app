@@ -33,6 +33,8 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 
 分镜受控写入第二切片：进一步要求 Track 为空且时长与候选相同；内部 Owner-local 审批 Runtime 已能冻结待审 Run，并在批准事务中复核目标后原子写入 Storyboard、Asset 关联、ToolReceipt、Output、Checkpoint 和 Trace。重复提案/决策读取原有证据，目标漂移转冲突，断线检查可使超时审批落账而不重放写入。9 个相关 SQLite 定向用例和 App TypeScript 检查通过，包括关联表失败时整体回滚。该 Runtime 尚未开放 HTTP、模型 Tool 或 Web UI；旧 Socket 路径仍并行，不能称分镜黄金链路完成迁移。上一段的“尚无待审 Run/提交事务”是第一切片时点记录，现由本段更新。
 
+分镜受控写入第三切片：`propose_storyboard_write` 已接入生产 Harness 模型 Tool 目录。冻结 Skill 同时请求 Tool 与 `propose:storyboard` 能力，认证 Owner 单独按版本开启 Project grant 后，父 Run 有效租约和权限交集才允许建待审子 Run；模型没有审批权。子 Run 冻结父 Run、操作、Skill 与提案合约，检查时复核来源；父 Run `/effects` 从持久权限判定与子 Run 重建 `storyboardEffects`。Owner-only `/api/agentRuns/storyboardWriteApproval` 提供 propose/inspect/decide，Web 试用面板展示完整待审载荷和版本化批准/拒绝。启动恢复与重新检查会结算过期审批，不重放分镜写入。最近一次仅运行相关 24 个 App 定向用例（含数据库 readiness）、6 个 Web 合约用例和两侧无输出类型检查，均通过；未运行全量套件、构建、浏览器或真实 Provider。旧 Socket 批量分镜、轨道创建、批量图片和视频仍未迁移，T17 未完成。前两段是历史切片记录，其“尚未开放”状态由本段更新。
+
 ## 阶段追问准备（非最终面经）
 
 1. 问：为什么生产工作区读取不能继续让前端 `getFlowData` 回调负责？答：旧工具通过 Socket 回调从前端得到数据，模型侧请求与实际读到的 Project/剧本数据缺少后端一致的授权、回执和恢复身份。新接缝把剧本归属与工作区行的 Project、剧本键在后端核对，并给 Tool 固定修订、scope 和能力；测试证明跨 Project ID 与重复行不会返回内容。它已接上只读生产 Run，但尚未替代旧生成工具。

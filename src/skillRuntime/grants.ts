@@ -9,6 +9,7 @@ const READ_SCRIPT = "read:script" as const;
 const READ_PRODUCTION_WORKSPACE = "read:production-workspace" as const;
 const PROPOSE_BILLABLE_IMAGE = "propose:billable-image" as const;
 const PROPOSE_DERIVED_ASSET = "propose:derived-asset" as const;
+const PROPOSE_STORYBOARD = "propose:storyboard" as const;
 const PROPOSE_SCRIPT_WORKSPACE = "propose:script-workspace" as const;
 const PROPOSE_SCRIPT = "propose:script" as const;
 
@@ -28,7 +29,8 @@ export function createProjectSkillGrantRuntime(dependencies: {
     expectedVersion: number; active: boolean }, capability: typeof READ_NOVEL | typeof READ_SCRIPT_WORKSPACE
       | typeof READ_SCRIPT | typeof READ_PRODUCTION_WORKSPACE
       | typeof PROPOSE_SCRIPT_WORKSPACE | typeof PROPOSE_SCRIPT
-      | typeof PROPOSE_BILLABLE_IMAGE | typeof PROPOSE_DERIVED_ASSET) {
+      | typeof PROPOSE_BILLABLE_IMAGE | typeof PROPOSE_DERIVED_ASSET
+      | typeof PROPOSE_STORYBOARD) {
     if (![input.projectId, input.actorUserId].every((value) =>
       Number.isSafeInteger(value) && value > 0)
       || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0
@@ -77,14 +79,15 @@ export function createProjectSkillGrantRuntime(dependencies: {
         }
         const rows = await db("o_agentProjectCapabilityGrant")
           .where({ projectId }).whereIn("capability", [READ_PRODUCTION_WORKSPACE,
-            PROPOSE_BILLABLE_IMAGE, PROPOSE_DERIVED_ASSET]);
+            PROPOSE_BILLABLE_IMAGE, PROPOSE_DERIVED_ASSET, PROPOSE_STORYBOARD]);
         const snapshot = (capability: string) => {
           const row = rows.find((entry) => entry.capability === capability);
           return { active: row?.state === "active", version: Number(row?.version ?? 0) };
         };
         return { workspace: snapshot(READ_PRODUCTION_WORKSPACE),
           imageProposal: snapshot(PROPOSE_BILLABLE_IMAGE),
-          derivedProposal: snapshot(PROPOSE_DERIVED_ASSET) };
+          derivedProposal: snapshot(PROPOSE_DERIVED_ASSET),
+          storyboardProposal: snapshot(PROPOSE_STORYBOARD) };
       });
     },
     async setReadProductionWorkspace(input: { projectId: number; actorUserId: number;
@@ -98,6 +101,10 @@ export function createProjectSkillGrantRuntime(dependencies: {
     async setProposeDerivedAsset(input: { projectId: number; actorUserId: number;
       expectedVersion: number; active: boolean }) {
       return setCapability(input, PROPOSE_DERIVED_ASSET);
+    },
+    async setProposeStoryboard(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, PROPOSE_STORYBOARD);
     },
     async inspectScriptProposals(projectId: number, actorUserId: number) {
       if (![projectId, actorUserId].every((value) =>
@@ -238,4 +245,21 @@ export async function resolveProductionDerivedAssetProposalGrants(tx: Knex.Trans
     projectGrants: grant ? [PROPOSE_DERIVED_ASSET] : [],
     runGrants: run.scope === "production-harness-v1" ? [PROPOSE_DERIVED_ASSET] : [],
     roleGrants: run.role === "productionAgent" ? [PROPOSE_DERIVED_ASSET] : [] };
+}
+
+/** Storyboard proposal authority never includes the actual write capability. */
+export async function resolveProductionStoryboardProposalGrants(tx: Knex.Transaction, input: {
+  runId: string; projectId: number;
+}) {
+  const run = await tx("o_agentRun").where({ id: input.runId,
+    projectId: input.projectId }).first("id", "role", "scope");
+  const project = await tx("o_project").where({ id: input.projectId }).first("id");
+  if (!run || !project) throw new Error("Production Storyboard proposal is outside Run Project scope");
+  const grant = await tx("o_agentProjectCapabilityGrant")
+    .where({ projectId: input.projectId, capability: PROPOSE_STORYBOARD,
+      state: "active" }).first("version");
+  return { platformGrants: [PROPOSE_STORYBOARD],
+    projectGrants: grant ? [PROPOSE_STORYBOARD] : [],
+    runGrants: run.scope === "production-harness-v1" ? [PROPOSE_STORYBOARD] : [],
+    roleGrants: run.role === "productionAgent" ? [PROPOSE_STORYBOARD] : [] };
 }

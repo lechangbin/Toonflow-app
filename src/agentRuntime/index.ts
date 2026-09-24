@@ -25,6 +25,7 @@ import {
   SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
   PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION,
   PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION,
   toolDefinitionContractHash,
   type ControlledToolName,
   type ControlledToolDependencies,
@@ -257,6 +258,10 @@ export interface AgentRunDependencies {
     assetId: number; vendorId: string; modelId: string; resolution: string }) => Promise<
       { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
   proposeDerivedAsset?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    payload: unknown }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
+  proposeStoryboard?: (input: { projectId: number; parentRunId: string;
     skillId: string; lease: AgentRunLease; operationId: string;
     payload: unknown }) => Promise<
       { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
@@ -880,7 +885,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           ...(dependencies.proposeBillableImage
             ? { propose_asset_image_generation: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION } : {}),
           ...(dependencies.proposeDerivedAsset
-            ? { propose_derived_asset_write: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION } : {}) }
+            ? { propose_derived_asset_write: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION } : {}),
+          ...(dependencies.proposeStoryboard
+            ? { propose_storyboard_write: PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION } : {}) }
         : dependencies.skillMode
         ? { get_novel_text: HARNESS_TOOL_DEFINITIONS.get_novel_text,
           get_novel_events: HARNESS_TOOL_DEFINITIONS.get_novel_events,
@@ -1029,6 +1036,18 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           return { status: "unavailable", kind: "executionFailed" };
         }
       }
+      async function proposeStoryboard(payload: unknown, operationId: string): Promise<unknown> {
+        if (!dependencies.proposeStoryboard || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeStoryboard({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
       const result = await call.invokeText({
         messages: invocation.messages,
         tools: {
@@ -1068,6 +1087,11 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             description: "仅提出派生资产创建或更新候选；不会写入，Owner 审批后才可能生效。",
             inputSchema: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION.inputSchema,
             execute: async (payload, options) => proposeDerivedAsset(payload, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeStoryboard ? { propose_storyboard_write: tool({
+            description: "仅提出在现有空 Video Track 创建单条分镜的候选；Owner 审批前不写入。",
+            inputSchema: PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION.inputSchema,
+            execute: async (payload, options) => proposeStoryboard(payload, options.toolCallId),
           }) } : {}),
           ...(dependencies.proposeScriptWrite ? { propose_script_workspace_write: tool({
             description: "仅提出当前项目单个规划字段的待审批候选；不会写入，Owner 查看全文并批准后才可能生效。",

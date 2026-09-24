@@ -24,7 +24,8 @@ test("Production transport derives actor from authentication and cannot cancel a
     next();
   }, createProductionHarnessRouter(runtime, async (input) => {
     effectsInput = input;
-    return { runId: input.runId, effects: [], derivedEffects: [] };
+    return { runId: input.runId, effects: [], derivedEffects: [],
+      storyboardEffects: [] };
   }));
   const server = app.listen(0, "127.0.0.1");
   try {

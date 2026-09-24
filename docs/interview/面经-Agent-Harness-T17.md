@@ -1,10 +1,10 @@
 # Agent Harness T17 面经：生产 Run 与计费提案（阶段版）
 
-> 仅对应本分支已实现的局部链路。面试时明确说明旧生产 Socket、批量图片、视频、分镜写入和 Web 完整投影尚未迁移；全量与真实 Provider 验收留到 T21。不给出未经测量的效果数字，也不代写简历。
+> 仅对应本分支已实现的局部链路。面试时明确说明旧生产 Socket、批量图片、视频、多分镜与新建轨道路径尚未迁移；单条空轨道分镜已具备受控提案与审批，但未通过浏览器验收。全量与真实 Provider 验收留到 T21。不给出未经测量的效果数字，也不代写简历。
 
 ## 一面：先把边界讲准
 
-1. 问：T17 到底做完了什么？答：建立独立生产 Harness Run，冻结已发布 Skill，可通过受控 Tool 读取拍摄计划/分镜表文本，并在独立 grant 下分别提出单资产图片生成和派生资产写入候选。候选会创建 T09 或 T08 的待 Owner 审批子 Run；它不等于生成或写入完成。追问“证据在哪”：看 `src/agentRuntime/index.ts`、`src/agents/productionAgent/harnessPreparation.ts`、`tests/productionHarnessRun.test.ts`。
+1. 问：T17 到底做完了什么？答：建立独立生产 Harness Run，冻结已发布 Skill，可通过受控 Tool 读取拍摄计划/分镜表文本，并在独立 grant 下分别提出单资产图片、派生资产和单条分镜候选。候选会创建待 Owner 审批子 Run；仅经独立批准的本地资产或分镜写入才算效果已提交，图片还需后续 Vendor 路径。追问“证据在哪”：看 `src/agentRuntime/index.ts`、`src/agents/productionAgent/harnessPreparation.ts`、`tests/productionHarnessRun.test.ts`。
 2. 问：为何不让模型直接调用旧的图片生成 Tool？答：旧 Socket 流程没有完整的受控租约、审批、请求账本和恢复证据。模型建议只是意图，不能代替 Owner 授权成本。这里让模型停在 proposal，后续沿用 T09 审批与 Vendor ledger。追问“代价”：多一次 Owner 处理，而且目前只覆盖单资产，旧路径仍需迁移。
 3. 问：为什么生产工作区读 Tool 只开放两个文本字段？答：剧本 `scriptPlan` 和 `storyboardTable` 是当前指导 Run 需要的有界只读信息；资产数组和生成状态包含不同的隐私、写入和外部成本语义，不应塞进一个宽 Tool。适配器按 Project/剧本键核对并拒绝重复行、不合规文本。证据：`src/agents/productionAgent/harnessWorkspaceRead.ts` 与对应单测。
 
@@ -18,14 +18,15 @@
 8a. 问：派生资产只是本地写表，为何还要审批？答：本地写入虽然没有 Vendor 成本，却会改变 Project 的资产关系和视觉派生指令，错误内容可能被后续生成消费。模型只持有 `propose:derived-asset`，没有 `write:derived-asset`；T08 审批时再次检查精确 payload、目标版本、等价状态和目标状态哈希。定向测试在模型提案后确认资产表没有新增，Owner 批准后只新增一条，撤销 grant 后新提案被拒绝。证据：`src/controlledTools/derivedAssetWrite.ts`、`tests/productionHarnessRun.test.ts`、`docs/adr/0024-production-agent-derived-asset-proposal-boundary.md`。
 8b. 问：派生资产提案怎么避免冒用父 Run？答：子 Run 创建和父 Run 权限判定在同一事务内进行；校验父 Run 的运行状态、Owner 身份与有效 lease，冻结 Skill 必须请求该 Tool 与独立能力，Project grant 必须当前有效。子 Run 保存父 Run、操作、Skill 和提案合约哈希；inspect 再复核权限判定哈希与 operation ID。相同操作派生确定性请求键，变更 payload 冲突。这证明本地持久绑定，不代表已经通过跨进程或恶意数据库篡改验收。
 8c. 问：Owner 如何确认自己批准的不是被前端摘要掩盖的内容？答：T08 快照原本只有预览和载荷哈希，模型提案接入后不足以逐字段核对。现在 Owner-only inspect 在 schema、payload 哈希、预览、Tool 合约与 Receipt 绑定全部有效时才返回精确 payload；损坏证据不给 payload。试用面板展示完整 JSON，并在缺 payload 时禁用批准；服务端依然以冻结 payload 和目标状态作为提交依据，前端展示不是授权的唯一屏障。证据：`src/controlledTools/derivedAssetWrite.ts`、`tests/derivedAssetWrite.test.ts`、Web PR #8。浏览器交互尚未验收。
-8d. 问：Project Owner 怎么知道当前给模型开放了哪些能力？答：后端新增认证 Owner-only 的生产 grant 快照，分别返回工作区读、图片提案和派生资产提案的 active/version；试用面板用当前版本提交明确的开启或撤销命令，遇到版本冲突只提示刷新，不自动覆盖别人的更新。开启提案能力仍不等于批准效果，模型还要绑定已发布 Skill，并在调用时通过当前 grant 与租约校验。证据：`src/skillRuntime/grants.ts`、`tests/productionHarnessGrants.test.ts`、Web 合约单测；尚无浏览器验收。
+8d. 问：Project Owner 怎么知道当前给模型开放了哪些能力？答：后端认证 Owner-only 的生产 grant 快照分别返回工作区读、图片、派生资产和单条分镜提案的 active/version；试用面板用当前版本提交明确的开启或撤销命令，遇到版本冲突只提示刷新，不自动覆盖别人的更新。开启提案能力仍不等于批准效果，模型还要绑定已发布 Skill，并在调用时通过当前 grant 与租约校验。证据：`src/skillRuntime/grants.ts`、`tests/productionHarnessGrants.test.ts`、Web 合约单测；尚无浏览器验收。
 8e. 问：旧生产路径与 Harness 并行时，是否还存在“假成功”？答：存在，不能笼统说已迁移。审计发现旧 `add_flowData_storyboard` 将 Socket 写入排队后立即返回 `true`，即使之后回调报错。兼容层现等待回调，错误返回“结果不确定、人工核对、不自动重试”；定向测试覆盖确认和报错。但未解决断线无回调、进程崩溃、幂等与分镜写入持久回执，因此它只是避免一个明确的假成功，完整迁移仍在 T17 待办。证据：`src/agents/productionAgent/tools.ts`、`tests/productionLegacyStoryboardBoundary.test.ts`。
 8f. 问：为什么收到前端回执仍不能宣称“分镜链路已可靠”？答：跨仓库核对发现前端原本先把分镜加入本地数组，再向后端写入；后端失败时本地界面可能显示未持久化的数据，且失败回执的字段与 App 检查的字段不一致。兼容修正让 Web 写入后重读服务端数据才确认，失败时只重读、不重发；App 将 `{success:false}` 视为不确定结果。单测覆盖回执与重读顺序，但旧后端批量写路由仍可能部分提交，断连也没有持久 ToolReceipt，所以必须继续迁移到受控分镜写入，不能把这次修正包装为端到端恰好一次。
-8g. 问：为什么新分镜写入候选只允许已有空 Video Track 上的一条 Storyboard？答：旧批量路径把分镜插入、资产关联、分组和 Video Track 创建混在同一个前端驱动流程，任何后段失败都可能留下部分状态。先收敛为“空 Track、同一时长、一条分镜”，后端可独立验证 Project/Script/Asset 归属，并冻结精确 payload 与 Track 目标状态哈希。当前内部审批 Runtime 已在 Owner 批准事务中写入分镜与关联、回执、Checkpoint 和 Trace；关联失败全部回滚，目标变化转冲突，重复决策不再次写入。9 个 SQLite 定向用例证明本地事务边界，但模型提案、HTTP/Web 入口和多分镜编排尚未接入，不能据此声称分镜黄金链路完成迁移。证据：`src/controlledTools/storyboardWriteApproval.ts`、`tests/storyboardWriteApproval.test.ts`、ADR-0025。
+8g. 问：为什么新分镜写入候选只允许已有空 Video Track 上的一条 Storyboard？答：旧批量路径把分镜插入、资产关联、分组和 Video Track 创建混在同一个前端驱动流程，任何后段失败都可能留下部分状态。先收敛为“空 Track、同一时长、一条分镜”，后端可独立验证 Project/Script/Asset 归属，并冻结精确 payload 与 Track 目标状态哈希。Owner 批准事务同时写入分镜与关联、回执、Checkpoint 和 Trace；关联失败全部回滚，目标变化转冲突，重复决策不再次写入。相关定向 SQLite 用例证明本地事务边界，但多分镜编排、轨道创建和浏览器验收尚未完成，不能据此声称分镜黄金链路完成迁移。证据：`src/controlledTools/storyboardWriteApproval.ts`、`tests/storyboardWriteApproval.test.ts`、ADR-0025。
+8h. 问：模型为什么不能直接调用分镜审批接口？答：模型生成的内容只是候选，不代表 Project Owner 接受了对生产计划的更改。受控 Tool 只有提出候选的能力；后端在同一事务检查父 Run 的有效租约、冻结 Skill 申请、当前 Owner grant 与权限判定，才创建待审子 Run。独立的认证 Owner HTTP 命令按版本批准，提交前再次核对目标状态。假模型测试证明提案后分镜表仍为空、撤销授权后新提案拒绝、伪造围栏被拒；这证明本地权限与事务链路，不是浏览器或跨进程故障验收。证据：`src/skillRuntime/grants.ts`、`src/controlledTools/storyboardWriteApproval.ts`、`tests/productionHarnessRun.test.ts`。
 
 ## 三面：反例、取舍与未完成项
 
-9. 问：为什么暂不把生产 Agent 宣称为“可恢复生成工作流”？答：目前持久 Run 只承载指导和单资产待审批提案；旧 Socket 的批量图片、视频、分镜/资产写入还没有统一 typed Steps、幂等效果和恢复投影。声明整个生产链路已迁移会混淆局部审批成功与真实生成成功。
+9. 问：为什么暂不把生产 Agent 宣称为“可恢复生成工作流”？答：目前持久 Run 承载指导、单资产图片提案、派生资产和单条空轨道分镜的受控审批；旧 Socket 的批量图片、视频、多分镜与轨道创建还没有统一 typed Steps、幂等效果和恢复投影。声明整个生产链路已迁移会混淆局部审批成功与真实生成成功。
 10. 问：若要继续推进，优先顺序是什么？答：先为各生产效果定义独立 typed Step/Tool 和可验证输入、效果账本及 Owner 授权；再把批量图片、分镜/资产写入和视频逐条迁移并保留兼容回退；最后做跨进程重启、迟到结果、Web 状态和真实 Provider 验收。不能为了赶进度复用“模型回答成功”作为效果完成信号。
 
 ## 练习与证据缺口

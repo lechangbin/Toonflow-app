@@ -22,6 +22,8 @@ import { createBillableImageLedger } from
   "../src/controlledTools/billableImageLedger";
 import { createDerivedAssetWriteRuntime } from
   "../src/controlledTools/derivedAssetWrite";
+import { createStoryboardWriteApprovalRuntime } from
+  "../src/controlledTools/storyboardWriteApproval";
 import { billableImageScopeSchema } from
   "../src/controlledTools/billableImageLifecycle";
 import initDB from "../src/lib/initDB";
@@ -48,6 +50,9 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       type: "role", name: "主角" });
     await db("o_assets").insert({ id: 22, projectId: 7,
       type: "role", name: "配角" });
+    await db("o_videoTrack").insert({ id: 31, projectId: 7, scriptId: 11,
+      duration: 4, vendorId: "vendor", modelId: "video-v1",
+      capabilityId: "text-to-video" });
     await db("o_agentWorkData").insert({ projectId: 7, episodesId: 11,
       key: "productionAgent", data: JSON.stringify({ scriptPlan: "三段拍摄计划" }) });
     let serial = 0;
@@ -60,9 +65,10 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       skillId: definition.id, semanticVersion: "1.0.0",
       compatibleRoles: ["productionAgent"], intents: ["read-only-guidance"],
       dependencies: [], requestedTools: ["get_production_workspace_text",
-        "propose_asset_image_generation", "propose_derived_asset_write"],
+        "propose_asset_image_generation", "propose_derived_asset_write",
+        "propose_storyboard_write"],
       requestedCapabilities: ["read:production-workspace", "propose:billable-image",
-        "propose:derived-asset"],
+        "propose:derived-asset", "propose:storyboard"],
       resources: [],
       routing: { priority: 1, keywords: [] }, attribution: "T17 定向测试" };
     const draft = await skills.saveDraft({ skillId: definition.id,
@@ -78,7 +84,11 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
         expectedVersion: 0, active: true });
     await projectGrants.setProposeDerivedAsset({ projectId: 7, actorUserId: 1,
         expectedVersion: 0, active: true });
+    await projectGrants.setProposeStoryboard({ projectId: 7, actorUserId: 1,
+        expectedVersion: 0, active: true });
     const derivedAsset = createDerivedAssetWriteRuntime({ work,
+      now: () => 200, createId });
+    const storyboard = createStoryboardWriteApprovalRuntime({ work,
       now: () => 200, createId });
     const imageApproval = createBillableImageApprovalRuntime({ work,
       now: () => 200, createId,
@@ -102,6 +112,7 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       skillMode: { grants: resolveProductionSkillGrants },
       proposeBillableImage: (input) => imageApproval.proposeFromAgent(input),
       proposeDerivedAsset: (input) => derivedAsset.proposeFromAgent(input),
+      proposeStoryboard: (input) => storyboard.proposeFromAgent(input),
       openTextCall: async (target) => {
         assert.deepEqual(target, { kind: "logical", key: "productionAgent:decisionAgent" });
         return { target: { vendorId: "fake", modelId: "text-v1",
@@ -115,7 +126,8 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
               return { text: "迟到的模型结果不应提交" } as any;
             }
             assert.deepEqual(Object.keys(callInput.tools!), ["get_production_workspace_text",
-              "propose_asset_image_generation", "propose_derived_asset_write"]);
+              "propose_asset_image_generation", "propose_derived_asset_write",
+              "propose_storyboard_write"]);
             const result = await callInput.tools!.get_production_workspace_text.execute!(
               { scriptId: 11, key: "scriptPlan" },
               { toolCallId: "production-read-one", messages: [] });
@@ -192,6 +204,35 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
             const derivedDenied = await callInput.tools!.propose_derived_asset_write.execute!(
               derivedPayload, { toolCallId: "production-derived-two", messages: [] });
             assert.equal((derivedDenied as { status?: string }).status, "denied");
+            const storyboardPayload = { scriptId: 11, trackId: 31,
+              videoDesc: "主角走入庭院", prompt: null, duration: 4,
+              shouldGenerateImage: false, associateAssetsIds: [] };
+            const proposedStoryboard = await callInput.tools!.propose_storyboard_write.execute!(
+              storyboardPayload, { toolCallId: "production-storyboard-one", messages: [] });
+            assert.equal((proposedStoryboard as { status?: string }).status, "pending",
+              JSON.stringify(proposedStoryboard));
+            assert.deepEqual(await callInput.tools!.propose_storyboard_write.execute!(
+              storyboardPayload, { toolCallId: "production-storyboard-one", messages: [] }),
+            proposedStoryboard);
+            const changedStoryboard = await callInput.tools!.propose_storyboard_write.execute!(
+              { ...storyboardPayload, videoDesc: "另一场" },
+              { toolCallId: "production-storyboard-one", messages: [] });
+            assert.equal((changedStoryboard as { status?: string }).status, "unavailable",
+              "one operation cannot change the pending Storyboard payload");
+            await assert.rejects(storyboard.proposeFromAgent({ projectId: 7,
+              parentRunId: parent.id, skillId: definition.id,
+              lease: { runId: parent.id, ownerId: parent.leaseOwnerId,
+                epoch: parent.leaseEpoch, fence: parent.fence + 1,
+                expiresAt: parent.leaseExpiresAt },
+              operationId: "forged-lease-storyboard-proposal",
+              payload: storyboardPayload }), /所有权已失效/);
+            assert.equal((await db("o_storyboard")).length, 0,
+              "model proposal must not write a Storyboard");
+            await projectGrants.setProposeStoryboard({ projectId: 7,
+              actorUserId: 1, expectedVersion: 1, active: false });
+            const deniedStoryboard = await callInput.tools!.propose_storyboard_write.execute!(
+              storyboardPayload, { toolCallId: "production-storyboard-two", messages: [] });
+            assert.equal((deniedStoryboard as { status?: string }).status, "denied");
             return { text: "拍摄计划已核对；未执行生成" } as any;
           } };
       } });
@@ -216,7 +257,21 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       actorUserId: 1 }))?.status, "succeeded");
     assert.equal((await db("o_agentToolReceipt").where({ runId: run.id,
       toolName: "get_production_workspace_text", status: "succeeded" })).length, 1);
-    assert.equal((await db("o_agentSkillPermissionDecision").where({ runId: run.id })).length, 6);
+    assert.equal((await db("o_agentSkillPermissionDecision").where({ runId: run.id })).length, 8);
+    const storyboardRun = await db("o_agentRun").where({ projectId: 7,
+      scope: "approved-storyboard-write-v1" }).first();
+    assert.ok(storyboardRun);
+    const pendingStoryboard = await storyboard.inspect(7, storyboardRun.id, 1);
+    assert.equal(pendingStoryboard?.sourceRunId, run.id);
+    assert.equal(pendingStoryboard?.sourceOperationId, "production-storyboard-one");
+    assert.equal(pendingStoryboard?.status, "pending");
+    const approvedStoryboard = await storyboard.decide({ projectId: 7,
+      runId: storyboardRun.id, approvalId: pendingStoryboard!.id,
+      clientCommandId: "approve-production-storyboard",
+      expectedVersion: pendingStoryboard!.runVersion,
+      actorUserId: 1, decision: "approve" });
+    assert.equal(approvedStoryboard?.status, "approved");
+    assert.equal((await db("o_storyboard")).length, 1);
     const derivedRun = await db("o_agentRun").where({ projectId: 7,
       scope: "approved-derived-asset-write-v1" }).first();
     assert.ok(derivedRun);
@@ -339,12 +394,20 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       inspectBillable: (projectId, runId, actorUserId) =>
         imageApproval.inspect(projectId, runId, actorUserId),
       inspectDerived: (projectId, runId, actorUserId) =>
-        derivedAsset.inspect(projectId, runId, actorUserId) });
+        derivedAsset.inspect(projectId, runId, actorUserId),
+      inspectStoryboard: (projectId, runId, actorUserId) =>
+        storyboard.inspect(projectId, runId, actorUserId) });
     await assert.rejects(effects({ projectId: 7, actorUserId: 2,
       runId: run.id }), ProductionHarnessEffectsNotFoundError);
     const projected = await effects({ projectId: 7, actorUserId: 1, runId: run.id });
     assert.equal(projected.effects.length, 3);
     assert.equal(projected.derivedEffects.length, 2);
+    assert.equal(projected.storyboardEffects.length, 2);
+    assert.equal(projected.storyboardEffects.find((item) =>
+      item.operationId === "production-storyboard-one")?.approval?.receiptOutput?.storyboardId,
+    approvedStoryboard?.receiptOutput?.storyboardId);
+    assert.equal(projected.storyboardEffects.find((item) =>
+      item.operationId === "production-storyboard-two")?.status, "denied");
     assert.equal(projected.derivedEffects.find((item) =>
       item.operationId === "production-derived-two")?.status, "denied");
     assert.equal(projected.derivedEffects.find((item) =>
