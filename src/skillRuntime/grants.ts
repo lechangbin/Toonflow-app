@@ -65,6 +65,28 @@ export function createProjectSkillGrantRuntime(dependencies: {
     }));
   }
   return {
+    async inspectProduction(projectId: number, actorUserId: number) {
+      if (![projectId, actorUserId].every((value) =>
+        Number.isSafeInteger(value) && value > 0)) {
+        throw new TypeError("Production grant inspect is invalid");
+      }
+      return dependencies.work(async (db) => {
+        if (!await db("o_project").where({ id: projectId,
+          userId: actorUserId }).first("id")) {
+          throw new ProjectSkillGrantOwnershipError();
+        }
+        const rows = await db("o_agentProjectCapabilityGrant")
+          .where({ projectId }).whereIn("capability", [READ_PRODUCTION_WORKSPACE,
+            PROPOSE_BILLABLE_IMAGE, PROPOSE_DERIVED_ASSET]);
+        const snapshot = (capability: string) => {
+          const row = rows.find((entry) => entry.capability === capability);
+          return { active: row?.state === "active", version: Number(row?.version ?? 0) };
+        };
+        return { workspace: snapshot(READ_PRODUCTION_WORKSPACE),
+          imageProposal: snapshot(PROPOSE_BILLABLE_IMAGE),
+          derivedProposal: snapshot(PROPOSE_DERIVED_ASSET) };
+      });
+    },
     async setReadProductionWorkspace(input: { projectId: number; actorUserId: number;
       expectedVersion: number; active: boolean }) {
       return setCapability(input, READ_PRODUCTION_WORKSPACE);

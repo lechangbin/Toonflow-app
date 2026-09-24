@@ -10,6 +10,8 @@ import { createSetReadProductionWorkspaceGrantRouter } from
   "../src/routes/agentRuns/setReadProductionWorkspaceGrant";
 import { createSetProposeDerivedAssetGrantRouter } from
   "../src/routes/agentRuns/setProposeDerivedAssetGrant";
+import { createGetProductionGrantsRouter } from
+  "../src/routes/agentRuns/getProductionGrants";
 import { createProjectSkillGrantRuntime, resolveProductionImageProposalGrants,
   resolveProductionDerivedAssetProposalGrants, resolveProductionSkillGrants,
   resolveReadOnlyScriptSkillGrants } from "../src/skillRuntime/grants";
@@ -31,6 +33,12 @@ test("Production read grant is owner-only, revocable and separate from Script", 
       createdAt: 100, updatedAt: 100, fence: 0 });
     const grants = createProjectSkillGrantRuntime({
       work: async (operation) => operation(db), now: () => 200 });
+    assert.deepEqual(await grants.inspectProduction(7, 1), {
+      workspace: { active: false, version: 0 },
+      imageProposal: { active: false, version: 0 },
+      derivedProposal: { active: false, version: 0 },
+    });
+    await assert.rejects(grants.inspectProduction(7, 2), /Project owner/);
     const resolve = () => db.transaction((tx) => resolveProductionSkillGrants(tx,
       { runId: "production-grant-run", projectId: 7,
         toolName: "get_production_workspace_text" }));
@@ -84,7 +92,38 @@ test("Production read grant is owner-only, revocable and separate from Script", 
     await grants.setProposeDerivedAsset({ projectId: 7,
       actorUserId: 1, expectedVersion: 1, active: false });
     assert.deepEqual((await derivedProposalGrants()).projectGrants, []);
+    assert.deepEqual(await grants.inspectProduction(7, 1), {
+      workspace: { active: false, version: 2 },
+      imageProposal: { active: false, version: 2 },
+      derivedProposal: { active: false, version: 2 },
+    });
   } finally { await db.destroy(); }
+});
+
+test("Production grant snapshot HTTP reads only the authenticated Owner", async () => {
+  let received: unknown;
+  const app = express();
+  app.use(express.json(), (req, _res, next) => {
+    (req as typeof req & { user: { id: number } }).user = { id: 5 };
+    next();
+  }, createGetProductionGrantsRouter({ inspectProduction: async (...input) => {
+    received = input;
+    return { workspace: { active: false, version: 0 },
+      imageProposal: { active: false, version: 0 },
+      derivedProposal: { active: false, version: 0 } };
+  } }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await once(server, "listening");
+    const address = server.address();
+    assert(address && typeof address === "object");
+    const response = await fetch(`http://127.0.0.1:${address.port}/`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projectId: 7, actorUserId: 99 }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, [7, 5]);
+  } finally { server.close(); await once(server, "close"); }
 });
 
 test("Derived Asset proposal grant HTTP takes authenticated actor", async () => {

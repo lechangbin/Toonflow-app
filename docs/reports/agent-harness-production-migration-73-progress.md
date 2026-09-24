@@ -23,6 +23,8 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 
 补充定向验证：派生资产完整 payload 与父 Run `derivedEffects` 投影接入后，最近一次只运行直接相关的 18 个 App 用例和 4 个 Web 合约用例，均通过；App TypeScript 与 Web 非声明式 Vue 类型检查通过。前文 17 个是上一个切片的结果，不代表全量回归。以上均未覆盖浏览器、真实 Provider 或完整测试套件。
 
+授权操作补充：`/api/agentRuns/getProductionGrants` 仅向认证 Owner 返回生产工作区读取、计费图片提案、派生资产提案三项 grant 的 active/version 快照；Web 试用面板按版本显式开启或撤销各项能力，409 冲突不自动重试。Owner 隔离与认证 actor 的定向测试通过；这只是可操作的授权入口，不扩大模型的写入或 Vendor 权限。
+
 ## 阶段追问准备（非最终面经）
 
 1. 问：为什么生产工作区读取不能继续让前端 `getFlowData` 回调负责？答：旧工具通过 Socket 回调从前端得到数据，模型侧请求与实际读到的 Project/剧本数据缺少后端一致的授权、回执和恢复身份。新接缝把剧本归属与工作区行的 Project、剧本键在后端核对，并给 Tool 固定修订、scope 和能力；测试证明跨 Project ID 与重复行不会返回内容。它已接上只读生产 Run，但尚未替代旧生成工具。
