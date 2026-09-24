@@ -68,7 +68,10 @@ export function createProjectContextSourceLoader(work: DatabaseWork) {
               ...(range ? { startCodePoint: range.startCodePoint, endCodePoint } : {}),
             })}`, 1);
           if (range) {
-            candidate.revision = `sha256:${hash(fullText)}`;
+            candidate.revision = `sha256:${hash(JSON.stringify({
+              chapterIndex: novel.chapterIndex ?? null, title: novel.chapter ?? null,
+              sourceTextHash: hash(fullText),
+            }))}`;
             candidate.transform = { kind: "locatable-evidence-slice.v1",
               startCodePoint: range.startCodePoint, endCodePoint,
               sourceTextHash: hash(fullText) };

@@ -6,6 +6,8 @@ import knexFactory from "knex";
 
 import { createProjectContextSourceLoader } from "../src/context/projectSources";
 
+const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+
 test("Project Context loader derives ownership from SQLite and never reads a foreign Novel", async () => {
   const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
   try {
@@ -69,10 +71,17 @@ test("Novel evidence slice uses Unicode code-point offsets and hashes the comple
     assert.match(novel.content, /😀乙/);
     assert.equal(novel.content.includes("甲"), false);
     assert.equal(novel.content.includes("丙"), false);
-    const originalHash = createHash("sha256").update(original).digest("hex");
-    assert.equal(novel.revision, `sha256:${originalHash}`);
+    const originalHash = hash(original);
+    assert.equal(novel.revision, `sha256:${hash(JSON.stringify({
+      chapterIndex: 1, title: "序章", sourceTextHash: originalHash,
+    }))}`);
     assert.deepEqual(novel.transform, { kind: "locatable-evidence-slice.v1",
       startCodePoint: 1, endCodePoint: 3, sourceTextHash: originalHash });
+    await db("o_novel").where({ id: 2 }).update({ chapter: "重命名章节" });
+    const renamed = await loader.load({ projectId: 7, novelIds: [2],
+      excerpts: { 2: { startCodePoint: 1, lengthCodePoints: 2 } } });
+    assert.notEqual(renamed[1].revision, novel.revision,
+      "chapter metadata changes invalidate the source revision even when the raw body stays identical");
     await assert.rejects(loader.load({ projectId: 7, novelIds: [2],
       excerpts: { 2: { startCodePoint: 4, lengthCodePoints: 2 } } }), /outside the source/);
     await assert.rejects(loader.load({ projectId: 7, novelIds: [2],
