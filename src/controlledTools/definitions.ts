@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { derivedChangeInstructionSchema } from "@/assets/derivedChangeInstruction";
+import { scriptContentWriteInput, scriptWorkspaceWriteInput } from "./scriptWriteContract";
 import { billableImageScopeSchema } from "./billableImageLifecycle";
 
 const novelIdInput = z.strictObject({ novelId: z.number().int().positive() });
@@ -144,6 +145,48 @@ export const DERIVED_ASSET_TOOL_DEFINITION = Object.freeze({
   adapterId: "derived-asset-local-write-v1",
 });
 
+const scriptWritePolicy = Object.freeze({
+  risk: Object.freeze({ mutation: "project-artifact", externalCost: "none", completion: "local-transaction" }),
+  roles: Object.freeze(["scriptAgent"]),
+  scopes: Object.freeze(["approved-script-write-v1"]),
+  scope: "run-project",
+  approval: "per-operation-exact-payload-and-target-state",
+  idempotency: "run-operation-id",
+  retries: "explicit-new-operation-after-conflict",
+  timeoutMs: 0,
+  cancellation: "before-approval-only",
+  concurrency: "serialized-sqlite-transaction",
+  commit: "project-effect-receipt-checkpoint-trace-atomic",
+  reconciliation: "inspect-local-receipt-and-target-state",
+  compensation: "none",
+  redaction: "fail-closed",
+  contextProjection: "bounded-approval-preview",
+});
+
+/** Frozen contracts only; execution is not registered until the approval Runtime is implemented. */
+export const SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION = Object.freeze({
+  name: "upsert_script_workspace_field",
+  revision: "toonflow.tool.upsert-script-workspace-field.v1",
+  inputSchema: scriptWorkspaceWriteInput,
+  outputSchema: z.strictObject({ key: z.enum(["storySkeleton", "adaptationStrategy"]),
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/) }),
+  policy: Object.freeze({ ...scriptWritePolicy,
+    capabilities: Object.freeze(["write:script-workspace"]) }),
+  adapterId: "script-workspace-local-write-v1",
+});
+
+export const SCRIPT_CONTENT_WRITE_TOOL_DEFINITION = Object.freeze({
+  name: "upsert_script_content",
+  revision: "toonflow.tool.upsert-script-content.v1",
+  inputSchema: scriptContentWriteInput,
+  outputSchema: z.strictObject({ scriptId: z.number().int().positive(),
+    effect: z.enum(["created", "updated"]),
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/) }),
+  policy: Object.freeze({ ...scriptWritePolicy,
+    capabilities: Object.freeze(["write:script"]) }),
+  adapterId: "script-content-local-write-v1",
+});
+
 export const BILLABLE_IMAGE_TOOL_DEFINITION = Object.freeze({
   name: "generate_asset_image",
   revision: "toonflow.tool.generate-asset-image.v1",
@@ -174,7 +217,9 @@ export const BILLABLE_IMAGE_TOOL_DEFINITION = Object.freeze({
   adapterId: "billable-asset-image-v1",
 });
 
-export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION | typeof BILLABLE_IMAGE_TOOL_DEFINITION): string {
+export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION
+  | typeof BILLABLE_IMAGE_TOOL_DEFINITION | typeof SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION
+  | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION): string {
   return createHash("sha256").update(JSON.stringify({
     name: definition.name,
     revision: definition.revision,
