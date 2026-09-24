@@ -58,5 +58,26 @@ test("a Run reads only declared, hash-verified ResourceRevision IDs, never a mut
       skillId: definition.id, resourceId: "../data/skills/secret.md" }), /resource request is invalid/);
     await assert.rejects(db("o_agentSkillResourceRevision").where({ skillRevisionId: draft.id })
       .update({ content: "篡改" }), /immutable/);
+    const deprecated = await skills.setRevisionLifecycle({ revisionId: draft.id,
+      expectedVersion: 1, nextState: "deprecated" });
+    assert.equal(deprecated.state, "deprecated");
+    assert.equal((await skills.loadResource({ runId: run.id, projectId: 7,
+      skillId: definition.id, resourceId: "guide" })).content, resourceContent,
+    "deprecation affects new Runs, not historical inspection");
+    const newerRun = await runtime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+      projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "resource-new-run", content: "尝试已弃用技能" });
+    await assert.rejects(skills.bindRun({ runId: newerRun.id, projectId: 7,
+      skillIds: [definition.id] }), /deprecated or revoked/);
+    await assert.rejects(skills.activate({ skillId: definition.id,
+      revisionId: draft.id, expectedBindingVersion: 1 }), /active Revision policy/);
+    await skills.setRevisionLifecycle({ revisionId: draft.id, expectedVersion: 2,
+      nextState: "revoked" });
+    await assert.rejects(skills.loadResource({ runId: run.id, projectId: 7,
+      skillId: definition.id, resourceId: "guide" }), /was revoked/);
+    await assert.rejects(skills.bindRun({ runId: run.id, projectId: 7,
+      skillIds: [definition.id] }), /was revoked/);
+    await assert.rejects(db("o_agentSkillRevisionPolicy").where({ revisionId: draft.id })
+      .update({ state: "active", version: 4 }), /one-way/);
   } finally { await db.destroy(); }
 });

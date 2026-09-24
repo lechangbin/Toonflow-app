@@ -13,7 +13,8 @@ export interface SkillRoutingDecision {
   status: "selected" | "needs-attention" | "unavailable";
   selected: { skillId: string; revisionId: string } | null;
   candidates: Array<{ skillId: string; revisionId: string; priority: number;
-    keywordMatches: number; eligible: boolean; reason: "eligible" | "role" | "intent" }>;
+    keywordMatches: number; eligible: boolean;
+    reason: "eligible" | "role" | "intent" | "deprecated" | "revoked" }>;
 }
 
 /** Explicit typed eligibility precedes stable ranking; equal top matches never gain authority by guessing. */
@@ -27,10 +28,12 @@ export function createSkillRouter(work: DatabaseWork) {
       return work(async (db) => {
         const rows = await db("o_agentSkillBinding as binding")
           .join("o_agentSkillRevision as revision", "revision.id", "binding.activeRevisionId")
+          .join("o_agentSkillRevisionPolicy as policy", "policy.revisionId", "revision.id")
           .where({ "revision.status": "published" })
           .orderBy("binding.skillId", "asc")
           .select("binding.skillId", "revision.id as revisionId", "revision.semanticVersion",
-            "revision.content", "revision.contentHash", "revision.manifestJson", "revision.manifestHash");
+            "revision.content", "revision.contentHash", "revision.manifestJson",
+            "revision.manifestHash", "policy.state as policyState");
         const normalizedQuery = input.query.toLocaleLowerCase("en");
         const candidates: SkillRoutingDecision["candidates"] = [];
         for (const row of rows) {
@@ -40,7 +43,9 @@ export function createSkillRouter(work: DatabaseWork) {
           }
           const manifest = validateSkillManifest(JSON.parse(row.manifestJson),
             row.skillId, row.semanticVersion);
-          const reason = !manifest.compatibleRoles.includes(input.role) ? "role"
+          const reason = row.policyState === "revoked" ? "revoked"
+            : row.policyState === "deprecated" ? "deprecated"
+            : !manifest.compatibleRoles.includes(input.role) ? "role"
             : !manifest.intents.includes(input.intent) ? "intent" : "eligible";
           candidates.push({ skillId: row.skillId, revisionId: row.revisionId,
             priority: manifest.routing.priority,

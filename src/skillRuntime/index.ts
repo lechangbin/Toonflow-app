@@ -141,8 +141,33 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
           .where({ id: draft.id, status: "draft", contentHash: input.expectedContentHash })
           .update({ status: "published", publishedAt });
         if (changed !== 1) throw new Error("Skill publish conflicted");
+        await tx("o_agentSkillRevisionPolicy").insert({ revisionId: draft.id,
+          state: "active", version: 1, updatedAt: publishedAt });
         return { id: draft.id, skillId: draft.skillId, status: "published" as const,
           contentHash: draft.contentHash, manifestHash: draft.manifestHash, publishedAt };
+      }));
+    },
+    async setRevisionLifecycle(input: { revisionId: string; expectedVersion: number;
+      nextState: "deprecated" | "revoked" }) {
+      if (!IDENTIFIER.test(input.revisionId) || !Number.isSafeInteger(input.expectedVersion)
+        || input.expectedVersion <= 0 || !["deprecated", "revoked"].includes(input.nextState)) {
+        throw new TypeError("Skill Revision lifecycle command is invalid");
+      }
+      const updatedAt = dependencies.now();
+      if (!Number.isSafeInteger(updatedAt) || updatedAt < 0) throw new TypeError("Skill lifecycle time is invalid");
+      return dependencies.work((db) => db.transaction(async (tx) => {
+        const policy = await tx("o_agentSkillRevisionPolicy").where({ revisionId: input.revisionId }).first();
+        if (!policy || policy.version !== input.expectedVersion
+          || policy.state === "revoked" || policy.state === input.nextState
+          || (policy.state === "deprecated" && input.nextState !== "revoked")) {
+          throw new Error("Skill Revision lifecycle transition conflicts");
+        }
+        const version = policy.version + 1;
+        const changed = await tx("o_agentSkillRevisionPolicy")
+          .where({ revisionId: input.revisionId, version: policy.version })
+          .update({ state: input.nextState, version, updatedAt });
+        if (changed !== 1) throw new Error("Skill Revision lifecycle transition conflicts");
+        return { revisionId: input.revisionId, state: input.nextState, version, updatedAt };
       }));
     },
     async activate(input: { skillId: string; revisionId: string; expectedBindingVersion: number }) {
@@ -160,6 +185,9 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
           throw new Error("Skill activation requires an intact published Revision");
         }
         validateSkillManifest(JSON.parse(revision.manifestJson), input.skillId, revision.semanticVersion);
+        const policy = await tx("o_agentSkillRevisionPolicy").where({ revisionId: input.revisionId,
+          state: "active" }).first("revisionId");
+        if (!policy) throw new Error("Skill activation requires an active Revision policy");
         const existing = await tx("o_agentSkillBinding").where({ skillId: input.skillId }).first();
         if (Number(existing?.version ?? 0) !== input.expectedBindingVersion) {
           throw new Error("Skill Binding version conflict");
@@ -205,6 +233,11 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
               || historical.manifestHash !== existing.manifestHash) {
               throw new Error("Agent Run Skill binding evidence is corrupt");
             }
+            const policy = await tx("o_agentSkillRevisionPolicy")
+              .where({ revisionId: existing.revisionId }).first("state");
+            if (!policy || policy.state === "revoked") {
+              throw new Error("Agent Run Skill Revision was revoked");
+            }
             frozen.push(existing);
             continue;
           }
@@ -217,6 +250,9 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
             || hash(active.manifestJson) !== active.manifestHash) {
             throw new Error("Agent Run cannot bind an unavailable Skill Revision");
           }
+          const policy = await tx("o_agentSkillRevisionPolicy")
+            .where({ revisionId: active.revisionId, state: "active" }).first("revisionId");
+          if (!policy) throw new Error("Agent Run cannot bind a deprecated or revoked Skill Revision");
           const manifest = validateSkillManifest(JSON.parse(active.manifestJson), skillId,
             active.semanticVersion);
           if (!manifest.compatibleRoles.includes(run.role)) {
@@ -250,6 +286,9 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
           || revision.manifestHash !== binding.manifestHash) {
           throw new Error("Skill resource binding evidence is corrupt");
         }
+        const policy = await db("o_agentSkillRevisionPolicy")
+          .where({ revisionId: revision.id }).first("state");
+        if (!policy || policy.state === "revoked") throw new Error("Skill resource Revision was revoked");
         const manifest = validateSkillManifest(JSON.parse(revision.manifestJson),
           input.skillId, revision.semanticVersion);
         const declared = manifest.resources.find((entry) => entry.id === input.resourceId);

@@ -48,6 +48,19 @@ test("Skill routing filters role/intent before ranking and pauses on an exact to
       query: "请分析章节" });
     assert.equal(selected.status, "selected");
     assert.deepEqual(selected.selected, first);
+    await skills.setRevisionLifecycle({ revisionId: first.revisionId,
+      expectedVersion: 1, nextState: "deprecated" });
+    const deprecated = await router.route({ role: "scriptAgent", intent: "chapter-guidance",
+      query: "请分析章节" });
+    assert.equal(deprecated.status, "unavailable");
+    assert.equal(deprecated.candidates.find((candidate) => candidate.skillId === first.skillId)?.reason,
+      "deprecated");
+    await skills.setRevisionLifecycle({ revisionId: first.revisionId,
+      expectedVersion: 2, nextState: "revoked" });
+    const revoked = await router.route({ role: "scriptAgent", intent: "chapter-guidance",
+      query: "请分析章节" });
+    assert.equal(revoked.candidates.find((candidate) => candidate.skillId === first.skillId)?.reason,
+      "revoked");
     const unavailable = await router.route({ role: "scriptAgent", intent: "storyboard",
       query: "章节" });
     assert.equal(unavailable.status, "unavailable");

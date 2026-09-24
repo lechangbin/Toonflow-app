@@ -54,6 +54,9 @@ export function createSkillDependencyResolver(work: DatabaseWork) {
             || hash(revision.manifestJson) !== revision.manifestHash) {
             throw new Error("Skill dependency revision is missing or corrupt");
           }
+          const policy = await tx("o_agentSkillRevisionPolicy")
+            .where({ revisionId: revision.id, state: "active" }).first("revisionId");
+          if (!policy) throw new Error("Skill dependency Revision is deprecated or revoked");
           const manifest = validateSkillManifest(JSON.parse(revision.manifestJson),
             skillId, revision.semanticVersion);
           if (!manifest.compatibleRoles.includes(input.role)) {

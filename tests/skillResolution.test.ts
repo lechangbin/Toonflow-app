@@ -46,6 +46,11 @@ test("Skill resolver orders an exact published dependency closure and rejects mi
     assert.deepEqual(plan.revisions.map((entry) => entry.skillId), [c.id, b.id, a.id]);
     assert.equal(plan.dependencies.length, 3);
     assert.deepEqual(await resolver.resolve({ role: "scriptAgent", rootSkillIds: [a.id] }), plan);
+    const cRevision = plan.revisions.find((entry) => entry.skillId === c.id)!;
+    await skills.setRevisionLifecycle({ revisionId: cRevision.revisionId,
+      expectedVersion: 1, nextState: "deprecated" });
+    await assert.rejects(resolver.resolve({ role: "scriptAgent", rootSkillIds: [a.id] }),
+      /deprecated or revoked/);
     const missingDraft = await publish(missingRoot.id, [exact("missing-dependency")]);
     await skills.activate({ skillId: missingRoot.id, revisionId: missingDraft.id, expectedBindingVersion: 0 });
     await assert.rejects(resolver.resolve({ role: "scriptAgent", rootSkillIds: [missingRoot.id] }),

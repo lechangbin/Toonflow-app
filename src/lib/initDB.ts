@@ -940,6 +940,16 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["skillRevisionId", "resourceId"]);
       },
     },
+    // SkillRevision 生命周期策略：不改写已发布内容，只更新能否继续激活
+    {
+      name: "o_agentSkillRevisionPolicy",
+      builder: (table) => {
+        table.text("revisionId").notNullable().primary().references("id").inTable("o_agentSkillRevision");
+        table.text("state").notNullable();
+        table.integer("version").notNullable();
+        table.integer("updatedAt").notNullable();
+      },
+    },
     // Skill Binding：一次激活指向已发布修订；回滚也只改变这里
     {
       name: "o_agentSkillBinding",
@@ -1663,6 +1673,18 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       BEFORE DELETE ON o_agentSkillResourceRevision
       BEGIN
         SELECT RAISE(ABORT, 'Skill ResourceRevision is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillRevisionPolicy")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillRevisionPolicy_one_way
+      BEFORE UPDATE ON o_agentSkillRevisionPolicy
+      WHEN NOT (NEW.version = OLD.version + 1
+        AND ((OLD.state = 'active' AND NEW.state IN ('deprecated', 'revoked'))
+          OR (OLD.state = 'deprecated' AND NEW.state = 'revoked')))
+      BEGIN
+        SELECT RAISE(ABORT, 'SkillRevision lifecycle is one-way');
       END
     `);
   }
