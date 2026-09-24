@@ -12,6 +12,7 @@
 | 人工审批与外部成本 | `src/controlledTools/billableImageApproval.ts`、`src/controlledTools/billableImageLedger.ts` | 模型提案、Owner 批准、Vendor 提交分别拥有什么权限？ |
 | 父子证据链 | `src/controlledTools/billableImageApproval.ts`、`docs/adr/0023-production-agent-image-proposal-boundary.md` | 父 Run 成功后如何追溯待处理的图片请求？ |
 | 本地写入审批 | `src/controlledTools/derivedAssetWrite.ts`、`docs/adr/0024-production-agent-derived-asset-proposal-boundary.md` | 模型为何只能创建待审派生资产，不能直接写入？ |
+| 分镜写入候选 | `src/controlledTools/storyboardWriteContract.ts`、`docs/adr/0025-supervise-production-storyboard-writes.md` | 为什么先限定已有 Video Track 的单条分镜？ |
 
 ## 源码阅读顺序
 

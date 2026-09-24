@@ -29,6 +29,8 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 
 跨仓库兼容修正：Web 旧 Socket 处理器原本在后端写入前先追加本地分镜，且失败回执为 `{success:false}`；App 之前只识别 `error` 字段，仍可能把失败当成功。现在 App 同时拒绝 `success:false`，Web 在写入与后端重读都完成后才回确认，失败时最多重读一次、不重发写入、不乐观追加本地分镜。App 与 Web 各 3 个定向单测及各自无输出类型检查通过。它仍不是持久分镜 Tool，后端批量分镜路由的部分提交风险未消除。
 
+分镜受控写入第一切片：新增 `storyboardWriteContract.ts`，只接受已存在 Video Track 上的单条 Storyboard 候选，验证 Project/Script/Track/Asset 归属、内容长度、Asset ID 去重以及 Track 未选择 Video；冻结 payload 与相关目标状态哈希，不产生写入。3 个 SQLite 定向用例和 App TypeScript 检查通过。设计见 ADR-0025。尚无待审 Run、Owner 批准或分镜提交事务，不能说分镜已迁移。
+
 ## 阶段追问准备（非最终面经）
 
 1. 问：为什么生产工作区读取不能继续让前端 `getFlowData` 回调负责？答：旧工具通过 Socket 回调从前端得到数据，模型侧请求与实际读到的 Project/剧本数据缺少后端一致的授权、回执和恢复身份。新接缝把剧本归属与工作区行的 Project、剧本键在后端核对，并给 Tool 固定修订、scope 和能力；测试证明跨 Project ID 与重复行不会返回内容。它已接上只读生产 Run，但尚未替代旧生成工具。
