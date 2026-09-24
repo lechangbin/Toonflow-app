@@ -1,4 +1,4 @@
-// @db-hash 5aadcc29b05f83f732c04428f3287c66
+// @db-hash c7744cf9620af8b59f4dea99e218c87d
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -344,6 +344,9 @@ export interface o_derivedChangeInstruction {
 }
 export interface o_evaluationCase {
   'agentRunId'?: string | null;
+  'agentRunStatus'?: string | null;
+  'agentRunTraceSequence'?: number | null;
+  'agentRunVersion'?: number | null;
   'artifactRefsJson'?: string | null;
   'caseId': string;
   'completedAt'?: number | null;
@@ -354,6 +357,7 @@ export interface o_evaluationCase {
   'failuresJson'?: string | null;
   'hardGateResultsJson'?: string | null;
   'id'?: string;
+  'observedAt'?: number | null;
   'partition': string;
   'qualityReviewJson'?: string | null;
   'status': string;

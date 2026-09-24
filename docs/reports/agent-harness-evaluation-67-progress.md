@@ -7,10 +7,11 @@ Issue：`lechangbin/Toonflow-app#67`。本报告只描述第一切片，不代�
 - `Evaluation Run` 与 `Evaluation Case` 术语写入 `CONTEXT.md`，ADR-0018 明确 T02 历史基线不能伪装成后来运行的 Agent Run；新候选用例必须通过生产 AgentRuntime，当前只读 Runtime 尚不能覆盖全部 Script→Asset→Image 场景。
 - 新建 `o_evaluationRun` 和 `o_evaluationCase`：同一事务冻结经 T02 manifest 契约校验的 18 个 case、分区和原始 manifest 哈希，以及 Runtime、Tool、Context、Skill、Model、Vendor、评测 schema 与 rubric 修订。Run 的冻结字段不可更新或删除，Case 身份不可改写。
 - 冻结操作只创建 18 条 `pending` Case；没有 Agent Run ID、门禁结果、质量评分、产物、耗时或成本时绝不写入成功记录。支持旧数据库新增表而不重写 Project 记录；生成类型声明已同步。
+- Case 观察绑定要求真实 AgentRuntime 创建的 Run 具备 `eval:<EvaluationRun>:<Case>` 请求身份、可观察状态与完整因果 Trace；保存 Run 版本和最后 Trace 序号。它只把 Case 标记为 `observed`，不设置完成时间、门禁通过、产物有效或人工评分。
 
 ## 阶段验证
 
-`tests/evaluationRun.test.ts` 4 个定向用例通过：冻结与禁止改写、修订冲突和事务回滚、CRLF/LF 同一 manifest 身份、旧库增表保留 Project。`yarn lint`（TypeScript `--noEmit`）通过。未运行全量测试、构建、真实 Provider 或浏览器。
+`tests/evaluationRun.test.ts` 5 个定向用例通过：冻结与禁止改写、修订冲突和事务回滚、CRLF/LF 同一 manifest 身份、旧库增表保留 Project，以及用真实生产 AgentRuntime（确定性 Fake Model）验证 Case 身份、排除尚在排队的 Run 与损坏 Trace。需人工介入的 `waiting` Run 可以作为失败/阻塞观察记录，但不能据此算成功。`yarn lint`（TypeScript `--noEmit`）通过。未运行全量测试、构建、真实 Provider 或浏览器。
 
 ## 尚未完成
 

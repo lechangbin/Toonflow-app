@@ -932,6 +932,9 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("caseId").notNullable();
         table.text("partition").notNullable();
         table.text("agentRunId");
+        table.integer("agentRunVersion");
+        table.text("agentRunStatus");
+        table.integer("agentRunTraceSequence");
         table.text("status").notNullable();
         table.text("hardGateResultsJson");
         table.text("qualityReviewJson");
@@ -940,6 +943,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("elapsedMs");
         table.integer("costMicros");
         table.integer("createdAt").notNullable();
+        table.integer("observedAt");
         table.integer("completedAt");
         table.unique(["evaluationRunId", "caseId"]);
       },
