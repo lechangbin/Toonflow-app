@@ -106,6 +106,8 @@ test("approval atomically commits one Derived Asset, instruction, receipt, check
     const pending = await write.propose(proposal);
     assert.deepEqual(pending.allowedActions, ["inspect", "approve", "reject"]);
     assert.equal(pending.preview.expectedVersion, 0);
+    assert.deepEqual(pending.payload, payload,
+      "the Owner can inspect the verified exact payload before deciding");
     assert.deepEqual((await write.list(7, 1)).map((approval) => approval.id), [pending.id]);
     assert.deepEqual(await write.list(8, 2), []);
     assert.equal((await db("o_assets")).length, 2);
@@ -187,7 +189,10 @@ test("concurrent target changes and tampered proposal evidence cannot be approve
     const second = await write.propose({ ...proposal, clientRequestId: "request-2", operationId: "operation-2",
       payload: { ...payload, parentAssetId: 10, changeInstruction: { ...instruction, dimensions: ["time_of_day"] } } });
     await db("o_agentToolApproval").where({ id: second.id }).update({ payloadJson: "{}" });
-    assert.equal((await write.inspect(7, second.runId, 1))?.status, "corrupt");
+    const corruptSnapshot = await write.inspect(7, second.runId, 1);
+    assert.equal(corruptSnapshot?.status, "corrupt");
+    assert.equal(corruptSnapshot?.payload, undefined,
+      "unverified evidence must never be presented as an exact payload");
     const corrupt = await write.decide(decision(second));
     assert.equal(corrupt?.status, "corrupt");
     assert.equal((await db("o_assets")).length, 2);
@@ -264,6 +269,7 @@ test("the Derived Asset inspector reprojects approval and committed checkpoint a
     await write.decide(decision(pending));
     const restored = await restarted.inspect(7, pending.runId, 1);
     assert.equal(restored?.runStatus, "succeeded");
+    assert.deepEqual(restored?.payload, payload);
     assert.deepEqual((await db("o_agentRunCheckpoint")
       .where({ runId: pending.runId }).orderBy("sequence")).map((checkpoint) => checkpoint.kind),
     ["run-created", "step-committed"]);

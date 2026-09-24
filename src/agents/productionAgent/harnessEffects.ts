@@ -3,7 +3,10 @@ import { createHash } from "node:crypto";
 import type { DatabaseWork } from "@/database";
 import { billableImageProposalClientRequestId,
   type BillableImageApprovalSnapshot } from "@/controlledTools/billableImageApproval";
-import { PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION } from "@/controlledTools/definitions";
+import { derivedAssetProposalClientRequestId,
+  type DerivedAssetApprovalSnapshot } from "@/controlledTools/derivedAssetWrite";
+import { PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION } from "@/controlledTools/definitions";
 
 export class ProductionHarnessEffectsNotFoundError extends Error {}
 export class ProductionHarnessEffectsConflictError extends Error {}
@@ -14,14 +17,23 @@ export interface ProductionHarnessEffect {
   approval: BillableImageApprovalSnapshot | null;
 }
 
+export interface ProductionHarnessDerivedEffect {
+  operationId: string;
+  status: "denied" | "approval";
+  approval: DerivedAssetApprovalSnapshot | null;
+}
+
 /** Read-only projection of durable child effects; model text is never an effect status. */
 export function createProductionHarnessEffects(dependencies: {
   work: DatabaseWork;
   inspectBillable(projectId: number, runId: string, actorUserId: number):
     Promise<BillableImageApprovalSnapshot | null>;
+  inspectDerived(projectId: number, runId: string, actorUserId: number):
+    Promise<DerivedAssetApprovalSnapshot | null>;
 }) {
   return async (input: { projectId: number; actorUserId: number; runId: string }): Promise<{
     runId: string; effects: ProductionHarnessEffect[];
+    derivedEffects: ProductionHarnessDerivedEffect[];
   }> => {
     if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
       || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0
@@ -36,11 +48,13 @@ export function createProductionHarnessEffects(dependencies: {
           "project.userId": input.actorUserId }).first("run.id");
       if (!parent) throw new ProductionHarnessEffectsNotFoundError();
       const decisions = await db("o_agentSkillPermissionDecision")
-        .where({ runId: input.runId,
-          toolName: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION.name })
+        .where({ runId: input.runId })
+        .whereIn("toolName", [PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION.name,
+          PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION.name])
         .orderBy("createdAt").orderBy("id").limit(51);
       if (decisions.length > 50) throw new ProductionHarnessEffectsConflictError();
-      const result: Array<{ operationId: string; allowed: boolean; childRunId: string | null }> = [];
+      const result: Array<{ operationId: string; toolName: string;
+        allowed: boolean; childRunId: string | null }> = [];
       for (const decision of decisions) {
         if (createHash("sha256").update(decision.decisionJson).digest("hex")
           !== decision.decisionHash) throw new ProductionHarnessEffectsConflictError();
@@ -48,19 +62,40 @@ export function createProductionHarnessEffects(dependencies: {
         try { allowed = JSON.parse(decision.decisionJson).allowed; }
         catch { throw new ProductionHarnessEffectsConflictError(); }
         if (typeof allowed !== "boolean") throw new ProductionHarnessEffectsConflictError();
+        const image = decision.toolName === PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION.name;
         const child = allowed && await db("o_agentRun").where({
           projectId: input.projectId, role: "productionAgent",
-          scope: "approved-billable-image-v1",
-          clientRequestId: billableImageProposalClientRequestId(input.runId, decision.operationId),
+          scope: image ? "approved-billable-image-v1" : "approved-derived-asset-write-v1",
+          clientRequestId: image
+            ? billableImageProposalClientRequestId(input.runId, decision.operationId)
+            : derivedAssetProposalClientRequestId(input.runId, decision.operationId),
         }).first("id");
         if (allowed && !child) throw new ProductionHarnessEffectsConflictError();
         result.push({ operationId: decision.operationId,
-          allowed, childRunId: child ? child.id : null });
+          toolName: decision.toolName, allowed, childRunId: child ? child.id : null });
       }
       return result;
     });
     const effects: ProductionHarnessEffect[] = [];
+    const derivedEffects: ProductionHarnessDerivedEffect[] = [];
     for (const entry of entries) {
+      if (entry.toolName === PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION.name) {
+        if (!entry.allowed) {
+          derivedEffects.push({ operationId: entry.operationId, status: "denied", approval: null });
+          continue;
+        }
+        let approval: DerivedAssetApprovalSnapshot | null;
+        try {
+          approval = await dependencies.inspectDerived(input.projectId,
+            entry.childRunId!, input.actorUserId);
+        } catch { throw new ProductionHarnessEffectsConflictError(); }
+        if (!approval || approval.sourceRunId !== input.runId
+          || approval.sourceOperationId !== entry.operationId) {
+          throw new ProductionHarnessEffectsConflictError();
+        }
+        derivedEffects.push({ operationId: entry.operationId, status: "approval", approval });
+        continue;
+      }
       if (!entry.allowed) {
         effects.push({ operationId: entry.operationId, status: "denied", approval: null });
         continue;
@@ -78,6 +113,6 @@ export function createProductionHarnessEffects(dependencies: {
       }
       effects.push({ operationId: entry.operationId, status: "approval", approval });
     }
-    return { runId: input.runId, effects };
+    return { runId: input.runId, effects, derivedEffects };
   };
 }

@@ -337,11 +337,19 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       "succeeded", "late media is evidence, not a completed effect");
     const effects = createProductionHarnessEffects({ work,
       inspectBillable: (projectId, runId, actorUserId) =>
-        imageApproval.inspect(projectId, runId, actorUserId) });
+        imageApproval.inspect(projectId, runId, actorUserId),
+      inspectDerived: (projectId, runId, actorUserId) =>
+        derivedAsset.inspect(projectId, runId, actorUserId) });
     await assert.rejects(effects({ projectId: 7, actorUserId: 2,
       runId: run.id }), ProductionHarnessEffectsNotFoundError);
     const projected = await effects({ projectId: 7, actorUserId: 1, runId: run.id });
     assert.equal(projected.effects.length, 3);
+    assert.equal(projected.derivedEffects.length, 2);
+    assert.equal(projected.derivedEffects.find((item) =>
+      item.operationId === "production-derived-two")?.status, "denied");
+    assert.equal(projected.derivedEffects.find((item) =>
+      item.operationId === "production-derived-one")?.approval?.receiptOutput?.effect,
+    "created");
     assert.equal(projected.effects.find((item) =>
       item.operationId === "production-image-proposal-two")?.status, "denied");
     assert.equal(projected.effects.find((item) =>

@@ -21,7 +21,7 @@
 4. 读 `src/skillRuntime/grants.ts` 与 `src/controlledTools/billableImageApproval.ts`：图片提案在同一事务内核对运行租约、Skill 请求、Project grant 和权限判定，再创建 T09 待审批子 Run。
 5. 读 `src/controlledTools/billableImageLedger.ts`：Owner 决策之后才可能形成 Vendor 请求意图，未知外部结果不能简单重发。
 5a. 读 `src/controlledTools/derivedAssetWrite.ts`：派生资产提案复用 T08 的目标状态与等价状态校验，Owner 决策才提交本地 Asset 与 Instruction。
-6. 读 `src/agents/productionAgent/harnessEffects.ts` 与 `src/routes/agentRuns/productionHarness.ts`：只读效果投影从持久判定和子 Run 读状态，不从模型回复猜测结果。
+6. 读 `src/agents/productionAgent/harnessEffects.ts` 与 `src/routes/agentRuns/productionHarness.ts`：只读效果投影分别从图片和派生资产的持久判定与子 Run 读状态，不从模型回复猜测结果；T08 Owner 快照只在完整性验证通过时展示精确 payload。
 7. 对照 `tests/productionHarnessRun.test.ts`、`tests/productionHarnessGrants.test.ts`、`tests/billableImageApproval.test.ts` 和阶段报告 `docs/reports/agent-harness-production-migration-73-progress.md`，区分已测与待测。
 
 ## 本阶段真实调用链

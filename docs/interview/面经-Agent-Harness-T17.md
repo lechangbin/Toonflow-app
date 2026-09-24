@@ -17,6 +17,7 @@
 8. 问：父 Run 已成功，Owner 后续处理子审批，会把父 Run 状态改写吗？答：不会。父 Run 的成功只表示模型指导步骤完成，子 Run 是独立的计费效果决策。定向测试验证非 Owner 不能批准；Owner 批准后，假 Provider 只调用一次，图片证据和 Asset 关联在子 Run 提交，父 Run 仍成功。拒绝路径由 T09 审批单测覆盖；面试时必须分别描述两个状态。
 8a. 问：派生资产只是本地写表，为何还要审批？答：本地写入虽然没有 Vendor 成本，却会改变 Project 的资产关系和视觉派生指令，错误内容可能被后续生成消费。模型只持有 `propose:derived-asset`，没有 `write:derived-asset`；T08 审批时再次检查精确 payload、目标版本、等价状态和目标状态哈希。定向测试在模型提案后确认资产表没有新增，Owner 批准后只新增一条，撤销 grant 后新提案被拒绝。证据：`src/controlledTools/derivedAssetWrite.ts`、`tests/productionHarnessRun.test.ts`、`docs/adr/0024-production-agent-derived-asset-proposal-boundary.md`。
 8b. 问：派生资产提案怎么避免冒用父 Run？答：子 Run 创建和父 Run 权限判定在同一事务内进行；校验父 Run 的运行状态、Owner 身份与有效 lease，冻结 Skill 必须请求该 Tool 与独立能力，Project grant 必须当前有效。子 Run 保存父 Run、操作、Skill 和提案合约哈希；inspect 再复核权限判定哈希与 operation ID。相同操作派生确定性请求键，变更 payload 冲突。这证明本地持久绑定，不代表已经通过跨进程或恶意数据库篡改验收。
+8c. 问：Owner 如何确认自己批准的不是被前端摘要掩盖的内容？答：T08 快照原本只有预览和载荷哈希，模型提案接入后不足以逐字段核对。现在 Owner-only inspect 在 schema、payload 哈希、预览、Tool 合约与 Receipt 绑定全部有效时才返回精确 payload；损坏证据不给 payload。试用面板展示完整 JSON，并在缺 payload 时禁用批准；服务端依然以冻结 payload 和目标状态作为提交依据，前端展示不是授权的唯一屏障。证据：`src/controlledTools/derivedAssetWrite.ts`、`tests/derivedAssetWrite.test.ts`、Web PR #8。浏览器交互尚未验收。
 
 ## 三面：反例、取舍与未完成项
 

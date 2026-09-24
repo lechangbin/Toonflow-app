@@ -84,6 +84,7 @@ export interface DerivedAssetApprovalSnapshot {
   status: ApprovalStatus;
   expiresAt: number;
   preview: { effect: "create" | "update"; parentAssetId: number; assetId: number | null; expectedVersion: number; name: string; dimensions: string[] };
+  payload?: Payload;
   runStatus: string;
   runVersion: number;
   allowedActions: string[];
@@ -277,6 +278,7 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number, runI
     } catch { throw new DerivedAssetWriteRejectedError("unsafe"); }
   }
   let preview: DerivedAssetApprovalSnapshot["preview"];
+  let verifiedPayload: Payload | undefined;
   let evidenceCorrupt = !(["pending", "approved", "rejected", "expired", "conflicted", "corrupt"] as string[]).includes(approval.status)
     || (approval.status === "pending" && receipt.status !== "pending")
     || (approval.status === "approved" && receipt.status !== "succeeded")
@@ -292,6 +294,7 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number, runI
       || receipt.inputHash !== approval.payloadHash
       || receipt.operationId !== approval.operationId
       || !inspectPersistableText(approval.payloadJson).ok) throw new Error("invalid approval evidence");
+    verifiedPayload = parsed;
   } catch {
     evidenceCorrupt = true;
     preview = { effect: "update", parentAssetId: 0, assetId: null, expectedVersion: 0,
@@ -309,6 +312,7 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number, runI
     toolName: tool.name, toolRevision: approval.toolRevision, payloadHash: approval.payloadHash,
     contractHash: approval.contractHash, status: evidenceCorrupt ? "corrupt" : approval.status, expiresAt: approval.expiresAt,
     preview, runStatus: run.status, runVersion: run.version,
+    ...(!evidenceCorrupt && verifiedPayload ? { payload: verifiedPayload } : {}),
     allowedActions: evidenceCorrupt ? ["inspect"] : JSON.parse(run.allowedActions), receiptStatus: receipt.status,
     ...(receiptOutput ? { receiptOutput } : {}),
     ...(run.attentionReason ? { attentionReason: run.attentionReason } : {}),

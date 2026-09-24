@@ -15,6 +15,7 @@ import { createProductionHarnessEffects, ProductionHarnessEffectsConflictError,
   "@/agents/productionAgent/harnessEffects";
 import { getDefaultProductionHarnessRuntime } from "@/agents/productionAgent/harnessRuntime";
 import { createDefaultBillableImageRuntime } from "@/controlledTools/billableImageComposition";
+import { getDefaultDerivedAssetWriteRuntime } from "@/controlledTools/derivedAssetWrite";
 import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
@@ -27,10 +28,12 @@ function actorUserId(req: express.Request): number | null {
 /** Opt-in production guidance transport; legacy generation remains a separate path. */
 type Effects = ReturnType<typeof createProductionHarnessEffects>;
 const billableImage = createDefaultBillableImageRuntime();
+const derivedAsset = getDefaultDerivedAssetWriteRuntime();
 export function createProductionHarnessRouter(runtime: AgentRuntime,
   effects: Effects = createProductionHarnessEffects({
     work: (operation) => getDatabaseRuntime().work(operation),
     inspectBillable: billableImage.approval.inspect,
+    inspectDerived: derivedAsset.inspect,
   })) {
   const router = express.Router();
   router.post("/start", validateFields({
