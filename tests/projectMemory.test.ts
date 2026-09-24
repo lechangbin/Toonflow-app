@@ -101,3 +101,25 @@ test("Project Memory captures only a locatable excerpt of a committed same-Proje
     assert.equal((await db("o_agentRun").where({ projectId: 7 })).length, 0);
   } finally { await db.destroy(); }
 });
+
+test("adding the Project Memory table preserves legacy Project and Socket Memory records", async () => {
+  const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
+  try {
+    await db.raw("PRAGMA foreign_keys = OFF");
+    await db.schema.createTable("o_skillList", (table) => table.text("id").primary());
+    const originalLog = console.log;
+    console.log = () => undefined;
+    try { await initDB(db); } finally { console.log = originalLog; }
+    await db("o_project").insert({ id: 7, userId: 1, name: "升级前 Project" });
+    await db("memories").insert({ id: "legacy-1", isolationKey: "7:scriptAgent",
+      type: "message", content: "升级前旧 Memory", createTime: 10 });
+    await db.schema.dropTable("o_agentProjectMemory");
+    console.log = () => undefined;
+    try { await initDB(db); } finally { console.log = originalLog; }
+    assert.equal(await db.schema.hasTable("o_agentProjectMemory"), true);
+    assert.equal((await db("o_project").where({ id: 7 }).first()).name, "升级前 Project");
+    assert.equal((await db("memories").where({ id: "legacy-1" }).first()).content, "升级前旧 Memory");
+    assert.equal((await db("o_agentProjectMemory")).length, 0,
+      "old isolation keys must not become new Project-authorized Memory");
+  } finally { await db.destroy(); }
+});

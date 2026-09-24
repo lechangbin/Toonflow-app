@@ -13,6 +13,6 @@ Issue：`lechangbin/Toonflow-app#69`。本分支堆叠在尚未验收的 T12 Con
 
 ## 阶段验证与未完成边界
 
-`tests/projectMemory.test.ts` 的 1 个定向用例使用真实 SQLite 和 Fake Model 验证：未提交来源拒绝、成功 Output 片段定位、重复捕获、跨 Project 拒绝、旧表不自动晋升、高风险 ContextBundle 纳入、来源哈希或 Attempt 状态损坏时读取失败、撤销幂等及不同命令冲突、不可改写与 Project 删除。连同所依赖的 T12 Context 用例共 18 个定向单测以及 TypeScript `--noEmit` 通过。未运行全量测试、构建、浏览器或真实 Provider。
+`tests/projectMemory.test.ts` 的 2 个定向用例使用真实 SQLite 和 Fake Model 验证：未提交来源拒绝、成功 Output 片段定位、重复捕获、跨 Project 拒绝、旧表不自动晋升、高风险 ContextBundle 纳入、来源哈希或 Attempt 状态损坏时读取失败、撤销幂等及不同命令冲突、不可改写与 Project 删除，以及旧库新增表时保留 Project 和 Socket Memory。所依赖的 T12 Context 17 个定向用例此前通过；本增量的 2 个 Memory 单测与 TypeScript `--noEmit` 通过。未运行全量测试、构建、浏览器或真实 Provider。
 
 尚未实现摘要来源图、多来源聚合、语义检索、置信度晋升、旧 Memory 的逐条可验证迁移，以及 Script/Production 旧 Socket Agent 迁移。当前 `source-excerpt` 只证明文本来自某次成功 Agent 输出，不证明该输出的业务事实真实；面试时不能把它表述成已验证知识库或已完成跨 Agent Memory 治理。
