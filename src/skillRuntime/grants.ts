@@ -6,6 +6,7 @@ import type { ControlledToolName } from "@/controlledTools/definitions";
 const READ_NOVEL = "read:novel" as const;
 const READ_SCRIPT_WORKSPACE = "read:script-workspace" as const;
 const READ_SCRIPT = "read:script" as const;
+const READ_PRODUCTION_WORKSPACE = "read:production-workspace" as const;
 const PROPOSE_SCRIPT_WORKSPACE = "propose:script-workspace" as const;
 const PROPOSE_SCRIPT = "propose:script" as const;
 
@@ -23,7 +24,8 @@ export function createProjectSkillGrantRuntime(dependencies: {
 }) {
   async function setCapability(input: { projectId: number; actorUserId: number;
     expectedVersion: number; active: boolean }, capability: typeof READ_NOVEL | typeof READ_SCRIPT_WORKSPACE
-      | typeof READ_SCRIPT | typeof PROPOSE_SCRIPT_WORKSPACE | typeof PROPOSE_SCRIPT) {
+      | typeof READ_SCRIPT | typeof READ_PRODUCTION_WORKSPACE
+      | typeof PROPOSE_SCRIPT_WORKSPACE | typeof PROPOSE_SCRIPT) {
     if (![input.projectId, input.actorUserId].every((value) =>
       Number.isSafeInteger(value) && value > 0)
       || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0
@@ -60,6 +62,10 @@ export function createProjectSkillGrantRuntime(dependencies: {
     }));
   }
   return {
+    async setReadProductionWorkspace(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, READ_PRODUCTION_WORKSPACE);
+    },
     async inspectScriptProposals(projectId: number, actorUserId: number) {
       if (![projectId, actorUserId].every((value) =>
         Number.isSafeInteger(value) && value > 0)) {
@@ -125,6 +131,9 @@ export async function resolveScriptProposalGrants(tx: Knex.Transaction, input: {
 export async function resolveReadOnlyScriptSkillGrants(tx: Knex.Transaction, input: {
   runId: string; projectId: number; toolName: ControlledToolName;
 }) {
+  if (input.toolName === "get_production_workspace_text") {
+    throw new TypeError("Production Tool cannot use Script Skill grants");
+  }
   const run = await tx("o_agentRun").where({ id: input.runId,
     projectId: input.projectId }).first("id", "role", "scope");
   const project = await tx("o_project").where({ id: input.projectId }).first("id");
@@ -142,4 +151,24 @@ export async function resolveReadOnlyScriptSkillGrants(tx: Knex.Transaction, inp
       || run.scope === "script-harness-guidance-v1" ? [capability] : [],
     roleGrants: run.role === "scriptAgent" ? [capability] : [],
   };
+}
+
+/** Production capability is distinct from Script grants and defaults to deny. */
+export async function resolveProductionSkillGrants(tx: Knex.Transaction, input: {
+  runId: string; projectId: number; toolName: ControlledToolName;
+}) {
+  if (input.toolName !== "get_production_workspace_text") {
+    throw new TypeError("Unsupported Production Tool grant request");
+  }
+  const run = await tx("o_agentRun").where({ id: input.runId,
+    projectId: input.projectId }).first("id", "role", "scope");
+  const project = await tx("o_project").where({ id: input.projectId }).first("id");
+  if (!run || !project) throw new Error("Production grant is outside Run Project scope");
+  const grant = await tx("o_agentProjectCapabilityGrant")
+    .where({ projectId: input.projectId, capability: READ_PRODUCTION_WORKSPACE,
+      state: "active" }).first("version");
+  return { platformGrants: [READ_PRODUCTION_WORKSPACE],
+    projectGrants: grant ? [READ_PRODUCTION_WORKSPACE] : [],
+    runGrants: run.scope === "production-harness-v1" ? [READ_PRODUCTION_WORKSPACE] : [],
+    roleGrants: run.role === "productionAgent" ? [READ_PRODUCTION_WORKSPACE] : [] };
 }
