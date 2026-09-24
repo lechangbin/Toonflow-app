@@ -12,6 +12,7 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 - 在该 Run 中增加 `propose_asset_image_generation` 模型 Tool。Skill 必须同时请求 Tool 与 `propose:billable-image`，Owner 必须显式开启独立 Project grant；模型只能创建 T09 单资产计费图片的 pending 子审批 Run，不能批准、提交 Vendor 或直接产生图片。父 Run 的租约、身份、冻结 Skill、当前 grant、权限判定与 Tool 合约在子 Run 创建事务中核验；子 Run 冻结父 Run、操作和 Skill 关联，读取时复核 Tool 合约、冻结 Skill Revision、判定哈希与操作对应关系。相同操作使用确定性请求键，变更目标发生冲突；撤销 grant 后新提案拒绝。设计决策见 `docs/adr/0023-production-agent-image-proposal-boundary.md`。
 - 增加 Owner-only 的 `/api/agentRuns/productionHarness/effects` 只读投影：先按 Project/角色/scope 核对父 Run，再读取至多 50 条有哈希的模型提案权限判定，以父 Run + 操作 ID 定位子 Run，复用 T09 inspect 验证来源并投影审批、VendorRequest 和 Artifact 摘要。被拒绝提案单独标记 denied；缺子 Run、哈希或来源不一致时整体失败，不用模型自然语言推断生成状态。HTTP 认证 actor 不接受请求体伪造。
 - 保留现有生产 Socket 路径，不在未迁移的分镜/资产工具上伪造持久 Run 成功状态。当前 Run 可以形成待 Owner 审批的单资产图片意图，但不承载已完成生成效果。
+- 配套 Web Draft PR `lechangbin/Toonflow-web#8` 增加显式试用的生产持久 Run 面板：HTTP start/inspect/list/cancel/effects 读服务端快照；模型聊天文本不决定图片效果状态。资产面板仍处理计费审批和实际提交。Web 分支的 2 个定向契约用例与非声明式 Vue 类型检查通过；常规声明式类型构建在共享依赖工作树因既有 Socket 类型 TS2742 失败，浏览器验收留到 T21。旧 Socket 仍并行，不能声称已完成 T18 兼容迁移。
 
 ## 定向验证与剩余边界
 
