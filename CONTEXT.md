@@ -108,6 +108,10 @@ _Avoid_: AbortController event, cancelled status, compensation
 An ordered, safe record of lifecycle and diagnostic events that explains an Agent Run without retaining hidden reasoning or raw provider payloads.
 _Avoid_: Application log, transcript, chain of thought
 
+**ContextBundle**:
+The frozen, provenance-bearing set of authorized instructions and Project evidence selected for one Agent Model Attempt under a bounded input budget.
+_Avoid_: Concatenated prompt, mutable Memory snapshot, chat transcript
+
 **ToolDefinition**:
 An immutable revision of an Agent-callable capability that states its typed contract, execution policy, risk, and domain adapter identity.
 _Avoid_: Ad-hoc model function, Socket callback, route handler
