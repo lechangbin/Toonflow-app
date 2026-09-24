@@ -4,8 +4,8 @@ import { z } from "zod";
 
 import { success } from "@/lib/responseFormat";
 import { generateVideoPromptRequestSchema, generateVideoPromptRevision } from "@/video/promptGeneration";
-
-const router = express.Router();
+import { assertWorkbenchUserOrigin, WorkbenchAgentOriginRejectedError } from
+  "@/video/workbenchOrigin";
 
 const batchSchema = z
   .object({
@@ -14,13 +14,25 @@ const batchSchema = z
   })
   .strict();
 
-export default router.post("/", async (req, res, next) => {
-  try {
-    const input = batchSchema.parse(req.body);
-    const limit = pLimit(input.concurrentCount);
-    const revisions = await Promise.all(input.items.map((item) => limit(() => generateVideoPromptRevision(item))));
-    res.status(200).send(success(revisions));
-  } catch (error) {
-    next(error);
-  }
-});
+export function createBatchGeneratePromptRouter(
+  generate: typeof generateVideoPromptRevision = generateVideoPromptRevision,
+) {
+  const router = express.Router();
+  return router.post("/", async (req, res, next) => {
+    try {
+      const input = batchSchema.parse(req.body);
+      input.items.forEach(assertWorkbenchUserOrigin);
+      const limit = pLimit(input.concurrentCount);
+      const revisions = await Promise.all(input.items.map((item) => limit(() => generate(item))));
+      res.status(200).send(success(revisions));
+    } catch (error) {
+      if (error instanceof WorkbenchAgentOriginRejectedError || error instanceof z.ZodError) {
+        res.status(422).send({ message: "Video prompt batch request is invalid" });
+        return;
+      }
+      next(error);
+    }
+  });
+}
+
+export default createBatchGeneratePromptRouter();

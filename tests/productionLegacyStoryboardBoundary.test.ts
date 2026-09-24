@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import useProductionAgentTools from "../src/agents/productionAgent/tools";
+import useProductionAgentTools, { waitLegacyStoryboardAck } from
+  "../src/agents/productionAgent/tools";
 
 function storyboardTool(reply: unknown) {
   let callbackCalled = false;
@@ -41,4 +42,15 @@ test("legacy storyboard success-false acknowledgement is not a success claim", a
   const tool = storyboardTool({ success: false, message: "database write failed" });
   assert.match(String(await tool.execute(input)), /结果不确定/);
   assert.equal(tool.acknowledged(), true);
+});
+
+test("missing legacy browser acknowledgement times out as unknown without replay", async () => {
+  let calls = 0;
+  let lateCallback: ((response: unknown) => void) | undefined;
+  await assert.rejects(waitLegacyStoryboardAck((_payload, callback) => {
+    calls++;
+    lateCallback = callback;
+  }, input, 5), /effect unknown/);
+  lateCallback?.({ success: true, storyboardId: 51 });
+  assert.equal(calls, 1, "timeout and late callback must never re-emit the write");
 });

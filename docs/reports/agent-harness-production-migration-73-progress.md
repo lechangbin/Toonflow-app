@@ -35,6 +35,12 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 
 分镜受控写入第三切片：`propose_storyboard_write` 已接入生产 Harness 模型 Tool 目录。冻结 Skill 同时请求 Tool 与 `propose:storyboard` 能力，认证 Owner 单独按版本开启 Project grant 后，父 Run 有效租约和权限交集才允许建待审子 Run；模型没有审批权。子 Run 冻结父 Run、操作、Skill 与提案合约，检查时复核来源；父 Run `/effects` 从持久权限判定与子 Run 重建 `storyboardEffects`。Owner-only `/api/agentRuns/storyboardWriteApproval` 提供 propose/inspect/decide，Web 试用面板展示完整待审载荷和版本化批准/拒绝。启动恢复与重新检查会结算过期审批，不重放分镜写入。最近一次仅运行相关 24 个 App 定向用例（含数据库 readiness）、6 个 Web 合约用例和两侧无输出类型检查，均通过；未运行全量套件、构建、浏览器或真实 Provider。旧 Socket 批量分镜、轨道创建、批量图片和视频仍未迁移，T17 未完成。前两段是历史切片记录，其“尚未开放”状态由本段更新。
 
+旧 Socket 无回调补充：旧 `add_flowData_storyboard` 的浏览器回调现在有 20 秒上限；超时归为“结果不确定、人工核对、不自动重试”，迟到回调不会重发写入。4 个该边界的定向单测和 App 类型检查通过。计时器只能避免永远悬挂，不能证明后端没有部分写入，也不是可恢复 ToolReceipt。
+
+生产模型系统契约同步升为 `toonflow.production-harness-guidance.v2`：明确区分受控指导、模型候选、Owner 批准和效果提交，列出目前三类模型提案；不再把已有提案能力描述成纯只读。生产模型仍不得声称待审请求已经生成或保存。相关生产 Run 定向用例及类型检查通过；没有改变旧 Socket 生成行为。
+
+Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手动 HTTP 路由会直接进入异步 Vendor 调用，异常被记录为失败，尚无 T09 式“提交可能已发生”的防重放账本。因此本阶段不把它包装为模型 Tool；先收紧单条/批量视频生成、单条/批量 Prompt 生成与人工 Prompt Revision 共五个工作台路由，只允许 `requestedBy: "user"`（缺省为 user），浏览器不能自称 `project-agent`。共享生产模块仍保留可信调用者的 `project-agent` 类型，供未来受控编排复用。两个定向路由用例验证伪造来源在触达生成编排或 Prompt 写入前被拒，正常用户请求仍通过；另有旧 Socket 回调和生产 Run 相关五例、App 类型检查通过。这只是来源防伪接缝，不等于 Owner 授权；视频生成的持久审批、未知结果恢复和真实 Provider 验收仍待完成。
+
 ## 阶段追问准备（非最终面经）
 
 1. 问：为什么生产工作区读取不能继续让前端 `getFlowData` 回调负责？答：旧工具通过 Socket 回调从前端得到数据，模型侧请求与实际读到的 Project/剧本数据缺少后端一致的授权、回执和恢复身份。新接缝把剧本归属与工作区行的 Project、剧本键在后端核对，并给 Tool 固定修订、scope 和能力；测试证明跨 Project ID 与重复行不会返回内容。它已接上只读生产 Run，但尚未替代旧生成工具。

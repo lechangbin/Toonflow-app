@@ -62,6 +62,8 @@ Build validates packaged Vendor sources and Prompt Profiles. Startup additionall
 
 The current prompt routes call `generateVideoPromptRevision`; current video routes call `startVideoGenerationBatch`. Prompt generation and manual Prompt Revision edits carry the complete Track selection (`vendorId`, `modelId`, `capabilityId`, `inputs`, `output`, and `audio`) and persist it atomically with the active `promptRevisionId`. Single and batch routes share the strict selection schemas in `src/video/productionContract.ts`. Future Project Agent tools must call these shared modules with `requestedBy: "project-agent"`; they should not duplicate orchestration or treat socket messages as state.
 
+T17 compatibility restriction: the existing HTTP workbench single/batch prompt generation, manual Prompt Revision, and single/batch Video generation routes accept only `requestedBy: "user"` (or default to it). A browser may not label its own request as `project-agent`; that origin is reserved for a future authorized Agent module. The shared modules still support both values for trusted callers. The Video routes have not been migrated to the Agent Run/VendorRequest ledger: their current async Vendor call treats provider errors as failed, and a timeout can be ambiguous. Do not expose them as a controlled model Tool or automatically replay their requests until that effect contract is implemented and tested.
+
 The future infinite-canvas Agent window may compose asset extraction, prompt generation, and video generation, but the backend records remain the source of truth. That UI and Agent-tool expansion is outside Issue #2.
 
 ## Frontend migration boundary

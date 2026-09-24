@@ -98,6 +98,39 @@ function createSocketQueue(delayMs = 800) {
   };
 }
 
+/** A legacy browser callback can disappear; timeout means unknown, never no-effect. */
+export function waitLegacyStoryboardAck(
+  emit: (payload: unknown, callback: (response: unknown) => void) => void,
+  payload: unknown, timeoutMs = 20_000,
+): Promise<unknown> {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new TypeError("Legacy Storyboard acknowledgement timeout is invalid");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("legacy storyboard acknowledgement timed out; effect unknown"));
+    }, timeoutMs);
+    const callback = (response: any) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (response?.error || response?.success === false) {
+        reject(new Error("legacy storyboard acknowledgement rejected"));
+      } else resolve(response);
+    };
+    try { emit(payload, callback); }
+    catch (error) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    }
+  });
+}
+
 export default (toolCpnfig: ToolConfig) => {
   const { resTool, toolsNames, msg } = toolCpnfig;
   const { socket } = resTool;
@@ -399,17 +432,10 @@ export default (toolCpnfig: ToolConfig) => {
           shouldGenerateImage: raw.shouldGenerateImage,
         };
         try {
-          const acknowledged = await socketQueue(
-          () =>
-            new Promise((resolve, reject) =>
-              socket.emit("addStoryboard", { ...data }, (res: any) => {
-                if (res?.error || res?.success === false) {
-                  return reject(new Error("legacy storyboard acknowledgement rejected"));
-                }
-                resolve(res);
-              }),
-            ),
-          );
+          const acknowledged = await socketQueue(() => waitLegacyStoryboardAck(
+            (payload, callback) => socket.emit("addStoryboard", payload, callback),
+            { ...data },
+          ));
           thinking.appendText("新增的分镜数据:\n" + JSON.stringify(data, null, 2));
           thinking.updateTitle("分镜提交已收到确认");
           thinking.complete();
