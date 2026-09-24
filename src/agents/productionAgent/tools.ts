@@ -398,7 +398,8 @@ export default (toolCpnfig: ToolConfig) => {
           associateAssetsIds: raw.associateAssetsIds ?? [],
           shouldGenerateImage: raw.shouldGenerateImage,
         };
-        socketQueue(
+        try {
+          const acknowledged = await socketQueue(
           () =>
             new Promise((resolve, reject) =>
               socket.emit("addStoryboard", { ...data }, (res: any) => {
@@ -406,18 +407,16 @@ export default (toolCpnfig: ToolConfig) => {
                 resolve(res);
               }),
             ),
-        )
-          .then((res) => {
-            thinking.appendText("新增的分镜数据:\n" + JSON.stringify(data, null, 2));
-            thinking.updateTitle("新增分镜成功");
-            thinking.complete();
-          })
-          .catch((e) => {
-            thinking.appendText("新增的分镜数据:\n" + JSON.stringify(data, null, 2));
-            thinking.updateTitle("新增分镜失败");
-            thinking.complete();
-          });
-        return true;
+          );
+          thinking.appendText("新增的分镜数据:\n" + JSON.stringify(data, null, 2));
+          thinking.updateTitle("分镜提交已收到确认");
+          thinking.complete();
+          return acknowledged ?? "分镜提交已收到确认";
+        } catch {
+          thinking.updateTitle("分镜提交结果待核对");
+          thinking.complete();
+          return "分镜提交结果不确定；请在分镜面板核对，不要自动重试。";
+        }
       },
     }),
   };

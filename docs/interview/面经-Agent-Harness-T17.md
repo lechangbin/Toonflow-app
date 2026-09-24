@@ -19,6 +19,7 @@
 8b. 问：派生资产提案怎么避免冒用父 Run？答：子 Run 创建和父 Run 权限判定在同一事务内进行；校验父 Run 的运行状态、Owner 身份与有效 lease，冻结 Skill 必须请求该 Tool 与独立能力，Project grant 必须当前有效。子 Run 保存父 Run、操作、Skill 和提案合约哈希；inspect 再复核权限判定哈希与 operation ID。相同操作派生确定性请求键，变更 payload 冲突。这证明本地持久绑定，不代表已经通过跨进程或恶意数据库篡改验收。
 8c. 问：Owner 如何确认自己批准的不是被前端摘要掩盖的内容？答：T08 快照原本只有预览和载荷哈希，模型提案接入后不足以逐字段核对。现在 Owner-only inspect 在 schema、payload 哈希、预览、Tool 合约与 Receipt 绑定全部有效时才返回精确 payload；损坏证据不给 payload。试用面板展示完整 JSON，并在缺 payload 时禁用批准；服务端依然以冻结 payload 和目标状态作为提交依据，前端展示不是授权的唯一屏障。证据：`src/controlledTools/derivedAssetWrite.ts`、`tests/derivedAssetWrite.test.ts`、Web PR #8。浏览器交互尚未验收。
 8d. 问：Project Owner 怎么知道当前给模型开放了哪些能力？答：后端新增认证 Owner-only 的生产 grant 快照，分别返回工作区读、图片提案和派生资产提案的 active/version；试用面板用当前版本提交明确的开启或撤销命令，遇到版本冲突只提示刷新，不自动覆盖别人的更新。开启提案能力仍不等于批准效果，模型还要绑定已发布 Skill，并在调用时通过当前 grant 与租约校验。证据：`src/skillRuntime/grants.ts`、`tests/productionHarnessGrants.test.ts`、Web 合约单测；尚无浏览器验收。
+8e. 问：旧生产路径与 Harness 并行时，是否还存在“假成功”？答：存在，不能笼统说已迁移。审计发现旧 `add_flowData_storyboard` 将 Socket 写入排队后立即返回 `true`，即使之后回调报错。兼容层现等待回调，错误返回“结果不确定、人工核对、不自动重试”；定向测试覆盖确认和报错。但未解决断线无回调、进程崩溃、幂等与分镜写入持久回执，因此它只是避免一个明确的假成功，完整迁移仍在 T17 待办。证据：`src/agents/productionAgent/tools.ts`、`tests/productionLegacyStoryboardBoundary.test.ts`。
 
 ## 三面：反例、取舍与未完成项
 
