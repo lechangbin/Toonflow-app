@@ -43,6 +43,10 @@ test("required evidence and corrupt or conflicting source identity fail closed",
     { projectId: 9 })], budget), ContextSourceUnavailableError);
   assert.throws(() => selectEligibleContextSources(request, [source("project-7", "facts",
     { contentHash: "0".repeat(64) })], budget), /corrupt/);
+  assert.deepEqual(selectEligibleContextSources(request, [source("foreign", "private",
+    { projectId: 9, contentHash: "0".repeat(64) }), source("project-7", "facts")], budget)
+    .omissions, [{ id: "foreign", reason: "wrong-project" }],
+  "unauthorized content must be rejected by scope before its hash is inspected");
   assert.throws(() => selectEligibleContextSources(request, [source("project-7", "facts"),
     source("project-7", "different")], budget), /conflicting content/);
   assert.throws(() => selectEligibleContextSources({ ...request, expectedRevisions: {} }, [source("project-7", "facts"),

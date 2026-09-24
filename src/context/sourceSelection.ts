@@ -70,15 +70,7 @@ export function selectEligibleContextSources(
   const eligible: ContextCandidateSource[] = [];
   const seen = new Map<string, { revision: string; contentHash: string }>();
   for (const source of candidates) {
-    if (!IDENTIFIER.test(source.id) || !IDENTIFIER.test(source.revision)
-      || !HASH.test(source.contentHash)
-      || createHash("sha256").update(source.content).digest("hex") !== source.contentHash
-      || !Number.isSafeInteger(source.authorityRank) || source.authorityRank < 0
-      || !Number.isSafeInteger(source.relevanceRank) || source.relevanceRank < 0
-      || !["authoritative", "toolResults", "recentInteraction", "memory"].includes(source.category)
-      || !["current", "historical", "stale", "expired"].includes(source.freshness)) {
-      throw new Error("Context source evidence is corrupt");
-    }
+    if (!IDENTIFIER.test(source.id)) throw new Error("Context source identity is corrupt");
     let reason: ContextOmissionReason | undefined;
     if (source.projectId !== request.projectId) reason = "wrong-project";
     else if (source.scriptId !== undefined && source.scriptId !== request.scriptId) reason = "wrong-script";
@@ -88,6 +80,14 @@ export function selectEligibleContextSources(
     else if (source.freshness === "stale") reason = "stale";
     else if (source.freshness === "expired") reason = "expired";
     if (reason) { omissions.push({ id: source.id, reason }); continue; }
+    if (!IDENTIFIER.test(source.revision) || !HASH.test(source.contentHash)
+      || createHash("sha256").update(source.content).digest("hex") !== source.contentHash
+      || !Number.isSafeInteger(source.authorityRank) || source.authorityRank < 0
+      || !Number.isSafeInteger(source.relevanceRank) || source.relevanceRank < 0
+      || !["authoritative", "toolResults", "recentInteraction", "memory"].includes(source.category)
+      || !["current", "historical"].includes(source.freshness)) {
+      throw new Error("Context source evidence is corrupt");
+    }
     const previous = seen.get(source.id);
     if (previous !== undefined) {
       if (previous.contentHash !== source.contentHash || previous.revision !== source.revision) {
