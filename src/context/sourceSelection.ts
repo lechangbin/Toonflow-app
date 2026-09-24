@@ -46,6 +46,8 @@ export interface ContextSourceSelection {
   schemaVersion: typeof CONTEXT_SOURCE_SELECTION_VERSION;
   selected: ContextSourceEntry[];
   omissions: Array<{ id: string; reason: ContextOmissionReason }>;
+  compactionActions: Array<{ sourceId: string; action:
+    "typed-projection" | "evidence-slice" | "deduplicated" | "omitted-over-budget" }>;
   selectedContent: string[];
 }
 
@@ -70,6 +72,7 @@ export function selectEligibleContextSources(
     throw new TypeError("Context source request is invalid");
   }
   const omissions: ContextSourceSelection["omissions"] = [];
+  const compactionActions: ContextSourceSelection["compactionActions"] = [];
   const eligible: ContextCandidateSource[] = [];
   const seen = new Map<string, { revision: string; contentHash: string; transform?: string }>();
   for (const source of candidates) {
@@ -103,6 +106,7 @@ export function selectEligibleContextSources(
         throw new Error("Context source identity has conflicting content or revision or locator");
       }
       omissions.push({ id: source.id, reason: "duplicate" });
+      compactionActions.push({ sourceId: source.id, action: "deduplicated" });
       continue;
     }
     seen.set(source.id, { revision: source.revision, contentHash: source.contentHash,
@@ -122,6 +126,7 @@ export function selectEligibleContextSources(
     if (estimatedTokens > remaining[source.category]) {
       if (request.requiredSourceIds.includes(source.id)) throw new ContextSourceUnavailableError(source.id);
       omissions.push({ id: source.id, reason: "allocation-exceeded" });
+      compactionActions.push({ sourceId: source.id, action: "omitted-over-budget" });
       continue;
     }
     remaining[source.category] -= estimatedTokens;
@@ -130,7 +135,16 @@ export function selectEligibleContextSources(
       authorityRank: source.authorityRank,
       ...(source.transform ? { transform: source.transform } : {}) });
     selectedContent.push(source.content);
+    if (source.id.startsWith("project:")) {
+      compactionActions.push({ sourceId: source.id, action: "typed-projection" });
+    }
+    if (source.transform?.kind === "locatable-evidence-slice.v1") {
+      compactionActions.push({ sourceId: source.id, action: "evidence-slice" });
+    }
   }
   omissions.sort((a, b) => a.id.localeCompare(b.id, "en") || a.reason.localeCompare(b.reason, "en"));
-  return { schemaVersion: CONTEXT_SOURCE_SELECTION_VERSION, selected, omissions, selectedContent };
+  compactionActions.sort((a, b) => a.sourceId.localeCompare(b.sourceId, "en")
+    || a.action.localeCompare(b.action, "en"));
+  return { schemaVersion: CONTEXT_SOURCE_SELECTION_VERSION, selected, omissions,
+    compactionActions, selectedContent };
 }

@@ -33,6 +33,8 @@ test("scope/revision/retention filters run before ranking; selected order and om
   assert.deepEqual(selectEligibleContextSources(request, [...candidates].reverse(), budget).omissions,
     selected.omissions, "omission manifest is deterministic");
   assert.deepEqual(selected.selectedContent, ["facts", "novel"]);
+  assert.deepEqual(selected.compactionActions,
+    [{ sourceId: "project-7", action: "deduplicated" }]);
   assert.equal("content" in selected.selected[0], false, "manifest entry contains provenance, not raw Project text");
 });
 
@@ -61,6 +63,7 @@ test("allocation overflow omits optional text and never truncates required evide
   const selected = selectEligibleContextSources(request, [large, source("project-7", "facts")], narrow);
   assert.deepEqual(selected.selected.map((entry) => entry.id), ["project-7"]);
   assert.deepEqual(selected.omissions, [{ id: "large", reason: "allocation-exceeded" }]);
+  assert.deepEqual(selected.compactionActions, [{ sourceId: "large", action: "omitted-over-budget" }]);
   assert.throws(() => selectEligibleContextSources({ ...request, requiredSourceIds: ["large"] }, [large], narrow),
     ContextSourceUnavailableError);
 });

@@ -52,6 +52,8 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     assert.deepEqual(JSON.parse(persisted.messagesJson), bundle.messages);
     assert.deepEqual(JSON.parse(persisted.manifestJson).sources.map((entry: { id: string }) => entry.id),
       ["project:7", "novel:2"]);
+    assert.deepEqual(JSON.parse(persisted.manifestJson).compactionActions,
+      [{ sourceId: "project:7", action: "typed-projection" }]);
     assert.equal(persisted.manifestJson.includes("本项目的直接证据"), false);
     assert.deepEqual(await builder.inspect({ id: bundle.id, projectId: 7 }), bundle);
     assert.equal(await builder.inspect({ id: bundle.id, projectId: 9 }), null,
@@ -78,6 +80,9 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     assert.deepEqual(successorManifest.sources.find((entry: { id: string }) => entry.id === "novel:2").transform,
       { kind: "locatable-evidence-slice.v1", startCodePoint: 0, endCodePoint: 3,
         sourceTextHash: createHash("sha256").update("本项目的直接证据").digest("hex") });
+    assert.deepEqual(successorManifest.compactionActions,
+      [{ sourceId: "novel:2", action: "evidence-slice" },
+        { sourceId: "project:7", action: "typed-projection" }]);
     assert.equal(successorRow.manifestJson.includes("本项目的直接证据"), false);
     assert.deepEqual(await builder.inspect({ id: bundle.id, projectId: 7 }), bundle,
       "successor creation never rewrites the earlier Bundle");

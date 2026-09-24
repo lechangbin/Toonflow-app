@@ -141,7 +141,7 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
         const promptHash = hash(messagesJson);
         const manifestJson = JSON.stringify({ schemaVersion: CONTEXT_BUNDLE_SCHEMA_VERSION,
           modelRevision: input.modelRevision, budget, sources: selection.selected,
-          omissions: selection.omissions, promptHash });
+          omissions: selection.omissions, compactionActions: selection.compactionActions, promptHash });
         const manifestHash = hash(manifestJson);
         const existing = await tx("o_agentContextBundle").where({ attemptId: input.attemptId }).first();
         if (existing) {
