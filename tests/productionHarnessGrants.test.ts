@@ -8,7 +8,8 @@ import knexFactory from "knex";
 import initDB from "../src/lib/initDB";
 import { createSetReadProductionWorkspaceGrantRouter } from
   "../src/routes/agentRuns/setReadProductionWorkspaceGrant";
-import { createProjectSkillGrantRuntime, resolveProductionSkillGrants,
+import { createProjectSkillGrantRuntime, resolveProductionImageProposalGrants,
+  resolveProductionSkillGrants,
   resolveReadOnlyScriptSkillGrants } from "../src/skillRuntime/grants";
 
 test("Production read grant is owner-only, revocable and separate from Script", async () => {
@@ -32,6 +33,10 @@ test("Production read grant is owner-only, revocable and separate from Script", 
       { runId: "production-grant-run", projectId: 7,
         toolName: "get_production_workspace_text" }));
     assert.deepEqual((await resolve()).projectGrants, []);
+    const imageProposalGrants = () => db.transaction((tx) =>
+      resolveProductionImageProposalGrants(tx, { runId: "production-grant-run",
+        projectId: 7 }));
+    assert.deepEqual((await imageProposalGrants()).projectGrants, []);
     await assert.rejects(grants.setReadProductionWorkspace({ projectId: 7,
       actorUserId: 2, expectedVersion: 0, active: true }), /Project owner/);
     const enabled = await grants.setReadProductionWorkspace({ projectId: 7,
@@ -51,6 +56,17 @@ test("Production read grant is owner-only, revocable and separate from Script", 
     await grants.setReadProductionWorkspace({ projectId: 7,
       actorUserId: 1, expectedVersion: 1, active: false });
     assert.deepEqual((await resolve()).projectGrants, []);
+    await assert.rejects(grants.setProposeBillableImage({ projectId: 7,
+      actorUserId: 2, expectedVersion: 0, active: true }), /Project owner/);
+    await grants.setProposeBillableImage({ projectId: 7,
+      actorUserId: 1, expectedVersion: 0, active: true });
+    assert.deepEqual((await imageProposalGrants()).projectGrants,
+      ["propose:billable-image"]);
+    assert.deepEqual((await resolve()).projectGrants, [],
+      "image proposal grant does not restore workspace read");
+    await grants.setProposeBillableImage({ projectId: 7,
+      actorUserId: 1, expectedVersion: 1, active: false });
+    assert.deepEqual((await imageProposalGrants()).projectGrants, []);
   } finally { await db.destroy(); }
 });
 

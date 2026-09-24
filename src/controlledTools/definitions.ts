@@ -272,8 +272,36 @@ export const BILLABLE_IMAGE_TOOL_DEFINITION = Object.freeze({
   adapterId: "billable-asset-image-v1",
 });
 
+/** A model may request review, never dispatch an Image Vendor request. */
+export const PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION = Object.freeze({
+  name: "propose_asset_image_generation",
+  revision: "toonflow.tool.propose-asset-image-generation.v1",
+  inputSchema: z.strictObject({ assetId: z.number().int().positive(),
+    vendorId: z.string().trim().min(1).max(100),
+    modelId: z.string().trim().min(1).max(100),
+    resolution: z.string().trim().min(1).max(100) }),
+  outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+    approvalId: z.string().min(1), status: z.literal("pending") }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "none", externalCost: "none", completion: "synchronous" }),
+    capabilities: Object.freeze(["propose:billable-image"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["production-harness-v1"]),
+    scope: "run-project", approval: "proposal-only-owner-billable-approval-required",
+    idempotency: "run-operation-id", retries: "explicit-new-operation",
+    timeoutMs: 0, cancellation: "proposal-survives-parent-run-cancellation",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "child-billable-approval-run-before-model-result",
+    reconciliation: "inspect-child-approval-run-and-vendor-ledger",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "bounded-approval-preview",
+  }),
+  adapterId: "billable-image-approval-proposal-v1",
+});
+
 export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION
   | typeof BILLABLE_IMAGE_TOOL_DEFINITION | typeof SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION
+  | typeof PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION
   | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION
   | (typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS)[keyof typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS]): string {
   return createHash("sha256").update(JSON.stringify({

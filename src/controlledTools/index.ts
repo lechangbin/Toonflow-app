@@ -20,7 +20,8 @@ import {
 import { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, getControlledToolDefinition, toolDefinitionContractHash,
   type ControlledToolName } from "./definitions";
 
-export { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, SCRIPT_PROPOSAL_TOOL_DEFINITIONS, getControlledToolDefinition,
+export { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
+  PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION, getControlledToolDefinition,
   toolDefinitionContractHash } from "./definitions";
 export type { ControlledToolName } from "./definitions";
 

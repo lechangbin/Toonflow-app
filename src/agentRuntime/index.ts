@@ -23,6 +23,7 @@ import {
   TOOL_DEFINITIONS,
   HARNESS_TOOL_DEFINITIONS,
   SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
+  PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION,
   toolDefinitionContractHash,
   type ControlledToolName,
   type ControlledToolDependencies,
@@ -88,6 +89,7 @@ const PRODUCTION_READ_SYSTEM_PROMPT = [
   "只能根据已绑定 Skill、项目上下文和授权 Tool 回答；不得声称已生成图片、视频、分镜或修改项目。",
   "如需拍摄计划或分镜表，只能调用 get_production_workspace_text，并指定真实剧本 ID。",
   "不允许调用旧 Socket 回调；事实不足时明确说明。",
+  "若获得相应权限，只能提出计费图片候选供 Owner 独立审批；提出候选不是生成、扣费或保存结果。",
 ].join("\n");
 
 export interface StartAgentRunInput {
@@ -248,6 +250,10 @@ export interface AgentRunDependencies {
   proposeScriptWrite?: (input: { projectId: number; parentRunId: string;
     skillId: string; lease: AgentRunLease; operationId: string;
     kind: "workspace" | "script"; payload: unknown }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
+  proposeBillableImage?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    assetId: number; vendorId: string; modelId: string; resolution: string }) => Promise<
       { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
 }
 
@@ -582,6 +588,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   if (dependencies.productionMode && (!dependencies.skillMode || dependencies.proposeScriptWrite)) {
     throw new TypeError("Production Harness requires guarded Skill mode without Script proposal Tools");
   }
+  if (dependencies.proposeBillableImage && !dependencies.productionMode) {
+    throw new TypeError("Billable image proposal Tool requires Production Harness mode");
+  }
   if (dependencies.skillMode && (!dependencies.prepareRun || dependencies.controlledTools)) {
     throw new TypeError("Skill mode requires atomic preparation and its own guarded Tool runtime");
   }
@@ -859,7 +868,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           { role: "assistant", content: projectFacts }, { role: "user", content: prepared.input.content }];
       }
       const modelToolDefinitions = dependencies.productionMode
-        ? { get_production_workspace_text: HARNESS_TOOL_DEFINITIONS.get_production_workspace_text }
+        ? { get_production_workspace_text: HARNESS_TOOL_DEFINITIONS.get_production_workspace_text,
+          ...(dependencies.proposeBillableImage
+            ? { propose_asset_image_generation: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION } : {}) }
         : dependencies.skillMode
         ? { get_novel_text: HARNESS_TOOL_DEFINITIONS.get_novel_text,
           get_novel_events: HARNESS_TOOL_DEFINITIONS.get_novel_events,
@@ -983,6 +994,19 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           return { status: "unavailable", kind: "executionFailed" };
         }
       }
+      async function proposeBillableImage(payload: { assetId: number; vendorId: string;
+        modelId: string; resolution: string }, operationId: string): Promise<unknown> {
+        if (!dependencies.proposeBillableImage || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeBillableImage({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, ...payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
       const result = await call.invokeText({
         messages: invocation.messages,
         tools: {
@@ -1012,6 +1036,11 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             inputSchema: HARNESS_TOOL_DEFINITIONS.get_production_workspace_text.inputSchema,
             execute: async ({ scriptId, key }, options) => invokeReadTool(
               "get_production_workspace_text", { scriptId, key }, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeBillableImage ? { propose_asset_image_generation: tool({
+            description: "仅提出单次资产图片生成候选；不提交 Vendor、不扣费、不写入图片。",
+            inputSchema: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION.inputSchema,
+            execute: async (payload, options) => proposeBillableImage(payload, options.toolCallId),
           }) } : {}),
           ...(dependencies.proposeScriptWrite ? { propose_script_workspace_write: tool({
             description: "仅提出当前项目单个规划字段的待审批候选；不会写入，Owner 查看全文并批准后才可能生效。",

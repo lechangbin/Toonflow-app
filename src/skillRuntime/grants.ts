@@ -7,6 +7,7 @@ const READ_NOVEL = "read:novel" as const;
 const READ_SCRIPT_WORKSPACE = "read:script-workspace" as const;
 const READ_SCRIPT = "read:script" as const;
 const READ_PRODUCTION_WORKSPACE = "read:production-workspace" as const;
+const PROPOSE_BILLABLE_IMAGE = "propose:billable-image" as const;
 const PROPOSE_SCRIPT_WORKSPACE = "propose:script-workspace" as const;
 const PROPOSE_SCRIPT = "propose:script" as const;
 
@@ -25,7 +26,8 @@ export function createProjectSkillGrantRuntime(dependencies: {
   async function setCapability(input: { projectId: number; actorUserId: number;
     expectedVersion: number; active: boolean }, capability: typeof READ_NOVEL | typeof READ_SCRIPT_WORKSPACE
       | typeof READ_SCRIPT | typeof READ_PRODUCTION_WORKSPACE
-      | typeof PROPOSE_SCRIPT_WORKSPACE | typeof PROPOSE_SCRIPT) {
+      | typeof PROPOSE_SCRIPT_WORKSPACE | typeof PROPOSE_SCRIPT
+      | typeof PROPOSE_BILLABLE_IMAGE) {
     if (![input.projectId, input.actorUserId].every((value) =>
       Number.isSafeInteger(value) && value > 0)
       || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0
@@ -65,6 +67,10 @@ export function createProjectSkillGrantRuntime(dependencies: {
     async setReadProductionWorkspace(input: { projectId: number; actorUserId: number;
       expectedVersion: number; active: boolean }) {
       return setCapability(input, READ_PRODUCTION_WORKSPACE);
+    },
+    async setProposeBillableImage(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, PROPOSE_BILLABLE_IMAGE);
     },
     async inspectScriptProposals(projectId: number, actorUserId: number) {
       if (![projectId, actorUserId].every((value) =>
@@ -171,4 +177,21 @@ export async function resolveProductionSkillGrants(tx: Knex.Transaction, input: 
     projectGrants: grant ? [READ_PRODUCTION_WORKSPACE] : [],
     runGrants: run.scope === "production-harness-v1" ? [READ_PRODUCTION_WORKSPACE] : [],
     roleGrants: run.role === "productionAgent" ? [READ_PRODUCTION_WORKSPACE] : [] };
+}
+
+/** A model proposal cannot borrow actual generation authority. */
+export async function resolveProductionImageProposalGrants(tx: Knex.Transaction, input: {
+  runId: string; projectId: number;
+}) {
+  const run = await tx("o_agentRun").where({ id: input.runId,
+    projectId: input.projectId }).first("id", "role", "scope");
+  const project = await tx("o_project").where({ id: input.projectId }).first("id");
+  if (!run || !project) throw new Error("Production image proposal is outside Run Project scope");
+  const grant = await tx("o_agentProjectCapabilityGrant")
+    .where({ projectId: input.projectId, capability: PROPOSE_BILLABLE_IMAGE,
+      state: "active" }).first("version");
+  return { platformGrants: [PROPOSE_BILLABLE_IMAGE],
+    projectGrants: grant ? [PROPOSE_BILLABLE_IMAGE] : [],
+    runGrants: run.scope === "production-harness-v1" ? [PROPOSE_BILLABLE_IMAGE] : [],
+    roleGrants: run.role === "productionAgent" ? [PROPOSE_BILLABLE_IMAGE] : [] };
 }

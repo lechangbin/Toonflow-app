@@ -7,6 +7,8 @@ import { createAgentRuntime, PRODUCTION_HARNESS_ROLE,
   PRODUCTION_HARNESS_SCOPE } from "../src/agentRuntime";
 import { prepareProductionSkillRun } from
   "../src/agents/productionAgent/harnessPreparation";
+import { createBillableImageApprovalRuntime } from
+  "../src/controlledTools/billableImageApproval";
 import initDB from "../src/lib/initDB";
 import { createSkillRuntime } from "../src/skillRuntime";
 import { createProjectSkillGrantRuntime, resolveProductionSkillGrants } from
@@ -26,6 +28,8 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
     await db("o_project").insert({ id: 7, userId: 1, name: "生产项目" });
     await db("o_script").insert({ id: 11, projectId: 7, name: "第一集",
       content: "剧本内容" });
+    await db("o_assets").insert({ id: 21, projectId: 7,
+      type: "role", name: "主角" });
     await db("o_agentWorkData").insert({ projectId: 7, episodesId: 11,
       key: "productionAgent", data: JSON.stringify({ scriptPlan: "三段拍摄计划" }) });
     let serial = 0;
@@ -37,8 +41,10 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
     const manifest: SkillManifest = { schemaVersion: SKILL_MANIFEST_SCHEMA_VERSION,
       skillId: definition.id, semanticVersion: "1.0.0",
       compatibleRoles: ["productionAgent"], intents: ["read-only-guidance"],
-      dependencies: [], requestedTools: ["get_production_workspace_text"],
-      requestedCapabilities: ["read:production-workspace"], resources: [],
+      dependencies: [], requestedTools: ["get_production_workspace_text",
+        "propose_asset_image_generation"],
+      requestedCapabilities: ["read:production-workspace", "propose:billable-image"],
+      resources: [],
       routing: { priority: 1, keywords: [] }, attribution: "T17 定向测试" };
     const draft = await skills.saveDraft({ skillId: definition.id,
       semanticVersion: "1.0.0", content: "只读检查拍摄计划", manifest });
@@ -46,26 +52,54 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
       expectedContentHash: draft.contentHash });
     await skills.activate({ skillId: definition.id, revisionId: draft.id,
       expectedBindingVersion: 0 });
-    await createProjectSkillGrantRuntime({ work, now: () => 150 })
-      .setReadProductionWorkspace({ projectId: 7, actorUserId: 1,
+    const projectGrants = createProjectSkillGrantRuntime({ work, now: () => 150 });
+    await projectGrants.setReadProductionWorkspace({ projectId: 7, actorUserId: 1,
         expectedVersion: 0, active: true });
+    await projectGrants.setProposeBillableImage({ projectId: 7, actorUserId: 1,
+        expectedVersion: 0, active: true });
+    const imageApproval = createBillableImageApprovalRuntime({ work,
+      now: () => 200, createId,
+      quote: async () => ({ estimatedMaxCostMicros: 200_000,
+        currency: "USD" }),
+      preflight: async (_tx, scope) => ({ targetStateHash: "a".repeat(64),
+        preview: { assetId: scope.assetId, assetName: "主角",
+          vendorId: scope.vendorId, modelId: scope.modelId,
+          resolution: scope.resolution,
+          estimatedMaxCostMicros: scope.estimatedMaxCostMicros,
+          currency: scope.currency, disclaimer: "预估费用并非最终账单" } }) });
     const queue: Array<() => Promise<void>> = [];
     let modelCalls = 0;
     const runtime = createAgentRuntime({ work, now: () => 200, createId,
       schedule: (item) => queue.push(item), productionMode: true,
       prepareRun: (tx, input) => prepareProductionSkillRun(tx, input, createId),
       skillMode: { grants: resolveProductionSkillGrants },
+      proposeBillableImage: (input) => imageApproval.proposeFromAgent(input),
       openTextCall: async (target) => {
         assert.deepEqual(target, { kind: "logical", key: "productionAgent:decisionAgent" });
         return { target: { vendorId: "fake", modelId: "text-v1",
           contextWindowTokens: 50_000, maxOutputTokens: 256 },
           invokeText: async (callInput) => {
             modelCalls++;
-            assert.deepEqual(Object.keys(callInput.tools!), ["get_production_workspace_text"]);
+            assert.deepEqual(Object.keys(callInput.tools!), ["get_production_workspace_text",
+              "propose_asset_image_generation"]);
             const result = await callInput.tools!.get_production_workspace_text.execute!(
               { scriptId: 11, key: "scriptPlan" },
               { toolCallId: "production-read-one", messages: [] });
             assert.equal((result as { content?: string }).content, "三段拍摄计划");
+            const proposed = await callInput.tools!.propose_asset_image_generation.execute!(
+              { assetId: 21, vendorId: "vendor", modelId: "image-v1",
+                resolution: "1024x1024" },
+              { toolCallId: "production-image-proposal-one", messages: [] });
+            assert.equal((proposed as { status?: string }).status, "pending");
+            assert.equal((await db("o_agentVendorRequest")).length, 0,
+              "model proposal cannot submit to Vendor");
+            await projectGrants.setProposeBillableImage({ projectId: 7,
+              actorUserId: 1, expectedVersion: 1, active: false });
+            const denied = await callInput.tools!.propose_asset_image_generation.execute!(
+              { assetId: 21, vendorId: "vendor", modelId: "image-v1",
+                resolution: "1024x1024" },
+              { toolCallId: "production-image-proposal-two", messages: [] });
+            assert.equal((denied as { status?: string }).status, "denied");
             return { text: "拍摄计划已核对；未执行生成" } as any;
           } };
       } });
@@ -90,7 +124,20 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
       actorUserId: 1 }))?.status, "succeeded");
     assert.equal((await db("o_agentToolReceipt").where({ runId: run.id,
       toolName: "get_production_workspace_text", status: "succeeded" })).length, 1);
-    assert.equal((await db("o_agentSkillPermissionDecision").where({ runId: run.id })).length, 1);
+    assert.equal((await db("o_agentSkillPermissionDecision").where({ runId: run.id })).length, 3);
+    const imageProposal = await db("o_agentRun")
+      .where({ projectId: 7, scope: "approved-billable-image-v1" }).first();
+    assert.ok(imageProposal);
+    assert.equal((await imageApproval.inspect(7, imageProposal.id, 1))?.sourceRunId, run.id);
+    await assert.rejects(db("o_agentToolApproval")
+      .where({ runId: imageProposal.id })
+      .update({ operationId: "tampered-parent-operation" }),
+    /Agent Tool approval binding is immutable/,
+    "the database must reject a rewritten source operation");
+    assert.equal((await db("o_agentRun").where({ projectId: 7,
+      scope: "approved-billable-image-v1" })).length, 1,
+    "revocation cannot create another approval Run");
+    assert.equal((await db("o_agentVendorRequest")).length, 0);
     assert.equal((await runtime.start(input)).id, run.id);
     assert.equal(modelCalls, 1, "idempotent retry never calls Model again");
     const cancelled = await runtime.start({ ...input,

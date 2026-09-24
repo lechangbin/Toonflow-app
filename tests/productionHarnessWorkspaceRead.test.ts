@@ -4,7 +4,8 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { readProductionWorkspaceText } from "../src/agents/productionAgent/harnessWorkspaceRead";
-import { HARNESS_TOOL_DEFINITIONS, toolDefinitionContractHash } from
+import { HARNESS_TOOL_DEFINITIONS, PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION,
+  toolDefinitionContractHash } from
   "../src/controlledTools/definitions";
 
 test("production workspace read uses a distinct immutable, read-only contract", () => {
@@ -17,6 +18,11 @@ test("production workspace read uses a distinct immutable, read-only contract", 
   assert.match(toolDefinitionContractHash(definition), /^[a-f0-9]{64}$/);
   assert.equal(definition.inputSchema.safeParse({ scriptId: 1,
     key: "assets" }).success, false, "asset generation is not a read shortcut");
+  const proposal = PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION;
+  assert.equal(proposal.policy.risk.mutation, "none");
+  assert.equal(proposal.policy.risk.externalCost, "none");
+  assert.deepEqual(proposal.policy.capabilities, ["propose:billable-image"]);
+  assert.notEqual(toolDefinitionContractHash(proposal), toolDefinitionContractHash(definition));
 });
 
 test("production workspace text is scoped by Project and Script and rejects ambiguity", async () => {
