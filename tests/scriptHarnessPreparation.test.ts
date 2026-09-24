@@ -33,7 +33,8 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
       const manifest: SkillManifest = { schemaVersion: SKILL_MANIFEST_SCHEMA_VERSION,
         skillId: definition.id, semanticVersion: "1.0.0", compatibleRoles: ["scriptAgent"],
         intents: ["read-only-guidance"], dependencies: [], requestedTools,
-        requestedCapabilities: requestedTools.length ? ["read:novel"] : [],
+        requestedCapabilities: requestedTools.includes("get_script_workspace")
+          ? ["read:script-workspace"] : requestedTools.length ? ["read:novel"] : [],
         resources: [], routing: { priority: 10, keywords: [] },
         attribution: "Script 迁移定向测试" };
       const draft = await skills.saveDraft({ skillId: definition.id,
@@ -204,5 +205,60 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
     const authority = await db("o_agentSkillPermissionDecision")
       .where({ runId: authorized.id, operationId: "authorized-v2-read" }).first();
     assert.equal(JSON.parse(authority.decisionJson).allowed, true);
+    await skills.setRevisionLifecycle({ revisionId: second.revisionId,
+      expectedVersion: 1, nextState: "revoked" });
+    const workspaceSkill = await publish("script-workspace-read", ["get_script_workspace"]);
+    await db("o_agentWorkData").insert({ id: 17, projectId: 7,
+      key: "scriptAgent", data: JSON.stringify({ storySkeleton: "本项目故事骨架",
+        adaptationStrategy: "本项目改编策略" }) });
+    await db("o_project").insert({ id: 9, userId: 2, name: "其他项目" });
+    await db("o_agentWorkData").insert({ id: 18, projectId: 9,
+      key: "scriptAgent", data: JSON.stringify({ storySkeleton: "其他项目保密骨架" }) });
+    const deniedWorkspaceQueue: Array<() => Promise<void>> = [];
+    const deniedWorkspaceRuntime = createAgentRuntime({ work, now: () => 455,
+      createId, schedule: (workItem) => deniedWorkspaceQueue.push(workItem),
+      prepareRun: (tx, prepared) => prepareScriptSkillRun(tx, prepared, createId),
+      skillMode: { grants: resolveReadOnlyScriptSkillGrants },
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "workspace-v1",
+        maxOutputTokens: 256, contextWindowTokens: 50_000 },
+      invokeText: async (callInput) => {
+        const result = await callInput.tools!.get_script_workspace.execute!(
+          { key: "storySkeleton" }, { toolCallId: "workspace-denied-1", messages: [] });
+        assert.equal((result as { status: string }).status, "unavailable");
+        return { text: "未获工作区读取授权" } as any;
+      } }) });
+    const deniedWorkspaceRun = await deniedWorkspaceRuntime.start({ ...input,
+      scope: "script-harness-guidance-v1", clientRequestId: "workspace-denied-run" });
+    while (deniedWorkspaceQueue.length) await deniedWorkspaceQueue.shift()!();
+    assert.equal((await db("o_agentToolReceipt").where({ runId: deniedWorkspaceRun.id })).length, 0);
+    assert.equal(JSON.parse((await db("o_agentSkillPermissionDecision")
+      .where({ runId: deniedWorkspaceRun.id, operationId: "workspace-denied-1" }).first())
+      .decisionJson).allowed, false);
+    await createProjectSkillGrantRuntime({ work, now: () => 460 })
+      .setReadScriptWorkspace({ projectId: 7, actorUserId: 1,
+        expectedVersion: 0, active: true });
+    const workspaceQueue: Array<() => Promise<void>> = [];
+    const workspaceRuntime = createAgentRuntime({ work, now: () => 470,
+      createId, schedule: (workItem) => workspaceQueue.push(workItem),
+      prepareRun: (tx, prepared) => prepareScriptSkillRun(tx, prepared, createId),
+      skillMode: { grants: resolveReadOnlyScriptSkillGrants },
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "workspace-v1",
+        maxOutputTokens: 256, contextWindowTokens: 50_000 },
+      invokeText: async (callInput) => {
+        const result = await callInput.tools!.get_script_workspace.execute!(
+          { key: "storySkeleton" }, { toolCallId: "workspace-read-1", messages: [] });
+        assert.deepEqual(result, { key: "storySkeleton", content: "本项目故事骨架" });
+        return { text: "已读取规划工作区" } as any;
+      } }) });
+    const workspaceRun = await workspaceRuntime.start({ ...input,
+      scope: "script-harness-guidance-v1", clientRequestId: "workspace-read-run" });
+    while (workspaceQueue.length) await workspaceQueue.shift()!();
+    assert.equal((await workspaceRuntime.inspect({ runId: workspaceRun.id,
+      projectId: 7, actorUserId: 1 }))?.status, "succeeded");
+    assert.equal((await db("o_agentRunSkillBinding").where({ runId: workspaceRun.id }).first())?.revisionId,
+      workspaceSkill.revisionId);
+    assert.equal((await db("o_agentToolReceipt").where({ runId: workspaceRun.id,
+      operationId: "workspace-read-1" }).first())?.toolRevision,
+    HARNESS_TOOL_DEFINITIONS.get_script_workspace.revision);
   } finally { await db.destroy(); }
 });

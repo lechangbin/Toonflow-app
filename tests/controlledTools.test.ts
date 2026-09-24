@@ -277,3 +277,22 @@ test("restart recovery settles an orphaned read receipt once and preserves a liv
     assert.equal((await db("o_agentToolReceipt").first()).status, "failed");
   } finally { release?.({ novelId: 10, chapterIndex: 1, chapter: "开篇", text: "迟到结果" }); await db.destroy(); }
 });
+
+test("restart recovery also settles an orphaned Script workspace read", async () => {
+  const db = await createDatabase();
+  try {
+    await db("o_agentRun").where("id", "run-1").update({
+      scope: "script-harness-guidance-v1", status: "waiting",
+      leaseOwnerId: null, leaseEpoch: null, leaseExpiresAt: null,
+    });
+    await db("o_agentToolReceipt").insert({ id: "workspace-pending", runId: "run-1",
+      operationId: "workspace-op", toolName: "get_script_workspace",
+      toolRevision: HARNESS_TOOL_DEFINITIONS.get_script_workspace.revision,
+      inputHash: "pending-input", status: "pending", createdAt: 100, updatedAt: 100 });
+    await recoverPendingControlledTools(db, 200);
+    await recoverPendingControlledTools(db, 200);
+    assert.equal((await db("o_agentToolReceipt").where("id", "workspace-pending").first()).status,
+      "failed");
+    assert.equal((await db("o_agentTrace").where("eventType", "tool.interrupted")).length, 1);
+  } finally { await db.destroy(); }
+});

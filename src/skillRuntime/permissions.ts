@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { Knex } from "knex";
 
-import { TOOL_DEFINITIONS, type ControlledToolName } from "@/controlledTools/definitions";
+import { getControlledToolDefinition, type ControlledToolName } from "@/controlledTools/definitions";
 
 import { validateSkillManifest } from "./manifest";
 
@@ -47,10 +47,11 @@ export function evaluateSkillToolPermission(input: SkillPermissionInput) {
 /** The effective request comes only from a Run-frozen, hash-verified Skill Revision. */
 export async function authorizeBoundSkillTool(tx: Knex.Transaction, input: {
   runId: string; projectId: number; skillId: string; toolName: ControlledToolName;
+  toolRevision: string;
   platformGrants: readonly string[]; projectGrants: readonly string[];
   runGrants: readonly string[]; roleGrants: readonly string[];
 }) {
-  const definition = TOOL_DEFINITIONS[input.toolName];
+  const definition = getControlledToolDefinition(input.toolName, input.toolRevision);
   if (!definition) throw new Error("Skill Tool definition is unavailable");
   const run = await tx("o_agentRun").where({ id: input.runId,
     projectId: input.projectId }).first("id", "role");

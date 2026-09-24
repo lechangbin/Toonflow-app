@@ -15,12 +15,13 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 增加定向正向链路：Owner 显式开启 Project `read:novel` grant，唯一选中的已发布 Skill 声明 `get_novel_text` 与所需能力；Model 在冻结 Skill Context 下调用受控 Tool，获得本 Project 章节，留下 v2 ToolReceipt 和允许的 PermissionDecision。另一条未声明 Tool 的 Skill 仍被拒绝。这里使用注入的假 Model，不涉及真实 Provider。
 - 收紧暂存的旧 Socket 边界：连接时从签名 JWT 取用户 ID，核验 Project Owner，并要求客户端 Memory 隔离键恰为本 Project 的 `projectId:scriptAgent`；旧 `get_script_content` 查询也加上 Project 条件，不能仅凭跨项目剧本 ID 读取内容。这是并行旧路径的隔离修补，不是新 Harness 的 Tool 迁移。
 - 定向验证新 Harness 在 Model 调度回调执行前取消：持久 Run 与 Step 进入 cancelled，重复 start 返回原 Run，之后即使旧调度回调运行也不调用 Model；全新 Runtime 实例可凭数据库 inspect/list 恢复已成功和已取消 Run 的状态。这里只模拟进程内新实例，并未做真实进程重启或运行中中断验收。
+- 新 Harness 增加后端受控 `get_script_workspace`：模型只能指定 `storySkeleton` 或 `adaptationStrategy`，后端按 Run Project 读取规划工作区，输出长度受 Tool schema 限制；不再为这项读取依赖前端 `getPlanData` 回调。它采用独立 Tool 修订和 `read:script-workspace` 能力，须由 Project Owner 单独授予、Skill 冻结修订声明并经过平台/Project/Run/角色交集；默认无 grant 时拒绝且不产生读取回执。旧 Socket 仍使用前端回调，新 Tool 不提供写入。孤立的待处理工作区读取回执也纳入重启恢复的失败结算。
 
 ## 阶段验证与边界
 
-最近一轮旧路径边界两个定向用例通过（Owner/Memory 键、跨项目剧本 ID）；Script 准备定向用例覆盖 v2 Tool 允许/拒绝、调度前取消和新 Runtime 实例读取持久状态并通过。此前独立 HTTP 入口、受控 Tool v1/v2 兼容与 Tool Context 共 14 个相关定向用例通过。`yarn lint`（TypeScript noEmit）通过。未运行全量测试、构建、浏览器或真实 Provider。
+最近一轮定向回归覆盖受控 Tool、Skill 权限、Project grant、Script 准备、Context Tool 来源及 Router 共 20 个用例，全部通过；工作区授权前拒绝、授权后按 Project 读取、独立撤销和待处理回执恢复均有定向证据。此前旧路径边界两个用例与 AgentRun 模块定向测试也通过。`yarn lint`（TypeScript noEmit）通过。未运行全量测试、构建、浏览器或真实 Provider。
 
-新入口目前仅覆盖只读指导；还需接入前端切换与重连，迁移规划/Script 写工具和旧 Socket 行为，验证停止/刷新/进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
+新入口目前仅覆盖只读指导及规划工作区读取；还需接入前端切换与重连，迁移规划/Script 写工具和旧 Socket 行为，验证运行中停止/真实进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
 
 ## 阶段追问准备（非最终面经）
 
@@ -34,3 +35,5 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 8. 问：如何证明这不是只有拒绝、没有可用能力的空闸门？答：定向测试先由 Project Owner 开启持久 `read:novel` grant，再发布声明了 `get_novel_text` 的 Skill；Harness Run 冻结选中修订、ContextBundle 包含该指令，假 Model 发起受控读取后得到本 Project 章节。数据库中同时可核对 v2 ToolReceipt、允许的 PermissionDecision 和 Run 的最终成功状态。测试不调用真实 Provider，也不覆盖旧 Script Agent 的规划/Script 写能力。
 9. 问：新旧路径并存期间，为什么还要修旧 Socket？答：旧连接过去只检查 JWT 签名，Project ID 和 Memory 隔离键来自客户端；剧本读取还只按 ID 查找。即使新 Harness 自身正确，这些旧入口仍可能跨 Project 读取。现在旧连接核对签名 token 对应的 Owner 与规范隔离键，旧剧本查询增加 Project 过滤；两个定向用例分别覆盖伪造上下文与跨项目 ID。修补只缩小旧路径暴露面，不能替代规划和写入 Tool 的正式迁移。
 10. 问：用户刚点停止，已入队的执行回调还会不会调用 Model？答：Run 在 queued 态取消时先持久化 cancelled 的 Run/Step/Attempt 与因果 Trace；回调稍后尝试获取执行权时看不到可领取的 queued Run，因此不会调用 Model。测试还验证相同请求 ID 的重复 start 只返回原 cancelled Run，换一个 Runtime 实例仍能 inspect/list 读回状态。运行中供应商请求、中断竞态、真实进程重启和租约接管尚未由此测试证明。
+11. 问：为何读取故事骨架不能沿用 `read:novel`？答：两者是不同数据边界；沿用小说授权会让 Skill 获得其 manifest 未必表达的规划工作区读取能力。新 Tool 要求单独的 `read:script-workspace` 能力与 Owner 管理的 Project grant，输入键限制为骨架/改编策略，后端查询限定 Run Project。测试显示只有小说授权时规划工作区仍拒绝；单独授权后可得到本项目数据，其他 Project 的同键数据不进入输出。工作区数据尚未通过受控写 Tool 更新，因此不能说规划闭环已迁移。
+12. 问：如果工作区读取时进程中断，为什么不会留下永远 pending 的回执？答：受控读取的 pending 回执在没有存活租约时由恢复器标记失败，并追加一次 `tool.interrupted` 因果事件；重复恢复不重复追加。新工作区 Tool 已加入该恢复集合，定向测试用无租约的孤立回执验证结算。这个测试不等于真实进程重启验收，也不覆盖写入效果对账。

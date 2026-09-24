@@ -69,14 +69,27 @@ export const HARNESS_TOOL_DEFINITIONS = Object.freeze({
     revision: "toonflow.tool.get-novel-text.v2", policy: harnessReadPolicy }),
   get_novel_events: Object.freeze({ ...TOOL_DEFINITIONS.get_novel_events,
     revision: "toonflow.tool.get-novel-events.v2", policy: harnessReadPolicy }),
+  get_script_workspace: Object.freeze({
+    name: "get_script_workspace",
+    revision: "toonflow.tool.get-script-workspace.v1",
+    inputSchema: z.strictObject({ key: z.enum(["storySkeleton", "adaptationStrategy"]) }),
+    outputSchema: z.strictObject({
+      key: z.enum(["storySkeleton", "adaptationStrategy"]),
+      content: z.string().max(16_000),
+    }),
+    policy: Object.freeze({ ...harnessReadPolicy,
+      capabilities: Object.freeze(["read:script-workspace"]) }),
+    adapterId: "script-workspace-read-v1",
+  }),
 });
 
-export type ControlledToolName = keyof typeof TOOL_DEFINITIONS;
-export type ControlledToolDefinition = (typeof TOOL_DEFINITIONS)[ControlledToolName]
+export type ControlledToolName = keyof typeof HARNESS_TOOL_DEFINITIONS;
+export type ControlledToolDefinition = (typeof TOOL_DEFINITIONS)[keyof typeof TOOL_DEFINITIONS]
   | (typeof HARNESS_TOOL_DEFINITIONS)[ControlledToolName];
 
 export function getControlledToolDefinition(name: ControlledToolName, revision: string): ControlledToolDefinition | null {
-  const legacy = TOOL_DEFINITIONS[name];
+  const legacy = name in TOOL_DEFINITIONS
+    ? TOOL_DEFINITIONS[name as keyof typeof TOOL_DEFINITIONS] : undefined;
   const harness = HARNESS_TOOL_DEFINITIONS[name];
   if (legacy?.revision === revision) return legacy;
   if (harness?.revision === revision) return harness;

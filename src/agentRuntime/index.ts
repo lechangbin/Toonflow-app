@@ -908,11 +908,15 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       await dependencies.work((db) => db.transaction((trx) => assertAgentRunLease(trx, lease, dependencies.now())));
       const toolProjectId = prepared.projectId;
       const toolLease = lease;
-      async function invokeReadTool(toolName: ControlledToolName, novelId: number, operationId: string): Promise<unknown> {
+      async function invokeReadTool(toolName: ControlledToolName, input: unknown, operationId: string): Promise<unknown> {
         try {
+          const revision = dependencies.skillMode
+            ? HARNESS_TOOL_DEFINITIONS[toolName].revision
+            : TOOL_DEFINITIONS[toolName as keyof typeof TOOL_DEFINITIONS]?.revision;
+          if (!revision) return { status: "unavailable", kind: "contractRejected" };
           const result = await controlledTools.execute({
             runId, projectId: toolProjectId, operationId, toolName,
-            revision: modelToolDefinitions[toolName].revision, input: { novelId }, lease: toolLease,
+            revision, input, lease: toolLease,
             ...(preparedSkillId ? { skillId: preparedSkillId } : {}),
           });
           return result.status === "recorded" && result.receipt.status === "succeeded"
@@ -928,13 +932,18 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           get_novel_text: tool({
             description: "读取当前项目中指定章节的原文；输入为章节记录 ID。",
             inputSchema: modelToolDefinitions.get_novel_text.inputSchema,
-            execute: async ({ novelId }, options) => invokeReadTool("get_novel_text", novelId, options.toolCallId),
+            execute: async ({ novelId }, options) => invokeReadTool("get_novel_text", { novelId }, options.toolCallId),
           }),
           get_novel_events: tool({
             description: "读取当前项目中指定章节关联的事件；输入为章节记录 ID。",
             inputSchema: modelToolDefinitions.get_novel_events.inputSchema,
-            execute: async ({ novelId }, options) => invokeReadTool("get_novel_events", novelId, options.toolCallId),
+            execute: async ({ novelId }, options) => invokeReadTool("get_novel_events", { novelId }, options.toolCallId),
           }),
+          ...(dependencies.skillMode ? { get_script_workspace: tool({
+            description: "读取当前项目的故事骨架或改编策略工作区文本。",
+            inputSchema: HARNESS_TOOL_DEFINITIONS.get_script_workspace.inputSchema,
+            execute: async ({ key }, options) => invokeReadTool("get_script_workspace", { key }, options.toolCallId),
+          }) } : {}),
         },
       });
       const content = result.text;
