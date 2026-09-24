@@ -8,6 +8,7 @@ import { createProjectContextSourceLoader } from "./projectSources";
 import { createRecentInteractionSourceLoader } from "./recentInteractionSources";
 import { selectEligibleContextSources } from "./sourceSelection";
 import { createCommittedToolContextSourceLoader } from "./toolSources";
+import { createProjectMemoryContextSourceLoader } from "@/memory/contextSources";
 
 export const CONTEXT_BUNDLE_SCHEMA_VERSION = "toonflow.context-bundle.v1" as const;
 const IDENTIFIER = /^[A-Za-z0-9._:@-]{1,128}$/;
@@ -30,6 +31,8 @@ export interface BuildContextBundleInput {
   chapterCatalogOffset?: number;
   toolReceiptIds?: readonly string[];
   requiredToolReceiptIds?: readonly string[];
+  memoryIds?: readonly string[];
+  requiredMemoryIds?: readonly string[];
   expectedRevisions: Readonly<Record<string, string>>;
   predecessorBundleId?: string;
 }
@@ -88,7 +91,8 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
         || !input.role.trim() || input.systemContract.trim().length === 0
         || input.stepIntent.trim().length === 0 || input.toolAndPermissionContract.trim().length === 0
         || input.requiredNovelIds.some((id) => !input.novelIds.includes(id))
-        || (input.requiredToolReceiptIds ?? []).some((id) => !(input.toolReceiptIds ?? []).includes(id))) {
+        || (input.requiredToolReceiptIds ?? []).some((id) => !(input.toolReceiptIds ?? []).includes(id))
+        || (input.requiredMemoryIds ?? []).some((id) => !(input.memoryIds ?? []).includes(id))) {
         throw new TypeError("ContextBundle request is invalid");
       }
       for (const content of [input.systemContract, input.stepIntent, input.toolAndPermissionContract]) {
@@ -129,6 +133,10 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
           ...await createRecentInteractionSourceLoader(async (operation) => operation(tx)).load({
             runId: input.runId, projectId: input.projectId,
           }),
+          ...await createProjectMemoryContextSourceLoader(async (operation) => operation(tx)).load({
+            runId: input.runId, projectId: input.projectId, memoryIds: input.memoryIds ?? [],
+            risk: input.budget.risk,
+          }),
         ];
         const mandatoryMessages = [
           { role: "system" as const, content: input.systemContract },
@@ -142,13 +150,16 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
           toolResults: sources.filter((source) => source.category === "toolResults")
             .reduce((sum, source) => sum + estimateContextTokens(source.content), 0),
           recentInteraction: sources.filter((source) => source.category === "recentInteraction")
-            .reduce((sum, source) => sum + estimateContextTokens(source.content), 0), memory: 0,
+            .reduce((sum, source) => sum + estimateContextTokens(source.content), 0),
+          memory: sources.filter((source) => source.category === "memory")
+            .reduce((sum, source) => sum + estimateContextTokens(source.content), 0),
         };
         const budget = planContextBudget({ ...input.budget, mandatoryTokens, optionalDemandTokens });
         const selection = selectEligibleContextSources({ projectId: input.projectId,
           ...(run.scriptId == null ? {} : { scriptId: run.scriptId }), role: input.role,
           requiredSourceIds: [`project:${input.projectId}`, ...input.requiredNovelIds.map((novelId) => `novel:${novelId}`),
-            ...(input.requiredToolReceiptIds ?? []).map((receiptId) => `tool:${receiptId}`)],
+            ...(input.requiredToolReceiptIds ?? []).map((receiptId) => `tool:${receiptId}`),
+            ...(input.requiredMemoryIds ?? []).map((memoryId) => `memory:${memoryId}`)],
           expectedRevisions: input.expectedRevisions }, sources, budget);
         const messages: FrozenContextBundle["messages"] = [mandatoryMessages[0], mandatoryMessages[1],
           ...selection.selectedContent.map((content) => ({ role: "user" as const, content })), mandatoryMessages[2]];
