@@ -7,6 +7,7 @@ import knexFactory, { type Knex } from "knex";
 
 import { createAgentRuntime, type AgentRunDependencies } from "../src/agentRuntime";
 import { createEvaluationCaseObservationStore } from "../src/eval/evaluationCaseObservation";
+import { createEvaluationCoverageReport, renderEvaluationCoverageMarkdown } from "../src/eval/evaluationCoverageReport";
 import { assertComparableEvaluationContracts } from "../src/eval/evaluationComparisonContract";
 import { createEvaluationRunStore, EVALUATION_REVISION_CONTRACT_SCHEMA_VERSION,
   type EvaluationRevisionContract } from "../src/eval/evaluationRun";
@@ -181,5 +182,51 @@ test("pairing requires intact matching manifests and scoring contracts, while na
     assert.throws(() => assertComparableEvaluationContracts(baseline, { ...candidate,
       revisionContractJson: altered,
       revisionContractHash: createHash("sha256").update(altered).digest("hex") }), /incompatible/);
+  } finally { await db.destroy(); }
+});
+
+test("paired coverage reports all 18 cases without inventing hard-gate or quality scores", async () => {
+  const db = await database();
+  try {
+    await store(db, "baseline").freeze({ manifestSource, revisions });
+    await store(db, "candidate").freeze({ manifestSource,
+      revisions: { ...revisions, runtimeRevision: "agent-runtime.v2" } });
+    const reporter = createEvaluationCoverageReport(async (operation) => operation(db));
+    const before = await reporter.compare({ baselineRunId: "baseline", candidateRunId: "candidate" });
+    assert.equal(before.defined, 18);
+    assert.deepEqual(before.baseline, { pending: 18, observed: 0, missingRecord: 0, invalidRecord: 0 });
+    assert.deepEqual(before.candidate, before.baseline);
+    assert.deepEqual(before.changedTreatmentRevisions, ["runtimeRevision"]);
+    assert.equal("qualityScore" in before, false);
+    await db("o_project").insert({ id: 7, userId: 1, name: "评测 Project" });
+    const queue: Array<() => Promise<void>> = [];
+    let serial = 0;
+    const runtime = createAgentRuntime({ work: async (operation) => operation(db),
+      now: () => 200 + serial, createId: () => `coverage-${++serial}`,
+      schedule: (work) => queue.push(work),
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "text-v1" },
+        invokeText: async () => ({ text: "可核验的只读建议" }) } as any) });
+    const agentRun = await runtime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+      projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "eval:candidate:DEV-EXT-001", content: "核对评测 Project" });
+    while (queue.length) await queue.shift()!();
+    await createEvaluationCaseObservationStore(async (operation) => operation(db), () => 500)
+      .attach({ evaluationRunId: "candidate", caseId: "DEV-EXT-001", agentRunId: agentRun.id });
+    const after = await reporter.compare({ baselineRunId: "baseline", candidateRunId: "candidate" });
+    assert.deepEqual(after.candidate, { pending: 17, observed: 1, missingRecord: 0, invalidRecord: 0 });
+    assert.equal(after.cases.find((entry) => entry.id === "DEV-EXT-001")?.candidate, "observed");
+    const markdown = renderEvaluationCoverageMarkdown(after);
+    assert.match(markdown, /Defined cases: 18/);
+    assert.match(markdown, /DEV-EXT-001.*pending.*observed/);
+    assert.match(markdown, /no hard-gate or human quality result/);
+    await db("o_evaluationCase").where({ evaluationRunId: "candidate", caseId: "DEV-EXT-002" })
+      .update({ status: "completed" });
+    const invalid = await reporter.compare({ baselineRunId: "baseline", candidateRunId: "candidate" });
+    assert.equal(invalid.candidate.invalidRecord, 1,
+      "an unsupported completed status without evidence cannot count as a result");
+    await db("o_agentRun").where({ id: agentRun.id }).update({ clientRequestId: "unrelated-request" });
+    const detached = await reporter.compare({ baselineRunId: "baseline", candidateRunId: "candidate" });
+    assert.equal(detached.candidate.invalidRecord, 2,
+      "an observed marker detached from its production Run identity cannot count as coverage");
   } finally { await db.destroy(); }
 });
