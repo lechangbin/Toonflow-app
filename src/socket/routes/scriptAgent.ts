@@ -26,10 +26,12 @@ export async function authorizeLegacyScriptSocket(input: {
   actorUserId: number | null; projectId: unknown; isolationKey: unknown;
 }, projectOwned: (projectId: number, actorUserId: number) => Promise<boolean>): Promise<boolean> {
   const { actorUserId, projectId, isolationKey } = input;
+  const normalizedProjectId = typeof projectId === "string" && /^[1-9]\d*$/u.test(projectId)
+    ? Number(projectId) : projectId;
   if (!Number.isSafeInteger(actorUserId) || actorUserId! <= 0
-    || !Number.isSafeInteger(projectId) || (projectId as number) <= 0
-    || isolationKey !== `${projectId}:scriptAgent`) return false;
-  return projectOwned(projectId as number, actorUserId!);
+    || !Number.isSafeInteger(normalizedProjectId) || (normalizedProjectId as number) <= 0
+    || isolationKey !== `${normalizedProjectId}:scriptAgent`) return false;
+  return projectOwned(normalizedProjectId as number, actorUserId!);
 }
 
 export default (nsp: Namespace) => {

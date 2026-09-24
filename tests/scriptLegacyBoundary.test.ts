@@ -11,12 +11,16 @@ test("legacy Script Socket binds actor, Project, and Memory key", async () => {
     projectId === 7 && actorUserId === 1;
   assert.equal(await authorizeLegacyScriptSocket({ actorUserId: 1, projectId: 7,
     isolationKey: "7:scriptAgent" }, projectOwned), true);
+  assert.equal(await authorizeLegacyScriptSocket({ actorUserId: 1, projectId: "7",
+    isolationKey: "7:scriptAgent" }, projectOwned), true,
+  "the existing Web Socket passes the Project ID as a decimal string");
   for (const input of [
     { actorUserId: null, projectId: 7, isolationKey: "7:scriptAgent" },
     { actorUserId: 2, projectId: 7, isolationKey: "7:scriptAgent" },
     { actorUserId: 1, projectId: 9, isolationKey: "9:scriptAgent" },
     { actorUserId: 1, projectId: 7, isolationKey: "9:scriptAgent" },
-    { actorUserId: 1, projectId: "7", isolationKey: "7:scriptAgent" },
+    { actorUserId: 1, projectId: "07", isolationKey: "7:scriptAgent" },
+    { actorUserId: 1, projectId: "7x", isolationKey: "7:scriptAgent" },
   ]) {
     assert.equal(await authorizeLegacyScriptSocket(input, projectOwned), false);
   }

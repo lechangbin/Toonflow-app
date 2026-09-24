@@ -24,6 +24,7 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 独立 HTTP 适配器现提供 Owner 作用域的 propose/inspect/list/decide，四个命令都只从已认证请求身份派生操作者，忽略 body 伪造的用户 ID；Router 已按仓库生成规则更新。尚未接入 App/Web 审批界面，也没有把写提案作为模型侧 Tool 接入主 Script Run。
 - 到期 pending 审批在 inspect/list 和数据库就绪恢复时结算为 expired，失败回执与 `tool.approval.expired` Trace 同事务落盘；重复读取不重复追加事件，且不会改动工作区或剧本。实际杀进程重启验收与端到端 UI 重连仍留到 T21。
 - 审批快照读取现在复核 approval/receipt/Run 状态组合、成功回执输出哈希及 Tool 输出 schema；若回执被篡改，inspect 拒绝投影，而不会向重连客户端虚报成功。定向测试故意改坏已批准回执哈希并验证拒绝。
+- 对照 Web 的现有 Socket auth 后修正兼容边界：Web 传十进制字符串 Project ID，旧 Socket 验证现在同时接受正整数或规范十进制字符串，再用归一化 ID 核对 Owner 与 `projectId:scriptAgent` Memory 键；`07`、混入字符或不匹配隔离键仍拒绝。定向测试覆盖该回归，未改动 Web 源码。
 
 ## 阶段验证与边界
 
@@ -54,3 +55,4 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 19. 问：为什么请求体里传一个 Owner ID 不能直接批准？答：HTTP 适配器只从认证中间件读取 actor，并在调用 Runtime 时覆盖 body 中任何同名字段；Runtime 再按 Project 当前 Owner 校验，因此前端传来的 ID 不是授权来源。定向路由测试核对 propose、inspect、list、decide 四个入口都使用认证身份。测试使用注入的假认证中间件，生产端完整鉴权链还需最终跨边界验收。
 20. 问：用户一直不处理审批，刷新或重启后会不会仍能批准过期内容？答：Runtime inspect/list 和数据库就绪恢复都会筛选到期且仍 pending 的审批，在单一事务中把审批置为 expired、回执置失败、Run 留在需要关注状态并追加安全 Trace；再次读取不重复结算。定向测试在到期后调用 inspect/list 核对事件只出现一次、Project 内容未改变。这里验证了恢复函数和就绪测试，真实进程重启的跨边界验收仍留待 T21。
 21. 问：如果数据库里的审批回执被改成“成功”，重连会不会照单全收？答：快照读取不只看一个 status；它对照 approval、ToolReceipt 与 Run 的合法状态组合，并对成功回执重新计算输出哈希、验证版本化输出 schema。定向测试在成功后篡改回执哈希，inspect 直接拒绝投影。该检查防止错误呈现，不等于对数据库物理篡改具备恢复能力；完整证据链审计还要在最终验收覆盖。
+22. 问：旧 Socket 边界要求数字 Project ID，会不会把现有 Web 客户端挡掉？答：源码核对显示现有 Web store 用字符串 Project ID 构造 Socket auth。修补后后端接受规范十进制字符串或正整数，归一化后再核验签名 token 对应 Owner 与 Memory 键；不会接受前导零或非数字字符串。定向回归同时覆盖合法 Web 形式和伪造形式。新 Harness 的 HTTP 契约仍是独立版本，不因此宣称页面已切换。
