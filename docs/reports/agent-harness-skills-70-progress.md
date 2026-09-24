@@ -15,3 +15,9 @@ Issue：`lechangbin/Toonflow-app#70`。本分支堆叠在尚未验收的 T12 Con
 `tests/skillRuntime.test.ts` 的 2 个定向用例覆盖草稿更新、过时哈希冲突、发布不可变、绑定版本冲突、Run 冻结、未来 Run 激活与回滚、角色拒绝、跨 Project 拒绝、删除许可和旧库兼容。另运行 `contextBundle.test.ts` 3 个依赖回归，TypeScript `--noEmit` 通过。未运行全量测试、构建、浏览器或真实 Provider。
 
 依赖闭包与环校验、资源按 ID 加载、有效权限交集、路由和高风险歧义暂停、管理 UI/API、受控的旧 Skill 导入、Run 创建时自动绑定以及旧 Socket Agent 迁移尚未完成。当前 manifest 中的依赖/资源/权限是经结构校验的声明，不是已解析或已授权的执行能力；面试材料不得夸称完整 Skill Marketplace 或安全授权闭环。
+
+## 阶段追问准备（非最终面经）
+
+1. 问：为什么把草稿、发布修订、激活指针和 Run 绑定分开？答：草稿允许作者反复修改；发布时重验内容与 manifest 哈希后形成不可变快照；激活指针只决定未来 Run 默认选哪一版；Run 绑定把当时选择的 Revision ID 和哈希单独冻结。测试让第一条 Run 绑定 1.0.0，激活 1.1.0 后仍复用 1.0.0，新 Run 则选 1.1.0；回滚后再新建的 Run 回到 1.0.0。这里证明的是版本归因，不证明旧 Socket Agent 已迁移。
+2. 问：Skill manifest 声明 Tool 是否等于获得 Tool 权限？答：不等于。当前 manifest 的 `requestedTools` 和 `requestedCapabilities` 只是声明，发布只验证结构、身份、重复项与安全文本。真正的有效权限必须由平台、Project、Run、角色、Tool 策略和 Skill 请求取交集，且高风险操作仍需审批；这部分在 T15 尚未实现。面试时应明确称它为“声明校验”，不能称为“权限闭环”。
+3. 问：为什么旧 Markdown Skill 不自动发布？答：旧文件可变，部分来源由路径或前端上下文选择，缺少新 manifest 的依赖、资源与权限元数据。如果仅按路径读取并标成已发布，会让一个正在运行的 Run 在文件改动后悄悄换行为。升级测试只验证旧表和 Project 保留、新修订表为空；安全导入需要显式适配与人工确认，不能通过 isolation 或文件名猜测发布身份。
