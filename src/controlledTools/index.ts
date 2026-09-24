@@ -8,6 +8,7 @@ import { AgentRunLeaseLostError, assertAgentRunLease } from "@/agentRuntime/leas
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import type { DatabaseWork } from "@/database";
 import { getDatabaseRuntime } from "@/database";
+import { authorizeBoundSkillTool } from "@/skillRuntime/permissions";
 import {
   inspectPersistableText,
   projectTraceSafeDiagnostic,
@@ -28,6 +29,7 @@ export interface ExecuteControlledToolInput {
   revision: string;
   input: unknown;
   lease: AgentRunLease;
+  skillId?: string;
 }
 
 export interface ToolReceiptSnapshot {
@@ -61,6 +63,10 @@ export interface ControlledToolDependencies {
   now(): number;
   createId(): string;
   adapters?: Partial<Record<ControlledToolName, ToolAdapter>>;
+  skillGrants?: (tx: Knex.Transaction, input: { runId: string; projectId: number;
+    toolName: ControlledToolName }) => Promise<{ platformGrants: readonly string[];
+    projectGrants: readonly string[]; runGrants: readonly string[];
+    roleGrants: readonly string[] }>;
 }
 
 export class ToolOperationConflictError extends Error {
@@ -176,6 +182,44 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
           .first("id", "projectId");
         if (!run || request.lease.runId !== request.runId) return { kind: "rejected" as const };
         await assertAgentRunLease(trx, request.lease, now);
+        if (dependencies.skillGrants) {
+          if (!request.skillId) return { kind: "rejected" as const };
+          const grants = await dependencies.skillGrants(trx, { runId: run.id,
+            projectId: run.projectId, toolName: request.toolName });
+          try {
+            const authority = await authorizeBoundSkillTool(trx, { runId: run.id,
+              projectId: run.projectId, skillId: request.skillId,
+              toolName: request.toolName, ...grants });
+            const decisionJson = JSON.stringify(authority.decision);
+            const previous = await trx("o_agentSkillPermissionDecision")
+              .where({ runId: run.id, operationId: request.operationId }).first();
+            if (previous) {
+              if (previous.skillId !== request.skillId || previous.toolName !== request.toolName
+                || previous.skillRevisionId !== authority.skillRevisionId) {
+                throw new ToolOperationConflictError();
+              }
+              if (sha256(previous.decisionJson) !== previous.decisionHash) {
+                throw new ToolEvidenceCorruptError();
+              }
+              const recorded = JSON.parse(previous.decisionJson) as { allowed?: unknown };
+              if (recorded.allowed !== true || !authority.decision.allowed) {
+                return { kind: "rejected" as const };
+              }
+            } else {
+              await trx("o_agentSkillPermissionDecision").insert({
+                id: dependencies.createId(), runId: run.id, skillId: request.skillId,
+                skillRevisionId: authority.skillRevisionId, operationId: request.operationId,
+                toolName: request.toolName, decisionJson, decisionHash: sha256(decisionJson),
+                createdAt: now,
+              });
+              if (!authority.decision.allowed) return { kind: "rejected" as const };
+            }
+          } catch (error) {
+            if (error instanceof Error && (error.message.includes("outside authorized Run binding")
+              || error.message.includes("was revoked"))) return { kind: "rejected" as const };
+            throw error;
+          }
+        }
         const contractHash = toolDefinitionContractHash(definition);
         const catalog = await trx("o_agentToolDefinition").where({ name: definition.name, revision: definition.revision }).first();
         if (catalog && catalog.contractHash !== contractHash) throw new ToolEvidenceCorruptError();
