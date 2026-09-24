@@ -15,6 +15,8 @@ export interface TextVendorModel {
   modelName: string;
   type: "text";
   think: boolean;
+  /** Declared by the configured Model; absent means ContextBuilder cannot infer capacity. */
+  contextWindowTokens?: number;
   [key: string]: unknown;
 }
 
@@ -93,6 +95,7 @@ export interface ConfiguredTextCall {
     readonly modelId: string;
     readonly temperature?: number;
     readonly maxOutputTokens?: number;
+    readonly contextWindowTokens?: number;
   };
   invokeText(input: TextInvokeInput): ReturnType<typeof generateText>;
 }

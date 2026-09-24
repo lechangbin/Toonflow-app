@@ -104,8 +104,8 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
         if (!run || !step || !attempt) throw new Error("ContextBundle requires a preparing Agent Attempt in scope");
         if (input.predecessorBundleId) {
           const predecessor = await tx("o_agentContextBundle").where({ id: input.predecessorBundleId,
-            runId: input.runId, stepId: input.stepId }).first("id");
-          if (!predecessor) throw new Error("ContextBundle predecessor is outside this Step");
+            runId: input.runId }).first("id");
+          if (!predecessor) throw new Error("ContextBundle predecessor is outside this Run");
         }
         const sourceLoader = createProjectContextSourceLoader(async (operation) => operation(tx));
         const sources = [

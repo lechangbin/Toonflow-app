@@ -59,6 +59,17 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     await assert.rejects(builder.build(input), /UNIQUE constraint failed/);
     await assert.rejects(builder.build({ ...input, requiredNovelIds: [3] }),
       /Required Context source is unavailable/);
+    await db("o_agentRunAttempt").where({ id: run.attempts[0].id }).update({ status: "failed" });
+    await db("o_agentRunAttempt").insert({ id: "attempt-successor", runId: run.id,
+      stepId: run.steps[0].id, ordinal: 2, predecessorAttemptId: run.attempts[0].id,
+      reason: "restart-recovery", status: "preparing", createdAt: 201 });
+    const successor = await createContextBuilder({ work: async (operation) => operation(db),
+      now: () => 202, createId: () => "bundle-2" }).build({ ...input,
+      attemptId: "attempt-successor", predecessorBundleId: bundle.id, stepIntent: "刷新后重新核对项目事实" });
+    assert.equal(successor.predecessorBundleId, bundle.id);
+    assert.notEqual(successor.promptHash, bundle.promptHash);
+    assert.deepEqual(await builder.inspect({ id: bundle.id, projectId: 7 }), bundle,
+      "successor creation never rewrites the earlier Bundle");
     await db.transaction(async (tx) => {
       await tx("o_project").where({ id: 7 }).delete();
       await deleteProjectAgentEvidence(tx, 7);
