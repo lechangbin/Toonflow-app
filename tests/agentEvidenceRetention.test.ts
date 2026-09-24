@@ -48,6 +48,9 @@ async function fixture() {
   await db("o_agentImageQuotePolicy").insert({ id: "quote-7", projectId: 7, vendorId: "vendor",
     modelId: "model", resolution: "1K", estimatedMaxCostMicros: 100,
     currency: "USD", revision: 1, updatedByUserId: 1, updatedAt: 100 });
+  await db("o_agentVideoQuotePolicy").insert({ id: "video-quote-7", projectId: 7,
+    scopeKey: "video-scope-7", scopeJson: "{}", estimatedMaxCostMicros: 200,
+    currency: "USD", revision: 1, updatedByUserId: 1, updatedAt: 100 });
   return db;
 }
 
@@ -62,7 +65,7 @@ test("active Project keeps approval evidence; Project deletion purges all relate
     });
     for (const table of ["o_agentRun", "o_agentRunStep", "o_agentRunAttempt", "o_agentToolReceipt",
       "o_agentToolApproval", "o_agentToolCall", "o_agentVendorRequest", "o_agentImageArtifact",
-      "o_agentTrace", "o_agentImageQuotePolicy"]) {
+      "o_agentTrace", "o_agentImageQuotePolicy", "o_agentVideoQuotePolicy"]) {
       assert.equal((await db(table)).filter((row: any) => JSON.stringify(row).includes("-7")).length, 0, table);
     }
     assert.equal((await db("o_agentEvidenceDeletionPermit")).length, 0);
