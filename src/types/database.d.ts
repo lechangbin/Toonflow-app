@@ -1,4 +1,4 @@
-// @db-hash c7ea22fe2542698e4fca56b45731b5cd
+// @db-hash bb72c0ddb7731178ca7934b0a9583d80
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -140,6 +140,14 @@ export interface o_agentRunOutput {
   'schemaVersion': string;
   'stepId': string;
 }
+export interface o_agentRunSkillBinding {
+  'boundAt': number;
+  'contentHash': string;
+  'manifestHash': string;
+  'revisionId': string;
+  'runId'?: string;
+  'skillId'?: string;
+}
 export interface o_agentRunStep {
   'completedAt'?: number | null;
   'id'?: string;
@@ -150,6 +158,30 @@ export interface o_agentRunStep {
   'resolvedTarget'?: string | null;
   'runId': string;
   'startedAt'?: number | null;
+  'status': string;
+}
+export interface o_agentSkillBinding {
+  'activeRevisionId': string;
+  'skillId'?: string;
+  'updatedAt': number;
+  'version': number;
+}
+export interface o_agentSkillDefinition {
+  'createdAt': number;
+  'description': string;
+  'id'?: string;
+  'name': string;
+}
+export interface o_agentSkillRevision {
+  'content': string;
+  'contentHash': string;
+  'createdAt': number;
+  'id'?: string;
+  'manifestHash': string;
+  'manifestJson': string;
+  'publishedAt'?: number | null;
+  'semanticVersion': string;
+  'skillId': string;
   'status': string;
 }
 export interface o_agentToolApproval {
@@ -576,7 +608,11 @@ export interface DB {
   "o_agentRunCheckpoint": o_agentRunCheckpoint;
   "o_agentRunCommand": o_agentRunCommand;
   "o_agentRunOutput": o_agentRunOutput;
+  "o_agentRunSkillBinding": o_agentRunSkillBinding;
   "o_agentRunStep": o_agentRunStep;
+  "o_agentSkillBinding": o_agentSkillBinding;
+  "o_agentSkillDefinition": o_agentSkillDefinition;
+  "o_agentSkillRevision": o_agentSkillRevision;
   "o_agentToolApproval": o_agentToolApproval;
   "o_agentToolCall": o_agentToolCall;
   "o_agentToolDefinition": o_agentToolDefinition;
