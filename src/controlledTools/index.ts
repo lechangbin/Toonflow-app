@@ -172,6 +172,13 @@ function defaultAdapters(work: DatabaseWork): Record<ControlledToolName, ToolAda
       if (typeof content !== "string") throw new Error("Script workspace field is invalid");
       return { key, content };
     }),
+    get_script_content: async (context, input) => work(async (db) => {
+      const { scriptId } = HARNESS_TOOL_DEFINITIONS.get_script_content.inputSchema.parse(input);
+      const row = await db("o_script").where({ id: scriptId,
+        projectId: context.projectId }).first("id", "name", "content");
+      if (!row) throw new Error("Authorized script disappeared");
+      return { scriptId: row.id, name: row.name ?? "", content: row.content ?? "" };
+    }),
   };
 }
 
@@ -255,7 +262,10 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
         const authorizedResource = "novelId" in normalized
           ? await trx("o_novel").where({ id: normalized.novelId,
             projectId: run.projectId }).first("id")
-          : await trx("o_project").where({ id: run.projectId }).first("id");
+          : "scriptId" in normalized
+            ? await trx("o_script").where({ id: normalized.scriptId,
+              projectId: run.projectId }).first("id")
+            : await trx("o_project").where({ id: run.projectId }).first("id");
         const receiptId = dependencies.createId();
         const status = authorizedResource ? "pending" : "failed";
         const diagnostic = authorizedResource ? undefined : safeDiagnostic("authorizationFailed", "toolReceipt");

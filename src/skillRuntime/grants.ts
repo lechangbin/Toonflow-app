@@ -5,6 +5,7 @@ import type { ControlledToolName } from "@/controlledTools/definitions";
 
 const READ_NOVEL = "read:novel" as const;
 const READ_SCRIPT_WORKSPACE = "read:script-workspace" as const;
+const READ_SCRIPT = "read:script" as const;
 
 export class ProjectSkillGrantOwnershipError extends Error {
   constructor() { super("Project Skill grant requires the Project owner"); }
@@ -19,7 +20,7 @@ export function createProjectSkillGrantRuntime(dependencies: {
   work: DatabaseWork; now(): number;
 }) {
   async function setCapability(input: { projectId: number; actorUserId: number;
-    expectedVersion: number; active: boolean }, capability: typeof READ_NOVEL | typeof READ_SCRIPT_WORKSPACE) {
+    expectedVersion: number; active: boolean }, capability: typeof READ_NOVEL | typeof READ_SCRIPT_WORKSPACE | typeof READ_SCRIPT) {
     if (![input.projectId, input.actorUserId].every((value) =>
       Number.isSafeInteger(value) && value > 0)
       || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0
@@ -64,6 +65,10 @@ export function createProjectSkillGrantRuntime(dependencies: {
       expectedVersion: number; active: boolean }) {
       return setCapability(input, READ_SCRIPT_WORKSPACE);
     },
+    async setReadScript(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, READ_SCRIPT);
+    },
   };
 }
 
@@ -75,8 +80,9 @@ export async function resolveReadOnlyScriptSkillGrants(tx: Knex.Transaction, inp
     projectId: input.projectId }).first("id", "role", "scope");
   const project = await tx("o_project").where({ id: input.projectId }).first("id");
   if (!run || !project) throw new Error("Skill grant request is outside Run Project scope");
-  const readTool = input.toolName === "get_novel_text" || input.toolName === "get_novel_events";
-  const capability = readTool ? READ_NOVEL : READ_SCRIPT_WORKSPACE;
+  const capability = input.toolName === "get_novel_text" || input.toolName === "get_novel_events"
+    ? READ_NOVEL : input.toolName === "get_script_workspace"
+      ? READ_SCRIPT_WORKSPACE : READ_SCRIPT;
   const grant = await tx("o_agentProjectCapabilityGrant")
     .where({ projectId: input.projectId, capability,
       state: "active" }).first("version");

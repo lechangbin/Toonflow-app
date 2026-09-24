@@ -34,7 +34,8 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
         skillId: definition.id, semanticVersion: "1.0.0", compatibleRoles: ["scriptAgent"],
         intents: ["read-only-guidance"], dependencies: [], requestedTools,
         requestedCapabilities: requestedTools.includes("get_script_workspace")
-          ? ["read:script-workspace"] : requestedTools.length ? ["read:novel"] : [],
+          ? ["read:script-workspace"] : requestedTools.includes("get_script_content")
+            ? ["read:script"] : requestedTools.length ? ["read:novel"] : [],
         resources: [], routing: { priority: 10, keywords: [] },
         attribution: "Script 迁移定向测试" };
       const draft = await skills.saveDraft({ skillId: definition.id,
@@ -270,5 +271,59 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
     assert.equal(JSON.parse((await db("o_agentSkillPermissionDecision")
       .where({ runId: workspaceRun.id, operationId: "workspace-revoked-2" }).first())
       .decisionJson).allowed, false);
+    await skills.setRevisionLifecycle({ revisionId: workspaceSkill.revisionId,
+      expectedVersion: 1, nextState: "revoked" });
+    const scriptSkill = await publish("script-content-read", ["get_script_content"]);
+    await db("o_script").insert([{ id: 21, projectId: 7,
+      name: "第一集", content: "本项目剧本" },
+    { id: 22, projectId: 9, name: "其他集", content: "其他项目私有剧本" }]);
+    const scriptQueue: Array<() => Promise<void>> = [];
+    const scriptRuntime = createAgentRuntime({ work, now: () => 480,
+      createId, schedule: (workItem) => scriptQueue.push(workItem),
+      prepareRun: (tx, prepared) => prepareScriptSkillRun(tx, prepared, createId),
+      skillMode: { grants: resolveReadOnlyScriptSkillGrants },
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "script-read-v1",
+        maxOutputTokens: 256, contextWindowTokens: 50_000 },
+      invokeText: async (callInput) => {
+        const denied = await callInput.tools!.get_script_content.execute!(
+          { scriptId: 21 }, { toolCallId: "script-denied-1", messages: [] });
+        assert.equal((denied as { status: string }).status, "unavailable");
+        return { text: "剧本读取未授权" } as any;
+      } }) });
+    const deniedScriptRun = await scriptRuntime.start({ ...input,
+      scope: "script-harness-guidance-v1", clientRequestId: "script-denied-run" });
+    while (scriptQueue.length) await scriptQueue.shift()!();
+    assert.equal((await db("o_agentToolReceipt").where({ runId: deniedScriptRun.id })).length, 0);
+    await createProjectSkillGrantRuntime({ work, now: () => 485 })
+      .setReadScript({ projectId: 7, actorUserId: 1,
+        expectedVersion: 0, active: true });
+    const allowedScriptQueue: Array<() => Promise<void>> = [];
+    const allowedScriptRuntime = createAgentRuntime({ work, now: () => 490,
+      createId, schedule: (workItem) => allowedScriptQueue.push(workItem),
+      prepareRun: (tx, prepared) => prepareScriptSkillRun(tx, prepared, createId),
+      skillMode: { grants: resolveReadOnlyScriptSkillGrants },
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "script-read-v1",
+        maxOutputTokens: 256, contextWindowTokens: 50_000 },
+      invokeText: async (callInput) => {
+        const own = await callInput.tools!.get_script_content.execute!(
+          { scriptId: 21 }, { toolCallId: "script-own-1", messages: [] });
+        assert.deepEqual(own, { scriptId: 21, name: "第一集", content: "本项目剧本" });
+        const foreign = await callInput.tools!.get_script_content.execute!(
+          { scriptId: 22 }, { toolCallId: "script-foreign-2", messages: [] });
+        assert.equal((foreign as { status: string }).status, "unavailable");
+        return { text: "已核对本项目剧本" } as any;
+      } }) });
+    const scriptRun = await allowedScriptRuntime.start({ ...input,
+      scope: "script-harness-guidance-v1", clientRequestId: "script-allowed-run" });
+    while (allowedScriptQueue.length) await allowedScriptQueue.shift()!();
+    assert.equal((await allowedScriptRuntime.inspect({ runId: scriptRun.id,
+      projectId: 7, actorUserId: 1 }))?.status, "succeeded");
+    assert.equal((await db("o_agentRunSkillBinding").where({ runId: scriptRun.id }).first())?.revisionId,
+      scriptSkill.revisionId);
+    assert.equal((await db("o_agentToolReceipt").where({ runId: scriptRun.id,
+      operationId: "script-own-1" }).first())?.toolRevision,
+    HARNESS_TOOL_DEFINITIONS.get_script_content.revision);
+    assert.equal((await db("o_agentToolReceipt").where({ runId: scriptRun.id,
+      operationId: "script-foreign-2" }).first())?.status, "failed");
   } finally { await db.destroy(); }
 });

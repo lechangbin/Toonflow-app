@@ -81,6 +81,16 @@ export const HARNESS_TOOL_DEFINITIONS = Object.freeze({
       capabilities: Object.freeze(["read:script-workspace"]) }),
     adapterId: "script-workspace-read-v1",
   }),
+  get_script_content: Object.freeze({
+    name: "get_script_content",
+    revision: "toonflow.tool.get-script-content.v1",
+    inputSchema: z.strictObject({ scriptId: z.number().int().positive() }),
+    outputSchema: z.strictObject({ scriptId: z.number().int().positive(),
+      name: z.string().max(200), content: z.string().max(16_000) }),
+    policy: Object.freeze({ ...harnessReadPolicy,
+      capabilities: Object.freeze(["read:script"]) }),
+    adapterId: "script-content-read-v1",
+  }),
 });
 
 export type ControlledToolName = keyof typeof HARNESS_TOOL_DEFINITIONS;

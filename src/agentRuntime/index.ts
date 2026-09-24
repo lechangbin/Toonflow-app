@@ -944,6 +944,11 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             inputSchema: HARNESS_TOOL_DEFINITIONS.get_script_workspace.inputSchema,
             execute: async ({ key }, options) => invokeReadTool("get_script_workspace", { key }, options.toolCallId),
           }) } : {}),
+          ...(dependencies.skillMode ? { get_script_content: tool({
+            description: "读取当前项目中指定剧本的内容；输入为剧本记录 ID。",
+            inputSchema: HARNESS_TOOL_DEFINITIONS.get_script_content.inputSchema,
+            execute: async ({ scriptId }, options) => invokeReadTool("get_script_content", { scriptId }, options.toolCallId),
+          }) } : {}),
         },
       });
       const content = result.text;

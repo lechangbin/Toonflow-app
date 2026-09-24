@@ -9,6 +9,7 @@ import initDB from "../src/lib/initDB";
 import { createProjectSkillGrantRuntime, resolveReadOnlyScriptSkillGrants } from "../src/skillRuntime/grants";
 import { createSetReadNovelGrantRouter } from "../src/routes/agentRuns/setReadNovelGrant";
 import { createSetReadScriptWorkspaceGrantRouter } from "../src/routes/agentRuns/setReadScriptWorkspaceGrant";
+import { createSetReadScriptGrantRouter } from "../src/routes/agentRuns/setReadScriptGrant";
 
 test("Project Skill grants are owner-only, deny by default, versioned, and revocable for existing Runs", async () => {
   const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
@@ -34,6 +35,9 @@ test("Project Skill grants are owner-only, deny by default, versioned, and revoc
       { runId: "grant-run", projectId: 7, toolName: "get_script_workspace" }));
     assert.deepEqual((await resolveWorkspace()).projectGrants, [],
       "novel and workspace grants deny independently by default");
+    const resolveScript = () => db.transaction((tx) => resolveReadOnlyScriptSkillGrants(tx,
+      { runId: "grant-run", projectId: 7, toolName: "get_script_content" }));
+    assert.deepEqual((await resolveScript()).projectGrants, []);
     await assert.rejects(grant.setReadNovel({ projectId: 7, actorUserId: 2,
       expectedVersion: 0, active: true }), /Project owner/);
     const enabled = await grant.setReadNovel({ projectId: 7, actorUserId: 1,
@@ -53,6 +57,13 @@ test("Project Skill grants are owner-only, deny by default, versioned, and revoc
     assert.deepEqual((await resolveWorkspace()).projectGrants, []);
     assert.deepEqual((await resolve()).projectGrants, ["read:novel"],
       "revoking workspace access does not revoke novel access");
+    await assert.rejects(grant.setReadScript({ projectId: 7, actorUserId: 2,
+      expectedVersion: 0, active: true }), /Project owner/);
+    await grant.setReadScript({ projectId: 7, actorUserId: 1,
+      expectedVersion: 0, active: true });
+    assert.deepEqual((await resolveScript()).projectGrants, ["read:script"]);
+    assert.deepEqual((await resolveWorkspace()).projectGrants, [],
+      "script content does not grant workspace access");
     await assert.rejects(grant.setReadNovel({ projectId: 7, actorUserId: 1,
       expectedVersion: 0, active: false }), /version conflict/);
     const revoked = await grant.setReadNovel({ projectId: 7, actorUserId: 1,
@@ -62,6 +73,33 @@ test("Project Skill grants are owner-only, deny by default, versioned, and revoc
     await assert.rejects(db.transaction((tx) => resolveReadOnlyScriptSkillGrants(tx,
       { runId: "grant-run", projectId: 9, toolName: "get_novel_text" })), /outside Run Project scope/);
   } finally { await db.destroy(); }
+});
+
+test("Script content grant route takes actor identity from authentication middleware", async () => {
+  let received: unknown;
+  const app = express();
+  app.use(express.json(), (req, _res, next) => {
+    (req as typeof req & { user: { id: number } }).user = { id: 5 };
+    next();
+  }, createSetReadScriptGrantRouter({ setReadScript: async (input) => {
+    received = input;
+    return { projectId: input.projectId, capability: "read:script" as const,
+      state: "active", version: 1, updatedAt: 100 };
+  } }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await once(server, "listening");
+    const address = server.address();
+    assert(address && typeof address === "object");
+    const response = await fetch(`http://127.0.0.1:${address.port}/`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projectId: 7, expectedVersion: 0,
+        active: true, actorUserId: 99 }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { projectId: 7, expectedVersion: 0,
+      active: true, actorUserId: 5 });
+  } finally { server.close(); await once(server, "close"); }
 });
 
 test("Script workspace grant route takes actor identity from authentication middleware", async () => {
