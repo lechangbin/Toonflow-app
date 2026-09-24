@@ -48,6 +48,13 @@ export async function freezeStoryboardWriteProposal(
   if (track.videoId != null || track.selectVideoId != null) {
     throw new StoryboardWriteContractError("version");
   }
+  // The first controlled slice owns one whole Track. Mixing it with legacy
+  // grouped Storyboards would make duration and ordering ambiguous.
+  const existing = await db("o_storyboard").where({ projectId, trackId: payload.trackId })
+    .first("id");
+  if (existing || Number(track.duration) !== payload.duration) {
+    throw new StoryboardWriteContractError("version");
+  }
   const assets = payload.associateAssetsIds.length
     ? await db("o_assets").where({ projectId })
       .whereIn("id", payload.associateAssetsIds).select("id", "projectId", "scriptId", "assetsId")

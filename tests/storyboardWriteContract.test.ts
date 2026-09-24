@@ -24,6 +24,9 @@ async function database() {
   await db.schema.createTable("o_scriptAssets", (t) => {
     t.integer("scriptId"); t.integer("assetId");
   });
+  await db.schema.createTable("o_storyboard", (t) => {
+    t.integer("id").primary(); t.integer("projectId"); t.integer("trackId");
+  });
   await db("o_script").insert([{ id: 11, projectId: 7 }, { id: 12, projectId: 8 }]);
   await db("o_videoTrack").insert([{ id: 31, projectId: 7, scriptId: 11,
     duration: 4, vendorId: "vendor", modelId: "video", capabilityId: "text-to-video" },
@@ -75,6 +78,17 @@ test("Storyboard proposal target hash changes after Track selection changes", as
     const second = await freezeStoryboardWriteProposal(db, 7, payload);
     assert.notEqual(second.targetStateHash, first.targetStateHash);
     await db("o_videoTrack").where({ id: 31 }).update({ videoId: 99 });
+    await assert.rejects(freezeStoryboardWriteProposal(db, 7, payload),
+      StoryboardWriteContractError);
+  } finally { await db.destroy(); }
+});
+
+test("Storyboard proposal rejects a different Track duration or an occupied Track", async () => {
+  const db = await database();
+  try {
+    await assert.rejects(freezeStoryboardWriteProposal(db, 7, { ...payload, duration: 5 }),
+      StoryboardWriteContractError);
+    await db("o_storyboard").insert({ id: 1, projectId: 7, trackId: 31 });
     await assert.rejects(freezeStoryboardWriteProposal(db, 7, payload),
       StoryboardWriteContractError);
   } finally { await db.destroy(); }
