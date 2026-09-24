@@ -139,7 +139,8 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
     const imageProposal = await db("o_agentRun")
       .where({ projectId: 7, scope: "approved-billable-image-v1" }).first();
     assert.ok(imageProposal);
-    assert.equal((await imageApproval.inspect(7, imageProposal.id, 1))?.sourceRunId, run.id);
+    const pendingImage = await imageApproval.inspect(7, imageProposal.id, 1);
+    assert.equal(pendingImage?.sourceRunId, run.id);
     await assert.rejects(db("o_agentToolApproval")
       .where({ runId: imageProposal.id })
       .update({ operationId: "tampered-parent-operation" }),
@@ -149,6 +150,19 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
       scope: "approved-billable-image-v1" })).length, 1,
     "revocation cannot create another approval Run");
     assert.equal((await db("o_agentVendorRequest")).length, 0);
+    await assert.rejects(imageApproval.decide({ projectId: 7, actorUserId: 2,
+      runId: imageProposal.id, approvalId: pendingImage!.id,
+      clientCommandId: "foreign-reject", expectedVersion: pendingImage!.runVersion,
+      decision: "reject" }), /billable image ledger conflict/i);
+    const rejectedImage = await imageApproval.decide({ projectId: 7,
+      actorUserId: 1, runId: imageProposal.id, approvalId: pendingImage!.id,
+      clientCommandId: "owner-reject", expectedVersion: pendingImage!.runVersion,
+      decision: "reject" });
+    assert.equal(rejectedImage?.status, "rejected");
+    assert.equal((await db("o_agentVendorRequest")).length, 0);
+    assert.equal((await runtime.inspect({ runId: run.id, projectId: 7,
+      actorUserId: 1 }))?.status, "succeeded",
+    "Owner decision on the child must not rewrite the parent guidance result");
     assert.equal((await runtime.start(input)).id, run.id);
     assert.equal(modelCalls, 1, "idempotent retry never calls Model again");
     const cancelled = await runtime.start({ ...input,
