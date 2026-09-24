@@ -1,6 +1,6 @@
 # Agent Harness T17 · 生产生成迁移（阶段进度）
 
-Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端验收的 T16 上；以下是生产只读指导 Run、工作区读取和单资产计费图片提案接缝，不是生产 Agent 生成黄金链路迁移完成。
+Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端验收的 T16 上；以下是生产只读指导 Run、工作区读取和单资产计费图片提案接缝，不是生产 Agent 生成黄金链路迁移完成。阶段源码导学与追问见 `docs/interview/导学-Agent-Harness-T17.md`、`docs/interview/面经-Agent-Harness-T17.md`；简历由用户自行完成。
 
 ## 本次改动
 
