@@ -12,10 +12,11 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - AgentRuntime 的可选择启用 `skillMode` 要求启动准备器与可信 grant 提供者，拒绝注入未经此闸门保护的 Tool Runtime。执行时从持久路由决定读取唯一 Skill ID，传给受控 Tool；定向测试让 Model 尝试调用未被 Skill 声明的只读 Tool，验证 PermissionDecision 拒绝且没有 ToolReceipt 或读取结果。
 - 已提供独立的 `script-harness-guidance-v1` Run scope 和 HTTP 启动/控制入口。新 scope 必须由 Skill 模式创建；启动事务核对 JWT 操作者确为 Project Owner，旧的只读 Run 入口不能创建新 scope，旧 inspect/cancel/list 无 Owner 信息时看不到新 scope。独立控制入口从 JWT 取 Owner 身份。旧 Script Socket 执行链尚未切换。
 - 两个只读 Tool 保留原 v1 修订和旧 scope，Harness 新 scope 使用独立 v2 修订/契约哈希；v2 若没有 Skill 授权闸门，受控 Tool 直接拒绝。历史 v1 ToolReceipt 仍按 v1 读取，不因 v2 发布而被误判损坏。新默认 Script Harness Runtime 组合启动准备器、Context 容量保护、配置 Vendor 与 T15 的 Project 当前 grant 解析器。
+- 增加定向正向链路：Owner 显式开启 Project `read:novel` grant，唯一选中的已发布 Skill 声明 `get_novel_text` 与所需能力；Model 在冻结 Skill Context 下调用受控 Tool，获得本 Project 章节，留下 v2 ToolReceipt 和允许的 PermissionDecision。另一条未声明 Tool 的 Skill 仍被拒绝。这里使用注入的假 Model，不涉及真实 Provider。
 
 ## 阶段验证与边界
 
-最近一轮 Script 准备、独立 HTTP 入口、受控 Tool v1/v2 兼容与 Tool Context 共 14 个相关定向用例通过；此前 Run 准备和 ContextBundle 相关定向用例通过。`yarn lint`（TypeScript noEmit）通过。未运行全量测试、构建、浏览器或真实 Provider。
+最近一轮 Script 准备定向用例已覆盖 v2 Tool 的允许/拒绝两条链路并通过；此前独立 HTTP 入口、受控 Tool v1/v2 兼容与 Tool Context 共 14 个相关定向用例通过。`yarn lint`（TypeScript noEmit）通过。未运行全量测试、构建、浏览器或真实 Provider。
 
 新入口目前仅覆盖只读指导；还需接入前端切换与重连，迁移规划/Script 写工具和旧 Socket 行为，验证停止/刷新/进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
 
@@ -28,3 +29,4 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 5. 问：为什么提供了 Skill 指令后还要额外配置 Tool grant？答：指令文本不是权限。`skillMode` 用 Run 冻结的 Skill ID 调用受控 Tool 闸门，判定仍要求 Skill 请求、Tool 能力与四层外部 grant 同时成立；测试中即使四层 grant 都允许，Skill 未声明 Tool 也会在适配器执行前拒绝。新默认 Runtime 已接入只读 `read:novel` 的 Project 持久 grant 来源，但旧 Socket 路径和其他能力未迁移，故不能声称全面执行保护。
 6. 问：为何新 Script Harness 要用独立 scope 和 Tool v2？答：旧 scope、v1 ToolDefinition 与 ToolReceipt 已有持久契约哈希。直接放宽 v1 的 scope 会让同一修订对应两份策略，既损坏历史证据，也可能无意授权旧路径。新 scope 要求 Skill 模式，v2 Tool 定义只允许该 scope 且拒绝无闸门调用；历史回执仍按 v1 读取。定向测试核对契约哈希不同及旧 Tool 回归。当前只读指导是迁移入口，不代表旧 Script 的规划与写入能力已有 v2 替代。
 7. 问：怎样阻止旧端点绕过新入口的 Owner 校验？答：新启动路由从 JWT 中间件取 actor，准备事务再次核对 `o_project.userId`，失败会回滚 Run；运行时的 inspect、cancel、list 对新 scope 还要求 Owner 身份。旧路由不提供这项身份时不能看到或取消新 Run；专用控制路由把 JWT actor 传给运行时。定向测试覆盖伪造 body actor、错误 Owner 和无 Owner 调用。完整前端重连路径仍待接入。
+8. 问：如何证明这不是只有拒绝、没有可用能力的空闸门？答：定向测试先由 Project Owner 开启持久 `read:novel` grant，再发布声明了 `get_novel_text` 的 Skill；Harness Run 冻结选中修订、ContextBundle 包含该指令，假 Model 发起受控读取后得到本 Project 章节。数据库中同时可核对 v2 ToolReceipt、允许的 PermissionDecision 和 Run 的最终成功状态。测试不调用真实 Provider，也不覆盖旧 Script Agent 的规划/Script 写能力。

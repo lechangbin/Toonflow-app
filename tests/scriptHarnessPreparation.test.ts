@@ -7,9 +7,11 @@ import { createAgentRuntime } from "../src/agentRuntime";
 import { prepareScriptSkillRun } from "../src/agents/scriptAgent/harnessPreparation";
 import { createContextBuilder } from "../src/context";
 import { createBoundSkillContextSourceLoader } from "../src/context/skillSources";
+import { HARNESS_TOOL_DEFINITIONS } from "../src/controlledTools";
 import initDB from "../src/lib/initDB";
 import { createSkillRuntime } from "../src/skillRuntime";
 import { SKILL_MANIFEST_SCHEMA_VERSION, type SkillManifest } from "../src/skillRuntime/manifest";
+import { createProjectSkillGrantRuntime, resolveReadOnlyScriptSkillGrants } from "../src/skillRuntime/grants";
 
 test("opt-in Script preparation freezes one routed Skill before Model scheduling and rejects ambiguity", async () => {
   const db = knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
@@ -26,12 +28,13 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
     const work = async <T>(operation: (database: typeof db) => Promise<T> | T) => operation(db);
     const createId = () => `script-prep-${++serial}`;
     const skills = createSkillRuntime({ work, now: () => 100, createId });
-    const publish = async (name: string) => {
+    const publish = async (name: string, requestedTools: string[] = []) => {
       const definition = await skills.createDefinition({ name, description: name });
       const manifest: SkillManifest = { schemaVersion: SKILL_MANIFEST_SCHEMA_VERSION,
         skillId: definition.id, semanticVersion: "1.0.0", compatibleRoles: ["scriptAgent"],
-        intents: ["read-only-guidance"], dependencies: [], requestedTools: [],
-        requestedCapabilities: [], resources: [], routing: { priority: 10, keywords: [] },
+        intents: ["read-only-guidance"], dependencies: [], requestedTools,
+        requestedCapabilities: requestedTools.length ? ["read:novel"] : [],
+        resources: [], routing: { priority: 10, keywords: [] },
         attribution: "Script 迁移定向测试" };
       const draft = await skills.saveDraft({ skillId: definition.id,
         semanticVersion: "1.0.0", content: `只读指导 ${name}`, manifest });
@@ -135,7 +138,7 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
     assert.equal(noCapacityCalls, 0);
     assert.equal((await noCapacityRuntime.inspect({ runId: noCapacity.id,
       projectId: 7, actorUserId: 1 }))?.status, "failed");
-    await publish("script-guidance-2");
+    const second = await publish("script-guidance-2", ["get_novel_text"]);
     await assert.rejects(runtime.start({ ...input,
       clientRequestId: "ambiguous-script-run" }), /unique selection: needs-attention/);
     assert.equal((await db("o_agentRun").where({ clientRequestId: "ambiguous-script-run" })).length, 0);
@@ -145,5 +148,38 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
       expectedVersion: 1, nextState: "revoked" });
     await assert.rejects(createBoundSkillContextSourceLoader(work)
       .load({ runId: run.id, projectId: 7, role: "scriptAgent" }), /revoked or corrupt/);
+    await createProjectSkillGrantRuntime({ work, now: () => 400 })
+      .setReadNovel({ projectId: 7, actorUserId: 1,
+        expectedVersion: 0, active: true });
+    const authorizedQueue: Array<() => Promise<void>> = [];
+    const authorizedRuntime = createAgentRuntime({ work, now: () => 450,
+      createId, schedule: (workItem) => authorizedQueue.push(workItem),
+      prepareRun: (tx, prepared) => prepareScriptSkillRun(tx, prepared, createId),
+      skillMode: { grants: resolveReadOnlyScriptSkillGrants },
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "text-v2",
+        maxOutputTokens: 256, contextWindowTokens: 50_000 },
+      invokeText: async (callInput) => {
+        assert.ok(callInput.messages?.some((message) => message.role === "system"
+          && message.content.includes("只读指导 script-guidance-2")));
+        const read = callInput.tools!.get_novel_text;
+        const result = await read.execute!({ novelId: 10 },
+          { toolCallId: "authorized-v2-read", messages: [] });
+        assert.equal((result as { novelId: number }).novelId, 10);
+        return { text: "已读取授权章节" } as any;
+      } }) });
+    const authorized = await authorizedRuntime.start({ ...input,
+      scope: "script-harness-guidance-v1", clientRequestId: "authorized-v2-run" });
+    while (authorizedQueue.length) await authorizedQueue.shift()!();
+    assert.equal((await authorizedRuntime.inspect({ runId: authorized.id,
+      projectId: 7, actorUserId: 1 }))?.status, "succeeded");
+    assert.equal((await db("o_agentRunSkillBinding").where({ runId: authorized.id }).first())?.revisionId,
+      second.revisionId);
+    const receipt = await db("o_agentToolReceipt").where({ runId: authorized.id,
+      operationId: "authorized-v2-read" }).first();
+    assert.equal(receipt.status, "succeeded");
+    assert.equal(receipt.toolRevision, HARNESS_TOOL_DEFINITIONS.get_novel_text.revision);
+    const authority = await db("o_agentSkillPermissionDecision")
+      .where({ runId: authorized.id, operationId: "authorized-v2-read" }).first();
+    assert.equal(JSON.parse(authority.decisionJson).allowed, true);
   } finally { await db.destroy(); }
 });
