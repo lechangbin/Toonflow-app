@@ -117,8 +117,8 @@ export function waitLegacyStoryboardAck(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      if (response?.error || response?.success === false) {
-        reject(new Error("legacy storyboard acknowledgement rejected"));
+      if (response?.success !== true || response?.error) {
+        reject(new Error("legacy storyboard acknowledgement is not an explicit success"));
       } else resolve(response);
     };
     try { emit(payload, callback); }

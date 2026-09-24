@@ -27,8 +27,8 @@ const input = { videoDesc: "角色走入庭院", prompt: null, track: "main",
   duration: 4, associateAssetsIds: [21], shouldGenerateImage: "false" };
 
 test("legacy storyboard compatibility Tool waits for frontend acknowledgement", async () => {
-  const tool = storyboardTool({ storyboardId: 51 });
-  assert.deepEqual(await tool.execute(input), { storyboardId: 51 });
+  const tool = storyboardTool({ success: true, storyboardId: 51 });
+  assert.deepEqual(await tool.execute(input), { success: true, storyboardId: 51 });
   assert.equal(tool.acknowledged(), true);
 });
 
@@ -40,6 +40,12 @@ test("legacy storyboard callback error is ambiguous, never a success claim", asy
 
 test("legacy storyboard success-false acknowledgement is not a success claim", async () => {
   const tool = storyboardTool({ success: false, message: "database write failed" });
+  assert.match(String(await tool.execute(input)), /结果不确定/);
+  assert.equal(tool.acknowledged(), true);
+});
+
+test("legacy storyboard unstructured acknowledgement is not a success claim", async () => {
+  const tool = storyboardTool({ storyboardId: 51 });
   assert.match(String(await tool.execute(input)), /结果不确定/);
   assert.equal(tool.acknowledged(), true);
 });
