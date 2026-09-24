@@ -927,6 +927,19 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["skillId", "semanticVersion"]);
       },
     },
+    // Skill ResourceRevision：按已声明 ID 和哈希冻结资源正文
+    {
+      name: "o_agentSkillResourceRevision",
+      builder: (table) => {
+        table.text("skillRevisionId").notNullable().references("id").inTable("o_agentSkillRevision");
+        table.text("resourceId").notNullable();
+        table.text("mediaType").notNullable();
+        table.text("content").notNullable();
+        table.text("contentHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.primary(["skillRevisionId", "resourceId"]);
+      },
+    },
     // Skill Binding：一次激活指向已发布修订；回滚也只改变这里
     {
       name: "o_agentSkillBinding",
@@ -1634,6 +1647,22 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
       BEGIN
         SELECT RAISE(ABORT, 'Agent Run Skill binding is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillResourceRevision")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillResourceRevision_prevent_update
+      BEFORE UPDATE ON o_agentSkillResourceRevision
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill ResourceRevision is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillResourceRevision_prevent_delete
+      BEFORE DELETE ON o_agentSkillResourceRevision
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill ResourceRevision is durable evidence');
       END
     `);
   }

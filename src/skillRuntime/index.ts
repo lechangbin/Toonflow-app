@@ -78,6 +78,36 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
           manifestHash: checked.manifestHash };
       }));
     },
+    async registerResource(input: { revisionId: string; resourceId: string;
+      mediaType: "text/markdown" | "application/json"; content: string }) {
+      if (![input.revisionId, input.resourceId].every((id) => IDENTIFIER.test(id))
+        || !["text/markdown", "application/json"].includes(input.mediaType)
+        || typeof input.content !== "string" || input.content.length === 0
+        || Buffer.byteLength(input.content, "utf8") > 64_000
+        || !inspectPersistableText(input.content).ok) {
+        throw new TypeError("Skill ResourceRevision is invalid");
+      }
+      const createdAt = dependencies.now();
+      if (!Number.isSafeInteger(createdAt) || createdAt < 0) throw new TypeError("Skill resource time is invalid");
+      return dependencies.work((db) => db.transaction(async (tx) => {
+        const draft = await tx("o_agentSkillRevision").where({ id: input.revisionId,
+          status: "draft" }).first("manifestJson", "manifestHash", "semanticVersion", "skillId");
+        if (!draft || hash(draft.manifestJson) !== draft.manifestHash) {
+          throw new Error("Skill resource requires an intact draft Revision");
+        }
+        const manifest = validateSkillManifest(JSON.parse(draft.manifestJson),
+          draft.skillId, draft.semanticVersion);
+        const declared = manifest.resources.find((entry) => entry.id === input.resourceId);
+        const contentHash = hash(input.content);
+        if (!declared || declared.mediaType !== input.mediaType || declared.contentHash !== contentHash) {
+          throw new Error("Skill resource differs from the declared immutable ID and hash");
+        }
+        const record = { skillRevisionId: input.revisionId, resourceId: input.resourceId,
+          mediaType: input.mediaType, content: input.content, contentHash, createdAt };
+        await tx("o_agentSkillResourceRevision").insert(record);
+        return { resourceId: input.resourceId, contentHash, mediaType: input.mediaType };
+      }));
+    },
     async publish(input: { revisionId: string; expectedContentHash: string }) {
       if (!IDENTIFIER.test(input.revisionId) || !/^[a-f0-9]{64}$/.test(input.expectedContentHash)) {
         throw new TypeError("Skill publish identity is invalid");
@@ -93,6 +123,19 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
           draft.skillId, draft.semanticVersion);
         if (checked.contentHash !== draft.contentHash || checked.manifestHash !== draft.manifestHash) {
           throw new Error("Skill draft evidence is corrupt");
+        }
+        const manifest = validateSkillManifest(JSON.parse(draft.manifestJson),
+          draft.skillId, draft.semanticVersion);
+        const resources = await tx("o_agentSkillResourceRevision")
+          .where({ skillRevisionId: draft.id });
+        if (resources.length !== manifest.resources.length
+          || resources.some((resource) => {
+            const declared = manifest.resources.find((entry) => entry.id === resource.resourceId);
+            return !declared || declared.mediaType !== resource.mediaType
+              || declared.contentHash !== resource.contentHash
+              || hash(resource.content) !== resource.contentHash;
+          })) {
+          throw new Error("Skill resource declarations are incomplete or corrupt");
         }
         const changed = await tx("o_agentSkillRevision")
           .where({ id: draft.id, status: "draft", contentHash: input.expectedContentHash })
@@ -186,6 +229,41 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
         }
         return frozen;
       }));
+    },
+    async loadResource(input: { runId: string; projectId: number;
+      skillId: string; resourceId: string }) {
+      if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
+        || ![input.runId, input.skillId, input.resourceId].every((id) => IDENTIFIER.test(id))) {
+        throw new TypeError("Skill resource request is invalid");
+      }
+      return dependencies.work(async (db) => {
+        const run = await db("o_agentRun").where({ id: input.runId,
+          projectId: input.projectId }).first("id");
+        const binding = await db("o_agentRunSkillBinding").where({ runId: input.runId,
+          skillId: input.skillId }).first();
+        if (!run || !binding) throw new Error("Skill resource is outside authorized Run binding");
+        const revision = await db("o_agentSkillRevision").where({ id: binding.revisionId,
+          skillId: input.skillId, status: "published" }).first();
+        if (!revision || hash(revision.content) !== binding.contentHash
+          || hash(revision.manifestJson) !== binding.manifestHash
+          || revision.contentHash !== binding.contentHash
+          || revision.manifestHash !== binding.manifestHash) {
+          throw new Error("Skill resource binding evidence is corrupt");
+        }
+        const manifest = validateSkillManifest(JSON.parse(revision.manifestJson),
+          input.skillId, revision.semanticVersion);
+        const declared = manifest.resources.find((entry) => entry.id === input.resourceId);
+        const resource = await db("o_agentSkillResourceRevision").where({
+          skillRevisionId: revision.id, resourceId: input.resourceId }).first();
+        if (!declared || !resource || declared.contentHash !== resource.contentHash
+          || declared.mediaType !== resource.mediaType || hash(resource.content) !== resource.contentHash
+          || !inspectPersistableText(resource.content).ok) {
+          throw new Error("Skill resource ID or revision is unavailable");
+        }
+        return { resourceId: input.resourceId, mediaType: resource.mediaType,
+          content: resource.content, contentHash: resource.contentHash,
+          skillRevisionId: revision.id };
+      });
     },
   };
 }
