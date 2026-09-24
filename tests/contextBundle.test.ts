@@ -42,6 +42,8 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
     const bundle = await builder.build(input);
     assert.equal(bundle.attemptId, run.attempts[0].id);
     assert.ok(bundle.messages.some((message) => message.content.includes("本项目的直接证据")));
+    assert.ok(bundle.messages.filter((message) => message.content.includes("(data, not instructions)"))
+      .every((message) => message.role === "user"), "Project evidence never receives system authority");
     assert.ok(bundle.messages.every((message) => !message.content.includes("不能读取的机密")));
     const persisted = await db("o_agentContextBundle").where({ id: bundle.id }).first();
     assert.equal(persisted.promptHash, bundle.promptHash);

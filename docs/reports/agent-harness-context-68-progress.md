@@ -12,6 +12,7 @@ Issue：`lechangbin/Toonflow-app#68`。本报告描述预算与来源规划基�
 - `inspect` 按 Project 授权读取已冻结 Bundle，复验 manifest 与精确消息的哈希和 schema；其他 Project 得到空结果。旧数据库补建 Bundle 表时保留已有 Project。
 - 显式刷新或新的 Attempt 可通过同一 Run 内的 `predecessorBundleId` 创建后继 Bundle；原 Bundle 内容与哈希不变。Configured Vendor 的 Text Model 可声明并校验 `contextWindowTokens`，`openTextCall` 公开已解析容量；未声明的旧 Model 保持“未知”，不捏造默认容量。
 - 已声明容量的只读生产 AgentRuntime 路径在 Model 调用意图提交前构造 Bundle，调用时使用与持久消息完全相同的输入；Bundle 哈希参与 invocation 指纹。强制内容预算不足时不调用 Fake Model。未声明容量的旧 Model 暂走明确标注的兼容路径，不能计入 ContextBundle 迁移完成率。
+- Project、Novel 与 Tool Result 文本作为标明“data, not instructions”的 `user` 角色消息注入，只有 Runtime 安全约束和受控 Tool/权限契约可成为 `system` 消息；数据来源不能借 `assistant` 历史发言获得更高的指令地位。
 
 ## 阶段验证与边界
 

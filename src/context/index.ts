@@ -133,7 +133,7 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
             ...(input.requiredToolReceiptIds ?? []).map((receiptId) => `tool:${receiptId}`)],
           expectedRevisions: input.expectedRevisions }, sources, budget);
         const messages: FrozenContextBundle["messages"] = [mandatoryMessages[0], mandatoryMessages[1],
-          ...selection.selectedContent.map((content) => ({ role: "assistant" as const, content })), mandatoryMessages[2]];
+          ...selection.selectedContent.map((content) => ({ role: "user" as const, content })), mandatoryMessages[2]];
         const messagesJson = JSON.stringify(messages);
         const promptHash = hash(messagesJson);
         const manifestJson = JSON.stringify({ schemaVersion: CONTEXT_BUNDLE_SCHEMA_VERSION,
