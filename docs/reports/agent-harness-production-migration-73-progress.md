@@ -14,7 +14,7 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 
 ## 定向验证与剩余边界
 
-`tests/productionHarnessWorkspaceRead.test.ts` 覆盖独立 Tool 修订/角色/scope、跨 Project 剧本拒绝、重复行拒绝、缺失草稿、无效 JSON、超长内容和提案 Tool 风险声明。`tests/productionHarnessGrants.test.ts` 覆盖默认拒绝、非 Owner 拒绝、版本冲突、撤销、Script 授权隔离和 HTTP actor 来源。`tests/productionHarnessRun.test.ts` 用假模型验证 Skill 冻结、读取和图片提案、权限判定、授权撤销后拒绝、无 Vendor 请求、审批绑定不可变、Owner 隔离、入队取消与幂等重试。T09 审批/路由测试作为相关回归；具体执行结果按本分支最近一次定向运行记录，不视作全量验收。未运行全量测试、构建、浏览器或真实 Provider。
+`tests/productionHarnessWorkspaceRead.test.ts` 覆盖独立 Tool 修订/角色/scope、跨 Project 剧本拒绝、重复行拒绝、缺失草稿、无效 JSON、超长内容和提案 Tool 风险声明。`tests/productionHarnessGrants.test.ts` 覆盖默认拒绝、非 Owner 拒绝、版本冲突、撤销、Script 授权隔离和 HTTP actor 来源。`tests/productionHarnessRun.test.ts` 用假模型验证 Skill 冻结、读取和图片提案、权限判定、伪造租约拒绝、授权撤销后拒绝、无 Vendor 请求、审批绑定不可变、Owner 隔离、入队取消与幂等重试。T09 审批/路由测试作为相关回归；本次 11 个定向用例通过，`yarn lint`（TypeScript `--noEmit`）通过，不视作全量验收。未运行全量测试、构建、浏览器或真实 Provider。
 
 待完成：生产生成专属 typed Steps、多阶段模型与 Vendor 组合、分镜/资产写操作审批和回执、批量图片与视频生成迁移、派生状态因果 Trace、真实重启/租约/迟到结果的跨边界恢复，以及 Web 状态投影和兼容回退。现有 Run 不能自行批准或提交计费请求，更不能把待审批意图描述成已生成图片、视频或分镜效果；不得描述为生产生成黄金链路迁移完成。
 

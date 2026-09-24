@@ -93,6 +93,17 @@ test("opt-in Production guidance Run freezes Skill and reads workspace through a
             assert.equal((proposed as { status?: string }).status, "pending");
             assert.equal((await db("o_agentVendorRequest")).length, 0,
               "model proposal cannot submit to Vendor");
+            const parent = await db("o_agentRun").where({ role: PRODUCTION_HARNESS_ROLE,
+              scope: PRODUCTION_HARNESS_SCOPE, status: "running" }).first();
+            await assert.rejects(imageApproval.proposeFromAgent({ projectId: 7,
+              parentRunId: parent.id, skillId: definition.id,
+              lease: { runId: parent.id, ownerId: parent.leaseOwnerId,
+                epoch: parent.leaseEpoch, fence: parent.fence + 1,
+                expiresAt: parent.leaseExpiresAt },
+              operationId: "forged-lease-image-proposal", assetId: 21,
+              vendorId: "vendor", modelId: "image-v1", resolution: "1024x1024" }),
+            /所有权已失效/,
+            "a stale or forged lease cannot create an approval");
             await projectGrants.setProposeBillableImage({ projectId: 7,
               actorUserId: 1, expectedVersion: 1, active: false });
             const denied = await callInput.tools!.propose_asset_image_generation.execute!(
