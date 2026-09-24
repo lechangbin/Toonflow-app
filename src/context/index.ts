@@ -9,6 +9,7 @@ import { createRecentInteractionSourceLoader } from "./recentInteractionSources"
 import { selectEligibleContextSources } from "./sourceSelection";
 import { createCommittedToolContextSourceLoader } from "./toolSources";
 import { createProjectMemoryContextSourceLoader } from "@/memory/contextSources";
+import { createBoundSkillContextSourceLoader } from "./skillSources";
 
 export const CONTEXT_BUNDLE_SCHEMA_VERSION = "toonflow.context-bundle.v1" as const;
 const IDENTIFIER = /^[A-Za-z0-9._:@-]{1,128}$/;
@@ -33,6 +34,7 @@ export interface BuildContextBundleInput {
   requiredToolReceiptIds?: readonly string[];
   memoryIds?: readonly string[];
   requiredMemoryIds?: readonly string[];
+  includeBoundSkills?: boolean;
   expectedRevisions: Readonly<Record<string, string>>;
   predecessorBundleId?: string;
 }
@@ -123,6 +125,10 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
           }
         }
         const sourceLoader = createProjectContextSourceLoader(async (operation) => operation(tx));
+        const boundSkills = input.includeBoundSkills
+          ? await createBoundSkillContextSourceLoader(async (operation) => operation(tx))
+            .load({ runId: input.runId, projectId: input.projectId, role: input.role })
+          : [];
         const sources = [
           ...await sourceLoader.load({ projectId: input.projectId, novelIds: input.novelIds,
             excerpts: input.novelExcerpts, chapterCatalogOffset: input.chapterCatalogOffset }),
@@ -140,6 +146,8 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
         ];
         const mandatoryMessages = [
           { role: "system" as const, content: input.systemContract },
+          ...boundSkills.map((skill) => ({ role: "system" as const,
+            content: `Published Skill ${skill.skillId}@${skill.revisionId}:\n${skill.content}` })),
           { role: "system" as const, content: `Project ${input.projectId}; Agent role ${input.role}; ${input.toolAndPermissionContract}` },
           { role: "user" as const, content: input.stepIntent },
         ];
@@ -161,12 +169,19 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
             ...(input.requiredToolReceiptIds ?? []).map((receiptId) => `tool:${receiptId}`),
             ...(input.requiredMemoryIds ?? []).map((memoryId) => `memory:${memoryId}`)],
           expectedRevisions: input.expectedRevisions }, sources, budget);
-        const messages: FrozenContextBundle["messages"] = [mandatoryMessages[0], mandatoryMessages[1],
-          ...selection.selectedContent.map((content) => ({ role: "user" as const, content })), mandatoryMessages[2]];
+        const messages: FrozenContextBundle["messages"] = [
+          ...mandatoryMessages.slice(0, -1),
+          ...selection.selectedContent.map((content) => ({ role: "user" as const, content })),
+          mandatoryMessages[mandatoryMessages.length - 1],
+        ];
         const messagesJson = JSON.stringify(messages);
         const promptHash = hash(messagesJson);
         const manifestJson = JSON.stringify({ schemaVersion: CONTEXT_BUNDLE_SCHEMA_VERSION,
           modelRevision: input.modelRevision, budget, sources: selection.selected,
+          ...(input.includeBoundSkills ? { skillRevisions: boundSkills.map((skill) => ({
+            skillId: skill.skillId, revisionId: skill.revisionId,
+            contentHash: skill.contentHash, manifestHash: skill.manifestHash,
+          })) } : {}),
           omissions: selection.omissions, compactionActions: selection.compactionActions, promptHash });
         const manifestHash = hash(manifestJson);
         const existing = await tx("o_agentContextBundle").where({ attemptId: input.attemptId }).first();

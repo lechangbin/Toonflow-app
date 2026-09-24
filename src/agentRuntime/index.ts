@@ -23,6 +23,7 @@ import {
   TOOL_DEFINITIONS,
   toolDefinitionContractHash,
   type ControlledToolName,
+  type ControlledToolDependencies,
 } from "@/controlledTools";
 
 import {
@@ -219,6 +220,7 @@ export interface AgentRunDependencies {
   controlledTools?: ReturnType<typeof createControlledToolRuntime>;
   prepareRun?: (tx: Knex.Transaction, input: { runId: string; projectId: number;
     role: typeof READ_ONLY_AGENT_ROLE; content: string; createdAt: number }) => Promise<void>;
+  skillMode?: { grants: NonNullable<ControlledToolDependencies["skillGrants"]> };
 }
 
 export class AgentRunConflictError extends Error {
@@ -549,11 +551,15 @@ function projectFailure(error: unknown): TraceSafeDiagnostic {
 }
 
 export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRuntime {
+  if (dependencies.skillMode && (!dependencies.prepareRun || dependencies.controlledTools)) {
+    throw new TypeError("Skill mode requires atomic preparation and its own guarded Tool runtime");
+  }
   const workerId = dependencies.workerId ?? uuid();
   const processEpoch = dependencies.processEpoch ?? DEFAULT_PROCESS_EPOCH;
   const leaseDurationMs = dependencies.leaseDurationMs ?? DEFAULT_AGENT_RUN_LEASE_MS;
   const controlledTools = dependencies.controlledTools ?? createControlledToolRuntime({
     work: dependencies.work, now: dependencies.now, createId: dependencies.createId,
+    ...(dependencies.skillMode ? { skillGrants: dependencies.skillMode.grants } : {}),
   });
   async function inspect(input: InspectAgentRunInput): Promise<AgentRunSnapshot | null> {
     return dependencies.work((db) => readSnapshot(db, input.runId, input.projectId));
@@ -725,9 +731,24 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         const step = await db("o_agentRunStep").where({ id: stepId, status: "pending" }).first();
         const attempt = await db("o_agentRunAttempt").where({ id: attemptId, status: "preparing" }).first();
         if (!run || !step || !attempt) return null;
-        return { input: parseJson<{ content: string }>(run.input, { content: "" }), projectId: run.projectId };
+        let skillId: string | undefined;
+        if (dependencies.skillMode) {
+          const route = await db("o_agentSkillRouteDecision").where({ runId }).first();
+          if (!route || createHash("sha256").update(route.decisionJson).digest("hex") !== route.decisionHash) {
+            throw new Error("Skill-mode Run routing evidence is missing or corrupt");
+          }
+          const decision = parseJson<{ status?: string; selected?: { skillId?: string } }>(
+            route.decisionJson, {});
+          if (decision.status !== "selected" || !decision.selected?.skillId) {
+            throw new Error("Skill-mode Run has no unique frozen Skill");
+          }
+          skillId = decision.selected.skillId;
+        }
+        return { input: parseJson<{ content: string }>(run.input, { content: "" }),
+          projectId: run.projectId, skillId };
       });
       if (!prepared) return;
+      const preparedSkillId = prepared.skillId;
       let call: ConfiguredTextCall;
       try {
         call = await dependencies.openTextCall(LOGICAL_TARGET);
@@ -738,6 +759,12 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         }, error);
       }
       const invocation: { messages: Array<{ role: "system" | "assistant" | "user"; content: string }> } = { messages: [] };
+      if (dependencies.skillMode && call.target.contextWindowTokens === undefined) {
+        throw new ClassifiedAgentRunError({ failureClass: "Context", stage: "context-build",
+          kind: "contextMissing", severity: "error", certainty: "known-no-effect",
+          expectedness: "unexpected", retryDisposition: "never" },
+        new Error("Skill mode requires declared Model Context capacity"));
+      }
       if (call.target.contextWindowTokens === undefined) {
         // Compatibility path for configured Models that have no declared Context capacity yet.
         let project: { name?: string | null; type?: string | null; intro?: string | null;
@@ -790,6 +817,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
                 ? call.target.maxOutputTokens : 2_048,
               toolProtocolReserveTokens: estimateContextTokens(toolAndPermissionContract), risk: "standard" },
             novelIds: [], requiredNovelIds: [], expectedRevisions: {},
+            includeBoundSkills: Boolean(dependencies.skillMode),
           });
           invocation.messages = bundle.messages;
           contextBundleHash = bundle.manifestHash;
@@ -858,6 +886,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           const result = await controlledTools.execute({
             runId, projectId: toolProjectId, operationId, toolName,
             revision: TOOL_DEFINITIONS[toolName].revision, input: { novelId }, lease: toolLease,
+            ...(preparedSkillId ? { skillId: preparedSkillId } : {}),
           });
           return result.status === "recorded" && result.receipt.status === "succeeded"
             ? result.receipt.output
