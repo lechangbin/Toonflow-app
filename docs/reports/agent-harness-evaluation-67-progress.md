@@ -18,3 +18,9 @@ Issue：`lechangbin/Toonflow-app#67`。本报告只描述第一切片，不代�
 ## 尚未完成
 
 当前没有执行任何 T11 候选用例，故不存在可宣称的 hard-gate 通过率、人工 0/1/2 分数、成本、性能收益或结果级 baseline/candidate 比较。现有配对报告仅是覆盖状态快照，不是结果报告。后续顺序是：让每条 case 通过生产 AgentRuntime 产生可核验 Run 身份；仅在真实 Run 后提交案例门禁/质量/产物引用/耗时/成本与失败分类；再生成结果级的机器与人工可读配对报告。18 条都经 Runtime 执行、敏感信息及 holdout 门禁、失败分母和可复现命令仍为 T11 后续验收项。
+
+## 阶段追问准备（非最终面经）
+
+1. 问：为什么不能把原来 T02 的 Fake 场景结果直接写成新的 Evaluation Run 成绩？答：T02 场景直接调用底层生产模块，不经过后来建立的 AgentRuntime；其结果能作历史基线，但不能证明新 Run 的租约、Step、Attempt、Tool 审批、Trace 和恢复链已工作。新 Evaluation Case 只有在生产 AgentRuntime 创建匹配评测身份的 Run，并有可观察状态与完整因果 Trace 后，才进入 `observed`。这仍不是门禁通过或质量得分。
+2. 问：为什么覆盖报告与结果报告要分开？答：18 个 case 的 manifest 可以先冻结，但真实执行、产物校验和人工审阅会逐步到来。覆盖报告逐案显示 pending、observed、缺失或损坏记录，以及固定分母和处理变量；它明确不从 Agent Run 成功状态推断业务正确，更不将未评估 case 从分母中删除。只有后续 hard-gate 与 Rubric 证据齐全，才能生成结果级比较。
+3. 问：如何避免候选方案因更换评测条件而“看起来提升”？答：比较前先重算两边冻结 manifest 和修订契约哈希，要求同一 18 案 manifest、评测结果 schema 与 Rubric；Runtime、Tool、Context、Skill、Model、Vendor 修订差异则列为处理变量。若 manifest 或评分契约不兼容就拒绝配对。当前还没有真实的候选分数，因此不能宣称任何提升。
