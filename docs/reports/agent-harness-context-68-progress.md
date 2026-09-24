@@ -21,3 +21,9 @@ Issue：`lechangbin/Toonflow-app#68`。本报告描述预算与来源规划基�
 七个 `tests/context*.test.ts` 文件的 17 个定向用例覆盖预算公式、风险配比、向上回流、强制内容溢出、跨 Project/Script 筛选、修订与保留状态、损坏/冲突来源、分配不足时不截断、真实 SQLite 来源读取、章节目录分页、Unicode 片段定位与原文哈希、不同定位冲突、已提交且早于当前 Step 的 ToolReceipt 筛选、同作用域且先完成的近期交互筛选、准备中 Agent Attempt 的不可变 Bundle、后继 Bundle、Project 授权读取与删除生命周期、旧库增表、Model 容量声明校验，以及真实 AgentRuntime 在调用前冻结与超额阻断。另对 `configuredVendor.test.ts` 的 `openTextCall` 定向用例验证容量透出；`agentRunRuntime.test.ts` 的 28 个 Runtime 定向回归此前通过。TypeScript `--noEmit` 检查通过；未运行全量测试、构建、浏览器或真实 Provider。
 
 目前 Builder 装载 Project 概览、指定 Novel Chapter、已提交的只读 Tool Result 和有限的近期交互；Memory、Skill 指令、Tool 投影、摘要压缩及总结 provenance 仍待完成。Tool Result 已验证来自前置 Step，但同一 Step 内多次 Model 调用与恢复语义尚未投影。Model 容量元数据虽可声明并透出，内置/既有配置尚未全面补齐；因此只读 Runtime 仍有无 Bundle 的兼容分支，旧 Socket Agent 更未迁移。测试证明了已声明容量分支的本地调用前冻结，不是整个 Agent 系统的端到端防泄漏或迁移验收；无容量元数据的 Model 必须显式处理，不能用任意默认窗口伪装为真实能力。
+
+## 阶段追问准备（非最终面经）
+
+1. 问：为什么在 Model 调用前冻结 ContextBundle，而不只记录最终回答？答：最终回答无法反推出当时的系统约束、Project 事实、章节片段、Tool 结果和模型窗口预算。Builder 在准备中的 Attempt 上先校验 Project/Step 身份与来源修订，再计算预算，冻结精确消息和无原文 manifest；容量已声明的只读 Runtime 只用这份消息提交调用。若强制内容超预算则在推理前失败。当前仅验证了这条路径，旧 Socket Agent 尚未迁移。
+2. 问：章节很长时为什么不直接截断？答：静默截断会制造“读过整章”的假象，甚至切掉否定词或关键证据。当前要求调用方显式给出 Unicode code-point 范围，越界直接拒绝，manifest 留下完整原文哈希与片段位置。未指定范围的必需章节若超出类别预算，也会失败而非伪装成完整输入。章节目录则有单独的 offset/limit/total 分页证据。
+3. 问：为何历史回答与 Tool 结果不能作为系统消息？答：它们是较低权威的外部或历史数据，可能包含过时内容或提示注入。Tool 结果必须是同一 Project Run 的已提交 Receipt 且来自当前 Step 之前；历史交互要同 Project/Script/Role/Scope 且先于当前 Run 完成。进入 Bundle 后仍以 `user` 数据消息出现，只有 Runtime 控制的安全与权限契约可占系统权威。此设计降低权限混淆，但不是完整提示注入防御证明。
