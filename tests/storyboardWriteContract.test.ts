@@ -5,6 +5,7 @@ import knexFactory from "knex";
 
 import { freezeStoryboardWriteProposal, StoryboardWriteContractError } from
   "../src/controlledTools/storyboardWriteContract";
+import { insertApprovedStoryboard } from "../src/controlledTools/storyboardWriteEffect";
 
 async function database() {
   const db = knexFactory({ client: "better-sqlite3",
@@ -25,7 +26,14 @@ async function database() {
     t.integer("scriptId"); t.integer("assetId");
   });
   await db.schema.createTable("o_storyboard", (t) => {
-    t.integer("id").primary(); t.integer("projectId"); t.integer("trackId");
+    t.increments("id"); t.integer("projectId"); t.integer("scriptId");
+    t.integer("trackId"); t.text("videoDesc"); t.text("prompt");
+    t.text("duration"); t.text("filePath"); t.text("state");
+    t.integer("shouldGenerateImage"); t.integer("createTime");
+  });
+  await db.schema.createTable("o_assets2Storyboard", (t) => {
+    t.integer("storyboardId"); t.integer("assetId");
+    t.primary(["storyboardId", "assetId"]);
   });
   await db("o_script").insert([{ id: 11, projectId: 7 }, { id: 12, projectId: 8 }]);
   await db("o_videoTrack").insert([{ id: 31, projectId: 7, scriptId: 11,
@@ -52,6 +60,48 @@ test("Storyboard proposal freezes one Project/Script/Track/Asset-scoped candidat
     assert.match(frozen.targetStateHash, /^[a-f0-9]{64}$/);
     assert.equal((await db("o_scriptAssets")).length, 1,
       "preflight cannot write a Storyboard or association");
+  } finally { await db.destroy(); }
+});
+
+test("approved effect inserts one Storyboard and links in the caller transaction", async () => {
+  const db = await database();
+  try {
+    const frozen = await freezeStoryboardWriteProposal(db, 7, payload);
+    const result = await db.transaction((tx) => insertApprovedStoryboard(tx, {
+      projectId: 7, payload: frozen.payload, payloadHash: frozen.payloadHash,
+      targetStateHash: frozen.targetStateHash, now: 123,
+    }));
+    assert.equal(result.assetCount, 2);
+    assert.deepEqual(await db("o_assets2Storyboard").where({ storyboardId: result.storyboardId })
+      .orderBy("assetId").pluck("assetId"), [21, 22]);
+    const row = await db("o_storyboard").where({ id: result.storyboardId }).first();
+    assert.equal(row.state, "未生成");
+    assert.equal(row.filePath, null);
+    assert.equal(row.shouldGenerateImage, 0);
+    await assert.rejects(db.transaction((tx) => insertApprovedStoryboard(tx, {
+      projectId: 7, payload: frozen.payload, payloadHash: frozen.payloadHash,
+      targetStateHash: frozen.targetStateHash, now: 124,
+    })), StoryboardWriteContractError);
+    assert.equal((await db("o_storyboard")).length, 1);
+  } finally { await db.destroy(); }
+});
+
+test("target drift and association insertion failure roll back the Storyboard", async () => {
+  const db = await database();
+  try {
+    const frozen = await freezeStoryboardWriteProposal(db, 7, payload);
+    await db("o_videoTrack").where({ id: 31 }).update({ duration: 5 });
+    await assert.rejects(db.transaction((tx) => insertApprovedStoryboard(tx, {
+      projectId: 7, payload: frozen.payload, payloadHash: frozen.payloadHash,
+      targetStateHash: frozen.targetStateHash, now: 123,
+    })), StoryboardWriteContractError);
+    await db("o_videoTrack").where({ id: 31 }).update({ duration: 4 });
+    await db.schema.dropTable("o_assets2Storyboard");
+    await assert.rejects(db.transaction((tx) => insertApprovedStoryboard(tx, {
+      projectId: 7, payload: frozen.payload, payloadHash: frozen.payloadHash,
+      targetStateHash: frozen.targetStateHash, now: 123,
+    })));
+    assert.equal((await db("o_storyboard")).length, 0);
   } finally { await db.destroy(); }
 });
 

@@ -1,6 +1,6 @@
 # ADR 0025: Supervise single-Storyboard writes on an existing Video Track
 
-Status: contract accepted for the T17 staged migration (Issue #73); approval Runtime and effect commit are not yet implemented.
+Status: internal Owner-local approval Runtime implemented for the T17 staged migration (Issue #73); model proposal and UI exposure are not yet implemented.
 
 ## Context
 
@@ -16,4 +16,4 @@ The legacy Production Agent sends `addStoryboard` through a browser Socket callb
 
 ## Consequences and staged evidence
 
-`src/controlledTools/storyboardWriteContract.ts` currently implements only schema validation, ownership preflight, and frozen hashes. Three focused SQLite tests cover a valid proposal, cross-Project/Script/Asset rejection, and Track selection changes. There is no registered model Tool, Owner approval, persistent Storyboard effect, or browser acceptance yet; T17 and T21 remain open.
+`src/controlledTools/storyboardWriteContract.ts` validates ownership and freezes hashes. `storyboardWriteApproval.ts` creates a durable pending child Run and requires an Owner decision. The approval transaction rechecks the exact target and atomically inserts the Storyboard and Asset associations with Receipt, Output, Checkpoint and Trace. Reconnection can expire stale pending approvals without replaying a write. Nine focused SQLite tests cover proposal scope, target drift, Owner isolation, rejection, expiry, idempotency, and rollback on association failure. This Runtime is internal: no model-facing proposal Tool, HTTP route, Web approval UI, browser acceptance, or Track creation exists yet. T17 and T21 remain open.

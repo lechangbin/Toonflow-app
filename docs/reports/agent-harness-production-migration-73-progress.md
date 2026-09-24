@@ -31,6 +31,8 @@ Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端�
 
 分镜受控写入第一切片：新增 `storyboardWriteContract.ts`，只接受已存在 Video Track 上的单条 Storyboard 候选，验证 Project/Script/Track/Asset 归属、内容长度、Asset ID 去重以及 Track 未选择 Video；冻结 payload 与相关目标状态哈希，不产生写入。3 个 SQLite 定向用例和 App TypeScript 检查通过。设计见 ADR-0025。尚无待审 Run、Owner 批准或分镜提交事务，不能说分镜已迁移。
 
+分镜受控写入第二切片：进一步要求 Track 为空且时长与候选相同；内部 Owner-local 审批 Runtime 已能冻结待审 Run，并在批准事务中复核目标后原子写入 Storyboard、Asset 关联、ToolReceipt、Output、Checkpoint 和 Trace。重复提案/决策读取原有证据，目标漂移转冲突，断线检查可使超时审批落账而不重放写入。9 个相关 SQLite 定向用例和 App TypeScript 检查通过，包括关联表失败时整体回滚。该 Runtime 尚未开放 HTTP、模型 Tool 或 Web UI；旧 Socket 路径仍并行，不能称分镜黄金链路完成迁移。上一段的“尚无待审 Run/提交事务”是第一切片时点记录，现由本段更新。
+
 ## 阶段追问准备（非最终面经）
 
 1. 问：为什么生产工作区读取不能继续让前端 `getFlowData` 回调负责？答：旧工具通过 Socket 回调从前端得到数据，模型侧请求与实际读到的 Project/剧本数据缺少后端一致的授权、回执和恢复身份。新接缝把剧本归属与工作区行的 Project、剧本键在后端核对，并给 Tool 固定修订、scope 和能力；测试证明跨 Project ID 与重复行不会返回内容。它已接上只读生产 Run，但尚未替代旧生成工具。

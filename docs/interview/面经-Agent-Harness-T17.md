@@ -21,7 +21,7 @@
 8d. 问：Project Owner 怎么知道当前给模型开放了哪些能力？答：后端新增认证 Owner-only 的生产 grant 快照，分别返回工作区读、图片提案和派生资产提案的 active/version；试用面板用当前版本提交明确的开启或撤销命令，遇到版本冲突只提示刷新，不自动覆盖别人的更新。开启提案能力仍不等于批准效果，模型还要绑定已发布 Skill，并在调用时通过当前 grant 与租约校验。证据：`src/skillRuntime/grants.ts`、`tests/productionHarnessGrants.test.ts`、Web 合约单测；尚无浏览器验收。
 8e. 问：旧生产路径与 Harness 并行时，是否还存在“假成功”？答：存在，不能笼统说已迁移。审计发现旧 `add_flowData_storyboard` 将 Socket 写入排队后立即返回 `true`，即使之后回调报错。兼容层现等待回调，错误返回“结果不确定、人工核对、不自动重试”；定向测试覆盖确认和报错。但未解决断线无回调、进程崩溃、幂等与分镜写入持久回执，因此它只是避免一个明确的假成功，完整迁移仍在 T17 待办。证据：`src/agents/productionAgent/tools.ts`、`tests/productionLegacyStoryboardBoundary.test.ts`。
 8f. 问：为什么收到前端回执仍不能宣称“分镜链路已可靠”？答：跨仓库核对发现前端原本先把分镜加入本地数组，再向后端写入；后端失败时本地界面可能显示未持久化的数据，且失败回执的字段与 App 检查的字段不一致。兼容修正让 Web 写入后重读服务端数据才确认，失败时只重读、不重发；App 将 `{success:false}` 视为不确定结果。单测覆盖回执与重读顺序，但旧后端批量写路由仍可能部分提交，断连也没有持久 ToolReceipt，所以必须继续迁移到受控分镜写入，不能把这次修正包装为端到端恰好一次。
-8g. 问：为什么新分镜写入候选只允许已有 Video Track 上的一条 Storyboard？答：旧批量路径把分镜插入、资产关联、分组和 Video Track 创建混在同一个前端驱动流程，任何后段失败都可能留下部分状态。先收敛为“一个既有 Track 的一条分镜”，模型需要理解的接口更小，后端可独立验证 Project/Script/Asset 归属，并冻结精确 payload 与 Track 目标状态哈希。现阶段只有契约和 SQLite 单测，没有审批或效果提交；不能据此声称分镜迁移完成。后续仍需 Owner 决策与单事务提交，以及多分镜与 Track 创建的独立编排。
+8g. 问：为什么新分镜写入候选只允许已有空 Video Track 上的一条 Storyboard？答：旧批量路径把分镜插入、资产关联、分组和 Video Track 创建混在同一个前端驱动流程，任何后段失败都可能留下部分状态。先收敛为“空 Track、同一时长、一条分镜”，后端可独立验证 Project/Script/Asset 归属，并冻结精确 payload 与 Track 目标状态哈希。当前内部审批 Runtime 已在 Owner 批准事务中写入分镜与关联、回执、Checkpoint 和 Trace；关联失败全部回滚，目标变化转冲突，重复决策不再次写入。9 个 SQLite 定向用例证明本地事务边界，但模型提案、HTTP/Web 入口和多分镜编排尚未接入，不能据此声称分镜黄金链路完成迁移。证据：`src/controlledTools/storyboardWriteApproval.ts`、`tests/storyboardWriteApproval.test.ts`、ADR-0025。
 
 ## 三面：反例、取舍与未完成项
 

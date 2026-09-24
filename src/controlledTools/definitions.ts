@@ -5,6 +5,7 @@ import { z } from "zod";
 import { derivedChangeInstructionSchema } from "@/assets/derivedChangeInstruction";
 import { scriptContentWriteInput, scriptWorkspaceWriteInput } from "./scriptWriteContract";
 import { billableImageScopeSchema } from "./billableImageLifecycle";
+import { storyboardWriteInput } from "./storyboardWriteContract";
 
 const novelIdInput = z.strictObject({ novelId: z.number().int().positive() });
 const novelTextOutput = z.strictObject({
@@ -323,10 +324,35 @@ export const PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION = Object.freeze({
   adapterId: "derived-asset-approval-proposal-v1",
 });
 
+/** A single local Storyboard write. No image or Video provider is invoked. */
+export const STORYBOARD_WRITE_TOOL_DEFINITION = Object.freeze({
+  name: "create_storyboard_on_track",
+  revision: "toonflow.tool.create-storyboard-on-track.v1",
+  inputSchema: storyboardWriteInput,
+  outputSchema: z.strictObject({ storyboardId: z.number().int().positive(),
+    assetCount: z.number().int().nonnegative() }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "project-artifact", externalCost: "none", completion: "local-transaction" }),
+    capabilities: Object.freeze(["write:storyboard"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["approved-storyboard-write-v1"]),
+    scope: "run-project", approval: "per-operation-exact-payload",
+    idempotency: "run-operation-id", retries: "explicit-new-operation-after-conflict",
+    timeoutMs: 0, cancellation: "before-approval-only",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "storyboard-associations-receipt-checkpoint-trace-atomic",
+    reconciliation: "inspect-local-receipt-and-storyboard",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "typed-bounded-output",
+  }),
+  adapterId: "storyboard-local-write-v1",
+});
+
 export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION
   | typeof BILLABLE_IMAGE_TOOL_DEFINITION | typeof SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION
   | typeof PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION
   | typeof PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION
+  | typeof STORYBOARD_WRITE_TOOL_DEFINITION
   | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION
   | (typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS)[keyof typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS]): string {
   return createHash("sha256").update(JSON.stringify({
