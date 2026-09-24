@@ -13,8 +13,10 @@ const IDENTIFIER = /^[A-Za-z0-9._:@-]{1,128}$/;
 /** Only committed, validated ToolReceipts from this Project Run may become Context candidates. */
 export function createCommittedToolContextSourceLoader(work: DatabaseWork) {
   return {
-    async load(input: { runId: string; projectId: number; receiptIds: readonly string[] }): Promise<ContextCandidateSource[]> {
-      if (!IDENTIFIER.test(input.runId) || !Number.isSafeInteger(input.projectId) || input.projectId <= 0
+    async load(input: { runId: string; stepId: string; projectId: number;
+      receiptIds: readonly string[] }): Promise<ContextCandidateSource[]> {
+      if (!IDENTIFIER.test(input.runId) || !IDENTIFIER.test(input.stepId)
+        || !Number.isSafeInteger(input.projectId) || input.projectId <= 0
         || input.receiptIds.length > 100 || input.receiptIds.some((id) => !IDENTIFIER.test(id))
         || new Set(input.receiptIds).size !== input.receiptIds.length) {
         throw new TypeError("Tool Context source request is invalid");
@@ -22,13 +24,21 @@ export function createCommittedToolContextSourceLoader(work: DatabaseWork) {
       return work(async (db) => {
         const run = await db("o_agentRun").where({ id: input.runId, projectId: input.projectId }).first("id");
         if (!run) throw new Error("Tool Context Run is outside Project scope");
+        const currentStep = await db("o_agentRunStep")
+          .where({ id: input.stepId, runId: input.runId }).first("ordinal");
+        if (!currentStep || !Number.isSafeInteger(currentStep.ordinal) || currentStep.ordinal <= 0) {
+          throw new Error("Tool Context Step is outside Run scope");
+        }
         if (input.receiptIds.length === 0) return [];
         const traceRows = await db("o_agentTrace").where({ runId: input.runId }).orderBy("sequence", "asc");
         if (auditCausalTraceTimeline(traceRows).linkage !== "linked") {
           throw new Error("Tool Context Run has no intact causal Trace");
         }
+        const priorSteps = await db("o_agentRunStep").where({ runId: input.runId })
+          .where("ordinal", "<", currentStep.ordinal).select("id", "ordinal");
+        const priorStepIds = new Set(priorSteps.map((step) => step.id));
         const successTraces = new Map(traceRows.filter((trace) => trace.eventType === "tool.succeeded"
-          && typeof trace.toolReceiptId === "string")
+          && typeof trace.toolReceiptId === "string" && priorStepIds.has(trace.stepId))
           .map((trace) => [trace.toolReceiptId as string, trace]));
         const rows = await db("o_agentToolReceipt").where({ runId: input.runId, status: "succeeded" })
           .whereIn("id", input.receiptIds).orderBy("id", "asc");

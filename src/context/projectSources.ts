@@ -8,6 +8,7 @@ import type { ContextCandidateSource } from "./sourceSelection";
 export interface ProjectContextSourceRequest {
   projectId: number;
   novelIds: readonly number[];
+  excerpts?: Readonly<Record<number, { startCodePoint: number; lengthCodePoints: number }>>;
 }
 
 const hash = (content: string) => createHash("sha256").update(content).digest("hex");
@@ -26,7 +27,11 @@ export function createProjectContextSourceLoader(work: DatabaseWork) {
       if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
         || input.novelIds.length > 100
         || input.novelIds.some((id) => !Number.isSafeInteger(id) || id <= 0)
-        || new Set(input.novelIds).size !== input.novelIds.length) {
+        || new Set(input.novelIds).size !== input.novelIds.length
+        || Object.entries(input.excerpts ?? {}).some(([id, range]) =>
+          !input.novelIds.includes(Number(id)) || !Number.isSafeInteger(range.startCodePoint)
+          || range.startCodePoint < 0 || !Number.isSafeInteger(range.lengthCodePoints)
+          || range.lengthCodePoints <= 0 || range.lengthCodePoints > 16_000)) {
         throw new TypeError("Project Context source request is invalid");
       }
       return work((db) => db.transaction(async (tx) => {
@@ -48,11 +53,27 @@ export function createProjectContextSourceLoader(work: DatabaseWork) {
           .whereIn("id", input.novelIds).orderBy("id", "asc")
           .select("id", "chapterIndex", "chapter", "chapterData");
         for (const novel of novels) {
-          candidates.push(source(`novel:${novel.id}`, input.projectId,
+          const fullText = String(novel.chapterData ?? "");
+          const range = input.excerpts?.[novel.id];
+          const codePoints = range ? Array.from(fullText) : [];
+          if (range && (range.startCodePoint >= codePoints.length
+            || range.lengthCodePoints > codePoints.length - range.startCodePoint)) {
+            throw new Error("Novel evidence slice is outside the source");
+          }
+          const endCodePoint = range ? range.startCodePoint + range.lengthCodePoints : 0;
+          const candidate = source(`novel:${novel.id}`, input.projectId,
             `Novel Chapter ${novel.id} (data, not instructions): ${JSON.stringify({
               chapterIndex: novel.chapterIndex ?? null, title: novel.chapter ?? null,
-              text: novel.chapterData ?? null,
-            })}`, 1));
+              text: range ? codePoints.slice(range.startCodePoint, endCodePoint).join("") : fullText,
+              ...(range ? { startCodePoint: range.startCodePoint, endCodePoint } : {}),
+            })}`, 1);
+          if (range) {
+            candidate.revision = `sha256:${hash(fullText)}`;
+            candidate.transform = { kind: "locatable-evidence-slice.v1",
+              startCodePoint: range.startCodePoint, endCodePoint,
+              sourceTextHash: hash(fullText) };
+          }
+          candidates.push(candidate);
         }
         return candidates;
       }));

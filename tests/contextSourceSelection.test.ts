@@ -64,3 +64,11 @@ test("allocation overflow omits optional text and never truncates required evide
   assert.throws(() => selectEligibleContextSources({ ...request, requiredSourceIds: ["large"] }, [large], narrow),
     ContextSourceUnavailableError);
 });
+
+test("same source identity with a different evidence locator fails closed", () => {
+  const first = source("project-7", "same text", { transform: { kind: "locatable-evidence-slice.v1",
+    startCodePoint: 0, endCodePoint: 1, sourceTextHash: "a".repeat(64) } });
+  const second = source("project-7", "same text", { transform: { kind: "locatable-evidence-slice.v1",
+    startCodePoint: 3, endCodePoint: 4, sourceTextHash: "a".repeat(64) } });
+  assert.throws(() => selectEligibleContextSources(request, [first, second], budget), /conflicting.*locator/);
+});

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import knexFactory from "knex";
@@ -68,9 +69,16 @@ test("ContextBuilder freezes authorized Model input and a content-free manifest 
       reason: "restart-recovery", status: "preparing", createdAt: 201 });
     const successor = await createContextBuilder({ work: async (operation) => operation(db),
       now: () => 202, createId: () => "bundle-2" }).build({ ...input,
-      attemptId: "attempt-successor", predecessorBundleId: bundle.id, stepIntent: "刷新后重新核对项目事实" });
+      attemptId: "attempt-successor", predecessorBundleId: bundle.id, stepIntent: "刷新后重新核对项目事实",
+      novelExcerpts: { 2: { startCodePoint: 0, lengthCodePoints: 3 } } });
     assert.equal(successor.predecessorBundleId, bundle.id);
     assert.notEqual(successor.promptHash, bundle.promptHash);
+    const successorRow = await db("o_agentContextBundle").where({ id: successor.id }).first();
+    const successorManifest = JSON.parse(successorRow.manifestJson);
+    assert.deepEqual(successorManifest.sources.find((entry: { id: string }) => entry.id === "novel:2").transform,
+      { kind: "locatable-evidence-slice.v1", startCodePoint: 0, endCodePoint: 3,
+        sourceTextHash: createHash("sha256").update("本项目的直接证据").digest("hex") });
+    assert.equal(successorRow.manifestJson.includes("本项目的直接证据"), false);
     assert.deepEqual(await builder.inspect({ id: bundle.id, projectId: 7 }), bundle,
       "successor creation never rewrites the earlier Bundle");
     await db.transaction(async (tx) => {

@@ -16,6 +16,8 @@ export interface ContextCandidateSource {
   freshness: "current" | "historical" | "stale" | "expired";
   authorityRank: number;
   relevanceRank: number;
+  transform?: { kind: "locatable-evidence-slice.v1"; startCodePoint: number;
+    endCodePoint: number; sourceTextHash: string };
 }
 
 export interface ContextSourceRequest {
@@ -37,6 +39,7 @@ export interface ContextSourceEntry {
   freshness: "current" | "historical";
   estimatedTokens: number;
   authorityRank: number;
+  transform?: ContextCandidateSource["transform"];
 }
 
 export interface ContextSourceSelection {
@@ -68,7 +71,7 @@ export function selectEligibleContextSources(
   }
   const omissions: ContextSourceSelection["omissions"] = [];
   const eligible: ContextCandidateSource[] = [];
-  const seen = new Map<string, { revision: string; contentHash: string }>();
+  const seen = new Map<string, { revision: string; contentHash: string; transform?: string }>();
   for (const source of candidates) {
     if (!IDENTIFIER.test(source.id)) throw new Error("Context source identity is corrupt");
     let reason: ContextOmissionReason | undefined;
@@ -85,18 +88,25 @@ export function selectEligibleContextSources(
       || !Number.isSafeInteger(source.authorityRank) || source.authorityRank < 0
       || !Number.isSafeInteger(source.relevanceRank) || source.relevanceRank < 0
       || !["authoritative", "toolResults", "recentInteraction", "memory"].includes(source.category)
-      || !["current", "historical"].includes(source.freshness)) {
+      || !["current", "historical"].includes(source.freshness)
+      || (source.transform !== undefined && (source.transform.kind !== "locatable-evidence-slice.v1"
+        || !Number.isSafeInteger(source.transform.startCodePoint) || source.transform.startCodePoint < 0
+        || !Number.isSafeInteger(source.transform.endCodePoint)
+        || source.transform.endCodePoint <= source.transform.startCodePoint
+        || !HASH.test(source.transform.sourceTextHash)))) {
       throw new Error("Context source evidence is corrupt");
     }
     const previous = seen.get(source.id);
     if (previous !== undefined) {
-      if (previous.contentHash !== source.contentHash || previous.revision !== source.revision) {
-        throw new Error("Context source identity has conflicting content or revision");
+      if (previous.contentHash !== source.contentHash || previous.revision !== source.revision
+        || previous.transform !== JSON.stringify(source.transform)) {
+        throw new Error("Context source identity has conflicting content or revision or locator");
       }
       omissions.push({ id: source.id, reason: "duplicate" });
       continue;
     }
-    seen.set(source.id, { revision: source.revision, contentHash: source.contentHash });
+    seen.set(source.id, { revision: source.revision, contentHash: source.contentHash,
+      transform: JSON.stringify(source.transform) });
     eligible.push(source);
   }
   for (const id of request.requiredSourceIds) {
@@ -117,7 +127,8 @@ export function selectEligibleContextSources(
     remaining[source.category] -= estimatedTokens;
     selected.push({ id: source.id, revision: source.revision, contentHash: source.contentHash,
       category: source.category, freshness: source.freshness as "current" | "historical", estimatedTokens,
-      authorityRank: source.authorityRank });
+      authorityRank: source.authorityRank,
+      ...(source.transform ? { transform: source.transform } : {}) });
     selectedContent.push(source.content);
   }
   omissions.sort((a, b) => a.id.localeCompare(b.id, "en") || a.reason.localeCompare(b.reason, "en"));

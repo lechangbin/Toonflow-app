@@ -25,6 +25,7 @@ export interface BuildContextBundleInput {
   budget: Omit<ContextBudgetInput, "mandatoryTokens" | "optionalDemandTokens">;
   novelIds: readonly number[];
   requiredNovelIds: readonly number[];
+  novelExcerpts?: Readonly<Record<number, { startCodePoint: number; lengthCodePoints: number }>>;
   toolReceiptIds?: readonly string[];
   requiredToolReceiptIds?: readonly string[];
   expectedRevisions: Readonly<Record<string, string>>;
@@ -109,9 +110,11 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
         }
         const sourceLoader = createProjectContextSourceLoader(async (operation) => operation(tx));
         const sources = [
-          ...await sourceLoader.load({ projectId: input.projectId, novelIds: input.novelIds }),
+          ...await sourceLoader.load({ projectId: input.projectId, novelIds: input.novelIds,
+            excerpts: input.novelExcerpts }),
           ...await createCommittedToolContextSourceLoader(async (operation) => operation(tx)).load({
-            runId: input.runId, projectId: input.projectId, receiptIds: input.toolReceiptIds ?? [],
+            runId: input.runId, stepId: input.stepId, projectId: input.projectId,
+            receiptIds: input.toolReceiptIds ?? [],
           }),
         ];
         const mandatoryMessages = [
