@@ -169,7 +169,8 @@ async function snapshot(tx: Knex | Knex.Transaction, projectId: number, runId: s
     skillId?: unknown; proposalContractHash?: unknown };
   try { source = JSON.parse(run.input); } catch { return conflict(); }
   const hasSource = source.parentRunId !== undefined
-    || source.parentOperationId !== undefined || source.skillId !== undefined;
+    || source.parentOperationId !== undefined || source.skillId !== undefined
+    || source.proposalContractHash !== undefined;
   if (hasSource) {
     if (typeof source.parentRunId !== "string"
       || typeof source.parentOperationId !== "string"
@@ -178,11 +179,14 @@ async function snapshot(tx: Knex | Knex.Transaction, projectId: number, runId: s
         PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION)) return conflict();
     const parent = await tx("o_agentRun").where({ id: source.parentRunId,
       projectId, role: "productionAgent", scope: "production-harness-v1" }).first("id");
+    const binding = parent && await tx("o_agentRunSkillBinding")
+      .where({ runId: parent.id, skillId: source.skillId }).first("revisionId");
     const permission = parent && await tx("o_agentSkillPermissionDecision")
       .where({ runId: parent.id, operationId: source.parentOperationId,
         skillId: source.skillId,
         toolName: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION.name }).first();
-    if (!permission || hash(permission.decisionJson) !== permission.decisionHash) return conflict();
+    if (!binding || !permission || permission.skillRevisionId !== binding.revisionId
+      || hash(permission.decisionJson) !== permission.decisionHash) return conflict();
     let permitted: unknown;
     try { permitted = JSON.parse(permission.decisionJson).allowed; }
     catch { return conflict(); }
