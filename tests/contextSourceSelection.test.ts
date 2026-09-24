@@ -27,7 +27,11 @@ test("scope/revision/retention filters run before ranking; selected order and om
   const selected = selectEligibleContextSources(request, candidates, budget);
   assert.deepEqual(selected.selected.map((entry) => entry.id), ["project-7", "valid"]);
   assert.deepEqual(selected.omissions.map((entry) => entry.reason),
-    ["wrong-project", "wrong-script", "stale", "duplicate"]);
+    ["wrong-script", "duplicate", "stale", "wrong-project"]);
+  assert.deepEqual(selectEligibleContextSources(request, [...candidates].reverse(), budget).selected,
+    selected.selected, "eligible ordering is independent of database delivery order");
+  assert.deepEqual(selectEligibleContextSources(request, [...candidates].reverse(), budget).omissions,
+    selected.omissions, "omission manifest is deterministic");
   assert.deepEqual(selected.selectedContent, ["facts", "novel"]);
   assert.equal("content" in selected.selected[0], false, "manifest entry contains provenance, not raw Project text");
 });
@@ -41,6 +45,8 @@ test("required evidence and corrupt or conflicting source identity fail closed",
     { contentHash: "0".repeat(64) })], budget), /corrupt/);
   assert.throws(() => selectEligibleContextSources(request, [source("project-7", "facts"),
     source("project-7", "different")], budget), /conflicting content/);
+  assert.throws(() => selectEligibleContextSources({ ...request, expectedRevisions: {} }, [source("project-7", "facts"),
+    source("project-7", "facts", { revision: "rev-2" })], budget), /conflicting content or revision/);
 });
 
 test("allocation overflow omits optional text and never truncates required evidence", () => {

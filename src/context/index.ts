@@ -6,6 +6,7 @@ import { inspectPersistableText } from "@/diagnostics/traceSafeDiagnostics";
 import { estimateContextTokens, planContextBudget, type ContextBudgetInput } from "./budget";
 import { createProjectContextSourceLoader } from "./projectSources";
 import { selectEligibleContextSources } from "./sourceSelection";
+import { createCommittedToolContextSourceLoader } from "./toolSources";
 
 export const CONTEXT_BUNDLE_SCHEMA_VERSION = "toonflow.context-bundle.v1" as const;
 const IDENTIFIER = /^[A-Za-z0-9._:@-]{1,128}$/;
@@ -24,6 +25,8 @@ export interface BuildContextBundleInput {
   budget: Omit<ContextBudgetInput, "mandatoryTokens" | "optionalDemandTokens">;
   novelIds: readonly number[];
   requiredNovelIds: readonly number[];
+  toolReceiptIds?: readonly string[];
+  requiredToolReceiptIds?: readonly string[];
   expectedRevisions: Readonly<Record<string, string>>;
   predecessorBundleId?: string;
 }
@@ -48,7 +51,8 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
         || (input.predecessorBundleId !== undefined && !IDENTIFIER.test(input.predecessorBundleId))
         || !input.role.trim() || input.systemContract.trim().length === 0
         || input.stepIntent.trim().length === 0 || input.toolAndPermissionContract.trim().length === 0
-        || input.requiredNovelIds.some((id) => !input.novelIds.includes(id))) {
+        || input.requiredNovelIds.some((id) => !input.novelIds.includes(id))
+        || (input.requiredToolReceiptIds ?? []).some((id) => !(input.toolReceiptIds ?? []).includes(id))) {
         throw new TypeError("ContextBundle request is invalid");
       }
       for (const content of [input.systemContract, input.stepIntent, input.toolAndPermissionContract]) {
@@ -71,18 +75,29 @@ export function createContextBuilder(dependencies: { work: DatabaseWork; now(): 
           if (!predecessor) throw new Error("ContextBundle predecessor is outside this Step");
         }
         const sourceLoader = createProjectContextSourceLoader(async (operation) => operation(tx));
-        const sources = await sourceLoader.load({ projectId: input.projectId, novelIds: input.novelIds });
+        const sources = [
+          ...await sourceLoader.load({ projectId: input.projectId, novelIds: input.novelIds }),
+          ...await createCommittedToolContextSourceLoader(async (operation) => operation(tx)).load({
+            runId: input.runId, projectId: input.projectId, receiptIds: input.toolReceiptIds ?? [],
+          }),
+        ];
         const mandatoryMessages = [
           { role: "system" as const, content: input.systemContract },
           { role: "system" as const, content: `Project ${input.projectId}; Agent role ${input.role}; ${input.toolAndPermissionContract}` },
           { role: "user" as const, content: input.stepIntent },
         ];
         const mandatoryTokens = mandatoryMessages.reduce((sum, message) => sum + estimateContextTokens(message.content), 0);
-        const optionalDemandTokens = { authoritative: sources.reduce((sum, source) => sum + estimateContextTokens(source.content), 0),
-          toolResults: 0, recentInteraction: 0, memory: 0 };
+        const optionalDemandTokens = {
+          authoritative: sources.filter((source) => source.category === "authoritative")
+            .reduce((sum, source) => sum + estimateContextTokens(source.content), 0),
+          toolResults: sources.filter((source) => source.category === "toolResults")
+            .reduce((sum, source) => sum + estimateContextTokens(source.content), 0),
+          recentInteraction: 0, memory: 0,
+        };
         const budget = planContextBudget({ ...input.budget, mandatoryTokens, optionalDemandTokens });
         const selection = selectEligibleContextSources({ projectId: input.projectId, role: input.role,
-          requiredSourceIds: [`project:${input.projectId}`, ...input.requiredNovelIds.map((novelId) => `novel:${novelId}`)],
+          requiredSourceIds: [`project:${input.projectId}`, ...input.requiredNovelIds.map((novelId) => `novel:${novelId}`),
+            ...(input.requiredToolReceiptIds ?? []).map((receiptId) => `tool:${receiptId}`)],
           expectedRevisions: input.expectedRevisions }, sources, budget);
         const messages: FrozenContextBundle["messages"] = [mandatoryMessages[0], mandatoryMessages[1],
           ...selection.selectedContent.map((content) => ({ role: "assistant" as const, content })), mandatoryMessages[2]];

@@ -68,7 +68,7 @@ export function selectEligibleContextSources(
   }
   const omissions: ContextSourceSelection["omissions"] = [];
   const eligible: ContextCandidateSource[] = [];
-  const seen = new Map<string, string>();
+  const seen = new Map<string, { revision: string; contentHash: string }>();
   for (const source of candidates) {
     if (!IDENTIFIER.test(source.id) || !IDENTIFIER.test(source.revision)
       || !HASH.test(source.contentHash)
@@ -88,13 +88,15 @@ export function selectEligibleContextSources(
     else if (source.freshness === "stale") reason = "stale";
     else if (source.freshness === "expired") reason = "expired";
     if (reason) { omissions.push({ id: source.id, reason }); continue; }
-    const previousHash = seen.get(source.id);
-    if (previousHash !== undefined) {
-      if (previousHash !== source.contentHash) throw new Error("Context source identity has conflicting content");
+    const previous = seen.get(source.id);
+    if (previous !== undefined) {
+      if (previous.contentHash !== source.contentHash || previous.revision !== source.revision) {
+        throw new Error("Context source identity has conflicting content or revision");
+      }
       omissions.push({ id: source.id, reason: "duplicate" });
       continue;
     }
-    seen.set(source.id, source.contentHash);
+    seen.set(source.id, { revision: source.revision, contentHash: source.contentHash });
     eligible.push(source);
   }
   for (const id of request.requiredSourceIds) {
@@ -118,5 +120,6 @@ export function selectEligibleContextSources(
       authorityRank: source.authorityRank });
     selectedContent.push(source.content);
   }
+  omissions.sort((a, b) => a.id.localeCompare(b.id, "en") || a.reason.localeCompare(b.reason, "en"));
   return { schemaVersion: CONTEXT_SOURCE_SELECTION_VERSION, selected, omissions, selectedContent };
 }
