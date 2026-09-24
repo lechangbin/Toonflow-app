@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { auditCausalTraceTimeline } from "@/agentRuntime/causalTrace";
 import { TOOL_DEFINITIONS, type ControlledToolName } from "@/controlledTools";
 import type { DatabaseWork } from "@/database";
 import { inspectPersistableText } from "@/diagnostics/traceSafeDiagnostics";
@@ -22,12 +23,21 @@ export function createCommittedToolContextSourceLoader(work: DatabaseWork) {
         const run = await db("o_agentRun").where({ id: input.runId, projectId: input.projectId }).first("id");
         if (!run) throw new Error("Tool Context Run is outside Project scope");
         if (input.receiptIds.length === 0) return [];
+        const traceRows = await db("o_agentTrace").where({ runId: input.runId }).orderBy("sequence", "asc");
+        if (auditCausalTraceTimeline(traceRows).linkage !== "linked") {
+          throw new Error("Tool Context Run has no intact causal Trace");
+        }
+        const successTraces = new Map(traceRows.filter((trace) => trace.eventType === "tool.succeeded"
+          && typeof trace.toolReceiptId === "string")
+          .map((trace) => [trace.toolReceiptId as string, trace]));
         const rows = await db("o_agentToolReceipt").where({ runId: input.runId, status: "succeeded" })
           .whereIn("id", input.receiptIds).orderBy("id", "asc");
         return rows.map((row): ContextCandidateSource => {
           const definition = TOOL_DEFINITIONS[row.toolName as ControlledToolName];
+          const successTrace = successTraces.get(row.id);
           if (!definition || definition.revision !== row.toolRevision
             || typeof row.outputJson !== "string" || hash(row.outputJson) !== row.outputHash
+            || !successTrace || successTrace.createdAt < row.updatedAt
             || !inspectPersistableText(row.outputJson).ok) {
             throw new Error("Committed Tool Context evidence is invalid");
           }

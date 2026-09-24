@@ -8,7 +8,7 @@ Issue：`lechangbin/Toonflow-app#68`。本报告描述预算与来源规划基�
 - 版本化预算规划按 `min(策略上限, 模型窗口 - 输出预留 - Tool 协议预留 - max(512, 5% 模型窗口))` 计算；先完整保留强制内容，再按普通 45/20/20/15、高风险 60/25/10/5 分配可选内容。低权威类别未用额度仅向高权威类别流动；强制内容溢出在调用前失败。
 - 版本化保守 UTF-8 字节估算器、确定性的来源资格筛选与排序：Project、Script、Role、修订、保留状态在相关性排序前检查；来源内容哈希冲突或必需来源缺失均拒绝。规划结果仅保留来源身份、修订、哈希、类别、权威、Token 估算和省略原因，不把原文写进清单条目。
 - Project/Novel 来源由同一 SQLite Project 过滤查询加载，跨 Project Novel ID 在读取阶段即不可见；源文本的敏感值检查在构造来源前失败。`createContextBuilder().build()` 校验 Run/Step/准备中的 Attempt 身份，在一个事务中选源、预算规划并冻结精确的 Model 消息与无原文 manifest。Bundle 不可更新或随意删除，同一 Attempt 只能绑定一份；Project 删除事务使用现有证据删除许可清理它。
-- 已提交的只读 ToolReceipt 可作为候选 Tool Result：按同一 Project Run 读取、复验 Tool 修订、输出哈希、输出 schema 与安全文本；未完成、失败或其他 Run 的 Receipt 不会进入候选集合。尚未建立“此 Receipt 早于当前 Model Step”的因果序号约束，因此未宣称完整的后续 Step 投影。
+- 已提交的只读 ToolReceipt 可作为候选 Tool Result：按同一 Project Run 读取、复验 Tool 修订、输出哈希、输出 schema、安全文本，以及完整因果 Trace 中对应的 `tool.succeeded` 事件；未完成、失败、无成功 Trace 或其他 Run 的 Receipt 不会进入候选集合。当前仍未把 Tool 来源与具体前置 Step ordinal 绑定，因此不宣称完整的跨 Step 投影。
 - `inspect` 按 Project 授权读取已冻结 Bundle，复验 manifest 与精确消息的哈希和 schema；其他 Project 得到空结果。旧数据库补建 Bundle 表时保留已有 Project。
 - 显式刷新或新的 Attempt 可通过同一 Run 内的 `predecessorBundleId` 创建后继 Bundle；原 Bundle 内容与哈希不变。Configured Vendor 的 Text Model 可声明并校验 `contextWindowTokens`，`openTextCall` 公开已解析容量；未声明的旧 Model 保持“未知”，不捏造默认容量。
 - 已声明容量的只读生产 AgentRuntime 路径在 Model 调用意图提交前构造 Bundle，调用时使用与持久消息完全相同的输入；Bundle 哈希参与 invocation 指纹。强制内容预算不足时不调用 Fake Model。未声明容量的旧 Model 暂走明确标注的兼容路径，不能计入 ContextBundle 迁移完成率。
