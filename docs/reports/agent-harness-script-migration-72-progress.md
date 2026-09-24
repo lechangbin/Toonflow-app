@@ -16,10 +16,11 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 收紧暂存的旧 Socket 边界：连接时从签名 JWT 取用户 ID，核验 Project Owner，并要求客户端 Memory 隔离键恰为本 Project 的 `projectId:scriptAgent`；旧 `get_script_content` 查询也加上 Project 条件，不能仅凭跨项目剧本 ID 读取内容。这是并行旧路径的隔离修补，不是新 Harness 的 Tool 迁移。
 - 定向验证新 Harness 在 Model 调度回调执行前取消：持久 Run 与 Step 进入 cancelled，重复 start 返回原 Run，之后即使旧调度回调运行也不调用 Model；全新 Runtime 实例可凭数据库 inspect/list 恢复已成功和已取消 Run 的状态。这里只模拟进程内新实例，并未做真实进程重启或运行中中断验收。
 - 新 Harness 增加后端受控 `get_script_workspace`：模型只能指定 `storySkeleton` 或 `adaptationStrategy`，后端按 Run Project 读取规划工作区，输出长度受 Tool schema 限制；不再为这项读取依赖前端 `getPlanData` 回调。它采用独立 Tool 修订和 `read:script-workspace` 能力，须由 Project Owner 单独授予、Skill 冻结修订声明并经过平台/Project/Run/角色交集；默认无 grant 时拒绝且不产生读取回执。旧 Socket 仍使用前端回调，新 Tool 不提供写入。孤立的待处理工作区读取回执也纳入重启恢复的失败结算。
+- 同一运行中的定向测试先成功读取工作区，再由 Owner 撤销当前 Project grant，第二次 Tool 调用重新计算权限并被拒绝；第一次已成功的回执保留，第二次只留拒绝的 PermissionDecision、无读取回执。冻结的是 Skill 请求而非 Project 当前授权，撤销不会抹除已发生的读取。
 
 ## 阶段验证与边界
 
-最近一轮定向回归覆盖受控 Tool、Skill 权限、Project grant、Script 准备、Context Tool 来源及 Router 共 20 个用例，全部通过；工作区授权前拒绝、授权后按 Project 读取、独立撤销和待处理回执恢复均有定向证据。此前旧路径边界两个用例与 AgentRun 模块定向测试也通过。`yarn lint`（TypeScript noEmit）通过。未运行全量测试、构建、浏览器或真实 Provider。
+最近一轮定向回归覆盖受控 Tool、Skill 权限、Project grant、Script 准备、Context Tool 来源及 Router 共 20 个用例，全部通过；新增同 Run 内撤销再调用断言也单独通过。工作区授权前拒绝、授权后按 Project 读取、独立撤销和待处理回执恢复均有定向证据。此前旧路径边界两个用例与 AgentRun 模块定向测试也通过。`yarn lint`（TypeScript noEmit）通过。未运行全量测试、构建、浏览器或真实 Provider。
 
 新入口目前仅覆盖只读指导及规划工作区读取；还需接入前端切换与重连，迁移规划/Script 写工具和旧 Socket 行为，验证运行中停止/真实进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
 
@@ -37,3 +38,4 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 10. 问：用户刚点停止，已入队的执行回调还会不会调用 Model？答：Run 在 queued 态取消时先持久化 cancelled 的 Run/Step/Attempt 与因果 Trace；回调稍后尝试获取执行权时看不到可领取的 queued Run，因此不会调用 Model。测试还验证相同请求 ID 的重复 start 只返回原 cancelled Run，换一个 Runtime 实例仍能 inspect/list 读回状态。运行中供应商请求、中断竞态、真实进程重启和租约接管尚未由此测试证明。
 11. 问：为何读取故事骨架不能沿用 `read:novel`？答：两者是不同数据边界；沿用小说授权会让 Skill 获得其 manifest 未必表达的规划工作区读取能力。新 Tool 要求单独的 `read:script-workspace` 能力与 Owner 管理的 Project grant，输入键限制为骨架/改编策略，后端查询限定 Run Project。测试显示只有小说授权时规划工作区仍拒绝；单独授权后可得到本项目数据，其他 Project 的同键数据不进入输出。工作区数据尚未通过受控写 Tool 更新，因此不能说规划闭环已迁移。
 12. 问：如果工作区读取时进程中断，为什么不会留下永远 pending 的回执？答：受控读取的 pending 回执在没有存活租约时由恢复器标记失败，并追加一次 `tool.interrupted` 因果事件；重复恢复不重复追加。新工作区 Tool 已加入该恢复集合，定向测试用无租约的孤立回执验证结算。这个测试不等于真实进程重启验收，也不覆盖写入效果对账。
+13. 问：Run 已冻结 Skill，Project Owner 中途撤销授权还有用吗？答：Skill 修订冻结的是该 Run 申请哪些 Tool/能力，不等于持续授予。每次调用受控 Tool 都在事务中读取 Project 当前 grant 并重新计算交集。定向测试在一次模型调用中先读成功、后撤销、再读拒绝；第一笔成功回执仍保留，第二笔只有拒绝决策。撤销阻止后续读取，不可能撤回模型已收到的第一次数据。

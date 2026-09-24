@@ -234,9 +234,9 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
     assert.equal(JSON.parse((await db("o_agentSkillPermissionDecision")
       .where({ runId: deniedWorkspaceRun.id, operationId: "workspace-denied-1" }).first())
       .decisionJson).allowed, false);
-    await createProjectSkillGrantRuntime({ work, now: () => 460 })
-      .setReadScriptWorkspace({ projectId: 7, actorUserId: 1,
-        expectedVersion: 0, active: true });
+    const workspaceGrants = createProjectSkillGrantRuntime({ work, now: () => 460 });
+    await workspaceGrants.setReadScriptWorkspace({ projectId: 7, actorUserId: 1,
+      expectedVersion: 0, active: true });
     const workspaceQueue: Array<() => Promise<void>> = [];
     const workspaceRuntime = createAgentRuntime({ work, now: () => 470,
       createId, schedule: (workItem) => workspaceQueue.push(workItem),
@@ -248,6 +248,11 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
         const result = await callInput.tools!.get_script_workspace.execute!(
           { key: "storySkeleton" }, { toolCallId: "workspace-read-1", messages: [] });
         assert.deepEqual(result, { key: "storySkeleton", content: "本项目故事骨架" });
+        await workspaceGrants.setReadScriptWorkspace({ projectId: 7,
+          actorUserId: 1, expectedVersion: 1, active: false });
+        const revoked = await callInput.tools!.get_script_workspace.execute!(
+          { key: "adaptationStrategy" }, { toolCallId: "workspace-revoked-2", messages: [] });
+        assert.equal((revoked as { status: string }).status, "unavailable");
         return { text: "已读取规划工作区" } as any;
       } }) });
     const workspaceRun = await workspaceRuntime.start({ ...input,
@@ -260,5 +265,10 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
     assert.equal((await db("o_agentToolReceipt").where({ runId: workspaceRun.id,
       operationId: "workspace-read-1" }).first())?.toolRevision,
     HARNESS_TOOL_DEFINITIONS.get_script_workspace.revision);
+    assert.equal((await db("o_agentToolReceipt").where({ runId: workspaceRun.id,
+      operationId: "workspace-revoked-2" })).length, 0);
+    assert.equal(JSON.parse((await db("o_agentSkillPermissionDecision")
+      .where({ runId: workspaceRun.id, operationId: "workspace-revoked-2" }).first())
+      .decisionJson).allowed, false);
   } finally { await db.destroy(); }
 });
