@@ -8,10 +8,11 @@ Issue：`lechangbin/Toonflow-app#67`。本报告只描述第一切片，不代�
 - 新建 `o_evaluationRun` 和 `o_evaluationCase`：同一事务冻结经 T02 manifest 契约校验的 18 个 case、分区和原始 manifest 哈希，以及 Runtime、Tool、Context、Skill、Model、Vendor、评测 schema 与 rubric 修订。Run 的冻结字段不可更新或删除，Case 身份不可改写。
 - 冻结操作只创建 18 条 `pending` Case；没有 Agent Run ID、门禁结果、质量评分、产物、耗时或成本时绝不写入成功记录。支持旧数据库新增表而不重写 Project 记录；生成类型声明已同步。
 - Case 观察绑定要求真实 AgentRuntime 创建的 Run 具备 `eval:<EvaluationRun>:<Case>` 请求身份、可观察状态与完整因果 Trace；保存 Run 版本和最后 Trace 序号。它只把 Case 标记为 `observed`，不设置完成时间、门禁通过、产物有效或人工评分。
+- 配对比较的准入检查会复验两个冻结记录的哈希，要求同一 manifest、评测结果 schema 与 rubric；Runtime、Tool、Context、Skill、Model、Vendor 修订差异明确列为处理变量。此检查不生成分数或性能结论。
 
 ## 阶段验证
 
-`tests/evaluationRun.test.ts` 5 个定向用例通过：冻结与禁止改写、修订冲突和事务回滚、CRLF/LF 同一 manifest 身份、旧库增表保留 Project，以及用真实生产 AgentRuntime（确定性 Fake Model）验证 Case 身份、排除尚在排队的 Run 与损坏 Trace。需人工介入的 `waiting` Run 可以作为失败/阻塞观察记录，但不能据此算成功。`yarn lint`（TypeScript `--noEmit`）通过。未运行全量测试、构建、真实 Provider 或浏览器。
+`tests/evaluationRun.test.ts` 6 个定向用例通过：冻结与禁止改写、修订冲突和事务回滚、CRLF/LF 同一 manifest 身份、旧库增表保留 Project、真实生产 AgentRuntime（确定性 Fake Model）的 Case 观察，以及配对契约不兼容/损坏拒绝。需人工介入的 `waiting` Run 可以作为失败/阻塞观察记录，但不能据此算成功。`yarn lint`（TypeScript `--noEmit`）通过。未运行全量测试、构建、真实 Provider 或浏览器。
 
 ## 尚未完成
 

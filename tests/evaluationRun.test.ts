@@ -7,6 +7,7 @@ import knexFactory, { type Knex } from "knex";
 
 import { createAgentRuntime, type AgentRunDependencies } from "../src/agentRuntime";
 import { createEvaluationCaseObservationStore } from "../src/eval/evaluationCaseObservation";
+import { assertComparableEvaluationContracts } from "../src/eval/evaluationComparisonContract";
 import { createEvaluationRunStore, EVALUATION_REVISION_CONTRACT_SCHEMA_VERSION,
   type EvaluationRevisionContract } from "../src/eval/evaluationRun";
 import initDB from "../src/lib/initDB";
@@ -145,5 +146,32 @@ test("a Case observation requires a linked production Agent Run, not a direct ev
     await db("o_agentTrace").where({ runId: secondRun.id, sequence: 2 }).update({ predecessorTraceId: "wrong" });
     await assert.rejects(observer.attach({ evaluationRunId: frozen.id, caseId: "DEV-EXT-002",
       agentRunId: secondRun.id }), /intact causal Trace/);
+  } finally { await db.destroy(); }
+});
+
+test("pairing requires intact matching manifests and scoring contracts, while naming treatment changes", async () => {
+  const db = await database();
+  try {
+    await store(db, "baseline").freeze({ manifestSource, revisions });
+    await store(db, "candidate").freeze({ manifestSource,
+      revisions: { ...revisions, runtimeRevision: "agent-runtime.v2", modelRevision: "fake-model.v2" } });
+    const baseline = await db("o_evaluationRun").where({ id: "baseline" }).first();
+    const candidate = await db("o_evaluationRun").where({ id: "candidate" }).first();
+    const compatible = assertComparableEvaluationContracts(baseline, candidate);
+    assert.deepEqual(compatible.changedTreatmentRevisions, ["runtimeRevision", "modelRevision"]);
+    assert.equal(compatible.manifestHash, baseline.manifestHash);
+    assert.throws(() => assertComparableEvaluationContracts(baseline, baseline), /two distinct Runs/);
+    assert.throws(() => assertComparableEvaluationContracts(baseline, { ...candidate, manifestHash: "0".repeat(64) }),
+      /corrupt or unsupported/);
+    assert.throws(() => assertComparableEvaluationContracts(baseline,
+      { ...candidate, manifestJson: candidate.manifestJson.replace("DEV-EXT-001", "DEV-EXT-009") }),
+    /corrupt or unsupported/);
+    const incompatibleRevisions = { ...JSON.parse(candidate.revisionContractJson),
+      evaluationSchemaVersion: "toonflow.golden-eval-result.v2" };
+    const altered = JSON.stringify(incompatibleRevisions);
+    const { createHash } = await import("node:crypto");
+    assert.throws(() => assertComparableEvaluationContracts(baseline, { ...candidate,
+      revisionContractJson: altered,
+      revisionContractHash: createHash("sha256").update(altered).digest("hex") }), /incompatible/);
   } finally { await db.destroy(); }
 });
