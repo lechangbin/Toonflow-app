@@ -1,0 +1,21 @@
+# Agent Harness T17 · 生产生成迁移（阶段进度）
+
+Issue：`lechangbin/Toonflow-app#73`。本分支堆叠在尚未完成端到端验收的 T16 上；以下仅是生产工作区只读接缝，不是生产 Agent 黄金链路迁移完成。
+
+## 本次改动
+
+- 为 `productionAgent` 定义独立 `get_production_workspace_text` Tool v1，限定 `production-harness-v1` scope 与 `read:production-workspace` 能力；仅允许读取单个剧本的 `scriptPlan` 或 `storyboardTable`，不包含资产数组、图片生成、分镜写入或旧 Socket 回调。
+- 后端适配器同时核对 `o_script` 的 Project 归属与 `o_agentWorkData` 的 Project/剧本/生产 Agent 键；工作区重复行、无效 JSON、过大文本、安全文本不合规时拒绝，缺失工作区只返回空草稿字段。受控 Tool Runtime 仍要求 Run 状态、租约、冻结 Skill 请求与授权交集，不能仅凭模型指令调用。
+- 保留现有生产 Socket 路径，不在未迁移的分镜/资产工具上伪造持久 Run 成功状态。当前 Tool 契约是后续迁移的后端读取边界，尚无生产 Harness Run 创建与模型接线。
+
+## 定向验证与剩余边界
+
+`tests/productionHarnessWorkspaceRead.test.ts` 覆盖独立 Tool 修订/角色/scope、跨 Project 剧本拒绝、重复行拒绝、缺失草稿、无效 JSON 与超长内容；本阶段运行该文件的 2 个单元用例与 `yarn lint`（TypeScript `--noEmit`）。未运行全量测试、构建、浏览器或真实 Provider。
+
+待完成：生产 Agent 的 durable Run/typed Steps、模型与 Vendor 组合、写操作审批/回执、付费生成对账、因果 Trace、重启/租约/取消/迟到结果的跨边界恢复，以及 Web 状态投影和兼容回退。不得将这个只读接缝描述为生产生成迁移完成。
+
+## 阶段追问准备（非最终面经）
+
+1. 问：为什么生产工作区读取不能继续让前端 `getFlowData` 回调负责？答：旧工具通过 Socket 回调从前端得到数据，模型侧请求与实际读到的 Project/剧本数据缺少后端一致的授权、回执和恢复身份。新接缝把剧本归属与工作区行的 Project、剧本键在后端核对，并给 Tool 固定修订、scope 和能力；测试证明跨 Project ID 与重复行不会返回内容。它还没有接上生产 Run，不能称完整替代。
+2. 问：为何先只读两个文本字段？答：分镜/资产数组含写入、引用资源和付费生成状态，不能混入一个宽泛的“获取工作区”Tool。把拍摄计划与分镜表收敛为有大小上限的只读文本，后续写入和生成必须分别定义审批、幂等、对账契约。测试中的非法 `assets` 键被输入 schema 拒绝。
+3. 问：如何处理旧表没有唯一约束的重复数据？答：读取最多两行，若超过一行就失败，不取偶然的第一行。否则不同数据库查询顺序可能让同一 Run 看到不同版本的工作区；单元测试插入重复行后确认失败。持久生成效果的并发约束仍待后续迁移。
