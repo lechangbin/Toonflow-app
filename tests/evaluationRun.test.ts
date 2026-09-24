@@ -135,6 +135,9 @@ test("a Case observation requires a linked production Agent Run, not a direct ev
     const saved = await db("o_evaluationCase").where({ evaluationRunId: frozen.id, caseId: input.caseId }).first();
     assert.equal(saved.status, "observed");
     assert.equal(saved.agentRunId, agentRun.id);
+    assert.equal(saved.elapsedMs, observation.elapsedMs);
+    assert.ok(observation.elapsedMs !== null && observation.elapsedMs >= 0);
+    assert.equal(saved.costMicros, null, "an unknown charge must not be recorded as zero");
     assert.equal(saved.hardGateResultsJson, null, "observation is not a score");
     assert.equal(saved.completedAt, null, "observation is not case completion");
     assert.equal(saved.observedAt, observation.observedAt);
@@ -143,6 +146,11 @@ test("a Case observation requires a linked production Agent Run, not a direct ev
       projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
       clientRequestId: `eval:${frozen.id}:DEV-EXT-002`, content: "核对第二个案例" });
     while (queue.length) await queue.shift()!();
+    const originalCompletedAt = (await db("o_agentRun").where({ id: secondRun.id }).first()).completedAt;
+    await db("o_agentRun").where({ id: secondRun.id }).update({ completedAt: null });
+    await assert.rejects(observer.attach({ evaluationRunId: frozen.id, caseId: "DEV-EXT-002",
+      agentRunId: secondRun.id }), /valid end-to-end timing/);
+    await db("o_agentRun").where({ id: secondRun.id }).update({ completedAt: originalCompletedAt });
     await db("o_agentTrace").where({ runId: secondRun.id, sequence: 2 }).update({ predecessorTraceId: "wrong" });
     await assert.rejects(observer.attach({ evaluationRunId: frozen.id, caseId: "DEV-EXT-002",
       agentRunId: secondRun.id }), /intact causal Trace/);

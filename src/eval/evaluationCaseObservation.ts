@@ -14,6 +14,7 @@ export interface EvaluationCaseObservation {
   agentRunVersion: number;
   agentRunStatus: "waiting" | "succeeded" | "failed" | "cancelled";
   agentRunTraceSequence: number;
+  elapsedMs: number | null;
   observedAt: number;
 }
 
@@ -51,16 +52,21 @@ export function createEvaluationCaseObservationStore(work: DatabaseWork, now: ()
         if (auditCausalTraceTimeline(traceRows).linkage !== "linked") {
           throw new Error("Evaluation Agent Run lacks an intact causal Trace");
         }
+        const elapsedMs = run.status === "waiting" ? null : run.completedAt - run.createdAt;
+        if (!Number.isSafeInteger(run.createdAt) || run.createdAt < 0
+          || (elapsedMs !== null && (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0))) {
+          throw new Error("Evaluation Agent Run lacks valid end-to-end timing");
+        }
         const changed = await tx("o_evaluationCase").where({ id: current.id, status: "pending" }).update({
           agentRunId: run.id, agentRunVersion: run.version, agentRunStatus: run.status,
-          agentRunTraceSequence: traceRows.length, status: "observed", observedAt,
+          agentRunTraceSequence: traceRows.length, status: "observed", observedAt, elapsedMs,
         });
         if (changed !== 1) throw new Error("Evaluation Case observation was already attached");
         await tx("o_evaluationRun").where({ id: evaluation.id, status: "pending" }).update({ status: "running" });
         return { schemaVersion: EVALUATION_CASE_OBSERVATION_SCHEMA_VERSION,
           evaluationRunId: evaluation.id, caseId: input.caseId, agentRunId: run.id,
           agentRunVersion: run.version, agentRunStatus: run.status,
-          agentRunTraceSequence: traceRows.length, observedAt };
+          agentRunTraceSequence: traceRows.length, elapsedMs, observedAt };
       }));
     },
   };
