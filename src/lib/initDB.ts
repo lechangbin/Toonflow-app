@@ -973,6 +973,22 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["runId", "skillId"]);
       },
     },
+    // Skill 路由决定：只存查询哈希和候选原因，不持久化用户原文
+    {
+      name: "o_agentSkillRouteDecision",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.integer("projectId").notNullable();
+        table.text("schemaVersion").notNullable();
+        table.text("intent").notNullable();
+        table.text("queryHash").notNullable();
+        table.text("decisionJson").notNullable();
+        table.text("decisionHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.index(["runId", "createdAt"]);
+      },
+    },
     // Project Memory：仅从已提交 Agent Step Output 捕获的有来源定位的连续性证据
     {
       name: "o_agentProjectMemory",
@@ -1657,6 +1673,23 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
       BEGIN
         SELECT RAISE(ABORT, 'Agent Run Skill binding is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillRouteDecision")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillRouteDecision_prevent_update
+      BEFORE UPDATE ON o_agentSkillRouteDecision
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill route decision is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillRouteDecision_prevent_delete
+      BEFORE DELETE ON o_agentSkillRouteDecision
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill route decision is durable evidence');
       END
     `);
   }

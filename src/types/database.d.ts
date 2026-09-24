@@ -1,4 +1,4 @@
-// @db-hash ad8c1b157cdbb01ebf70538f1da5fd13
+// @db-hash 088cbb89d9ec0cb3709c9c1a8e4afe46
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -218,6 +218,17 @@ export interface o_agentSkillRevisionPolicy {
   'state': string;
   'updatedAt': number;
   'version': number;
+}
+export interface o_agentSkillRouteDecision {
+  'createdAt': number;
+  'decisionHash': string;
+  'decisionJson': string;
+  'id'?: string;
+  'intent': string;
+  'projectId': number;
+  'queryHash': string;
+  'runId': string;
+  'schemaVersion': string;
 }
 export interface o_agentToolApproval {
   'contractHash': string;
@@ -651,6 +662,7 @@ export interface DB {
   "o_agentSkillResourceRevision": o_agentSkillResourceRevision;
   "o_agentSkillRevision": o_agentSkillRevision;
   "o_agentSkillRevisionPolicy": o_agentSkillRevisionPolicy;
+  "o_agentSkillRouteDecision": o_agentSkillRouteDecision;
   "o_agentToolApproval": o_agentToolApproval;
   "o_agentToolCall": o_agentToolCall;
   "o_agentToolDefinition": o_agentToolDefinition;

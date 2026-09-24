@@ -31,6 +31,7 @@ export async function deleteProjectAgentEvidence(tx: Knex.Transaction, projectId
   await tx("o_agentProjectMemory").where({ projectId }).delete();
   await tx("o_agentRunOutput").whereIn("runId", runIds).delete();
   await tx("o_agentContextBundle").whereIn("runId", runIds).delete();
+  await tx("o_agentSkillRouteDecision").whereIn("runId", runIds).delete();
   await tx("o_agentRunSkillBinding").whereIn("runId", runIds).delete();
   await tx("o_agentEvidenceDeletionPermit").whereIn("runId", runIds).delete();
   await tx("o_agentRunCheckpoint").whereIn("runId", runIds).delete();

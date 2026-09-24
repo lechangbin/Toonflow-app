@@ -3,6 +3,8 @@ import test from "node:test";
 
 import knexFactory from "knex";
 
+import { createAgentRuntime } from "../src/agentRuntime";
+import { deleteProjectAgentEvidence } from "../src/agentRuntime/retention";
 import initDB from "../src/lib/initDB";
 import { createSkillRuntime } from "../src/skillRuntime";
 import { SKILL_MANIFEST_SCHEMA_VERSION, type SkillManifest } from "../src/skillRuntime/manifest";
@@ -16,6 +18,7 @@ test("Skill routing filters role/intent before ranking and pauses on an exact to
     const originalLog = console.log;
     console.log = () => undefined;
     try { await initDB(db); } finally { console.log = originalLog; }
+    await db("o_project").insert({ id: 7, userId: 1, name: "路由测试项目" });
     let serial = 0;
     const skills = createSkillRuntime({ work: async (operation) => operation(db),
       now: () => 100 + serial, createId: () => `routing-${++serial}` });
@@ -43,6 +46,28 @@ test("Skill routing filters role/intent before ranking and pauses on an exact to
     assert.equal(tied.selected, null);
     assert.deepEqual(tied.candidates.filter((candidate) => !candidate.eligible)
       .map((candidate) => candidate.reason).sort(), ["intent", "role"]);
+    const runtime = createAgentRuntime({ work: async (operation) => operation(db),
+      now: () => 200 + serial, createId: () => `run-routing-${++serial}`,
+      schedule: () => undefined, openTextCall: async () => { throw new Error("not executing Model"); } });
+    const run = await runtime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+      projectId: 7, role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      clientRequestId: "route-evidence", content: "请分析章节" });
+    const auditedRouter = createSkillRouter(async (operation) => operation(db),
+      { now: () => 300 + serial, createId: () => `route-${++serial}` });
+    const audited = await auditedRouter.routeForRun({ runId: run.id, projectId: 7,
+      intent: "chapter-guidance", query: "请分析章节" });
+    assert.deepEqual(audited.decision, tied);
+    const stored = await db("o_agentSkillRouteDecision").where({ id: audited.id }).first();
+    assert.equal(stored.runId, run.id);
+    assert.equal(stored.decisionJson, JSON.stringify(tied));
+    assert.equal(stored.decisionJson.includes("请分析章节"), false);
+    assert.match(stored.queryHash, /^[a-f0-9]{64}$/);
+    await assert.rejects(auditedRouter.routeForRun({ runId: run.id, projectId: 9,
+      intent: "chapter-guidance", query: "跨项目" }), /queued Run in Project scope/);
+    await assert.rejects(db("o_agentSkillRouteDecision").where({ id: audited.id })
+      .update({ decisionJson: "{}" }), /immutable/);
+    await assert.rejects(db("o_agentSkillRouteDecision").where({ id: audited.id }).delete(),
+      /durable evidence/);
     await db("o_agentSkillBinding").where({ skillId: second.skillId }).delete();
     const selected = await router.route({ role: "scriptAgent", intent: "chapter-guidance",
       query: "请分析章节" });
@@ -64,5 +89,10 @@ test("Skill routing filters role/intent before ranking and pauses on an exact to
     const unavailable = await router.route({ role: "scriptAgent", intent: "storyboard",
       query: "章节" });
     assert.equal(unavailable.status, "unavailable");
+    await db.transaction(async (tx) => {
+      await tx("o_project").where({ id: 7 }).delete();
+      await deleteProjectAgentEvidence(tx, 7);
+    });
+    assert.equal((await db("o_agentSkillRouteDecision")).length, 0);
   } finally { await db.destroy(); }
 });
