@@ -52,8 +52,17 @@ test("a Run reads only declared, hash-verified ResourceRevision IDs, never a mut
       skillId: definition.id, resourceId: "guide" });
     assert.equal(loaded.content, resourceContent);
     assert.equal(loaded.contentHash, hash(resourceContent));
+    const access = await db("o_agentSkillResourceAccess").where({ id: loaded.accessId }).first();
+    assert.equal(access.runId, run.id);
+    assert.equal(access.skillRevisionId, draft.id);
+    assert.equal(access.resourceId, "guide");
+    assert.equal(access.contentHash, hash(resourceContent));
+    await assert.rejects(db("o_agentSkillResourceAccess").where({ id: loaded.accessId })
+      .update({ contentHash: "tampered" }), /immutable/);
     await assert.rejects(skills.loadResource({ runId: run.id, projectId: 9,
       skillId: definition.id, resourceId: "guide" }), /outside authorized Run binding/);
+    assert.equal((await db("o_agentSkillResourceAccess")).length, 1,
+      "rejected access must not create a successful access record");
     await assert.rejects(skills.loadResource({ runId: run.id, projectId: 7,
       skillId: definition.id, resourceId: "../data/skills/secret.md" }), /resource request is invalid/);
     await assert.rejects(db("o_agentSkillResourceRevision").where({ skillRevisionId: draft.id })

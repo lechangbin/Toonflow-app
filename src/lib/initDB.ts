@@ -1005,6 +1005,20 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["runId", "operationId"]);
       },
     },
+    // Skill 资源访问：记录冻结资源身份和哈希，不重复存正文
+    {
+      name: "o_agentSkillResourceAccess",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("skillId").notNullable();
+        table.text("skillRevisionId").notNullable();
+        table.text("resourceId").notNullable();
+        table.text("contentHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.index(["runId", "createdAt"]);
+      },
+    },
     // Project Memory：仅从已提交 Agent Step Output 捕获的有来源定位的连续性证据
     {
       name: "o_agentProjectMemory",
@@ -1723,6 +1737,23 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
       BEGIN
         SELECT RAISE(ABORT, 'Skill permission decision is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillResourceAccess")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillResourceAccess_prevent_update
+      BEFORE UPDATE ON o_agentSkillResourceAccess
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill resource access is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillResourceAccess_prevent_delete
+      BEFORE DELETE ON o_agentSkillResourceAccess
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill resource access is durable evidence');
       END
     `);
   }

@@ -340,13 +340,18 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
         || ![input.runId, input.skillId, input.resourceId].every((id) => IDENTIFIER.test(id))) {
         throw new TypeError("Skill resource request is invalid");
       }
-      return dependencies.work(async (db) => {
-        const run = await db("o_agentRun").where({ id: input.runId,
+      const accessId = dependencies.createId();
+      const accessedAt = dependencies.now();
+      if (!IDENTIFIER.test(accessId) || !Number.isSafeInteger(accessedAt) || accessedAt < 0) {
+        throw new TypeError("Skill resource access evidence identity is invalid");
+      }
+      return dependencies.work((db) => db.transaction(async (tx) => {
+        const run = await tx("o_agentRun").where({ id: input.runId,
           projectId: input.projectId }).first("id");
-        const binding = await db("o_agentRunSkillBinding").where({ runId: input.runId,
+        const binding = await tx("o_agentRunSkillBinding").where({ runId: input.runId,
           skillId: input.skillId }).first();
         if (!run || !binding) throw new Error("Skill resource is outside authorized Run binding");
-        const revision = await db("o_agentSkillRevision").where({ id: binding.revisionId,
+        const revision = await tx("o_agentSkillRevision").where({ id: binding.revisionId,
           skillId: input.skillId, status: "published" }).first();
         if (!revision || hash(revision.content) !== binding.contentHash
           || hash(revision.manifestJson) !== binding.manifestHash
@@ -354,23 +359,26 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
           || revision.manifestHash !== binding.manifestHash) {
           throw new Error("Skill resource binding evidence is corrupt");
         }
-        const policy = await db("o_agentSkillRevisionPolicy")
+        const policy = await tx("o_agentSkillRevisionPolicy")
           .where({ revisionId: revision.id }).first("state");
         if (!policy || policy.state === "revoked") throw new Error("Skill resource Revision was revoked");
         const manifest = validateSkillManifest(JSON.parse(revision.manifestJson),
           input.skillId, revision.semanticVersion);
         const declared = manifest.resources.find((entry) => entry.id === input.resourceId);
-        const resource = await db("o_agentSkillResourceRevision").where({
+        const resource = await tx("o_agentSkillResourceRevision").where({
           skillRevisionId: revision.id, resourceId: input.resourceId }).first();
         if (!declared || !resource || declared.contentHash !== resource.contentHash
           || declared.mediaType !== resource.mediaType || hash(resource.content) !== resource.contentHash
           || !inspectPersistableText(resource.content).ok) {
           throw new Error("Skill resource ID or revision is unavailable");
         }
+        await tx("o_agentSkillResourceAccess").insert({ id: accessId, runId: input.runId,
+          skillId: input.skillId, skillRevisionId: revision.id,
+          resourceId: input.resourceId, contentHash: resource.contentHash, createdAt: accessedAt });
         return { resourceId: input.resourceId, mediaType: resource.mediaType,
           content: resource.content, contentHash: resource.contentHash,
-          skillRevisionId: revision.id };
-      });
+          skillRevisionId: revision.id, accessId };
+      }));
     },
   };
 }
