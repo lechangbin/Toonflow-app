@@ -267,6 +267,19 @@ export function createScriptWriteApprovalRuntime(dependencies: {
         return readSnapshot(db, projectId, runId);
       });
     },
+    async list(projectId: number, actorUserId: number): Promise<ScriptWriteApprovalSnapshot[]> {
+      return dependencies.work(async (db) => {
+        await assertOwner(db, projectId, actorUserId);
+        const rows = await db("o_agentRun as run")
+          .where({ "run.projectId": projectId, "run.role": "scriptAgent",
+            "run.scope": SCRIPT_WRITE_RUN_SCOPE })
+          .orderBy("run.createdAt", "desc").orderBy("run.id", "desc")
+          .limit(20).select("run.id");
+        const snapshots = await Promise.all(rows.map((row) =>
+          readSnapshot(db, projectId, row.id)));
+        return snapshots.filter((item): item is ScriptWriteApprovalSnapshot => item !== null);
+      });
+    },
     async decide(input: DecideScriptWriteInput): Promise<ScriptWriteApprovalSnapshot | null> {
       if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
         || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0

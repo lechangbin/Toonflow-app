@@ -20,13 +20,14 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 新 Harness 增加 `get_script_content` 受控读取：单个剧本 ID、Project 作用域、16,000 字符输出上限与独立 `read:script` Owner grant。只有 `read:novel` 或 `read:script-workspace` 不会授权它；同项目剧本可留下成功回执，跨项目剧本 ID 在适配器前被拒并留下失败回执。旧 Socket 的多 ID 读取仍是隔离后的兼容路径，新 Tool 未迁移剧本写入。
 - T16 写入接缝先冻结候选契约：单字段规划工作区写入、剧本创建与按 ID 更新分别使用严格且有大小上限的输入；候选序列化后经持久化安全检查与哈希绑定，审批预览只暴露目标身份、效果、长度和哈希，不复制创作正文。两个独立不可变 ToolDefinition 固定各自的能力、scope、审批策略和契约哈希。ADR-0022 规定后续 Owner 精确审批、目标状态重检和原子效果提交。当前没有注册写 Tool 执行、持久审批或更新 Project 数据。
 - 后端目标状态读取器已区分工作区缺失/唯一/重复行、剧本创建时同名竞争与更新时 ID 所属 Project；对旧表的相关当前字段计算哈希，后续审批提交必须在事务中重算并比对。定向测试覆盖旧入口直接修改后哈希变化、跨 Project ID 拒绝、同名冲突。此时仍无审批命令，不能把“可检测冲突”说成“已防止并发写入”。
-- 写入 Runtime 的提案事务冻结候选负载/目标状态/ToolDefinition，并创建 waiting Run/Step/Attempt、pending ToolReceipt/ToolApproval、`run-created` Checkpoint 与审批请求 Trace。相同请求身份幂等返回原提案；不同负载复用身份被拒，Owner 错误、跨 Project 剧本 ID 和同名创建在持久化前失败。Owner 决策命令已在同一事务中重检目标哈希：批准后提交工作区单字段或剧本创建/更新、成功回执、Output、终态 Checkpoint 和 Trace；拒绝、过期、冲突只结算安全失败状态。注入 Output 持久化失败时 Project 写入整体回滚。尚未公开 HTTP 命令或模型侧写 Tool。
+- 写入 Runtime 的提案事务冻结候选负载/目标状态/ToolDefinition，并创建 waiting Run/Step/Attempt、pending ToolReceipt/ToolApproval、`run-created` Checkpoint 与审批请求 Trace。相同请求身份幂等返回原提案；不同负载复用身份被拒，Owner 错误、跨 Project 剧本 ID 和同名创建在持久化前失败。Owner 决策命令已在同一事务中重检目标哈希：批准后提交工作区单字段或剧本创建/更新、成功回执、Output、终态 Checkpoint 和 Trace；拒绝、过期、冲突只结算安全失败状态。注入 Output 持久化失败时 Project 写入整体回滚。尚未接入模型侧写 Tool。
+- 独立 HTTP 适配器现提供 Owner 作用域的 propose/inspect/list/decide，四个命令都只从已认证请求身份派生操作者，忽略 body 伪造的用户 ID；Router 已按仓库生成规则更新。尚未接入 App/Web 审批界面，也没有把写提案作为模型侧 Tool 接入主 Script Run。
 
 ## 阶段验证与边界
 
-最近一轮写入审批 Runtime 的 2 个定向单元测试通过，涵盖批准、重复命令、冲突、拒绝、过期与注入提交失败；写入候选和目标状态另有 5 个定向用例通过，`yarn lint`（TypeScript noEmit）通过。此前受控 Tool、Skill 权限、Project grant、Script 准备及 Router 的 20 个定向用例通过；剧本读取默认拒绝、授权后本项目读取及跨项目 ID 拒绝有定向断言。Context Tool 来源、旧路径边界和 AgentRun 模块定向测试此前也通过。未运行全量测试、构建、浏览器或真实 Provider。
+最近一轮写入审批 Runtime、HTTP 身份边界与 Router 共 4 个定向单元测试通过，涵盖批准、重复命令、冲突、拒绝、过期与注入提交失败；写入候选和目标状态另有 5 个定向用例通过，`yarn lint`（TypeScript noEmit）通过。此前受控 Tool、Skill 权限、Project grant、Script 准备及 Router 的定向用例通过；剧本读取默认拒绝、授权后本项目读取及跨项目 ID 拒绝有定向断言。未运行全量测试、构建、浏览器或真实 Provider。
 
-新入口目前覆盖只读指导、规划工作区和剧本读取，另有独立后端监督写入 Runtime；还需把写入提案接到 Agent Tool、开放 Owner HTTP 审批入口、接入前端切换与重连、迁移旧 Socket 行为，验证运行中停止/真实进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
+新入口目前覆盖只读指导、规划工作区和剧本读取，另有独立后端监督写入 Runtime 及 Owner HTTP 审批入口；还需把写入提案接到 Agent Tool、接入前端切换/重连与审批界面、迁移旧 Socket 行为，验证运行中停止/真实进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
 
 ## 阶段追问准备（非最终面经）
 
@@ -47,4 +48,5 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 15. 问：为何不直接让模型更新整份 `setPlanData`？答：旧接口一次覆盖规划 JSON 和多个剧本，缺少单个效果的稳定身份、版本与原子审批边界。新契约先拆成一个工作区字段或一个剧本创建/更新候选，严格验证并冻结哈希，审批预览不复制正文；ADR-0022 要求后续将 Owner 决策绑定到精确目标状态，并在同一事务里提交领域写入与证据。当前单元测试只能证明候选边界与预览，不能声称审批与写入已经实现。
 16. 问：为什么工作区写与剧本写要分两个 Tool 修订？答：两者目标状态和影响范围不同。工作区只允许改骨架或策略单字段，剧本写需要区分创建和按 ID 更新，并在提交时验证剧本属于当前 Project。独立 ToolDefinition 固定各自能力、输入/输出 schema、审批策略与契约哈希，避免单个宽泛写权限覆盖两类效果。定向测试只证明修订契约不同、候选输入被严格限制；执行权限、审批和效果仍待实现。
 17. 问：没有数据库版本列，如何发现旧界面在审批等待期间改过目标？答：后端在提案时读取并哈希当前工作区或剧本相关字段，审批提交在同一事务中重新读取比对；工作区重复行、跨 Project 剧本 ID 与同名竞争被明确拒绝。定向测试在提案后让旧入口改动剧本，审批进入 conflicted 而不覆盖旧入口的结果。该机制仍依赖所有最终写入都在同一个 SQLite 事务序列里；完整 App/Web 并发验收留到 T21。
-18. 问：怎样证明提案不会提前写入剧本，批准后又不会写一半？答：提案事务只持久化审批证据与等待中的 Agent Run；测试前后核对原字段、Run/回执/Checkpoint/Trace 的存在。批准时，Project 写入与回执、Output、Checkpoint、Trace 同事务提交；测试故意让 Output 插入失败，验证域数据与审批/回执状态一并回滚。重复批准命令返回原结果，不重复创建剧本。HTTP 接线、模型侧写 Tool、真实重启仍未验证。
+18. 问：怎样证明提案不会提前写入剧本，批准后又不会写一半？答：提案事务只持久化审批证据与等待中的 Agent Run；测试前后核对原字段、Run/回执/Checkpoint/Trace 的存在。批准时，Project 写入与回执、Output、Checkpoint、Trace 同事务提交；测试故意让 Output 插入失败，验证域数据与审批/回执状态一并回滚。重复批准命令返回原结果，不重复创建剧本。HTTP 适配器已有定向测试，模型侧写 Tool 与真实重启仍未验证。
+19. 问：为什么请求体里传一个 Owner ID 不能直接批准？答：HTTP 适配器只从认证中间件读取 actor，并在调用 Runtime 时覆盖 body 中任何同名字段；Runtime 再按 Project 当前 Owner 校验，因此前端传来的 ID 不是授权来源。定向路由测试核对 propose、inspect、list、decide 四个入口都使用认证身份。测试使用注入的假认证中间件，生产端完整鉴权链还需最终跨边界验收。
