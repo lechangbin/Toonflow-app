@@ -4,6 +4,7 @@ import type { DatabaseWork } from "@/database";
 import { inspectPersistableText } from "@/diagnostics/traceSafeDiagnostics";
 
 import { validateSkillManifest, type SkillManifest } from "./manifest";
+import { resolveSkillDependenciesInTransaction } from "./resolution";
 
 const IDENTIFIER = /^[A-Za-z0-9._:@-]{1,128}$/;
 const VERSION = /^\d+\.\d+\.\d+$/;
@@ -264,6 +265,31 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
           frozen.push(record);
         }
         return frozen;
+      }));
+    },
+    async bindResolvedRun(input: { runId: string; projectId: number; rootSkillIds: readonly string[] }) {
+      if (!IDENTIFIER.test(input.runId) || !Number.isSafeInteger(input.projectId)
+        || input.projectId <= 0) {
+        throw new TypeError("Agent Run resolved Skill binding identity is invalid");
+      }
+      const boundAt = dependencies.now();
+      if (!Number.isSafeInteger(boundAt) || boundAt < 0) {
+        throw new TypeError("Agent Run resolved Skill binding time is invalid");
+      }
+      return dependencies.work((db) => db.transaction(async (tx) => {
+        const run = await tx("o_agentRun").where({ id: input.runId,
+          projectId: input.projectId, status: "queued" }).first("id", "role");
+        if (!run) throw new Error("Agent Run is not queued in Project scope");
+        const prior = await tx("o_agentRunSkillBinding").where({ runId: input.runId }).first("skillId");
+        if (prior) throw new Error("Agent Run Skill binding set was already frozen");
+        const plan = await resolveSkillDependenciesInTransaction(tx,
+          { role: run.role, rootSkillIds: input.rootSkillIds });
+        for (const revision of plan.revisions) {
+          await tx("o_agentRunSkillBinding").insert({ runId: input.runId,
+            skillId: revision.skillId, revisionId: revision.revisionId,
+            contentHash: revision.contentHash, manifestHash: revision.manifestHash, boundAt });
+        }
+        return plan;
       }));
     },
     async loadResource(input: { runId: string; projectId: number;
