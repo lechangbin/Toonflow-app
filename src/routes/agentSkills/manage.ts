@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getDatabaseRuntime } from "@/database";
 import { success } from "@/lib/responseFormat";
 import { createSkillRuntime } from "@/skillRuntime";
+import { previewLegacySkillImport, LEGACY_SKILL_IMPORTS } from "@/skillRuntime/legacyImport";
 import { skillManifestSchema } from "@/skillRuntime/manifest";
 
 type SkillAdmin = Pick<ReturnType<typeof createSkillRuntime>,
@@ -19,6 +20,10 @@ const draft = z.strictObject({ skillId: identifier,
 const command = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("list") }),
   z.strictObject({ action: z.literal("inspect"), revisionId: identifier }),
+  z.strictObject({ action: z.literal("previewLegacyImport"),
+    sourceId: z.enum(Object.keys(LEGACY_SKILL_IMPORTS) as
+      [keyof typeof LEGACY_SKILL_IMPORTS]),
+    skillId: identifier, semanticVersion: z.string().regex(/^\d+\.\d+\.\d+$/) }),
   z.strictObject({ action: z.literal("create"), name: z.string().min(1).max(80),
     description: z.string().min(1).max(500) }),
   draft.extend({ action: z.literal("validate") }),
@@ -53,6 +58,14 @@ export function createSkillManagementRouter(dependencies: {
         case "list": result = await dependencies.runtime.listForAdministration(); break;
         case "inspect": result = await dependencies.runtime
           .inspectRevisionForAdministration(input.revisionId); break;
+        case "previewLegacyImport": {
+          const proposal = await previewLegacySkillImport(input);
+          const validation = dependencies.runtime.validateDraft({
+            skillId: input.skillId, semanticVersion: input.semanticVersion,
+            content: proposal.content, manifest: proposal.manifest });
+          result = { ...proposal, validation, publication: "draft-proposal-only" };
+          break;
+        }
         case "create": result = await dependencies.runtime.createDefinition({
           name: input.name, description: input.description }); break;
         case "validate": result = dependencies.runtime.validateDraft(input); break;
@@ -65,7 +78,7 @@ export function createSkillManagementRouter(dependencies: {
       res.status(200).send(success(result));
     } catch (error) {
       if (error instanceof TypeError || error instanceof z.ZodError
-        || error instanceof Error && /content is empty|manifest identity differs/i.test(error.message)) {
+        || error instanceof Error && /content is empty|manifest identity differs|Legacy Skill source changed|Legacy Skill format is incompatible|Legacy Skill requests unsupported/i.test(error.message)) {
         res.status(400).send({ message: "Skill 管理内容无效" }); return;
       }
       if (error instanceof Error && /is missing|not found/i.test(error.message)) {
