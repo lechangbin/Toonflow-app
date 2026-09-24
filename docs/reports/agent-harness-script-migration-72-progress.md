@@ -21,19 +21,20 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - T16 写入接缝先冻结候选契约：单字段规划工作区写入、剧本创建与按 ID 更新分别使用严格且有大小上限的输入；候选序列化后经持久化安全检查与哈希绑定，审批预览只暴露目标身份、效果、长度和哈希，不复制创作正文。两个独立不可变 ToolDefinition 固定各自的能力、scope、审批策略和契约哈希。ADR-0022 规定后续 Owner 精确审批、目标状态重检和原子效果提交。当前没有注册写 Tool 执行、持久审批或更新 Project 数据。
 - 后端目标状态读取器已区分工作区缺失/唯一/重复行、剧本创建时同名竞争与更新时 ID 所属 Project；对旧表的相关当前字段计算哈希，后续审批提交必须在事务中重算并比对。定向测试覆盖旧入口直接修改后哈希变化、跨 Project ID 拒绝、同名冲突。此时仍无审批命令，不能把“可检测冲突”说成“已防止并发写入”。
 - 写入 Runtime 的提案事务冻结候选负载/目标状态/ToolDefinition，并创建 waiting Run/Step/Attempt、pending ToolReceipt/ToolApproval、`run-created` Checkpoint 与审批请求 Trace。相同请求身份幂等返回原提案；不同负载复用身份被拒，Owner 错误、跨 Project 剧本 ID 和同名创建在持久化前失败。Owner 决策命令已在同一事务中重检目标哈希：批准后提交工作区单字段或剧本创建/更新、成功回执、Output、终态 Checkpoint 和 Trace；拒绝、过期、冲突只结算安全失败状态。注入 Output 持久化失败时 Project 写入整体回滚。尚未接入模型侧写 Tool。
-- 独立 HTTP 适配器现提供 Owner 作用域的 propose/inspect/list/decide，四个命令都只从已认证请求身份派生操作者，忽略 body 伪造的用户 ID；Router 已按仓库生成规则更新。尚未接入 App/Web 审批界面，也没有把写提案作为模型侧 Tool 接入主 Script Run。
+- 独立 HTTP 适配器提供 Owner 作用域的 propose/inspect/list/review/decide，操作者由认证请求派生，忽略 body 伪造的用户 ID；Router 已按仓库生成规则更新。后续模型侧提案 Tool 与 Web 审批界面均已接入，但浏览器验收、旧路径迁移仍未完成。
 - 到期 pending 审批在 inspect/list 和数据库就绪恢复时结算为 expired，失败回执与 `tool.approval.expired` Trace 同事务落盘；重复读取不重复追加事件，且不会改动工作区或剧本。实际杀进程重启验收与端到端 UI 重连仍留到 T21。
 - 审批快照读取现在复核 approval/receipt/Run 状态组合、成功回执输出哈希及 Tool 输出 schema；若回执被篡改，inspect 拒绝投影，而不会向重连客户端虚报成功。定向测试故意改坏已批准回执哈希并验证拒绝。
 - 对照 Web 的现有 Socket auth 后修正兼容边界：Web 传十进制字符串 Project ID，旧 Socket 验证现在同时接受正整数或规范十进制字符串，再用归一化 ID 核对 Owner 与 `projectId:scriptAgent` Memory 键；`07`、混入字符或不匹配隔离键仍拒绝。定向测试覆盖该回归，未改动 Web 源码。
-- Web 独立工作树已增加版本化 Script Harness HTTP 客户端及显式「试用只读 Harness」入口：默认仍连接旧 Socket；用户切换时断开旧连接，新模式只通过 HTTP 启动、查询、取消只读 Run 并显示状态/输出。请求失败不会隐式回退旧链路，切回才重新连接。Web Draft PR `lechangbin/Toonflow-web#7`；当前没有浏览器端验收，编辑规划/剧本的旧 UI 尚未迁移。
-- 同一 Web Draft PR 增加独立写入提案列表及 Owner 批准/拒绝操作：界面展示后端的无正文预览，用确定的 approval ID、Run 版本及命令 ID 提交决策；过期或已结算提案不能在客户端重放，服务端仍做最终 Owner、版本与目标哈希检查。此列表只会显示已有独立提案；当前只读模型 Run 不会自动生成它们。
+- Web 独立工作树已增加版本化 Script Harness HTTP 客户端及显式「试用监督 Harness」入口：默认仍连接旧 Socket；用户切换时断开旧连接，新模式通过 HTTP 启动、查询、取消模型 Run 并显示状态/输出。请求失败不会隐式回退旧链路，切回才重新连接。Web Draft PR `lechangbin/Toonflow-web#7`；当前没有浏览器端验收，编辑规划/剧本的旧 UI 尚未迁移。
+- 同一 Web Draft PR 增加写入提案列表及 Owner 批准/拒绝操作：界面展示后端的无正文预览，用确定的 approval ID、Run 版本及命令 ID 提交决策；过期或已结算提案不能在客户端重放，服务端仍做最终 Owner、版本与目标哈希检查。当前模型 Run 在 Skill 与 Project grant 允许时可生成这些子提案；父 Run 成功并不代表子提案获批。
 - 为避免 Owner 仅看长度与哈希就盲批，App 增加单独的 Owner 正文复核命令：先重新验证持久审批证据、状态与过期时间，再只向认证 Owner 返回该提案的原始待写入正文，HTTP 响应禁止缓存；列表和 Trace 仍不带创作正文。Web 必须先读取并显示与当前 approval ID、Run 版本、负载哈希一致的正文，才解锁「批准」，拒绝仍可直接执行。App/Web 定向测试覆盖越权读取、已结算读取拒绝、版本不匹配与命令身份。
+- 模型侧写入候选已接上独立提案 Tool，而非直接写 Tool：规划字段与单个剧本候选各有不可变 Tool 修订，仅要求 `propose:script-workspace` / `propose:script` 能力，不能自行授权 `write:*`。Owner 可分别设置可撤销 Project grant；冻结 Skill 必须声明相应 Tool 与能力。模型调用持有父 Run 的有效租约时，在同一事务中记录 Skill PermissionDecision 并建立子审批 Run；拒绝只留下权限判定、没有子提案。子 Run 冻结父 Run/操作/Skill 关联，重连投影复核权限判定哈希，父 Run 已完成也不意味着子提案获批。定向假模型测试覆盖提案、等待、全文复核、Owner 批准后才写入、grant 撤销、错误租约与跨类型未声明 Tool 拒绝；未调用真实 Provider。
 
 ## 阶段验证与边界
 
-最近一轮写入审批 Runtime 与数据库就绪模块共 9 个定向单元测试通过，涵盖批准、重复命令、冲突、拒绝、过期、注入提交失败与就绪流程；新增正文复核后，审批 Runtime/HTTP 适配器 3 个定向测试通过，`yarn lint`（TypeScript noEmit）通过。写入候选和目标状态另有 5 个定向用例此前通过；受控 Tool、Skill 权限、Project grant、Script 准备等相关定向用例也通过。Web Harness/审批客户端共 5 个定向测试和无输出类型检查通过；普通 `yarn type-check` 在这个 Web 工作树的链接依赖下碰到其他既有文件的 TS2742 声明可移植性错误，未当作通过。未运行全量测试、构建、浏览器或真实 Provider。
+最近一轮模型提案、grant HTTP、审批 Runtime/HTTP、Script 准备共 6 个定向测试通过，涵盖冻结 Skill 与当前 grant 交集、模型提案到 Owner 批准的独立闭环、撤销、错误租约及作用域拒绝；`yarn lint`（TypeScript noEmit）通过。写入审批 Runtime 与数据库就绪模块此前有 9 个定向用例通过，写入候选与目标状态有 5 个定向用例通过；受控 Tool、Context 等相关定向用例也通过。Web Harness/审批客户端共 6 个定向测试和无输出类型检查通过；普通 `yarn type-check` 在这个 Web 工作树的链接依赖下碰到其他既有文件的 TS2742 声明可移植性错误，未当作通过。未运行全量测试、构建、浏览器或真实 Provider。
 
-新入口目前覆盖只读指导、规划工作区和剧本读取，另有独立后端监督写入 Runtime 及 Owner HTTP 审批入口；Web 已接入只读切换/刷新/取消与独立审批列表，还需把写入提案接到 Agent Tool、迁移旧 Socket 行为，验证运行中停止/真实进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
+新入口目前覆盖只读指导、规划工作区和剧本读取，以及受 Skill/Project grant 控制的模型侧写入候选和独立 Owner 审批；Web 已接入监督模式切换/刷新/取消、提案 grant 管理、来源关联与审批列表。还需迁移旧 Socket 规划/写入行为，验证运行中停止/真实进程重启及 App/Web 契约，并补充可信 Skill 管理与发布流程。旧路径和新路径并存，不能称为端到端 Script Agent 迁移。
 
 ## 阶段追问准备（非最终面经）
 
@@ -60,5 +61,8 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 21. 问：如果数据库里的审批回执被改成“成功”，重连会不会照单全收？答：快照读取不只看一个 status；它对照 approval、ToolReceipt 与 Run 的合法状态组合，并对成功回执重新计算输出哈希、验证版本化输出 schema。定向测试在成功后篡改回执哈希，inspect 直接拒绝投影。该检查防止错误呈现，不等于对数据库物理篡改具备恢复能力；完整证据链审计还要在最终验收覆盖。
 22. 问：旧 Socket 边界要求数字 Project ID，会不会把现有 Web 客户端挡掉？答：源码核对显示现有 Web store 用字符串 Project ID 构造 Socket auth。修补后后端接受规范十进制字符串或正整数，归一化后再核验签名 token 对应 Owner 与 Memory 键；不会接受前导零或非数字字符串。定向回归同时覆盖合法 Web 形式和伪造形式。新 Harness 的 HTTP 契约仍是独立版本，不因此宣称页面已切换。
 23. 问：新 Web 入口如何避免与旧 Socket 的状态混淆？答：页面默认维持旧链路，用户显式切入只读模式时断开旧 Socket；新模式的 start/inspect/list/cancel 只走版本化 HTTP 客户端，失败留在新模式显示错误而不自动回退。切出才重新连接旧 Socket。定向契约测试验证规范 Project ID 和没有 Socket 回退；尚未做浏览器下的交互与重连验收，不能称完全兼容。
-24. 问：审批列表出现一条 pending，前端能单方面让写入生效吗？答：不能。Web 只提交当前后端快照的 approval ID、Run ID、版本和一次性命令 ID，不提供操作者身份字段；服务端从认证请求取 Owner，再在提交事务中复核版本、过期时间及目标状态哈希。Web 测试确认命令形状及已结算审批不重放，App 的定向测试覆盖冲突/拒绝/回滚。当前只读模型不会提出这些写入候选，界面是独立提案的处理接缝。
+24. 问：审批列表出现一条 pending，前端能单方面让写入生效吗？答：不能。Web 只提交当前后端快照的 approval ID、Run ID、版本和一次性命令 ID，不提供操作者身份字段；服务端从认证请求取 Owner，再在提交事务中复核版本、过期时间及目标状态哈希。Web 测试确认命令形状及已结算审批不重放，App 的定向测试覆盖冲突/拒绝/回滚。模型可提出候选，但每个子审批 Run 仍需 Owner 独立处理。
 25. 问：预览不含正文，Owner 如何知道批准的内容是什么？答：列表/Trace 只保留目标、长度与哈希以降低创作内容扩散；另设 Owner-only 的 `/review`，在返回正文前重新校验提案证据、状态、过期时间和 Owner，并发送 `Cache-Control: no-store`。Web 先显示完整正文，再依据同一 approval ID、Run 版本和负载哈希开放批准；过期或版本变化要重新复核。定向测试验证越权/已结算不可读和版本不匹配时不能把旧复核结果用于批准。浏览器端视觉及缓存行为尚待 T21 验收。
+26. 问：模型能直接获得 `write:script` 权限吗？答：不能。模型只看到两个单独修订的「提出候选」Tool，策略标为无直接项目变更，要求 Skill 冻结声明和当前 `propose:*` Project grant。运行时在父 Run 的有效租约内核对权限，原子创建独立等待审批的子 Run；真正的写入仍由认证 Owner 查看全文后提交，且重检目标哈希。假模型定向测试在批准前核对 Project 数据未变，批准后才出现单项效果。当前 Skill 发布与 grant 配置还需完整用户界面和最终验收。
+27. 问：grant 被撤销或 Project Owner 变化时，运行中的模型还能提出新候选吗？答：每次候选调用都读取当前 Project grant，并比对父 Run 创建时冻结的操作者与 Project 当前 Owner；缺任一条件就不能新建子提案。定向测试先授权成功，再撤销得到拒绝，转移 Owner 后也拒绝，错误租约与 Skill 未声明的另一类 Tool 同样不能创建提案。已经持久化的旧提案不会因撤销或父 Run 停止而悄悄消失，它仍是单独的到期审批对象，须明确呈现给 Owner。
+28. 问：父 Run 成功后，如何证明这条审批确实来自那次模型调用？答：子 Run 的冻结输入记录父 Run ID、模型 Tool 操作 ID 和 Skill ID；父 Run 有同操作的权限判定与提案 Trace。重连读取子审批时会复核父 Run 作用域、权限判定哈希与允许结果，不仅依赖页面的文字。假模型测试核对子审批可沿这两个 ID 回到父 Run，批准前后效果状态不同。跨进程重启与篡改恢复的完整验收仍留到 T21。

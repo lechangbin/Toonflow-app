@@ -2,6 +2,7 @@ import { v4 as uuid } from "uuid";
 
 import { createAgentRuntime, type AgentRuntime } from "@/agentRuntime";
 import { getDatabaseRuntime } from "@/database";
+import { getDefaultScriptWriteApprovalRuntime } from "@/controlledTools/scriptWriteApproval";
 import { resolveReadOnlyScriptSkillGrants } from "@/skillRuntime/grants";
 import { getDefaultConfiguredVendor } from "@/vendor";
 
@@ -22,6 +23,8 @@ export function getDefaultScriptHarnessRuntime(): AgentRuntime {
       now: () => Date.now(), createId: () => uuid(),
       prepareRun: (tx, input) => prepareScriptSkillRun(tx, input, uuid),
       skillMode: { grants: resolveReadOnlyScriptSkillGrants },
+      proposeScriptWrite: (input) =>
+        getDefaultScriptWriteApprovalRuntime().proposeFromAgent(input),
     });
   }
   return defaultRuntime;

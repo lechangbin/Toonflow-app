@@ -22,6 +22,7 @@ import {
   createControlledToolRuntime,
   TOOL_DEFINITIONS,
   HARNESS_TOOL_DEFINITIONS,
+  SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
   toolDefinitionContractHash,
   type ControlledToolName,
   type ControlledToolDependencies,
@@ -72,6 +73,11 @@ const SYSTEM_PROMPT = [
   "只能依据给出的项目事实和受控只读工具结果回答用户，不得声称已修改项目。",
   "需要章节原文或事件时，只能调用 get_novel_text 或 get_novel_events；不得猜测其他项目的数据。",
   "当事实不足时明确说明缺少信息。",
+].join("\n");
+const SCRIPT_PROPOSAL_PROMPT_VERSION = "toonflow.script-proposal-guidance.v1";
+const SCRIPT_PROPOSAL_SYSTEM_PROMPT = [SYSTEM_PROMPT,
+  "若 Tool 权限允许，你可以提出单字段规划或单个剧本的待审批候选。提案不会写入 Project，只有 Owner 查看全文并批准后才可能生效。",
+  "只能报告提案处于待审批状态，不得把提案或模型输出表述为已批准、已保存或已生成成品。",
 ].join("\n");
 
 export interface StartAgentRunInput {
@@ -227,6 +233,10 @@ export interface AgentRunDependencies {
     role: typeof READ_ONLY_AGENT_ROLE; content: string; createdAt: number;
     actorUserId?: number }) => Promise<void>;
   skillMode?: { grants: NonNullable<ControlledToolDependencies["skillGrants"]> };
+  proposeScriptWrite?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    kind: "workspace" | "script"; payload: unknown }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
 }
 
 export class AgentRunConflictError extends Error {
@@ -560,6 +570,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   if (dependencies.skillMode && (!dependencies.prepareRun || dependencies.controlledTools)) {
     throw new TypeError("Skill mode requires atomic preparation and its own guarded Tool runtime");
   }
+  if (dependencies.proposeScriptWrite && !dependencies.skillMode) {
+    throw new TypeError("Script proposal Tools require guarded Skill mode");
+  }
   const workerId = dependencies.workerId ?? uuid();
   const processEpoch = dependencies.processEpoch ?? DEFAULT_PROCESS_EPOCH;
   const leaseDurationMs = dependencies.leaseDurationMs ?? DEFAULT_AGENT_RUN_LEASE_MS;
@@ -775,6 +788,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       });
       if (!prepared) return;
       const preparedSkillId = prepared.skillId;
+      const systemContract = dependencies.proposeScriptWrite
+        ? SCRIPT_PROPOSAL_SYSTEM_PROMPT : SYSTEM_PROMPT;
       let call: ConfiguredTextCall;
       try {
         call = await dependencies.openTextCall(LOGICAL_TARGET);
@@ -819,10 +834,13 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           `视频画幅：${project.videoRatio ?? "16:9"}`, `章节数量：${Number(chapterRow?.count ?? 0)}`,
           `可读取章节记录ID与编号：${availableChapters.map((chapter) => `${chapter.id}:${chapter.chapterIndex ?? "未知"}`).join("、") || "无"}${Number(chapterRow?.count ?? 0) > 20 ? "（仅列前20条）" : ""}`,
         ].join("\n");
-        invocation.messages = [{ role: "system", content: SYSTEM_PROMPT },
+        invocation.messages = [{ role: "system", content: systemContract },
           { role: "assistant", content: projectFacts }, { role: "user", content: prepared.input.content }];
       }
-      const modelToolDefinitions = dependencies.skillMode ? HARNESS_TOOL_DEFINITIONS : TOOL_DEFINITIONS;
+      const modelToolDefinitions = dependencies.skillMode
+        ? { ...HARNESS_TOOL_DEFINITIONS,
+          ...(dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_TOOL_DEFINITIONS : {}) }
+        : TOOL_DEFINITIONS;
       const toolContracts = Object.values(modelToolDefinitions).map((definition) => ({
         name: definition.name, revision: definition.revision, contractHash: toolDefinitionContractHash(definition),
       }));
@@ -836,7 +854,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           const bundle = await createContextBuilder({ work: dependencies.work,
             now: dependencies.now, createId: dependencies.createId }).build({
             runId, stepId, attemptId, projectId: prepared.projectId, role: READ_ONLY_AGENT_ROLE,
-            systemContract: SYSTEM_PROMPT, stepIntent: prepared.input.content,
+            systemContract, stepIntent: prepared.input.content,
             toolAndPermissionContract, modelRevision: `${call.target.vendorId}:${call.target.modelId}`,
             budget: { contextWindowTokens: call.target.contextWindowTokens,
               policyMaxInputTokens: 8_192,
@@ -926,6 +944,19 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           return { status: "unavailable", kind: "executionFailed" };
         }
       }
+      async function proposeScriptWrite(kind: "workspace" | "script", payload: unknown,
+        operationId: string): Promise<unknown> {
+        if (!dependencies.proposeScriptWrite || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeScriptWrite({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, kind, payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
       const result = await call.invokeText({
         messages: invocation.messages,
         tools: {
@@ -948,6 +979,15 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             description: "读取当前项目中指定剧本的内容；输入为剧本记录 ID。",
             inputSchema: HARNESS_TOOL_DEFINITIONS.get_script_content.inputSchema,
             execute: async ({ scriptId }, options) => invokeReadTool("get_script_content", { scriptId }, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeScriptWrite ? { propose_script_workspace_write: tool({
+            description: "仅提出当前项目单个规划字段的待审批候选；不会写入，Owner 查看全文并批准后才可能生效。",
+            inputSchema: SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_workspace_write.inputSchema,
+            execute: async (payload, options) => proposeScriptWrite("workspace", payload, options.toolCallId),
+          }), propose_script_content_write: tool({
+            description: "仅提出当前项目单个剧本创建或更新候选；不会写入，Owner 查看全文并批准后才可能生效。",
+            inputSchema: SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_content_write.inputSchema,
+            execute: async (payload, options) => proposeScriptWrite("script", payload, options.toolCallId),
           }) } : {}),
         },
       });
@@ -1061,7 +1101,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     const persistStart = () => dependencies.work((db) => db.transaction(async (trx) => {
       await trx("o_agentRun").insert({
         id: runId, projectId: input.projectId, scriptId: null, role: input.role, scope: input.scope,
-        clientRequestId, requestFingerprint, input: JSON.stringify({ content }),
+        clientRequestId, requestFingerprint,
+        input: JSON.stringify({ content,
+          ...(dependencies.skillMode ? { actorUserId: input.actorUserId } : {}) }),
         status: "queued", waitingReason: null, attentionReason: null,
         allowedActions: JSON.stringify(["inspect", "cancel"]), lastCommittedStepId: null,
         version: 1, createdAt: now, updatedAt: now,
@@ -1078,7 +1120,10 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       if (!project) throw new AgentRunProjectNotFoundError(input.projectId);
       await trx("o_agentRunStep").insert({
         id: stepId, runId, ordinal: 1, kind: "model", logicalTarget: JSON.stringify(LOGICAL_TARGET),
-        resolvedTarget: null, promptFingerprint: fingerprint({ version: PROMPT_VERSION, prompt: SYSTEM_PROMPT }), status: "pending",
+        resolvedTarget: null, promptFingerprint: fingerprint({
+          version: dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_PROMPT_VERSION : PROMPT_VERSION,
+          prompt: dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_SYSTEM_PROMPT : SYSTEM_PROMPT,
+        }), status: "pending",
       });
       await trx("o_agentRunAttempt").insert({
         id: attemptId, runId, stepId, ordinal: 1, predecessorAttemptId: null, reason: "initial",

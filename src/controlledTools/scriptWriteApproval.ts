@@ -9,14 +9,18 @@ import {
   canonicalCheckpointPayload, hashCheckpointPayload,
   type AgentRunCheckpointPayload,
 } from "@/agentRuntime";
+import { assertAgentRunLease, type AgentRunLease } from "@/agentRuntime/lease";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import type { DatabaseWork } from "@/database";
 import { getDatabaseRuntime } from "@/database";
 import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
+import { resolveScriptProposalGrants } from "@/skillRuntime/grants";
+import { authorizeBoundSkillDefinition } from "@/skillRuntime/permissions";
 
 import {
   SCRIPT_CONTENT_WRITE_TOOL_DEFINITION,
   SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION,
+  SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
   toolDefinitionContractHash,
 } from "./definitions";
 import {
@@ -37,6 +41,16 @@ export interface ProposeScriptWriteInput {
   projectId: number;
   actorUserId: number;
   clientRequestId: string;
+  operationId: string;
+  kind: ScriptWriteKind;
+  payload: unknown;
+}
+
+export interface ProposeScriptWriteFromAgentInput {
+  projectId: number;
+  parentRunId: string;
+  skillId: string;
+  lease: AgentRunLease;
   operationId: string;
   kind: ScriptWriteKind;
   payload: unknown;
@@ -66,6 +80,8 @@ export interface ScriptWriteApprovalSnapshot {
   preview: unknown;
   runVersion: number;
   runStatus: string;
+  sourceRunId?: string;
+  sourceOperationId?: string;
 }
 
 export interface ScriptWriteApprovalReview {
@@ -121,6 +137,18 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number,
   const receipt = approval && await db("o_agentToolReceipt")
     .where({ id: approval.receiptId, runId }).first();
   if (!approval || !receipt) throw new ScriptWriteProposalRejectedError("evidence");
+  let runInput: { operationId?: unknown; kind?: unknown;
+    payloadHash?: unknown; parentRunId?: unknown;
+    parentOperationId?: unknown; skillId?: unknown;
+    proposalToolRevision?: unknown; proposalContractHash?: unknown };
+  try {
+    const parsed: unknown = JSON.parse(run.input);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("invalid Run input");
+    }
+    runInput = parsed as typeof runInput;
+  }
+  catch { throw new ScriptWriteProposalRejectedError("evidence"); }
   const kind: ScriptWriteKind = receipt.toolName === SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION.name
     ? "workspace" : receipt.toolName === SCRIPT_CONTENT_WRITE_TOOL_DEFINITION.name
       ? "script" : (() => { throw new ScriptWriteProposalRejectedError("evidence"); })();
@@ -132,8 +160,50 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number,
     || catalog?.contractHash !== approval.contractHash
     || approval.payloadHash !== sha256(approval.payloadJson)
     || receipt.inputHash !== approval.payloadHash
-    || receipt.operationId !== approval.operationId) {
+    || receipt.operationId !== approval.operationId
+    || runInput.operationId !== approval.operationId
+    || runInput.kind !== kind || runInput.payloadHash !== approval.payloadHash) {
     throw new ScriptWriteProposalRejectedError("evidence");
+  }
+  const hasSource = runInput.parentRunId !== undefined
+    || runInput.parentOperationId !== undefined || runInput.skillId !== undefined
+    || runInput.proposalToolRevision !== undefined
+    || runInput.proposalContractHash !== undefined;
+  if (hasSource) {
+    if (typeof runInput.parentRunId !== "string"
+      || typeof runInput.parentOperationId !== "string"
+      || typeof runInput.skillId !== "string"
+      || runInput.parentOperationId !== approval.operationId) {
+      throw new ScriptWriteProposalRejectedError("evidence");
+    }
+    const proposalTool = kind === "workspace"
+      ? SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_workspace_write
+      : SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_content_write;
+    const proposalCatalog = await db("o_agentToolDefinition")
+      .where({ name: proposalTool.name, revision: proposalTool.revision })
+      .first("contractHash");
+    if (runInput.proposalToolRevision !== proposalTool.revision
+      || runInput.proposalContractHash !== toolDefinitionContractHash(proposalTool)
+      || proposalCatalog?.contractHash !== runInput.proposalContractHash) {
+      throw new ScriptWriteProposalRejectedError("evidence");
+    }
+    const parent = await db("o_agentRun").where({ id: runInput.parentRunId,
+      projectId, role: "scriptAgent", scope: "script-harness-guidance-v1" }).first("id");
+    const permission = parent && await db("o_agentSkillPermissionDecision")
+      .where({ runId: parent.id, operationId: runInput.parentOperationId,
+        skillId: runInput.skillId,
+        toolName: kind === "workspace"
+          ? SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_workspace_write.name
+          : SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_content_write.name })
+      .first("decisionJson", "decisionHash");
+    if (!parent || !permission || sha256(permission.decisionJson) !== permission.decisionHash) {
+      throw new ScriptWriteProposalRejectedError("evidence");
+    }
+    try {
+      if (JSON.parse(permission.decisionJson).allowed !== true) {
+        throw new Error("source proposal was denied");
+      }
+    } catch { throw new ScriptWriteProposalRejectedError("evidence"); }
   }
   const status = approval.status;
   const validStatus = status === "pending" && receipt.status === "pending"
@@ -173,7 +243,9 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number,
     toolRevision: tool.revision, payloadHash: approval.payloadHash,
     targetStateHash: approval.targetStateHash,
     status: approval.status, expiresAt: approval.expiresAt,
-    preview, runVersion: run.version, runStatus: run.status };
+    preview, runVersion: run.version, runStatus: run.status,
+    ...(hasSource ? { sourceRunId: runInput.parentRunId as string,
+      sourceOperationId: runInput.parentOperationId as string } : {}) };
 }
 
 /** Reconnect settles expired pending proposals without granting any write effect. */
@@ -228,8 +300,8 @@ export function createScriptWriteApprovalRuntime(dependencies: {
   work: DatabaseWork; now(): number; createId(): string; approvalTtlMs?: number;
 }) {
   const ttl = dependencies.approvalTtlMs ?? SCRIPT_WRITE_APPROVAL_TTL_MS;
-  return {
-    async propose(input: ProposeScriptWriteInput): Promise<ScriptWriteApprovalSnapshot> {
+  async function persistProposal(input: ProposeScriptWriteInput,
+    source?: ProposeScriptWriteFromAgentInput): Promise<ScriptWriteApprovalSnapshot | null> {
       if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
         || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0
         || !/^[A-Za-z0-9._:-]{1,128}$/u.test(input.clientRequestId)
@@ -245,10 +317,69 @@ export function createScriptWriteApprovalRuntime(dependencies: {
       const requestFingerprint = sha256(JSON.stringify({ projectId: input.projectId,
         actorUserId: input.actorUserId, role: "scriptAgent", scope: SCRIPT_WRITE_RUN_SCOPE,
         operationId: input.operationId, toolRevision: tool.revision,
-        payloadHash: frozen.payloadHash }));
+        payloadHash: frozen.payloadHash,
+        ...(source ? { parentRunId: source.parentRunId, skillId: source.skillId } : {}) }));
       const now = dependencies.now();
       return dependencies.work((db) => db.transaction(async (tx) => {
         await assertOwner(tx, input.projectId, input.actorUserId);
+        if (source) {
+          const parent = await tx("o_agentRun").where({ id: source.parentRunId,
+            projectId: input.projectId, role: "scriptAgent",
+            scope: "script-harness-guidance-v1", status: "running" })
+            .whereNull("cancellationRequestedAt").first("id", "input");
+          if (!parent || source.lease.runId !== parent.id) {
+            throw new ScriptWriteProposalRejectedError("scope");
+          }
+          let parentActor: unknown;
+          try { parentActor = JSON.parse(parent.input).actorUserId; }
+          catch { throw new ScriptWriteProposalRejectedError("evidence"); }
+          if (parentActor !== input.actorUserId) {
+            throw new ScriptWriteProposalRejectedError("scope");
+          }
+          await assertAgentRunLease(tx, source.lease, now);
+          const proposalTool = source.kind === "workspace"
+            ? SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_workspace_write
+            : SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_content_write;
+          const proposalContractHash = toolDefinitionContractHash(proposalTool);
+          const proposalCatalog = await tx("o_agentToolDefinition")
+            .where({ name: proposalTool.name,
+              revision: proposalTool.revision }).first("contractHash");
+          if (proposalCatalog && proposalCatalog.contractHash !== proposalContractHash) {
+            throw new ScriptWriteProposalRejectedError("evidence");
+          }
+          if (!proposalCatalog) await tx("o_agentToolDefinition").insert({
+            id: dependencies.createId(), name: proposalTool.name,
+            revision: proposalTool.revision,
+            contractHash: proposalContractHash,
+            policy: JSON.stringify(proposalTool.policy), createdAt: now,
+          });
+          const grants = await resolveScriptProposalGrants(tx, {
+            runId: parent.id, projectId: input.projectId, kind: source.kind });
+          const authority = await authorizeBoundSkillDefinition(tx, {
+            runId: parent.id, projectId: input.projectId,
+            skillId: source.skillId, ...grants }, proposalTool);
+          const decisionJson = JSON.stringify(authority.decision);
+          const previous = await tx("o_agentSkillPermissionDecision")
+            .where({ runId: parent.id, operationId: source.operationId }).first();
+          if (previous) {
+            if (previous.skillId !== source.skillId
+              || previous.toolName !== proposalTool.name
+              || previous.skillRevisionId !== authority.skillRevisionId
+              || previous.decisionHash !== sha256(previous.decisionJson)) {
+              throw new ScriptWriteProposalConflictError();
+            }
+            const recorded = JSON.parse(previous.decisionJson) as { allowed?: unknown };
+            if (recorded.allowed !== true || !authority.decision.allowed) return null;
+          } else {
+            await tx("o_agentSkillPermissionDecision").insert({
+              id: dependencies.createId(), runId: parent.id,
+              skillId: source.skillId, skillRevisionId: authority.skillRevisionId,
+              operationId: source.operationId, toolName: proposalTool.name,
+              decisionJson, decisionHash: sha256(decisionJson), createdAt: now,
+            });
+            if (!authority.decision.allowed) return null;
+          }
+        }
         const existing = await tx("o_agentRun").where({ projectId: input.projectId,
           role: "scriptAgent", scope: SCRIPT_WRITE_RUN_SCOPE,
           clientRequestId: input.clientRequestId }).first();
@@ -291,7 +422,15 @@ export function createScriptWriteApprovalRuntime(dependencies: {
           role: "scriptAgent", scope: SCRIPT_WRITE_RUN_SCOPE,
           clientRequestId: input.clientRequestId, requestFingerprint,
           input: JSON.stringify({ operationId: input.operationId,
-            kind: input.kind, payloadHash: frozen.payloadHash }),
+            kind: input.kind, payloadHash: frozen.payloadHash,
+            ...(source ? { parentRunId: source.parentRunId,
+              parentOperationId: source.operationId, skillId: source.skillId,
+              proposalToolRevision: source.kind === "workspace"
+                ? SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_workspace_write.revision
+                : SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_content_write.revision,
+              proposalContractHash: toolDefinitionContractHash(source.kind === "workspace"
+                ? SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_workspace_write
+                : SCRIPT_PROPOSAL_TOOL_DEFINITIONS.propose_script_content_write) } : {}) }),
           status: "waiting", waitingReason: "tool-approval",
           attentionReason: "tool-approval-required",
           allowedActions: JSON.stringify(["inspect", "approve", "reject"]),
@@ -329,10 +468,33 @@ export function createScriptWriteApprovalRuntime(dependencies: {
         await appendCausalTrace(tx, { id: dependencies.createId(), runId,
           stepId, attemptId, toolReceiptId: receiptId,
           eventType: "tool.approval.requested", createdAt: now });
+        if (source) await appendCausalTrace(tx, {
+          id: dependencies.createId(), runId: source.parentRunId,
+          eventType: "tool.proposal.created", createdAt: now,
+        });
         const snapshot = await readSnapshot(tx, input.projectId, runId);
         if (!snapshot) throw new ScriptWriteProposalRejectedError("evidence");
         return snapshot;
       }));
+  }
+  return {
+    async propose(input: ProposeScriptWriteInput): Promise<ScriptWriteApprovalSnapshot> {
+      const result = await persistProposal(input);
+      if (!result) throw new ScriptWriteProposalRejectedError("evidence");
+      return result;
+    },
+    async proposeFromAgent(source: ProposeScriptWriteFromAgentInput): Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }> {
+      const actorUserId = await dependencies.work(async (db) => {
+        const project = await db("o_project").where({ id: source.projectId }).first("userId");
+        return Number(project?.userId);
+      });
+      const result = await persistProposal({ projectId: source.projectId,
+        actorUserId, clientRequestId: `${source.parentRunId}:${source.operationId}`,
+        operationId: source.operationId, kind: source.kind,
+        payload: source.payload }, source);
+      return result ? { status: "pending", approvalRunId: result.runId,
+        approvalId: result.id } : { status: "denied" };
     },
     async inspect(projectId: number, runId: string,
       actorUserId: number): Promise<ScriptWriteApprovalSnapshot | null> {

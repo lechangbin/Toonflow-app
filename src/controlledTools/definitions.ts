@@ -187,6 +187,48 @@ export const SCRIPT_CONTENT_WRITE_TOOL_DEFINITION = Object.freeze({
   adapterId: "script-content-local-write-v1",
 });
 
+const scriptProposalPolicy = Object.freeze({
+  risk: Object.freeze({ mutation: "none", externalCost: "none", completion: "synchronous" }),
+  roles: Object.freeze(["scriptAgent"]),
+  scopes: Object.freeze(["script-harness-guidance-v1"]),
+  scope: "run-project",
+  approval: "proposal-only-owner-decision-required",
+  idempotency: "run-operation-id",
+  retries: "explicit-new-operation",
+  timeoutMs: 0,
+  cancellation: "proposal-survives-parent-run-cancellation",
+  concurrency: "serialized-sqlite-transaction",
+  commit: "child-approval-run-before-model-result",
+  reconciliation: "inspect-child-approval-run",
+  compensation: "none",
+  redaction: "fail-closed",
+  contextProjection: "bounded-approval-preview",
+});
+
+/** Model-facing proposals have no write effect; the separate Owner decision Tool owns mutation. */
+export const SCRIPT_PROPOSAL_TOOL_DEFINITIONS = Object.freeze({
+  propose_script_workspace_write: Object.freeze({
+    name: "propose_script_workspace_write",
+    revision: "toonflow.tool.propose-script-workspace-write.v1",
+    inputSchema: scriptWorkspaceWriteInput,
+    outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+      approvalId: z.string().min(1), status: z.literal("pending") }),
+    policy: Object.freeze({ ...scriptProposalPolicy,
+      capabilities: Object.freeze(["propose:script-workspace"]) }),
+    adapterId: "script-workspace-approval-proposal-v1",
+  }),
+  propose_script_content_write: Object.freeze({
+    name: "propose_script_content_write",
+    revision: "toonflow.tool.propose-script-content-write.v1",
+    inputSchema: scriptContentWriteInput,
+    outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+      approvalId: z.string().min(1), status: z.literal("pending") }),
+    policy: Object.freeze({ ...scriptProposalPolicy,
+      capabilities: Object.freeze(["propose:script"]) }),
+    adapterId: "script-content-approval-proposal-v1",
+  }),
+});
+
 export const BILLABLE_IMAGE_TOOL_DEFINITION = Object.freeze({
   name: "generate_asset_image",
   revision: "toonflow.tool.generate-asset-image.v1",
@@ -219,7 +261,8 @@ export const BILLABLE_IMAGE_TOOL_DEFINITION = Object.freeze({
 
 export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION
   | typeof BILLABLE_IMAGE_TOOL_DEFINITION | typeof SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION
-  | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION): string {
+  | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION
+  | (typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS)[keyof typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS]): string {
   return createHash("sha256").update(JSON.stringify({
     name: definition.name,
     revision: definition.revision,

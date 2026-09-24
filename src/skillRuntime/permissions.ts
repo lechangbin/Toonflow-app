@@ -53,6 +53,15 @@ export async function authorizeBoundSkillTool(tx: Knex.Transaction, input: {
 }) {
   const definition = getControlledToolDefinition(input.toolName, input.toolRevision);
   if (!definition) throw new Error("Skill Tool definition is unavailable");
+  return authorizeBoundSkillDefinition(tx, input, definition);
+}
+
+/** Authorize a code-owned ToolDefinition that is not executed by the read Tool runtime. */
+export async function authorizeBoundSkillDefinition(tx: Knex.Transaction, input: {
+  runId: string; projectId: number; skillId: string;
+  platformGrants: readonly string[]; projectGrants: readonly string[];
+  runGrants: readonly string[]; roleGrants: readonly string[];
+}, definition: { name: string; policy: { capabilities: readonly string[] } }) {
   const run = await tx("o_agentRun").where({ id: input.runId,
     projectId: input.projectId }).first("id", "role");
   const binding = await tx("o_agentRunSkillBinding").where({ runId: input.runId,
@@ -75,7 +84,7 @@ export async function authorizeBoundSkillTool(tx: Knex.Transaction, input: {
     throw new Error("Skill Tool Run role is incompatible with frozen Revision");
   }
   return { skillRevisionId: revision.id, decision: evaluateSkillToolPermission({
-    toolName: input.toolName, toolRequiredCapabilities: definition.policy.capabilities,
+    toolName: definition.name, toolRequiredCapabilities: definition.policy.capabilities,
     skillRequestedTools: manifest.requestedTools,
     skillRequestedCapabilities: manifest.requestedCapabilities,
     platformGrants: input.platformGrants, projectGrants: input.projectGrants,
