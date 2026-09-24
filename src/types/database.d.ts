@@ -1,4 +1,4 @@
-// @db-hash 5221c97424097b2dcb81a349f99234cd
+// @db-hash 60c20a9a4ca20aa901f18b06e9521b9a
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -168,6 +168,13 @@ export interface o_agentRunSkillBinding {
   'revisionId': string;
   'runId'?: string;
   'skillId'?: string;
+}
+export interface o_agentRunSkillResolution {
+  'boundAt': number;
+  'planHash': string;
+  'planJson': string;
+  'runId'?: string;
+  'schemaVersion': string;
 }
 export interface o_agentRunStep {
   'completedAt'?: number | null;
@@ -676,6 +683,7 @@ export interface DB {
   "o_agentRunCommand": o_agentRunCommand;
   "o_agentRunOutput": o_agentRunOutput;
   "o_agentRunSkillBinding": o_agentRunSkillBinding;
+  "o_agentRunSkillResolution": o_agentRunSkillResolution;
   "o_agentRunStep": o_agentRunStep;
   "o_agentSkillBinding": o_agentSkillBinding;
   "o_agentSkillDefinition": o_agentSkillDefinition;

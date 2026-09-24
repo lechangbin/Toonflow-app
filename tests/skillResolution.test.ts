@@ -58,6 +58,10 @@ test("Skill resolver orders an exact published dependency closure and rejects mi
       rootSkillIds: [a.id] }), plan);
     assert.deepEqual((await db("o_agentRunSkillBinding").where({ runId: run.id })
       .orderBy("skillId")).map((entry) => entry.skillId), [a.id, b.id, c.id].sort());
+    const resolution = await db("o_agentRunSkillResolution").where({ runId: run.id }).first();
+    assert.deepEqual(JSON.parse(resolution.planJson), plan);
+    await assert.rejects(db("o_agentRunSkillResolution").where({ runId: run.id })
+      .update({ planJson: "{}" }), /immutable/);
     await assert.rejects(skills.bindResolvedRun({ runId: run.id, projectId: 7,
       rootSkillIds: [a.id] }), /already frozen/);
     const cRevision = plan.revisions.find((entry) => entry.skillId === c.id)!;

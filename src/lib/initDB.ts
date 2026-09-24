@@ -973,6 +973,17 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["runId", "skillId"]);
       },
     },
+    // Run 依赖闭包：记录根、精确修订与依赖边，不复制 Skill 正文
+    {
+      name: "o_agentRunSkillResolution",
+      builder: (table) => {
+        table.text("runId").notNullable().primary().references("id").inTable("o_agentRun");
+        table.text("schemaVersion").notNullable();
+        table.text("planJson").notNullable();
+        table.text("planHash").notNullable();
+        table.integer("boundAt").notNullable();
+      },
+    },
     // Skill 路由决定：只存查询哈希和候选原因，不持久化用户原文
     {
       name: "o_agentSkillRouteDecision",
@@ -1703,6 +1714,23 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
       BEGIN
         SELECT RAISE(ABORT, 'Agent Run Skill binding is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentRunSkillResolution")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentRunSkillResolution_prevent_update
+      BEFORE UPDATE ON o_agentRunSkillResolution
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Run Skill resolution is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentRunSkillResolution_prevent_delete
+      BEFORE DELETE ON o_agentRunSkillResolution
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Run Skill resolution is durable evidence');
       END
     `);
   }

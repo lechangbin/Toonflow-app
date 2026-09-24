@@ -76,6 +76,7 @@ test("Skill routing filters role/intent before ranking and pauses on an exact to
     assert.equal(tiedBinding.decision.status, "needs-attention");
     assert.equal(tiedBinding.plan, null);
     assert.equal((await db("o_agentRunSkillBinding").where({ runId: tiedRun.id })).length, 0);
+    assert.equal((await db("o_agentRunSkillResolution").where({ runId: tiedRun.id })).length, 0);
     await db("o_agentSkillBinding").where({ skillId: second.skillId }).delete();
     const selected = await router.route({ role: "scriptAgent", intent: "chapter-guidance",
       query: "请分析章节" });
@@ -89,6 +90,7 @@ test("Skill routing filters role/intent before ranking and pauses on an exact to
     assert.deepEqual(selectedBinding.decision.selected, first);
     assert.equal(selectedBinding.plan?.revisions.at(-1)?.revisionId, first.revisionId);
     assert.equal((await db("o_agentRunSkillBinding").where({ runId: selectedRun.id })).length, 1);
+    assert.equal((await db("o_agentRunSkillResolution").where({ runId: selectedRun.id })).length, 1);
     await assert.rejects(skills.routeAndBindRun({ runId: selectedRun.id,
       projectId: 7, intent: "chapter-guidance", query: "请分析章节" }), /already frozen/);
     await skills.setRevisionLifecycle({ revisionId: first.revisionId,

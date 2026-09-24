@@ -290,6 +290,9 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
             skillId: revision.skillId, revisionId: revision.revisionId,
             contentHash: revision.contentHash, manifestHash: revision.manifestHash, boundAt });
         }
+        const planJson = JSON.stringify(plan);
+        await tx("o_agentRunSkillResolution").insert({ runId: input.runId,
+          schemaVersion: plan.schemaVersion, planJson, planHash: hash(planJson), boundAt });
         return plan;
       }));
     },
@@ -331,6 +334,9 @@ export function createSkillRuntime(dependencies: { work: DatabaseWork; now(): nu
             skillId: revision.skillId, revisionId: revision.revisionId,
             contentHash: revision.contentHash, manifestHash: revision.manifestHash, boundAt: now });
         }
+        const planJson = JSON.stringify(plan);
+        await tx("o_agentRunSkillResolution").insert({ runId: input.runId,
+          schemaVersion: plan.schemaVersion, planJson, planHash: hash(planJson), boundAt: now });
         return { routeId, decision, plan };
       }));
     },
