@@ -6,6 +6,7 @@ import { CONTEXT_ABLATION_VARIANTS, SKILL_ABLATION_VARIANTS,
   hashAblationManifest, summarizeAblationResults,
   validateAblationManifest } from
   "../src/eval/ablationContract";
+import { runAblationMatrix } from "../src/eval/ablationRunner";
 
 const manifest = { schemaVersion: "toonflow.ablation-manifest.v1",
   studyId: "t19-context-v1", axis: "context", referenceVariant: "full-context",
@@ -79,4 +80,37 @@ test("T19 result summary reports denominators and rejects hard-gate failure with
     [{ ...rows[0], executedAt: 50 }]));
   assert.throws(() => summarizeAblationResults(manifest,
     [{ ...rows[0], qualityEvidenceIds: [] }]));
+});
+
+test("T19 fake adapter receives the identical frozen budget for every run", async () => {
+  const calls: Array<{ variant: string; caseId: string; seed: number;
+    budget: unknown }> = [];
+  const result = await runAblationMatrix({ manifest, now: () => 200,
+    execute: async (invocation) => {
+      calls.push({ variant: invocation.variant, caseId: invocation.caseId,
+        seed: invocation.seed, budget: invocation.commonBudget });
+      return { qualityScore: 2, qualityEvidenceIds: ["rubric-1"],
+        latencyMs: 100, costMicros: 10, inputTokens: 100,
+        outputTokens: 50, toolCalls: 1, retries: 0,
+        failureClass: "none", hardGates: { leakage: true,
+          "holdout-contamination": true, "redaction-failure": true,
+          "permission-escalation": true } };
+    } });
+  assert.equal(calls.length, 20);
+  assert(calls.every((call) => JSON.stringify(call.budget)
+    === JSON.stringify(manifest.commonBudget)));
+  assert.equal(result.summary.missing, 0);
+  assert(result.summary.variants.every((entry) => entry.adoptable));
+});
+
+test("T19 fake runner redacts adapter failures and never treats them as adoption", async () => {
+  const result = await runAblationMatrix({ manifest, now: () => 200,
+    execute: async (invocation) => {
+      if (invocation.seed === 11) throw new Error("secret raw prompt must not persist");
+      return { rawPrompt: "secret raw prompt must not persist" };
+    } });
+  assert.equal(result.results.length, 20);
+  assert.equal(result.summary.variants[0].adoptable, false);
+  assert(!JSON.stringify(result).includes("secret raw prompt"));
+  assert(result.results.every((entry) => entry.failureClass === "evidence"));
 });
