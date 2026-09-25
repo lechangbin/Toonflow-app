@@ -67,6 +67,7 @@ class MessageBuilder {
   private messageRole: "assistant" | "user" | "system";
   private messageName?: string;
   private messageDatetime: string;
+  private stopped = false;
 
   constructor(socket: Socket, messageId: string, role: "assistant" | "user" | "system", name?: string, datetime?: string) {
     this.socket = socket;
@@ -94,6 +95,8 @@ class MessageBuilder {
 
   // 更新消息状态
   updateStatus(status: ChatMessageStatus) {
+    if (this.stopped) return this;
+    if (status === "stop") this.stopped = true;
     this.socket.emit("message:update", {
       id: this.messageId,
       status,
@@ -273,6 +276,7 @@ class MessageBuilder {
 
   // 完成消息
   complete() {
+    if (this.stopped) return;
     this.socket.emit("message:update", {
       id: this.messageId,
       status: "complete" as ChatMessageStatus,
@@ -281,6 +285,8 @@ class MessageBuilder {
 
   // 停止消息
   stop() {
+    if (this.stopped) return;
+    this.stopped = true;
     this.socket.emit("message:update", {
       id: this.messageId,
       status: "stop" as ChatMessageStatus,
@@ -289,6 +295,7 @@ class MessageBuilder {
 
   // 错误
   error(errorMsg?: string) {
+    if (this.stopped) return;
     this.socket.emit("message:update", {
       id: this.messageId,
       status: "error" as ChatMessageStatus,
