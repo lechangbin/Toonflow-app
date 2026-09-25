@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { AGENT_RUN_OUTPUT_SCHEMA_VERSION } from "@/agentRuntime";
 import type { DatabaseWork } from "@/database";
 import { auditCausalTraceTimeline } from "@/agentRuntime/causalTrace";
 import { z } from "zod";
@@ -37,6 +38,11 @@ export const parseEvaluationRevisions = (input: unknown) => revisions.parse(inpu
 
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 export const hashEvaluationInput = (content: string) => hash(content.trim());
+const validRunOutput = (output: { content: unknown; contentHash: unknown;
+  schemaVersion: unknown } | undefined): boolean => !output || (
+  typeof output.content === "string"
+  && output.schemaVersion === AGENT_RUN_OUTPUT_SCHEMA_VERSION
+  && output.contentHash === hash(JSON.stringify(output.content)));
 
 export function evaluationCaseRequestId(evaluationRunId: string,
   variant: "baseline" | "candidate", caseId: string, seed: number): string {
@@ -139,14 +145,16 @@ export function createEvaluationRunRuntime(dependencies: {
           || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash) {
           throw new Error("Evaluation source Agent Run input differs from the frozen case");
         }
-        const output = await tx("o_agentRunOutput").where({ runId: run.id }).first("contentHash");
+        const outputs = await tx("o_agentRunOutput").where({ runId: run.id })
+          .select("content", "contentHash", "schemaVersion");
+        const output = outputs[0];
         const traces = await tx("o_agentTrace").where({ runId: run.id })
           .orderBy("sequence", "asc").select("id", "sequence", "predecessorTraceId");
         const trace = traces.at(-1);
         if (auditCausalTraceTimeline(traces).linkage !== "linked"
           || !trace || !identity.safeParse(trace.id).success
           || !Number.isSafeInteger(trace.sequence) || trace.sequence <= 0
-          || output && !digest.safeParse(output.contentHash).success) {
+          || outputs.length > 1 || !validRunOutput(output)) {
           throw new Error("Evaluation case lacks valid Agent Run evidence");
         }
         const evidence = caseEvidenceSchema.parse({ caseId: input.caseId, seed: input.seed,
@@ -214,8 +222,9 @@ export function createEvaluationRunRuntime(dependencies: {
           const traces = await tx("o_agentTrace").where({ runId: evidence.agentRunId })
             .orderBy("sequence", "asc").select("id", "sequence", "predecessorTraceId");
           const trace = traces.at(-1);
-          const output = await tx("o_agentRunOutput").where({ runId: evidence.agentRunId })
-            .first("contentHash");
+          const outputs = await tx("o_agentRunOutput").where({ runId: evidence.agentRunId })
+            .select("content", "contentHash", "schemaVersion");
+          const output = outputs[0];
           if (!run || run.projectId !== evidence.projectId
             || run.clientRequestId !== evaluationCaseRequestId(id,
               evidence.variant, evidence.caseId, evidence.seed)
@@ -231,6 +240,7 @@ export function createEvaluationRunRuntime(dependencies: {
             || auditCausalTraceTimeline(traces).linkage !== "linked"
             || trace?.id !== evidence.lastTraceId
             || trace?.sequence !== evidence.lastTraceSequence
+            || outputs.length > 1 || !validRunOutput(output)
             || (output?.contentHash ?? null) !== evidence.outputHash) {
             throw new Error("Evaluation source Agent Run evidence has changed or disappeared");
           }
