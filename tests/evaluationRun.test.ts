@@ -4,12 +4,14 @@ import test from "node:test";
 import knexFactory from "knex";
 import type { Knex } from "knex";
 
-import { createEvaluationRunRuntime, validateEvaluationRunManifest } from "../src/eval/evaluationRun";
+import { createEvaluationRunRuntime, evaluationCaseRequestId, hashEvaluationInput,
+  validateEvaluationRunManifest } from "../src/eval/evaluationRun";
 import initDB from "../src/lib/initDB";
 
 const manifest = { schemaVersion: "toonflow.evaluation-run.v1",
   studyId: "t11-paired-v1", caseManifestHash: "a".repeat(64),
   caseIds: ["DEV-EXT-001"], seeds: [11, 29],
+  caseInputs: [{ caseId: "DEV-EXT-001", contentHash: hashEvaluationInput("给出项目摘要") }],
   variants: ["baseline", "candidate"],
   baseline: { app: "app-1", schema: "schema-1", runtime: "runtime-1",
     tool: "tool-1", context: "context-1", memory: "memory-1",
@@ -40,6 +42,7 @@ async function fixture() {
   });
   await db.schema.createTable("o_agentRun", (t) => {
     t.text("id").primary(); t.integer("projectId"); t.text("status"); t.integer("version");
+    t.text("clientRequestId");
   });
   await db.schema.createTable("o_agentRunOutput", (t) => {
     t.text("runId"); t.text("contentHash");
@@ -57,6 +60,8 @@ test("T11 manifest freezes a unique paired case/seed matrix and revisions", () =
   assert.equal(validateEvaluationRunManifest(manifest).caseIds.length, 1);
   assert.throws(() => validateEvaluationRunManifest({ ...manifest, seeds: [11, 11] }));
   assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+    caseInputs: [{ caseId: "HOLD-EXT-001", contentHash: hashEvaluationInput("x") }] }));
+  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
     candidate: { ...manifest.candidate, skill: "" } }));
   assert.throws(() => validateEvaluationRunManifest({ ...manifest,
     candidate: { ...manifest.candidate, model: "model-2" } }), /common environment/u);
@@ -69,7 +74,8 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
   try {
     const created = await runtime.create(manifest);
     await db("o_agentRun").insert({ id: "run-1", projectId: 7,
-      status: "succeeded", version: 3 });
+      status: "succeeded", version: 3,
+      clientRequestId: evaluationCaseRequestId(created.id, "candidate", "DEV-EXT-001", 11) });
     await db("o_agentRunOutput").insert({ runId: "run-1", contentHash: "b".repeat(64) });
     await db("o_agentTrace").insert({ id: "trace-1", runId: "run-1", sequence: 4 });
     const input = { evaluationRunId: created.id, caseId: "DEV-EXT-001",
@@ -87,7 +93,7 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
     await db("o_agentRun").where({ id: "run-1" }).update({ version: 4 });
     await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
     await db("o_agentRun").where({ id: "run-1" }).update({ version: 3 });
-    await assert.rejects(runtime.record({ ...input, seed: 29 }), /UNIQUE|unique/u);
+    await assert.rejects(runtime.record({ ...input, seed: 29 }), /request identity/u);
     await assert.rejects(runtime.record({ ...input, caseId: "HOLD-EXT-001" }), /frozen matrix/u);
     await db("o_agentEvaluationCase").where({ caseId: input.caseId }).update({ evidenceHash: "c".repeat(64) });
     await assert.rejects(runtime.record(input), /corrupt evidence/u);
@@ -101,10 +107,14 @@ test("T11 rejects queued or trace-less Agent Runs before recording a case", asyn
     const input = { evaluationRunId: created.id, caseId: "DEV-EXT-001",
       seed: 11, variant: "baseline" as const, agentRunId: "run-queued" };
     await db("o_agentRun").insert({ id: "run-queued", projectId: 7,
-      status: "queued", version: 1 });
+      status: "queued", version: 1,
+      clientRequestId: evaluationCaseRequestId(created.id, "baseline", "DEV-EXT-001", 11) });
     await assert.rejects(runtime.record(input), /terminal production Agent Run/u);
     await db("o_agentRun").where({ id: "run-queued" }).update({ status: "failed" });
     await assert.rejects(runtime.record(input), /lacks valid Agent Run evidence/u);
+    await db("o_agentTrace").insert({ id: "trace-queued", runId: "run-queued", sequence: 1 });
+    await db("o_agentRun").where({ id: "run-queued" }).update({ clientRequestId: "unrelated-request" });
+    await assert.rejects(runtime.record(input), /request identity/u);
   } finally { await db.destroy(); }
 });
 
