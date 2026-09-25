@@ -7,3 +7,5 @@
 阅读顺序：`src/eval/evaluationRun.ts` 的 `validateEvaluationRunManifest` → `createEvaluationRunRuntime().create` → `src/eval/evaluationAgentCase.ts` 的预检、AgentRuntime `start`/`inspect` → `record` → Evaluation Run `inspect`；随后对照 `src/lib/initDB.ts` 的两张表和更新触发器，最后跑两个 `tests/evaluation*.test.ts` 定向文件。注意 `record` 只取 terminal Run、Output 哈希和 Trace 锚点，不读取原始 Prompt；`inspect` 用 expected/recorded/missing 揭示尚未覆盖的矩阵，并复核来源证据有无变化。
 
 自测：为什么每个 case/seed/variant 要绑定不同 Agent Run？为何 queued Run 不能计入结果？如果一条来源 Run 的版本在记录之后变化，报告是否仍可采用？为什么一个真实 Runtime/Fake Model 的只读样例不代表 18 个 Golden case 已迁移？本阶段没有质量分、成本、延迟或安全硬门，因此不能得出策略收益结论。
+
+对照清单的 baseline/candidate：schema、Model、Vendor 被要求相同，否则改变的不只是候选策略；App、Runtime、Tool、Context、Memory、Skill 可因实验而不同。解释为什么“版本相同”仍不能代替同预算、同数据和真实逐例测量。
