@@ -24,6 +24,7 @@ export const evaluationRunManifestSchema = z.strictObject({
   frozenAt: z.number().int().nonnegative(),
 });
 export type EvaluationRunManifest = z.infer<typeof evaluationRunManifestSchema>;
+export const parseEvaluationRevisions = (input: unknown) => revisions.parse(input);
 
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 
