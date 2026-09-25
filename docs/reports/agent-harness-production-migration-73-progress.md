@@ -83,6 +83,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 配套 Web 报价设置切片：视频工作台当前无图文生视频选型增加 Owner 本地费用估算的 get/set 控件，按 Project、Vendor、Model、输出/音频精确请求后端 quote policy，并以 expectedRevision 写入；选型变化需重新读取，失败不自动重试。它只是审批依据配置，不触发模型、审批或供应商。Web 2 个新报价合约与相邻 7 个生产 Harness 合约定向用例、非声明式 Vue 类型检查通过；未做浏览器、真实 Provider 或全量验收。上一段“Web 尚无报价配置”由此局部更新，Video 取消/媒体恢复仍无 UI。
 
+配套 Web 原请求操作切片：试用面板从持久 Video 请求状态提供本地取消意图、停止且不重发、`write_pending` 媒体本地恢复和 `observed` 媒体采纳；只对原 requestId 发起、按当前 Run version 执行，操作前显式确认，失败后要求人工核对。默认关闭的 Video 执行路由同时保护这些命令；本地取消不证明供应商已停或费用为零。Web 8 个生产 Harness 合约及 2 个报价合约定向用例、非声明式 Vue 类型检查通过。未跑浏览器、真实 Provider 或全量测试。上一段“无取消/媒体恢复 UI”由此更新，T17/T21 仍未验收。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。
