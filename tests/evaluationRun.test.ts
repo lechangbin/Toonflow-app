@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import knexFactory from "knex";
+import type { Knex } from "knex";
 
 import { createEvaluationRunRuntime, validateEvaluationRunManifest } from "../src/eval/evaluationRun";
 import initDB from "../src/lib/initDB";
@@ -16,6 +17,12 @@ const manifest = { schemaVersion: "toonflow.evaluation-run.v1",
   candidate: { app: "app-2", schema: "schema-1", runtime: "runtime-2",
     tool: "tool-2", context: "context-2", memory: "memory-1",
     skill: "skill-2", model: "model-1", vendor: "vendor-1" }, frozenAt: 100 };
+
+async function initializeQuietly(db: Knex) {
+  const previous = console.log;
+  console.log = () => {};
+  try { await initDB(db); } finally { console.log = previous; }
+}
 
 async function fixture() {
   const db = knexFactory({ client: "better-sqlite3",
@@ -101,12 +108,24 @@ test("T11 fresh schema contains immutable Evaluation Run evidence tables", async
   const db = knexFactory({ client: "better-sqlite3",
     connection: { filename: ":memory:" }, useNullAsDefault: true });
   try {
-    await initDB(db);
+    await initializeQuietly(db);
     assert.equal(await db.schema.hasTable("o_agentEvaluationRun"), true);
     assert.equal(await db.schema.hasTable("o_agentEvaluationCase"), true);
     await db("o_agentEvaluationRun").insert({ id: "eval-1", schemaVersion: "v1",
       manifestJson: "{}", manifestHash: "a".repeat(64), createdAt: 100 });
     await assert.rejects(db("o_agentEvaluationRun").where({ id: "eval-1" })
       .update({ manifestJson: "changed" }), /immutable/u);
+  } finally { await db.destroy(); }
+});
+
+test("T11 upgrading an existing database adds Evaluation tables without deleting Project data", async () => {
+  const db = knexFactory({ client: "better-sqlite3",
+    connection: { filename: ":memory:" }, useNullAsDefault: true });
+  try {
+    await db.schema.createTable("o_project", (t) => { t.integer("id").primary(); t.integer("userId"); });
+    await db("o_project").insert({ id: 7, userId: 1 });
+    await initializeQuietly(db);
+    assert.equal(await db.schema.hasTable("o_agentEvaluationRun"), true);
+    assert.equal((await db("o_project").where({ id: 7 }).first()).userId, 1);
   } finally { await db.destroy(); }
 });
