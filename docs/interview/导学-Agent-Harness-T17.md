@@ -54,7 +54,7 @@
 | Video URL 媒体获取受限 | 复用旧工作台任意 URL 下载 | 外部 URL 不能决定服务端访问范围；仅显式 host allowlist、公开 IPv4 固定解析、HTTPS、无跳转、有限响应，代价是部分 CDN 需单独配置/验证 | 3 个 fake-network 单测覆盖白名单、私有/混合 DNS、格式拒绝；无真实 CDN 验收 |
 | Video 重复执行先读原意图 | 每次都先重验当前 Track/Prompt | 首次成功本身会改变 Track，使合法重复请求误报版本冲突；认证后先核对原批准和请求身份，再仅为新意图重验 | fake Provider/SQLite 组合与账本用例覆盖成功后重复、超时后重复、TTL 后原意图；仍无真实 Provider 恰好一次保证 |
 | Video HTTP 执行显式开关 | 将已批准自动等同可执行 | 计费提交需独立 Owner 操作及操作员部署开关；默认关闭，未知结果不自动重试，代价是仍需后续 Web/Provider 验收 | 3 个假 Runtime 路由用例覆盖默认关闭、认证 actor、409；真实成本和浏览器仍未验证 |
-| Video 模型提案 grant 与执行权分离 | 生产角色自动拥有视频生成权 | `propose:track-video` 只允许提交候选且默认拒绝，Owner 版本化开启/撤销，不授予 `generate:track-video` | 6 个授权/HTTP 定向用例覆盖非 Owner、版本冲突、撤销和跨能力隔离；模型 Tool 尚未接入 |
+| Video 模型提案 grant 与执行权分离 | 生产角色自动拥有视频生成权 | `propose:track-video` 只允许提交候选且默认拒绝，Owner 版本化开启/撤销，不授予 `generate:track-video`；模型 Tool 已接入但不能自行批准或派发 | 授权/HTTP 定向用例及假模型/SQLite 链路覆盖撤销后拒绝、幂等子审批、批准后零 Vendor 请求；真实 Provider 待验收 |
 
 ## 自测与边界
 

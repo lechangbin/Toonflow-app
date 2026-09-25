@@ -5,9 +5,13 @@ import type { Knex } from "knex";
 import { AGENT_RUN_CHECKPOINT_SCHEMA_VERSION, canonicalCheckpointPayload,
   hashCheckpointPayload, type AgentRunCheckpointPayload } from "@/agentRuntime";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
+import { assertAgentRunLease, type AgentRunLease } from "@/agentRuntime/lease";
 import type { DatabaseWork } from "@/database";
+import { resolveProductionVideoProposalGrants } from "@/skillRuntime/grants";
+import { authorizeBoundSkillDefinition } from "@/skillRuntime/permissions";
 
-import { VIDEO_GENERATION_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
+import { PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION,
+  VIDEO_GENERATION_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
 import { type FrozenVideoApprovalScope,
   type createVideoApprovalScope, frozenVideoApprovalScopeSchema,
   videoApprovalScopeHash } from "./videoApprovalScope";
@@ -35,11 +39,22 @@ export interface VideoGenerationApprovalSnapshot {
   /** Durable local intent/status, not a Provider charge or completion guarantee. */
   vendorRequest: null | { requestId: string; status: string;
     providerTaskId: string | null; artifactStatus: string | null };
+  sourceRunId?: string; sourceOperationId?: string;
 }
 
 export interface VideoGenerationProposalCommand {
   projectId: number; actorUserId: number; clientRequestId: string;
   operationId: string; payload: unknown;
+}
+
+export interface VideoProposalFromAgentInput {
+  projectId: number; parentRunId: string; skillId: string;
+  lease: AgentRunLease; operationId: string; payload: unknown;
+}
+
+export function videoProposalClientRequestId(parentRunId: string,
+  operationId: string): string {
+  return `video-proposal:${hash(`${parentRunId}:${operationId}`).slice(0, 64)}`;
 }
 
 export interface VideoGenerationDecisionCommand {
@@ -60,9 +75,12 @@ async function owner(db: Knex | Knex.Transaction, projectId: number,
 }
 
 function fingerprint(input: VideoGenerationProposalCommand,
-  payload: FrozenVideoApprovalScope["payload"]): string {
+  payload: FrozenVideoApprovalScope["payload"],
+  source?: VideoProposalFromAgentInput): string {
   return hash({ projectId: input.projectId, actorUserId: input.actorUserId,
-    operationId: input.operationId, payload });
+    operationId: input.operationId, payload,
+    ...(source ? { parentRunId: source.parentRunId,
+      skillId: source.skillId } : {}) });
 }
 
 function parseFrozen(row: { payloadJson: string; payloadHash: string;
@@ -116,10 +134,33 @@ async function snapshot(db: Knex | Knex.Transaction, projectId: number,
     || receipt.inputHash !== approval.payloadHash
     || !["pending", "approved", "rejected", "expired"].includes(approval.status)) conflict();
   const frozen = parseFrozen(approval, projectId);
-  let runInput: { operationId?: unknown; scopeHash?: unknown };
+  let runInput: { operationId?: unknown; scopeHash?: unknown;
+    parentRunId?: unknown; parentOperationId?: unknown;
+    skillId?: unknown; proposalContractHash?: unknown };
   try { runInput = JSON.parse(run.input); } catch { return conflict(); }
   if (runInput.operationId !== approval.operationId
     || runInput.scopeHash !== frozen.scopeHash) conflict();
+  const hasSource = runInput.parentRunId != null;
+  if (hasSource) {
+    if (typeof runInput.parentRunId !== "string"
+      || typeof runInput.parentOperationId !== "string"
+      || typeof runInput.skillId !== "string"
+      || runInput.parentOperationId !== approval.operationId
+      || runInput.proposalContractHash !== toolDefinitionContractHash(
+        PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION)) conflict();
+    const parent = await db("o_agentRun").where({ id: runInput.parentRunId,
+      projectId, role: "productionAgent", scope: "production-harness-v1" }).first("id");
+    const permission = parent && await db("o_agentSkillPermissionDecision")
+      .where({ runId: parent.id, operationId: runInput.parentOperationId,
+        toolName: PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION.name,
+        skillId: runInput.skillId }).first();
+    let allowed: unknown;
+    try { allowed = JSON.parse(permission?.decisionJson ?? "null")?.allowed; }
+    catch { return conflict(); }
+    if (!permission || createHash("sha256").update(permission.decisionJson)
+      .digest("hex") !== permission.decisionHash
+      || allowed !== true) conflict();
+  }
   const call = await db("o_agentToolCall")
     .where({ approvalId: approval.id, runId }).first();
   let vendorRequest: VideoGenerationApprovalSnapshot["vendorRequest"] = null;
@@ -154,7 +195,9 @@ async function snapshot(db: Knex | Knex.Transaction, projectId: number,
     operationId: approval.operationId, status: approval.status as Status,
     runStatus: run.status, runVersion: run.version, expiresAt: approval.expiresAt,
     allowedActions, scopeHash: frozen.scopeHash,
-    payload: frozen.payload, preview: frozen.preview, vendorRequest };
+    payload: frozen.payload, preview: frozen.preview, vendorRequest,
+    ...(hasSource ? { sourceRunId: runInput.parentRunId as string,
+      sourceOperationId: runInput.parentOperationId as string } : {}) };
 }
 
 export async function expireDueVideoGenerationApprovals(db: Knex,
@@ -218,13 +261,13 @@ export function createVideoGenerationApprovalRuntime(dependencies: {
       || quote.estimatedMaxCostMicros !== frozen.quote.estimatedMaxCostMicros
       || quote.currency !== frozen.quote.currency) conflict();
   }
-  return {
-    async propose(input: VideoGenerationProposalCommand): Promise<VideoGenerationApprovalSnapshot> {
+  async function persistProposal(input: VideoGenerationProposalCommand,
+    source?: VideoProposalFromAgentInput): Promise<VideoGenerationApprovalSnapshot | null> {
       if (!identifier.test(input.clientRequestId) || !identifier.test(input.operationId)
         || !Number.isSafeInteger(ttl) || ttl <= 0) conflict();
       const payload = videoGenerationProposalInput.parse(input.payload);
-      const requestFingerprint = fingerprint(input, payload);
-      const prior = await dependencies.work(async (db) => {
+      const requestFingerprint = fingerprint(input, payload, source);
+      const prior = !source && await dependencies.work(async (db) => {
         await owner(db, input.projectId, input.actorUserId);
         return db("o_agentRun").where({ projectId: input.projectId,
           role: "productionAgent", scope: VIDEO_GENERATION_APPROVAL_SCOPE,
@@ -241,6 +284,56 @@ export function createVideoGenerationApprovalRuntime(dependencies: {
       const frozen = await dependencies.scope.prepare(input.projectId, payload);
       return dependencies.work((db) => db.transaction(async (tx) => {
         await owner(tx, input.projectId, input.actorUserId);
+        const now = dependencies.now();
+        if (source) {
+          const parent = await tx("o_agentRun").where({ id: source.parentRunId,
+            projectId: input.projectId, role: "productionAgent",
+            scope: "production-harness-v1", status: "running" })
+            .whereNull("cancellationRequestedAt").first("id", "input");
+          if (!parent || source.lease.runId !== parent.id) conflict();
+          let parentActor: unknown;
+          try { parentActor = JSON.parse(parent.input).actorUserId; }
+          catch { return conflict(); }
+          if (parentActor !== input.actorUserId) conflict();
+          await assertAgentRunLease(tx, source.lease, now);
+          const proposalTool = PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION;
+          const proposalHash = toolDefinitionContractHash(proposalTool);
+          const proposalCatalog = await tx("o_agentToolDefinition")
+            .where({ name: proposalTool.name, revision: proposalTool.revision })
+            .first("contractHash");
+          if (proposalCatalog && proposalCatalog.contractHash !== proposalHash) conflict();
+          if (!proposalCatalog) await tx("o_agentToolDefinition").insert({
+            id: dependencies.createId(), name: proposalTool.name,
+            revision: proposalTool.revision, contractHash: proposalHash,
+            policy: JSON.stringify(proposalTool.policy), createdAt: now });
+          const grants = await resolveProductionVideoProposalGrants(tx, {
+            runId: parent.id, projectId: input.projectId });
+          const authority = await authorizeBoundSkillDefinition(tx, {
+            runId: parent.id, projectId: input.projectId,
+            skillId: source.skillId, ...grants }, proposalTool);
+          const decisionJson = JSON.stringify(authority.decision);
+          const decisionHash = createHash("sha256").update(decisionJson).digest("hex");
+          const previous = await tx("o_agentSkillPermissionDecision")
+            .where({ runId: parent.id, operationId: source.operationId }).first();
+          if (previous) {
+            if (previous.skillId !== source.skillId
+              || previous.toolName !== proposalTool.name
+              || previous.skillRevisionId !== authority.skillRevisionId
+              || createHash("sha256").update(previous.decisionJson)
+                .digest("hex") !== previous.decisionHash) conflict();
+            let allowed: unknown;
+            try { allowed = JSON.parse(previous.decisionJson).allowed; }
+            catch { return conflict(); }
+            if (allowed !== true || !authority.decision.allowed) return null;
+          } else {
+            await tx("o_agentSkillPermissionDecision").insert({
+              id: dependencies.createId(), runId: parent.id, skillId: source.skillId,
+              skillRevisionId: authority.skillRevisionId,
+              operationId: source.operationId, toolName: proposalTool.name,
+              decisionJson, decisionHash, createdAt: now });
+            if (!authority.decision.allowed) return null;
+          }
+        }
         const existing = await tx("o_agentRun").where({ projectId: input.projectId,
           role: "productionAgent", scope: VIDEO_GENERATION_APPROVAL_SCOPE,
           clientRequestId: input.clientRequestId }).first();
@@ -249,7 +342,6 @@ export function createVideoGenerationApprovalRuntime(dependencies: {
           return await snapshot(tx, input.projectId, existing.id) ?? conflict();
         }
         await verifyInside(tx, frozen);
-        const now = dependencies.now();
         const contractHash = toolDefinitionContractHash(tool);
         const catalog = await tx("o_agentToolDefinition")
           .where({ name: tool.name, revision: tool.revision }).first("contractHash");
@@ -263,7 +355,11 @@ export function createVideoGenerationApprovalRuntime(dependencies: {
         await tx("o_agentRun").insert({ id: runId, projectId: input.projectId,
           scriptId: payload.scriptId, role: "productionAgent", scope: VIDEO_GENERATION_APPROVAL_SCOPE,
           clientRequestId: input.clientRequestId, requestFingerprint,
-          input: JSON.stringify({ operationId: input.operationId, scopeHash: frozen.scopeHash }),
+          input: JSON.stringify({ operationId: input.operationId, scopeHash: frozen.scopeHash,
+            ...(source ? { parentRunId: source.parentRunId,
+              parentOperationId: source.operationId, skillId: source.skillId,
+              proposalContractHash: toolDefinitionContractHash(
+                PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION) } : {}) }),
           status: "waiting", waitingReason: "tool-approval", attentionReason: "tool-approval-required",
           allowedActions: JSON.stringify(["inspect", "approve", "reject"]), version: 1,
           createdAt: now, updatedAt: now, startedAt: now, fence: 0 });
@@ -296,6 +392,25 @@ export function createVideoGenerationApprovalRuntime(dependencies: {
           eventType: "tool.video-approval.requested", createdAt: now });
         return await snapshot(tx, input.projectId, runId) ?? conflict();
       }));
+  }
+  return {
+    async propose(input: VideoGenerationProposalCommand): Promise<VideoGenerationApprovalSnapshot> {
+      return await persistProposal(input) ?? conflict();
+    },
+    async proposeFromAgent(source: VideoProposalFromAgentInput): Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }> {
+      const actorUserId = await dependencies.work(async (db) => {
+        const project = await db("o_project")
+          .where({ id: source.projectId }).first("userId");
+        return Number(project?.userId);
+      });
+      const result = await persistProposal({ projectId: source.projectId,
+        actorUserId,
+        clientRequestId: videoProposalClientRequestId(source.parentRunId,
+          source.operationId), operationId: source.operationId,
+        payload: source.payload }, source);
+      return result ? { status: "pending", approvalRunId: result.runId,
+        approvalId: result.id } : { status: "denied" };
     },
     async inspect(projectId: number, runId: string,
       actorUserId: number): Promise<VideoGenerationApprovalSnapshot | null> {

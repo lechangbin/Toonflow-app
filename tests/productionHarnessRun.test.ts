@@ -396,7 +396,8 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
       inspectDerived: (projectId, runId, actorUserId) =>
         derivedAsset.inspect(projectId, runId, actorUserId),
       inspectStoryboard: (projectId, runId, actorUserId) =>
-        storyboard.inspect(projectId, runId, actorUserId) });
+        storyboard.inspect(projectId, runId, actorUserId),
+      inspectVideo: async () => null });
     await assert.rejects(effects({ projectId: 7, actorUserId: 2,
       runId: run.id }), ProductionHarnessEffectsNotFoundError);
     const projected = await effects({ projectId: 7, actorUserId: 1, runId: run.id });

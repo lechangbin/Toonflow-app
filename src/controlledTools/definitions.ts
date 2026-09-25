@@ -7,6 +7,7 @@ import { scriptContentWriteInput, scriptWorkspaceWriteInput } from "./scriptWrit
 import { billableImageScopeSchema } from "./billableImageLifecycle";
 import { storyboardWriteInput } from "./storyboardWriteContract";
 import { frozenVideoApprovalScopeSchema } from "./videoApprovalScope";
+import { videoGenerationProposalInput } from "./videoGenerationProposalContract";
 
 const novelIdInput = z.strictObject({ novelId: z.number().int().positive() });
 const novelTextOutput = z.strictObject({
@@ -373,6 +374,30 @@ export const PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION = Object.freeze({
   adapterId: "storyboard-approval-proposal-v1",
 });
 
+/** A model may request Owner review of one Track; it never owns Video dispatch. */
+export const PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION = Object.freeze({
+  name: "propose_track_video_generation",
+  revision: "toonflow.tool.propose-track-video-generation.v1",
+  inputSchema: videoGenerationProposalInput,
+  outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+    approvalId: z.string().min(1), status: z.literal("pending") }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "none", externalCost: "none", completion: "synchronous" }),
+    capabilities: Object.freeze(["propose:track-video"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["production-harness-v1"]),
+    scope: "run-project", approval: "proposal-only-owner-decision-required",
+    idempotency: "run-operation-id", retries: "explicit-new-operation",
+    timeoutMs: 0, cancellation: "proposal-survives-parent-run-cancellation",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "child-video-approval-run-before-model-result",
+    reconciliation: "inspect-child-approval-run",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "bounded-approval-preview",
+  }),
+  adapterId: "video-approval-proposal-v1",
+});
+
 /** Catalogued for durable Owner review; no adapter dispatch is registered yet. */
 export const VIDEO_GENERATION_TOOL_DEFINITION = Object.freeze({
   name: "generate_track_video",
@@ -406,6 +431,7 @@ export function toolDefinitionContractHash(definition: ControlledToolDefinition 
   | typeof STORYBOARD_WRITE_TOOL_DEFINITION
   | typeof VIDEO_GENERATION_TOOL_DEFINITION
   | typeof PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION
+  | typeof PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION
   | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION
   | (typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS)[keyof typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS]): string {
   return createHash("sha256").update(JSON.stringify({

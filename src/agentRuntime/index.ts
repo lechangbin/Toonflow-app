@@ -26,6 +26,7 @@ import {
   PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION,
   PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION,
   PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION,
   toolDefinitionContractHash,
   type ControlledToolName,
   type ControlledToolDependencies,
@@ -85,13 +86,13 @@ const SCRIPT_PROPOSAL_SYSTEM_PROMPT = [SYSTEM_PROMPT,
   "若 Tool 权限允许，你可以提出单字段规划或单个剧本的待审批候选。提案不会写入 Project，只有 Owner 查看全文并批准后才可能生效。",
   "只能报告提案处于待审批状态，不得把提案或模型输出表述为已批准、已保存或已生成成品。",
 ].join("\n");
-const PRODUCTION_READ_PROMPT_VERSION = "toonflow.production-harness-guidance.v2";
+const PRODUCTION_READ_PROMPT_VERSION = "toonflow.production-harness-guidance.v3";
 const PRODUCTION_READ_SYSTEM_PROMPT = [
   "你是 Toonflow 生产工作区的受控指导 Agent。",
   "只能根据已绑定 Skill、项目上下文和授权 Tool 回答；模型的提案不等于 Owner 批准或效果提交。不得把待审候选声称为已生成图片、视频、分镜或已修改项目。",
   "如需拍摄计划或分镜表，只能调用 get_production_workspace_text，并指定真实剧本 ID。",
   "不允许调用旧 Socket 回调；事实不足时明确说明。",
-  "若获得相应权限，只能提出单资产图片、派生资产或现有空轨道的单条分镜候选，供 Owner 独立审批。提案本身不生成、不扣费、不保存生产效果。",
+  "若获得相应权限，只能提出单资产图片、派生资产、现有空轨道的单条分镜或现有轨道的单条文生视频候选，供 Owner 独立审批。提案本身不生成、不扣费、不保存生产效果。",
 ].join("\n");
 
 export interface StartAgentRunInput {
@@ -262,6 +263,10 @@ export interface AgentRunDependencies {
     payload: unknown }) => Promise<
       { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
   proposeStoryboard?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    payload: unknown }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
+  proposeVideo?: (input: { projectId: number; parentRunId: string;
     skillId: string; lease: AgentRunLease; operationId: string;
     payload: unknown }) => Promise<
       { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
@@ -607,6 +612,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   if (dependencies.proposeStoryboard && !dependencies.productionMode) {
     throw new TypeError("Storyboard proposal requires Production Harness mode");
   }
+  if (dependencies.proposeVideo && !dependencies.productionMode) {
+    throw new TypeError("Video proposal requires Production Harness mode");
+  }
   if (dependencies.skillMode && (!dependencies.prepareRun || dependencies.controlledTools)) {
     throw new TypeError("Skill mode requires atomic preparation and its own guarded Tool runtime");
   }
@@ -890,7 +898,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           ...(dependencies.proposeDerivedAsset
             ? { propose_derived_asset_write: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION } : {}),
           ...(dependencies.proposeStoryboard
-            ? { propose_storyboard_write: PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION } : {}) }
+            ? { propose_storyboard_write: PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION } : {}),
+          ...(dependencies.proposeVideo
+            ? { propose_track_video_generation: PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION } : {}) }
         : dependencies.skillMode
         ? { get_novel_text: HARNESS_TOOL_DEFINITIONS.get_novel_text,
           get_novel_events: HARNESS_TOOL_DEFINITIONS.get_novel_events,
@@ -1051,6 +1061,18 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           return { status: "unavailable", kind: "executionFailed" };
         }
       }
+      async function proposeVideo(payload: unknown, operationId: string): Promise<unknown> {
+        if (!dependencies.proposeVideo || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeVideo({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
       const result = await call.invokeText({
         messages: invocation.messages,
         tools: {
@@ -1095,6 +1117,11 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             description: "仅提出在现有空 Video Track 创建单条分镜的候选；Owner 审批前不写入。",
             inputSchema: PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION.inputSchema,
             execute: async (payload, options) => proposeStoryboard(payload, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeVideo ? { propose_track_video_generation: tool({
+            description: "仅提出现有轨道的单条文生视频候选；Owner 审批和独立执行前不请求供应商。",
+            inputSchema: PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION.inputSchema,
+            execute: async (payload, options) => proposeVideo(payload, options.toolCallId),
           }) } : {}),
           ...(dependencies.proposeScriptWrite ? { propose_script_workspace_write: tool({
             description: "仅提出当前项目单个规划字段的待审批候选；不会写入，Owner 查看全文并批准后才可能生效。",

@@ -5,6 +5,8 @@ import { getDatabaseRuntime } from "@/database";
 import { createDefaultBillableImageRuntime } from "@/controlledTools/billableImageComposition";
 import { getDefaultDerivedAssetWriteRuntime } from "@/controlledTools/derivedAssetWrite";
 import { getDefaultStoryboardWriteApprovalRuntime } from "@/controlledTools/storyboardWriteApproval";
+import { createDefaultVideoGenerationApprovalRuntime } from
+  "@/controlledTools/videoGenerationApprovalComposition";
 import { resolveProductionSkillGrants } from "@/skillRuntime/grants";
 import { getDefaultConfiguredVendor } from "@/vendor";
 
@@ -18,6 +20,7 @@ export function getDefaultProductionHarnessRuntime(): AgentRuntime {
     const billableImage = createDefaultBillableImageRuntime();
     const derivedAsset = getDefaultDerivedAssetWriteRuntime();
     const storyboard = getDefaultStoryboardWriteApprovalRuntime();
+    const video = createDefaultVideoGenerationApprovalRuntime();
     defaultRuntime = createAgentRuntime({
       work: (operation) => getDatabaseRuntime().work(operation),
       openTextCall: (target) => getDefaultConfiguredVendor().openTextCall(target),
@@ -32,6 +35,7 @@ export function getDefaultProductionHarnessRuntime(): AgentRuntime {
       proposeBillableImage: (input) => billableImage.approval.proposeFromAgent(input),
       proposeDerivedAsset: (input) => derivedAsset.proposeFromAgent(input),
       proposeStoryboard: (input) => storyboard.proposeFromAgent(input),
+      proposeVideo: (input) => video.proposeFromAgent(input),
     });
   }
   return defaultRuntime;
