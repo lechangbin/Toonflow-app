@@ -12,6 +12,7 @@ const manifest = { schemaVersion: "toonflow.ablation-manifest.v1",
   studyId: "t19-context-v1", axis: "context", referenceVariant: "full-context",
   candidateVariants: [...CONTEXT_ABLATION_VARIANTS],
   caseManifestHash: "a".repeat(64), caseIds: ["DEV-TOOL-001", "HOLD-TOOL-001"],
+  expectedFailureClasses: { "DEV-TOOL-001": "none", "HOLD-TOOL-001": "none" },
   seeds: [11, 29], revisions: { app: "app-1", runtime: "run-1",
     tool: "tool-1", context: "context-1", memory: "memory-1",
     skill: "skill-1", model: "model-1", vendor: "vendor-1",
@@ -35,6 +36,8 @@ test("T19 contract rejects changed variants, duplicate cases/seeds, and missing 
       "without-compaction", "full-context"] }));
   assert.throws(() => validateAblationManifest({ ...manifest,
     caseIds: ["DEV-TOOL-001", "DEV-TOOL-001"] }));
+  assert.throws(() => validateAblationManifest({ ...manifest,
+    expectedFailureClasses: { "DEV-TOOL-001": "none" } }));
   assert.throws(() => validateAblationManifest({ ...manifest, seeds: [11, 11] }));
   assert.throws(() => validateAblationManifest({ ...manifest,
     revisions: { ...manifest.revisions, model: "" } }));
@@ -72,6 +75,11 @@ test("T19 result summary reports denominators and rejects hard-gate failure with
   ]);
   assert.equal(failed.variants[0].hardGateFailures["permission-escalation"], 1);
   assert.equal(failed.variants[0].adoptable, false);
+  const wrongFailure = summarizeAblationResults(manifest, [
+    { ...rows[0], failureClass: "routing" }, ...rows.slice(1),
+  ]);
+  assert.equal(wrongFailure.variants[0].unexpectedFailureClass, 1);
+  assert.equal(wrongFailure.variants[0].adoptable, false);
   const partial = summarizeAblationResults(manifest, rows.slice(1));
   assert.equal(partial.missing, 1);
   assert.equal(partial.variants[0].adoptable, false);
