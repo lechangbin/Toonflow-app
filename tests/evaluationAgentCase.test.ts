@@ -12,10 +12,10 @@ import initDB from "../src/lib/initDB";
 const revisionSet = { app: "app-1", schema: "schema-1", runtime: "runtime-1",
   tool: "tool-1", context: "context-1", memory: "memory-1",
   skill: "skill-1", model: "model-1", vendor: "vendor-1" };
-const manifest = { schemaVersion: "toonflow.evaluation-run.v1",
+const manifest = { schemaVersion: "toonflow.evaluation-run.v2",
   studyId: "t11-runtime-case-v1", caseManifestHash: "a".repeat(64),
   caseIds: ["DEV-EXT-001"], seeds: [11, 29],
-  caseInputs: [{ caseId: "DEV-EXT-001", contentHash: hashEvaluationInput("给出项目摘要"),
+  caseInputs: [{ caseId: "DEV-EXT-001", projectId: 7, contentHash: hashEvaluationInput("给出项目摘要"),
     role: "scriptAgent", scope: "read-only-project-guidance-v1" }],
   variants: ["baseline", "candidate"], baseline: revisionSet,
   candidate: { ...revisionSet, app: "app-2" }, frozenAt: 100 };
@@ -57,6 +57,7 @@ test("T11 adapter records a case only after the real AgentRuntime terminates", a
     await assert.rejects(adapter.execute({ ...input, variant: "candidate" }), /revisions do not match/u);
     await assert.rejects(adapter.execute({ ...input, caseId: "HOLD-EXT-001" }), /frozen matrix/u);
     await assert.rejects(adapter.execute({ ...input, content: "另一个问题" }), /frozen input/u);
+    await assert.rejects(adapter.execute({ ...input, projectId: 8 }), /frozen input/u);
     await assert.rejects(adapter.execute({ ...input, role: "productionAgent" }), /frozen input/u);
     assert.equal(modelCalls, 1);
   } finally { await db.destroy(); }

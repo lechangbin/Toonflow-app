@@ -28,6 +28,7 @@ export function createEvaluationAgentCase(dependencies: {
       }
       const frozenInput = frozen.manifest.caseInputs.find((entry) => entry.caseId === input.caseId);
       if (!frozenInput || !input.content.trim()
+        || input.projectId !== frozenInput.projectId
         || hashEvaluationInput(input.content) !== frozenInput.contentHash
         || input.role !== frozenInput.role || input.scope !== frozenInput.scope) {
         throw new TypeError("Evaluation case content differs from the frozen input");

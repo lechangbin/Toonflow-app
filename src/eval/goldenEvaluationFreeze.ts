@@ -13,7 +13,7 @@ export async function freezeGoldenEvaluationRun(evaluation: Evaluation, input: {
   baseline: EvaluationRunManifest["baseline"];
   candidate: EvaluationRunManifest["candidate"];
   frozenAt: number;
-  caseInputs: Array<{ caseId: string; content: string;
+  caseInputs: Array<{ caseId: string; projectId: number; content: string;
     role: CaseInput["role"]; scope: CaseInput["scope"] }>;
 }) {
   if (typeof input.manifestSource !== "string"
@@ -33,6 +33,7 @@ export async function freezeGoldenEvaluationRun(evaluation: Evaluation, input: {
     goldenManifestJson,
     caseIds: golden.cases.map((entry) => entry.id),
     caseInputs: input.caseInputs.map((entry) => ({ caseId: entry.caseId,
+      projectId: entry.projectId,
       contentHash: hashEvaluationInput(entry.content),
       role: entry.role, scope: entry.scope })),
     seeds: input.seeds, variants: ["baseline", "candidate"],
