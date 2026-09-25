@@ -72,6 +72,7 @@ export async function recoverAmbiguousVideoRequests(db: Knex,
     await appendCausalTrace(tx, { id: createId(), runId: run.id,
       stepId: call.stepId, attemptId: call.attemptId,
       toolReceiptId: call.receiptId, toolCallId: call.id,
+      videoVendorRequestId: request.id,
       eventType: "vendor.video-request.unknown-on-recovery",
       runStatus: "waiting", stepStatus: "waiting",
       diagnostic: unknownDiagnostic, createdAt: recoveredAt });
@@ -151,6 +152,7 @@ export function createVideoRequestLedger(dependencies: {
         await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
           stepId: call.stepId, attemptId: call.attemptId,
           toolReceiptId: call.receiptId, toolCallId: call.id,
+          videoVendorRequestId: request.id,
           eventType: "vendor.video-request.task-observed",
           runStatus: "waiting",
           stepStatus: request.status === "unknown" ? "waiting" : "running",
@@ -189,6 +191,7 @@ export function createVideoRequestLedger(dependencies: {
         await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
           stepId: call.stepId, attemptId: call.attemptId,
           toolReceiptId: call.receiptId, toolCallId: call.id,
+          videoVendorRequestId: request.id,
           eventType: "vendor.video-request.submission-unknown",
           runStatus: "waiting", stepStatus: "waiting",
           diagnostic: unknownDiagnostic, createdAt: now });
@@ -306,7 +309,8 @@ export function createVideoRequestLedger(dependencies: {
         await tx("o_agentRunAttempt").where({ id: attempt.id }).update({ status: "running" });
         await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
           stepId: step.id, attemptId: attempt.id, toolReceiptId: receipt.id,
-          toolCallId, eventType: "vendor.video-request.intent-recorded",
+          toolCallId, videoVendorRequestId: vendorRequestId,
+          eventType: "vendor.video-request.intent-recorded",
           runStatus: "waiting", stepStatus: "running", createdAt: now });
         return { requestId, vendorRequestId, toolCallId,
           status: "dispatch_recorded", newIntent: true };

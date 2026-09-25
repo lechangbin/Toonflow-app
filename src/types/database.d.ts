@@ -329,6 +329,8 @@ export interface o_agentTrace {
   'eventType': string;
   'id'?: string;
   'imageArtifactId'?: string | null;
+  'videoVendorRequestId'?: string | null;
+  'videoArtifactId'?: string | null;
   'predecessorTraceId'?: string | null;
   'runId': string;
   'runStatus'?: string | null;
@@ -372,6 +374,16 @@ export interface o_agentVideoQuotePolicy {
   'scopeKey': string;
   'updatedAt': number;
   'updatedByUserId': number;
+}
+export interface o_agentVideoArtifact {
+  'contentHash': string;
+  'createdAt': number;
+  'id'?: string;
+  'mediaPath': string;
+  'status': string;
+  'trackId': number;
+  'updatedAt': number;
+  'vendorRequestId': string;
 }
 export interface o_agentVideoVendorRequest {
   'commandHash': string;
@@ -739,6 +751,7 @@ export interface DB {
   "o_agentTrace": o_agentTrace;
   "o_agentVendorRequest": o_agentVendorRequest;
   "o_agentVideoQuotePolicy": o_agentVideoQuotePolicy;
+  "o_agentVideoArtifact": o_agentVideoArtifact;
   "o_agentVideoVendorRequest": o_agentVideoVendorRequest;
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;

@@ -74,6 +74,8 @@ export interface CausalTraceInput {
   toolCallId?: string;
   vendorRequestId?: string;
   imageArtifactId?: string;
+  videoVendorRequestId?: string;
+  videoArtifactId?: string;
   runStatus?: string;
   stepStatus?: string;
   diagnostic?: TraceSafeDiagnostic;
@@ -123,6 +125,22 @@ export async function appendCausalTrace(tx: Knex.Transaction, input: CausalTrace
     const artifact = await tx("o_agentImageArtifact").where({ id: input.imageArtifactId }).first("vendorRequestId");
     if (!input.vendorRequestId || artifact?.vendorRequestId !== input.vendorRequestId) {
       throw new Error("Trace Artifact does not match VendorRequest");
+    }
+  }
+  if (input.videoVendorRequestId) {
+    const request = await tx("o_agentVideoVendorRequest")
+      .where({ id: input.videoVendorRequestId, runId: input.runId })
+      .first("toolCallId");
+    if (!input.toolCallId || request?.toolCallId !== input.toolCallId) {
+      throw new Error("Trace Video VendorRequest does not match ToolCall");
+    }
+  }
+  if (input.videoArtifactId) {
+    const artifact = await tx("o_agentVideoArtifact")
+      .where({ id: input.videoArtifactId }).first("vendorRequestId");
+    if (!input.videoVendorRequestId
+      || artifact?.vendorRequestId !== input.videoVendorRequestId) {
+      throw new Error("Trace Video Artifact does not match VendorRequest");
     }
   }
   const previous = await tx("o_agentTrace").where({ runId: input.runId })

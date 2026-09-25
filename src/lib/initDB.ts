@@ -842,6 +842,22 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["requestId"]);
       },
     },
+    // Request-scoped Video media evidence; never implies acceptance into o_video by itself.
+    {
+      name: "o_agentVideoArtifact",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("vendorRequestId").notNullable()
+          .references("id").inTable("o_agentVideoVendorRequest");
+        table.integer("trackId").notNullable();
+        table.text("mediaPath").notNullable();
+        table.text("contentHash").notNullable();
+        table.text("status").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["vendorRequestId", "contentHash"]);
+      },
+    },
     // Agent Step：Run 内有序、可独立检查的执行步骤
     {
       name: "o_agentRunStep",
@@ -1123,6 +1139,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("toolCallId").references("id").inTable("o_agentToolCall");
         table.text("vendorRequestId").references("id").inTable("o_agentVendorRequest");
         table.text("imageArtifactId").references("id").inTable("o_agentImageArtifact");
+        table.text("videoVendorRequestId").references("id").inTable("o_agentVideoVendorRequest");
+        table.text("videoArtifactId").references("id").inTable("o_agentVideoArtifact");
         table.text("predecessorTraceId").references("id").inTable("o_agentTrace");
         table.integer("sequence").notNullable();
         table.string("eventType").notNullable();
@@ -1972,6 +1990,16 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN OLD.providerTaskId IS NOT NULL AND NEW.providerTaskId IS NOT OLD.providerTaskId
       BEGIN
         SELECT RAISE(ABORT, 'Agent Video Vendor observation cannot be replaced');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentVideoArtifact")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVideoArtifact_identity_immutable
+      BEFORE UPDATE OF vendorRequestId, trackId, mediaPath, contentHash, createdAt
+      ON o_agentVideoArtifact
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Video artifact identity is immutable');
       END
     `);
   }
