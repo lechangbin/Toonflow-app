@@ -1,8 +1,7 @@
-import { createHash } from "node:crypto";
-
 import type { AgentRuntime, StartAgentRunInput } from "@/agentRuntime";
 
-import { createEvaluationRunRuntime, parseEvaluationRevisions,
+import { createEvaluationRunRuntime, evaluationCaseRequestId,
+  hashEvaluationInput, parseEvaluationRevisions,
   type EvaluationRunManifest } from "./evaluationRun";
 
 type Evaluation = ReturnType<typeof createEvaluationRunRuntime>;
@@ -27,14 +26,17 @@ export function createEvaluationAgentCase(dependencies: {
         || !frozen.manifest.variants.includes(input.variant)) {
         throw new TypeError("Evaluation case is outside the frozen matrix");
       }
+      const frozenInput = frozen.manifest.caseInputs.find((entry) => entry.caseId === input.caseId);
+      if (!frozenInput || hashEvaluationInput(input.content) !== frozenInput.contentHash) {
+        throw new TypeError("Evaluation case content differs from the frozen input");
+      }
       const declared = frozen.manifest[input.variant];
       const actual = parseEvaluationRevisions(await dependencies.currentRevisions());
       if (JSON.stringify(actual) !== JSON.stringify(declared)) {
         throw new TypeError("Evaluation Runtime revisions do not match the frozen manifest");
       }
-      const clientRequestId = `eval-${createHash("sha256")
-        .update(JSON.stringify([input.evaluationRunId, input.variant,
-          input.caseId, input.seed])).digest("hex").slice(0, 32)}`;
+      const clientRequestId = evaluationCaseRequestId(input.evaluationRunId,
+        input.variant, input.caseId, input.seed);
       const started = await dependencies.runtime.start({
         schemaVersion: "toonflow.agent-run.start.v1", projectId: input.projectId,
         role: input.role, scope: input.scope, clientRequestId,
