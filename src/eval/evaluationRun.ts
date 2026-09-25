@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import type { DatabaseWork } from "@/database";
 import { z } from "zod";
 
+import { hashGoldenEvalManifest, validateGoldenEvalManifest } from "./goldenEval";
+
 export const EVALUATION_RUN_VERSION = "toonflow.evaluation-run.v1" as const;
 const digest = z.string().regex(/^[a-f0-9]{64}$/u);
 const identity = z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u);
@@ -17,6 +19,7 @@ export const evaluationRunManifestSchema = z.strictObject({
   schemaVersion: z.literal(EVALUATION_RUN_VERSION),
   studyId: identity,
   caseManifestHash: digest,
+  goldenManifestJson: z.string().max(1024 * 1024).optional(),
   caseIds: z.array(caseId).min(1),
   caseInputs: z.array(z.strictObject({ caseId, contentHash: digest,
     role: z.enum(["scriptAgent", "productionAgent"]),
@@ -50,6 +53,14 @@ export function validateEvaluationRunManifest(input: unknown): EvaluationRunMani
   }
   if (COMMON_REVISIONS.some((key) => manifest.baseline[key] !== manifest.candidate[key])) {
     throw new TypeError("Evaluation comparison changed a required common environment revision");
+  }
+  if (manifest.goldenManifestJson !== undefined) {
+    const golden = validateGoldenEvalManifest(JSON.parse(manifest.goldenManifestJson) as unknown);
+    if (hashGoldenEvalManifest(manifest.goldenManifestJson) !== manifest.caseManifestHash
+      || golden.cases.length !== manifest.caseIds.length
+      || golden.cases.some((entry, index) => entry.id !== manifest.caseIds[index])) {
+      throw new TypeError("Evaluation Run differs from the frozen Golden manifest");
+    }
   }
   return manifest;
 }
