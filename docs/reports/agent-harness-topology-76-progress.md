@@ -8,4 +8,6 @@ Issue：`lechangbin/Toonflow-app#76`。此分支叠在 T19 评测契约分支上
 
 等资源校验补充：仅比较重复 seed 的数量不足以保证相同样本，选择函数现还要求三组 `seedSetHash` 完全一致；即使数量相同但 seed 集不同，也返回 incomplete。定向测试覆盖该反例。正式结果仍需 T19 执行器生成并校验 hash，当前只是汇总证据的拒绝规则。
 
+确定性角色执行壳补充：`topologySimulation` 接受注入的角色 handler 和 Tool port，逐角色传入其 Skill 白名单，`invokeTool` 在触达 port 前检查角色 Tool 许可和全局调用预算；每次输出只允许有哈希的本角色 Artifact 引用，生成下一跳时再按 TopologyPlan 校验边、所有权和大小。T2 最终要求 verifier 同时给出 verification 与 final。2 个假角色单测覆盖两次交接、越权 Tool 零调用以及 rawPrompt 字段拒绝；连同原 4 个拓扑契约用例和 App TypeScript 检查通过。它不接生产 AgentRun、数据库租约或真实 Vendor，也不能约束恶意 handler 自行调用外部系统；生产可用性与等资源测量仍未实现。
+
 定向验证：`tests/topologyPlan.test.ts` 的 4 例覆盖三种拓扑、角色越权、Artifact 所有权、恶意 handoff payload、计划哈希和等资源选择；App TypeScript 检查通过。未跑实际多 Agent、Golden Eval、全量套件、浏览器或真实 Provider。后续必须接入 T19 冻结 case/结果体系，跑重复等资源对比和逐例故障迁移，发布不可变结果后才可决定生产拓扑；T21 做最终验收。
