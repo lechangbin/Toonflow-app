@@ -5,6 +5,7 @@ import * as agent from "@/agents/productionAgent/index";
 import ResTool from "@/socket/resTool";
 import { createLegacyStopLifecycle } from "@/socket/legacyStopLifecycle";
 import { authorizeLegacyProductionContext } from "@/socket/legacyProductionContext";
+import { createLegacyProductionContextGate } from "@/socket/legacyProductionContextGate";
 
 async function verifyToken(rawToken: string): Promise<number | null> {
   const setting = await getDatabaseRuntime().work((db) =>
@@ -47,13 +48,12 @@ export default (nsp: Namespace) => {
       socket.disconnect();
       return;
     }
-    let context = initialContext;
+    const contextGate = createLegacyProductionContextGate(initialContext);
 
     console.log("[productionAgent] 已连接:", socket.id);
 
-    let resTool = new ResTool(socket, { projectId: context.projectId, scriptId: context.scriptId });
+    let resTool = new ResTool(socket, { projectId: initialContext.projectId, scriptId: initialContext.scriptId });
     const lifecycle = createLegacyStopLifecycle();
-    let contextUpdateSeq = 0;
 
     const thinkConfig: agent.AgentContext["thinkConfig"] = {
       think: false,
@@ -61,21 +61,26 @@ export default (nsp: Namespace) => {
     };
 
     socket.on("updateContext", async (data: { isolationKey: string; projectId: number; scriptId: number }, callback) => {
-      const seq = ++contextUpdateSeq;
-      const next = await authorizeContext(actorUserId, data ?? {});
-      if (!next || seq !== contextUpdateSeq) {
+      const ticket = contextGate.begin();
+      lifecycle.stop();
+      let next: Awaited<ReturnType<typeof authorizeContext>> = null;
+      try {
+        next = await authorizeContext(actorUserId, data ?? {});
+      } catch {
+        // A failed scope lookup must not restore the previous chat context.
+      }
+      if (!contextGate.commit(ticket, next)) {
         callback?.({ success: false });
         return;
       }
-      lifecycle.stop();
-      context = next;
-      resTool = new ResTool(socket, { projectId: next.projectId, scriptId: next.scriptId });
-      console.log("[productionAgent] 上下文已更新:", next.isolationKey);
+      resTool = new ResTool(socket, { projectId: next!.projectId, scriptId: next!.scriptId });
+      console.log("[productionAgent] 上下文已更新:", next!.isolationKey);
       callback?.({ success: true });
     });
 
     socket.on("chat", async (data: { content: string }) => {
-      if (context.scriptId === null) return;
+      const context = contextGate.chatContext();
+      if (!context) return;
       const { content } = data;
       const currentController = new AbortController();
 
@@ -113,7 +118,7 @@ export default (nsp: Namespace) => {
       lifecycle.stop();
     });
     socket.on("disconnect", () => {
-      contextUpdateSeq++;
+      contextGate.close();
       lifecycle.stop();
     });
   });

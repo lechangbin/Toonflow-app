@@ -7,3 +7,5 @@
 自测：说明为什么“发出 stop”不等于“服务端确认 stop”，为什么服务端即使回复 stop 也不证明供应商请求已撤销；给出旧 chat 的 finally 在新 chat 启动后才到达的时间线；指出目前无浏览器联调和真实进程恢复验收。
 
 再阅读 `src/socket/legacyProductionContext.ts`。解释为什么 JWT 签名有效并不等于客户端传入的 `projectId`、`scriptId` 归属该用户；握手和 `updateContext` 都必须校验 Project、Script 与隔离键。前端可能先连接后选择剧本，因此允许未选剧本连接，但此时不运行 chat。思考两个并发上下文校验反序返回时为何需要序号保护。
+
+接着看 `legacyProductionContextGate`：切换请求一开始就暂停 chat，而不是等数据库校验结束。失败后不恢复旧上下文的 chat 权限；成功且是最新请求才恢复。画出“切换到 B → 校验未返回 → chat 到达”的时间线，说明没有门时为何仍会用 A 的 Script 执行。
