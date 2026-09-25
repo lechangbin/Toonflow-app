@@ -76,8 +76,10 @@ test("Production model may only propose one authorized Video child for Owner rev
       vendorId: "agnes", modelId: "agnes-video-v2.0",
       capabilityId: "text-to-video", output, audio, expectedRevision: 0,
       estimatedMaxCostMicros: 250_000, currency: "USD" });
+    let preparationCount = 0;
     const scope = createVideoApprovalScope({
       prepare: async (projectId, raw) => {
+        preparationCount++;
         const frozen = await work((current) =>
           freezeVideoGenerationProposal(current, projectId, raw));
         return { payload: frozen.payload, payloadHash: frozen.payloadHash,
@@ -125,6 +127,12 @@ test("Production model may only propose one authorized Video child for Owner rev
     while (queue.length) await queue.shift()!();
     assert.equal((await runtime.inspect({ runId: parent.id,
       projectId: 7, actorUserId: 1 }))?.status, "succeeded");
+    const preparedBeforeInvalidParent = preparationCount;
+    await assert.rejects(approval.proposeFromAgent({ projectId: 7,
+      parentRunId: parent.id, skillId: definition.id,
+      operationId: "invalid-parent-after-completion", payload,
+      lease: { runId: parent.id } as any }));
+    assert.equal(preparationCount, preparedBeforeInvalidParent);
     const child = await db("o_agentRun").where({ projectId: 7,
       scope: "approved-billable-video-v1" }).first();
     assert(child);

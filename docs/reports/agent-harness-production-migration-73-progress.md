@@ -79,6 +79,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 模型提案接入：`propose_track_video_generation` 已进入生产 Harness 的模型 Tool 目录，要求已发布 Skill 明确请求 Tool 与 `propose:track-video`，并核对当前 Project grant、父 Run 租约和 Owner。持久权限判定与待审子 Run 在同一事务中落库；子 Run 冻结父 Run、操作、Skill 和提案合约，Owner 检查时复核判定哈希，父 Run `/effects` 从持久证据投影 `videoEffects`。同操作重试读取原子审批，变更候选冲突；提案和 Owner 批准均不自动请求 Vendor。1 个假模型/SQLite 链路、7 个相邻 Harness/审批定向用例及 App TypeScript 检查通过；未运行全量测试、浏览器、真实 Provider 或跨进程验收。Web 尚无 Video 审批/执行 UI，旧批量视频仍未迁移，T17 不应标为完成。
 
+Video 提案预检顺序修正：模型提案先在只读事务中核对 Owner、运行中的父 Run 与有效租约，再做可能触及异步 Vendor Capability 的候选准备；准备结束后，创建审批的写事务仍重新核对同一权限与租约以防检查期间变化。假模型/SQLite 定向用例验证父 Run 已结束时准备器调用次数不变；App TypeScript 检查通过。这只收紧预检成本/信息边界，不改变审批和供应商提交的隔离。
+
 配套 Web Video 试用接线：Draft PR `lechangbin/Toonflow-web#8` 现在展示 `videoEffects`、完整待审候选、本地费用估算和原请求状态，增加 `videoProposal` 独立 grant、Owner 批准/拒绝与第二次明确确认的 Video execute。客户端在过期或已有请求时不提交，失败不自动重试；后端默认关闭的操作员开关仍是硬边界。Web 相关 7 个合约定向用例及非声明式 Vue 类型检查通过，未跑浏览器、真实 Provider 或全量测试。Web 尚无 Video 报价配置、取消/媒体恢复 UI，故不能将此接线描述为完整闭环。前段“Web 尚无”是上一切片状态，由本段更新。
 
 配套 Web 报价设置切片：视频工作台当前无图文生视频选型增加 Owner 本地费用估算的 get/set 控件，按 Project、Vendor、Model、输出/音频精确请求后端 quote policy，并以 expectedRevision 写入；选型变化需重新读取，失败不自动重试。它只是审批依据配置，不触发模型、审批或供应商。Web 2 个新报价合约与相邻 7 个生产 Harness 合约定向用例、非声明式 Vue 类型检查通过；未做浏览器、真实 Provider 或全量验收。上一段“Web 尚无报价配置”由此局部更新，Video 取消/媒体恢复仍无 UI。
