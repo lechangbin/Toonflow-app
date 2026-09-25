@@ -11,3 +11,5 @@
 关键取舍：四个 Context 候选采用完整参考的逐项移除，不把多个变量同时改变后再归因；Skill 路由候选不移除权限门，因为“无授权上升”是所有策略都必须守住的前置条件。每个 variant 对同一 case/seed 运行，成本、延迟、质量、失败分类独立报告，不用合成分掩盖安全失败。未跑齐、质量待审或证据 ID 缺失都不能形成采用结论。
 
 自测：解释为什么阈值和 manifest hash 必须先于结果冻结；为什么 case manifest hash 与 Runtime/Tool/Skill/Model 修订都要入清单；给出一条 `permission-escalation=false` 即使质量为 2 也不能采用的反例；指出当前没有真实评测结果、没有因果收益数字。
+
+再追问：Fake adapter 交齐所有指标时，`thresholdsPassed=true` 为什么仍不能推出 `adoptable=true`？异常后的费用与 token 为什么必须是 `null` 而不是 0？安全硬门未知为什么不能记为 `false`（已证实违反）或 `true`（已证实通过）？
