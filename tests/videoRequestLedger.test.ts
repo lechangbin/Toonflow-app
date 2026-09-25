@@ -132,3 +132,44 @@ test("startup marks unacknowledged Video request unknown and never issues a seco
       "vendor-submission-unknown");
   } finally { await db.destroy(); }
 });
+
+test("verified Video Provider task can be observed once without claiming an Artifact", async () => {
+  const context = await fixture();
+  const { db, ledger, reserve } = context;
+  try {
+    const intent = await ledger.reserve(reserve);
+    await ledger.recordProviderTask(intent.requestId, "provider-task-1");
+    await ledger.recordProviderTask(intent.requestId, "provider-task-1");
+    await assert.rejects(ledger.recordProviderTask(intent.requestId, "provider-task-2"),
+      VideoRequestLedgerConflictError);
+    const request = await db("o_agentVideoVendorRequest")
+      .where({ requestId: intent.requestId }).first();
+    assert.equal(request.status, "submitted");
+    assert.equal(request.providerTaskId, "provider-task-1");
+    await assert.rejects(db("o_agentVideoVendorRequest")
+      .where({ requestId: intent.requestId })
+      .update({ providerTaskId: "provider-task-2" }),
+    /observation cannot be replaced/);
+    assert.equal((await db("o_agentRunCheckpoint")
+      .where({ runId: reserve.runId, kind: "provider-task-observed" })).length, 1);
+    assert.equal((await db("o_video")).length, 0);
+    await recoverAmbiguousVideoRequests(db, 200, () => "unused-recovery");
+    assert.equal((await db("o_agentVideoVendorRequest")
+      .where({ requestId: intent.requestId }).first()).status, "submitted");
+  } finally { await db.destroy(); }
+});
+
+test("ambiguous Video submission may later attach verified task identity, never resubmit", async () => {
+  const context = await fixture();
+  const { db, ledger, reserve } = context;
+  try {
+    const intent = await ledger.reserve(reserve);
+    await ledger.markSubmissionAmbiguous(intent.requestId);
+    await ledger.markSubmissionAmbiguous(intent.requestId);
+    assert.equal((await ledger.reserve(reserve)).newIntent, false);
+    await ledger.recordProviderTask(intent.requestId, "late-provider-task");
+    assert.equal((await db("o_agentVideoVendorRequest")
+      .where({ requestId: intent.requestId }).first()).status, "submitted");
+    assert.equal((await db("o_video")).length, 0);
+  } finally { await db.destroy(); }
+});

@@ -86,6 +86,114 @@ export function createVideoRequestLedger(dependencies: {
     revision: number; estimatedMaxCostMicros: number; currency: string }>;
 }) {
   return {
+    /** Verified task observation is durable, but is not a Video Artifact or completion. */
+    async recordProviderTask(requestId: string, providerTaskId: string): Promise<void> {
+      if (!/^[A-Za-z0-9._:-]{1,128}$/u.test(requestId)
+        || !/^[A-Za-z0-9._:-]{1,128}$/u.test(providerTaskId)) conflict();
+      await dependencies.work((db) => db.transaction(async (tx) => {
+        const request = await tx("o_agentVideoVendorRequest")
+          .where({ requestId }).first();
+        if (!request) conflict();
+        if (request.providerTaskId === providerTaskId) {
+          const evidence = await tx("o_agentRunCheckpoint")
+            .where({ runId: request.runId, kind: "provider-task-observed" })
+            .orderBy("sequence", "desc").first();
+          const parsed = evidence && parseCheckpointPayload(evidence.payload,
+            "provider-task-observed");
+          if (!parsed || parsed.kind !== "provider-task-observed"
+            || parsed.requestId !== requestId
+            || parsed.providerTaskId !== providerTaskId
+            || hashCheckpointPayload(parsed) !== evidence.payloadHash) conflict();
+          return;
+        }
+        if (request.providerTaskId != null
+          || !["dispatch_recorded", "unknown"].includes(request.status)) conflict();
+        const run = await tx("o_agentRun").where({ id: request.runId,
+          projectId: request.projectId,
+          scope: VIDEO_GENERATION_APPROVAL_SCOPE }).first();
+        const call = await tx("o_agentToolCall").where({ id: request.toolCallId,
+          runId: request.runId }).first();
+        const prior = await tx("o_agentRunCheckpoint")
+          .where({ runId: request.runId }).orderBy("sequence", "desc").first();
+        const priorPayload = prior && parseCheckpointPayload(prior.payload);
+        if (!run || !call || !prior || !priorPayload
+          || hashCheckpointPayload(priorPayload) !== prior.payloadHash) conflict();
+        const now = dependencies.now();
+        const checkpoint: AgentRunCheckpointPayload = {
+          schemaVersion: AGENT_RUN_CHECKPOINT_SCHEMA_VERSION,
+          kind: "provider-task-observed", runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId,
+          sequence: prior.sequence + 1, runVersion: run.version + 1,
+          lastCommittedStepId: run.lastCommittedStepId ?? null,
+          predecessorCheckpointId: prior.id,
+          predecessorPayloadHash: prior.payloadHash,
+          requestId, providerTaskId };
+        const changed = await tx("o_agentVideoVendorRequest")
+          .where({ id: request.id, version: request.version,
+            providerTaskId: null })
+          .update({ providerTaskId, status: "submitted",
+            version: request.version + 1, updatedAt: now });
+        const changedRun = await tx("o_agentRun")
+          .where({ id: run.id, version: run.version }).update({
+            waitingReason: "vendor-task-observed", attentionReason: null,
+            allowedActions: JSON.stringify(["inspect"]), version: run.version + 1,
+            updatedAt: now });
+        if (changed !== 1 || changedRun !== 1) conflict();
+        await tx("o_agentRunCheckpoint").insert({ id: dependencies.createId(),
+          runId: run.id, stepId: call.stepId, attemptId: call.attemptId,
+          sequence: checkpoint.sequence, kind: checkpoint.kind,
+          schemaVersion: checkpoint.schemaVersion,
+          runVersion: checkpoint.runVersion,
+          lastCommittedStepId: checkpoint.lastCommittedStepId,
+          predecessorCheckpointId: checkpoint.predecessorCheckpointId,
+          payload: canonicalCheckpointPayload(checkpoint),
+          payloadHash: hashCheckpointPayload(checkpoint), createdAt: now });
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId,
+          toolReceiptId: call.receiptId, toolCallId: call.id,
+          eventType: "vendor.video-request.task-observed",
+          runStatus: "waiting",
+          stepStatus: request.status === "unknown" ? "waiting" : "running",
+          createdAt: now });
+      }));
+    },
+    /** Network failure is not proof of no Provider effect. */
+    async markSubmissionAmbiguous(requestId: string): Promise<void> {
+      if (!/^[A-Za-z0-9._:-]{1,128}$/u.test(requestId)) conflict();
+      await dependencies.work((db) => db.transaction(async (tx) => {
+        const request = await tx("o_agentVideoVendorRequest")
+          .where({ requestId }).first();
+        if (!request) conflict();
+        if (request.status === "unknown") return;
+        if (request.status !== "dispatch_recorded") conflict();
+        const run = await tx("o_agentRun").where({ id: request.runId,
+          projectId: request.projectId }).first();
+        const call = await tx("o_agentToolCall").where({ id: request.toolCallId,
+          runId: request.runId }).first();
+        if (!run || !call) conflict();
+        const now = dependencies.now();
+        const changed = await tx("o_agentVideoVendorRequest")
+          .where({ id: request.id, version: request.version,
+            status: "dispatch_recorded" })
+          .update({ status: "unknown", version: request.version + 1,
+            updatedAt: now });
+        const changedRun = await tx("o_agentRun")
+          .where({ id: run.id, version: run.version }).update({
+            status: "waiting", waitingReason: "vendor-submission-unknown",
+            attentionReason: "vendor-reconciliation-required",
+            allowedActions: JSON.stringify(["inspect"]), version: run.version + 1,
+            updatedAt: now });
+        if (changed !== 1 || changedRun !== 1) conflict();
+        await tx("o_agentRunStep").where({ id: call.stepId }).update({ status: "waiting" });
+        await tx("o_agentRunAttempt").where({ id: call.attemptId }).update({ status: "waiting" });
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId,
+          toolReceiptId: call.receiptId, toolCallId: call.id,
+          eventType: "vendor.video-request.submission-unknown",
+          runStatus: "waiting", stepStatus: "waiting",
+          diagnostic: unknownDiagnostic, createdAt: now });
+      }));
+    },
     async reserve(input: { projectId: number; actorUserId: number;
       runId: string; approvalId: string; expectedVersion: number;
       scope: FrozenVideoApprovalScope }): Promise<VideoRequestReservation> {

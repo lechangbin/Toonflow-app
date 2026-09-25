@@ -10,6 +10,7 @@ const CLASSIFIED_FAILURE_EVENTS = new Set([
   "tool.billing-approval.expired", "vendor.request.submission-unknown",
   "vendor.request.unknown-on-recovery", "interrupted-model-call",
   "vendor.video-request.unknown-on-recovery",
+  "vendor.video-request.submission-unknown",
   "interrupted-before-model-call", "agent-checkpoint-corrupt", "agent-checkpoint-incompatible",
 ]);
 

@@ -55,6 +55,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 请求意图账本切片：新增与图片账本分开的 `o_agentVideoVendorRequest`，内部 `reserve` 在一个事务内复核已批准的精确范围、当前 Track/Prompt、quote revision、Run version 与 Owner，再记录 ToolCall、请求意图、Checkpoint 和 Trace。重复 reserve 只返回原 requestId 且 `newIntent:false`；启动恢复把尚无确认的 `dispatch_recorded` 视为 `unknown`，仅要求人工/供应商对账，不自动重放。Project 删除事务清理该账本；身份字段由数据库 trigger 防改。3 个账本 SQLite 定向用例加相关证据保留用例及 App TypeScript 检查通过。此账本目前没有路由或 Vendor adapter，测试只验证落账与禁止第二次意图，不证明真实提交、Provider 回执、迟到 Artifact 或生成成功。上一段“下一步必须做账本”由此切片部分完成，后续重点是受控执行和对账，不能把 `dispatch_recorded` 当成真实供应商已收到。
 
+受控 Video 回执标识切片：内部账本可一次性记录经可信适配器观察到的 Provider task ID，并写相应 Checkpoint/Trace；同 ID 重复观察幂等，不同 ID 冲突，数据库触发器禁止替换已观察标识。显式提交异常会变成 unknown；后续若找回同一请求的已核实 task ID，可把它挂回原请求而不再次提交。新增 2 个定向 SQLite 用例，账本文件现共 5 例通过，App TypeScript 检查通过。仍没有实际 Vendor adapter、视频字节/Artifact 提交或 Web 执行入口，不能把 task ID 视为生成完成。上一段“尚无 Provider task handling”由此局部更新。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。
