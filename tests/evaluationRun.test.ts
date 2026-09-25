@@ -58,6 +58,10 @@ test("T11 manifest freezes a unique paired case/seed matrix and revisions", () =
   assert.throws(() => validateEvaluationRunManifest({ ...manifest, seeds: [11, 11] }));
   assert.throws(() => validateEvaluationRunManifest({ ...manifest,
     candidate: { ...manifest.candidate, skill: "" } }));
+  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+    candidate: { ...manifest.candidate, model: "model-2" } }), /common environment/u);
+  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+    candidate: { ...manifest.candidate, schema: "schema-2" } }), /common environment/u);
 });
 
 test("T11 case evidence must link a terminal production Agent Run and is idempotent", async () => {
