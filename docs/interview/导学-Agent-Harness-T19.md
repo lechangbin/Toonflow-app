@@ -4,7 +4,7 @@
 
 入口：`src/eval/ablationContract.ts`、`src/eval/ablationRunner.ts`；阶段证据：`tests/ablationContract.test.ts`、`docs/reports/agent-harness-ablation-75-progress.md`。
 
-阅读顺序：先看 `validateAblationManifest` 如何锁定实验轴、四个候选、用例哈希、重复 seed、修订和共同预算；再看 `expectedAblationRunKeys` 生成等资源矩阵；最后看 `summarizeAblationResults` 为什么把缺失、未审质量、安全硬门分别计数并独立判定。与既有 `src/eval/goldenEval.ts` 的 18 例 Golden 清单相比，此模块目前只是消融元契约，尚未调 Golden Runner。
+阅读顺序：先看 `validateAblationManifest` 如何锁定实验轴、四个候选、用例哈希、每例预期失败类别、重复 seed、修订和共同预算；再看 `expectedAblationRunKeys` 生成等资源矩阵；最后看 `summarizeAblationResults` 为什么把缺失、未审质量、非预期失败类别、安全硬门分别计数并独立判定。与既有 `src/eval/goldenEval.ts` 的 18 例 Golden 清单相比，此模块目前只是消融元契约，尚未调 Golden Runner。
 
 假执行驱动逐组合把同一预算交给 adapter，严格解析指标；异常文本不进入结果，返回原始 Prompt 等未知字段会变为 evidence failure。单测证明这一拒绝行为，但 adapter 目前只是注入的假函数，不代表四种实际策略已运行。
 
