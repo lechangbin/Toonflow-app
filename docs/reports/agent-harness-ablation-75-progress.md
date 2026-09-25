@@ -7,3 +7,5 @@ Issue：`lechangbin/Toonflow-app#75`。此分支叠在 T17 的 App Draft PR 上�
 结果契约只接收匹配清单哈希和冻结时间之后的逐 variant/case/seed 记录。重复、缺失、未知组合、未审质量分、无证据的质量分均不能构成可采用结论。汇总分别列出质量阈值、p95 延迟、每例费用上限、重试、资源预算、失败分类和四种安全硬门的分子/分母；没有合成分。任一安全硬门失败或实验矩阵未跑齐，`adoptable` 为 false。结果字段限于指标与证据 ID，不允许原始 Prompt/Provider payload 塞入结果结构。
 
 定向验证：`tests/ablationContract.test.ts` 的 4 例覆盖两类固定候选、重复 seed 与完整矩阵、revision 锁、缺失/重复结果和权限硬门失败；App TypeScript 检查通过。没有调用真实模型、没有开展 Golden Eval 全套、没有生成不可变结果文件。后续需在 T18 兼容边界稳定后冻结实际 case manifest 和版本，接入执行器，预先记录阈值，再跑等资源重复实验、发布逐例结果与拒绝/采用理由。完整验收仍留到 T21。
+
+定向假执行器补充：`src/eval/ablationRunner.ts` 现按冻结清单逐 variant/case/seed 传同一预算和修订给注入 adapter；只收严格的指标结构。adapter 抛错或返回原始 Prompt 等未知字段时，记录不含异常文本的 evidence failure 与未审质量，绝不形成采用结论。新增 2 个假 adapter 单测使相关定向用例共 6 个，App TypeScript 检查通过。它没有实现四种 Context/Skill 的实际运行效果，也没有执行完整 Golden case 或生成不可变结果文件；上一段“尚无执行器”指真实候选执行器，现只有等资源驱动壳。
