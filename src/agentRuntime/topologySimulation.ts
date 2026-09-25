@@ -48,7 +48,9 @@ export async function simulateTopology(input: {
     const handler = input.handlers[role.id];
     if (!handler) throw new TypeError("Topology role handler is missing");
     const raw = await handler({ role: role.id, caseId: input.caseId,
-      seed: input.seed, skillIds: [...role.skillIds], input: preceding,
+      seed: input.seed, skillIds: [...role.skillIds],
+      // A role can inspect a prior handoff, but cannot rewrite its recorded evidence.
+      input: preceding === null ? null : structuredClone(preceding),
       invokeTool: async (name, payload) => {
         if (!role.toolNames.includes(name)
           || toolCalls >= plan.stop.maxToolCalls
