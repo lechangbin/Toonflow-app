@@ -32,6 +32,7 @@ import { createPollingImageAssetsRouter } from "../src/routes/assets/pollingImag
 import { createGetAssetsRouter } from "../src/routes/assets/getAssetsApi";
 import { createProductionPollingImageRouter } from "../src/routes/production/assets/pollingImage";
 import { createBatchGenerateAssetsImageRouter } from "../src/routes/production/assets/batchGenerateAssetsImage";
+import { createWorkbenchOwnerCheck } from "../src/video/workbenchOwner";
 import { createCancelGenerateRouter } from "../src/routes/assetsGenerate/cancelGenerate";
 import { VendorImageGenerationError } from "../src/assets/imageGenerationLifecycle";
 
@@ -1532,10 +1533,29 @@ test("Production Agent 生成入口复用等待→生成→终态生命周期", 
       },
     });
 
-    await withTestServer(createBatchGenerateAssetsImageRouter(() => harness.deps), async (url) => {
+    await knex("o_project").where("id", 1).update({ userId: 1 });
+    const router = express.Router();
+    router.use((req, _res, next) => {
+      (req as typeof req & { user?: { id: number } }).user = {
+        id: req.headers["x-test-actor"] === "owner" ? 1 : 2,
+      };
+      next();
+    });
+    router.use(createBatchGenerateAssetsImageRouter(() => harness.deps,
+      createWorkbenchOwnerCheck(workOf(knex))));
+    await withTestServer(router, async (url) => {
+      const denied = await fetch(url + "/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-test-actor": "other" },
+        body: JSON.stringify({ assetIds: [101, 102], projectId: 1, scriptId: 11, concurrentCount: 1 }),
+      });
+      assert.equal(denied.status, 403);
+      assert.equal((await knex("o_image").count({ count: "id" }).first())?.count, 0,
+        "越权请求不能预置图片占位");
+      assert.equal(harness.vendorRequests.length, 0, "越权请求不能调用 Vendor");
       const response = await fetch(url + "/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-test-actor": "owner" },
         body: JSON.stringify({ assetIds: [101, 102], projectId: 1, scriptId: 11, concurrentCount: 1 }),
       });
       assert.equal(response.status, 200);
