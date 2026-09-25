@@ -27,7 +27,9 @@ export function createEvaluationAgentCase(dependencies: {
         throw new TypeError("Evaluation case is outside the frozen matrix");
       }
       const frozenInput = frozen.manifest.caseInputs.find((entry) => entry.caseId === input.caseId);
-      if (!frozenInput || hashEvaluationInput(input.content) !== frozenInput.contentHash) {
+      if (!frozenInput || !input.content.trim()
+        || hashEvaluationInput(input.content) !== frozenInput.contentHash
+        || input.role !== frozenInput.role || input.scope !== frozenInput.scope) {
         throw new TypeError("Evaluation case content differs from the frozen input");
       }
       const declared = frozen.manifest[input.variant];

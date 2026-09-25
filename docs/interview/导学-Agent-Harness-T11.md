@@ -10,4 +10,6 @@
 
 新自测：若 baseline 与 candidate 使用同一 case ID 但不同输入正文，哪一层拒绝？若有人直接调用账本把一个无关终态 Run 填入样本，哪个请求身份检查拒绝？注意 seed 当前仅参与样本请求 ID，还不是 Model 随机性控制。
 
+再追问：为什么冻结输入哈希要与 Runtime 的修剪规则一致？若有人绕过适配器直接调用 `record`，它怎样复核 Run 保存的正文、role 和 scope？Project 快照没有冻结时还能不能宣称“完全同条件”？
+
 对照清单的 baseline/candidate：schema、Model、Vendor 被要求相同，否则改变的不只是候选策略；App、Runtime、Tool、Context、Memory、Skill 可因实验而不同。解释为什么“版本相同”仍不能代替同预算、同数据和真实逐例测量。
