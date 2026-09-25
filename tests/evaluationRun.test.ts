@@ -8,10 +8,10 @@ import { createEvaluationRunRuntime, evaluationCaseRequestId, hashEvaluationInpu
   validateEvaluationRunManifest } from "../src/eval/evaluationRun";
 import initDB from "../src/lib/initDB";
 
-const manifest = { schemaVersion: "toonflow.evaluation-run.v1",
+const manifest = { schemaVersion: "toonflow.evaluation-run.v2",
   studyId: "t11-paired-v1", caseManifestHash: "a".repeat(64),
   caseIds: ["DEV-EXT-001"], seeds: [11, 29],
-  caseInputs: [{ caseId: "DEV-EXT-001", contentHash: hashEvaluationInput("给出项目摘要"),
+  caseInputs: [{ caseId: "DEV-EXT-001", projectId: 7, contentHash: hashEvaluationInput("给出项目摘要"),
     role: "scriptAgent", scope: "read-only-project-guidance-v1" }],
   variants: ["baseline", "candidate"],
   baseline: { app: "app-1", schema: "schema-1", runtime: "runtime-1",
@@ -63,7 +63,7 @@ test("T11 manifest freezes a unique paired case/seed matrix and revisions", () =
   assert.equal(validateEvaluationRunManifest(manifest).caseIds.length, 1);
   assert.throws(() => validateEvaluationRunManifest({ ...manifest, seeds: [11, 11] }));
   assert.throws(() => validateEvaluationRunManifest({ ...manifest,
-    caseInputs: [{ caseId: "HOLD-EXT-001", contentHash: hashEvaluationInput("x"),
+    caseInputs: [{ caseId: "HOLD-EXT-001", projectId: 7, contentHash: hashEvaluationInput("x"),
       role: "scriptAgent", scope: "read-only-project-guidance-v1" }] }));
   assert.throws(() => validateEvaluationRunManifest({ ...manifest,
     candidate: { ...manifest.candidate, skill: "" } }));
@@ -71,6 +71,8 @@ test("T11 manifest freezes a unique paired case/seed matrix and revisions", () =
     candidate: { ...manifest.candidate, model: "model-2" } }), /common environment/u);
   assert.throws(() => validateEvaluationRunManifest({ ...manifest,
     candidate: { ...manifest.candidate, schema: "schema-2" } }), /common environment/u);
+  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+    caseInputs: [{ ...manifest.caseInputs[0], projectId: 0 }] }));
 });
 
 test("T11 case evidence must link a terminal production Agent Run and is idempotent", async () => {
@@ -105,6 +107,10 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
     await db("o_agentRun").where({ id: "run-1" }).update({ completedAt: 151 });
     await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
     await db("o_agentRun").where({ id: "run-1" }).update({ completedAt: 150 });
+    await db("o_agentRun").where({ id: "run-1" }).update({ projectId: 8 });
+    await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
+    await assert.rejects(runtime.record(input), /frozen case/u);
+    await db("o_agentRun").where({ id: "run-1" }).update({ projectId: 7 });
     await db("o_agentRun").where({ id: "run-1" }).update({ input: JSON.stringify({ content: "换了输入" }) });
     await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
     await assert.rejects(runtime.record(input), /frozen case/u);
@@ -139,6 +145,9 @@ test("T11 rejects queued or trace-less Agent Runs before recording a case", asyn
     await db("o_agentRun").where({ id: "run-queued" }).update({ completedAt: 150 });
     await assert.rejects(runtime.record(input), /lacks valid Agent Run evidence/u);
     await db("o_agentTrace").insert({ id: "trace-queued", runId: "run-queued", sequence: 1 });
+    await db("o_agentRun").where({ id: "run-queued" }).update({ projectId: 8 });
+    await assert.rejects(runtime.record(input), /frozen case/u);
+    await db("o_agentRun").where({ id: "run-queued" }).update({ projectId: 7 });
     await db("o_agentRun").where({ id: "run-queued" }).update({ clientRequestId: "unrelated-request" });
     await assert.rejects(runtime.record(input), /request identity/u);
   } finally { await db.destroy(); }

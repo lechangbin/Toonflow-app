@@ -22,6 +22,8 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 再追问：为什么冻结输入哈希要与 Runtime 的修剪规则一致？若有人绕过适配器直接调用 `record`，它怎样复核 Run 保存的正文、role 和 scope？Project 快照没有冻结时还能不能宣称“完全同条件”？
 
+新增核对：同一 case 的正文相同，但 baseline 和 candidate 分别运行在两个 Project，能否直接比较？沿 `goldenEvaluationFreeze` → `evaluationAgentCase.execute` → `evaluationRun.record/inspect` 看 Project ID 如何冻结、启动前拒绝和记录后重验。再指出边界：固定 Project ID 仍未固定其内容快照。
+
 交叉核对旧 Draft PR #90：它的独立表与覆盖报告为何不能和当前账本并列上线？怎样迁移其 18-case 分母和“覆盖非质量”语义，同时只保留一个 Evaluation Run 身份？
 
 对照清单的 baseline/candidate：schema、Model、Vendor 被要求相同，否则改变的不只是候选策略；App、Runtime、Tool、Context、Memory、Skill 可因实验而不同。解释为什么“版本相同”仍不能代替同预算、同数据和真实逐例测量。

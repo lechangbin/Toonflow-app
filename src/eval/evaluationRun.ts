@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { hashGoldenEvalManifest, validateGoldenEvalManifest } from "./goldenEval";
 
-export const EVALUATION_RUN_VERSION = "toonflow.evaluation-run.v1" as const;
+export const EVALUATION_RUN_VERSION = "toonflow.evaluation-run.v2" as const;
 const digest = z.string().regex(/^[a-f0-9]{64}$/u);
 const identity = z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u);
 const revision = z.string().trim().min(1).max(128);
@@ -22,7 +22,7 @@ export const evaluationRunManifestSchema = z.strictObject({
   caseManifestHash: digest,
   goldenManifestJson: z.string().max(1024 * 1024).optional(),
   caseIds: z.array(caseId).min(1),
-  caseInputs: z.array(z.strictObject({ caseId, contentHash: digest,
+  caseInputs: z.array(z.strictObject({ caseId, projectId: z.number().int().positive(), contentHash: digest,
     role: z.enum(["scriptAgent", "productionAgent"]),
     scope: z.enum(["read-only-project-guidance-v1", "script-harness-guidance-v1",
       "production-harness-v1"]) })).min(1),
@@ -134,6 +134,7 @@ export function createEvaluationRunRuntime(dependencies: {
         try { storedInput = JSON.parse(run.input); } catch { /* fail closed below */ }
         if (!frozenInput || !storedInput || typeof storedInput !== "object"
           || !("content" in storedInput) || typeof storedInput.content !== "string"
+          || run.projectId !== frozenInput.projectId
           || run.role !== frozenInput.role || run.scope !== frozenInput.scope
           || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash) {
           throw new Error("Evaluation source Agent Run input differs from the frozen case");
@@ -218,7 +219,8 @@ export function createEvaluationRunRuntime(dependencies: {
           if (!run || run.projectId !== evidence.projectId
             || run.clientRequestId !== evaluationCaseRequestId(id,
               evidence.variant, evidence.caseId, evidence.seed)
-            || !frozenInput || run.role !== frozenInput.role || run.scope !== frozenInput.scope
+            || !frozenInput || run.projectId !== frozenInput.projectId
+            || run.role !== frozenInput.role || run.scope !== frozenInput.scope
             || !storedInput || typeof storedInput !== "object"
             || !("content" in storedInput) || typeof storedInput.content !== "string"
             || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash
