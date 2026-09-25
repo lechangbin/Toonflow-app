@@ -11,6 +11,7 @@ import { freezeVideoGenerationProposal } from
 import { createVideoQuotePolicy } from "../src/controlledTools/videoQuotePolicy";
 import { createVideoRequestLedger, recoverAmbiguousVideoRequests,
   VideoRequestLedgerConflictError } from "../src/controlledTools/videoRequestLedger";
+import { recoverInterruptedAgentRuns } from "../src/database/agentRunRecovery";
 import initDB from "../src/lib/initDB";
 import { workOf } from "./databaseTestSupport";
 
@@ -120,6 +121,9 @@ test("startup marks unacknowledged Video request unknown and never issues a seco
   try {
     const first = await ledger.reserve(reserve);
     context.setNow(200);
+    await recoverInterruptedAgentRuns(db, 200);
+    assert.notEqual((await db("o_agentRun").where({ id: reserve.runId }).first()).attentionReason,
+      "agent-checkpoint-corrupt");
     await recoverAmbiguousVideoRequests(db, 200, () => "recovery-trace");
     const rows = await db("o_agentVideoVendorRequest");
     assert.equal(rows[0].status, "unknown");

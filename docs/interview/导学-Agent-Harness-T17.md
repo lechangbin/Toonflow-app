@@ -50,6 +50,7 @@
 | Video 项目采纳单事务 | 文件写完即逐表更新成功状态 | Project Video、任务、修订、回执和 Run 必须同成同败；目标漂移或迟到不能自动采纳 | 3 个 SQLite 提交用例覆盖成功幂等、Prompt 漂移和 Revision 插入失败整体回滚；尚无真实 Vendor 组合 |
 | Video 取消意图与本地停止分离 | 将取消点击视作供应商已撤销或把超时当作无费用失败 | 网络边界后的作用未知；先记录本地取消意图，再允许停止本地追踪，保留迟到 task/媒体证据且禁用采纳与重放 | 账本/媒体 11 个定向 SQLite 用例覆盖取消前后迟到、停止不重开、同请求不再生成新意图；尚无真实 Provider 取消确认 |
 | Video Owner 状态快照从证据重建 | approved 后沿用纯审批 waiting/pending 假设 | 生成后 Run/Receipt 会进入终态，旧假设会阻断 inspect；按 ToolCall/请求/Artifact 重建，并防止 TTL 抹掉已有请求 | 5 个本地审批/投影 SQLite 用例覆盖请求、停止、成功和过期后查看；尚无 Web 执行入口 |
+| Video Checkpoint 恢复按 scope 核对 | 将所有 Vendor 意图当图片请求校验 | Video 和 Image 共享 Checkpoint kind 但不同账本；按审批 scope 选择请求表，提交后核对 Project 媒体证据，避免重启误判腐坏 | Video 意图/提交定向恢复及相邻图片/通用恢复单测；跨进程和真实 Vendor 待 T21 |
 
 ## 自测与边界
 

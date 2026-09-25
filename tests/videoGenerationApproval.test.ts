@@ -14,6 +14,7 @@ import { createVideoArtifactCommitRuntime } from
 import { createVideoQuotePolicy } from "../src/controlledTools/videoQuotePolicy";
 import { createVideoRequestLedger } from
   "../src/controlledTools/videoRequestLedger";
+import { recoverInterruptedAgentRuns } from "../src/database/agentRunRecovery";
 import initDB from "../src/lib/initDB";
 import { workOf } from "./databaseTestSupport";
 
@@ -229,9 +230,12 @@ test("Owner Video approval snapshot reports accepted request after local commit"
       now: () => 300, createId: () => `commit-${++id}` });
     await commit.commit({ projectId: 7, actorUserId: 1,
       requestId: intent.requestId, expectedVersion: run.version });
+    await recoverInterruptedAgentRuns(db, 400);
     const completed = await approval.inspect(7, pending.runId, 1);
     assert.equal(completed?.runStatus, "succeeded");
     assert.equal(completed?.vendorRequest?.status, "succeeded");
     assert.equal(completed?.vendorRequest?.artifactStatus, "accepted");
+    assert.notEqual((await db("o_agentRun").where({ id: pending.runId }).first()).attentionReason,
+      "agent-checkpoint-corrupt");
   } finally { await db.destroy(); }
 });

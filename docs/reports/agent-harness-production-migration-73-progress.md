@@ -67,6 +67,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video Owner 快照修正：原审批 inspect/list 隐含“approved 必然 waiting 且 Receipt pending”，在内部请求成功或本地停止后会报冲突。现在快照校验同 Run 的 ToolCall、范围、请求、Receipt 与已采纳 Artifact，投影 requestId、状态、task ID 和媒体状态；无请求的批准仍保持旧 pending 语义。审批 TTL 到期时已有 ToolCall 不被恢复任务过期成新的可派发审批，停止或成功后仍可查看。5 个本地审批/投影定向 SQLite 用例和 App TypeScript 检查通过；这只是服务端读模型，不代表 Web 已有执行面板或真实供应商对账。
 
+受控 Video 启动证据校验修正：通用 `agentRunRecovery` 原先把所有 `vendor-request-intent`/`provider-task-observed` Checkpoint 当图片请求核对，Video Run 重启扫描可能被误判 `agent-checkpoint-corrupt`。现按 Video 审批 scope 核对独立视频账本，并对已提交的 Video 输出追到已采纳媒体、Project Video、GenerationTask 与 ArtifactRevision；图片核对保留原路径。Video 审批/账本相关 12 个及相邻图片/通用恢复 34 个定向用例通过，App TypeScript 检查通过。这仅是同进程数据库恢复与校验测试，不是跨进程崩溃、租约接管或真实 Vendor 回调验收。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。
