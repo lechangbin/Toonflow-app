@@ -72,6 +72,10 @@ const caseEvidenceSchema = z.strictObject({
   agentRunId: identity, projectId: z.number().int().positive(),
   runVersion: z.number().int().positive(),
   runStatus: z.enum(["succeeded", "failed", "cancelled"]),
+  runCreatedAt: z.number().int().nonnegative(),
+  runCompletedAt: z.number().int().nonnegative(),
+  elapsedMs: z.number().int().nonnegative(),
+  costMicros: z.null(),
   outputHash: digest.nullable(), lastTraceId: identity,
   lastTraceSequence: z.number().int().positive(),
 });
@@ -117,6 +121,10 @@ export function createEvaluationRunRuntime(dependencies: {
           || !Number.isSafeInteger(run.version) || run.version <= 0) {
           throw new Error("Evaluation case requires a terminal production Agent Run");
         }
+        if (!Number.isSafeInteger(run.createdAt) || run.createdAt < 0
+          || !Number.isSafeInteger(run.completedAt) || run.completedAt < run.createdAt) {
+          throw new Error("Evaluation case requires valid production Run timing");
+        }
         if (run.clientRequestId !== evaluationCaseRequestId(input.evaluationRunId,
           input.variant, input.caseId, input.seed)) {
           throw new Error("Evaluation case Agent Run request identity does not match the frozen cell");
@@ -143,6 +151,8 @@ export function createEvaluationRunRuntime(dependencies: {
         const evidence = caseEvidenceSchema.parse({ caseId: input.caseId, seed: input.seed,
           variant: input.variant, agentRunId: run.id, projectId: run.projectId,
           runVersion: run.version, runStatus: run.status,
+          runCreatedAt: run.createdAt, runCompletedAt: run.completedAt,
+          elapsedMs: run.completedAt - run.createdAt, costMicros: null,
           outputHash: output?.contentHash ?? null,
           lastTraceId: trace.id, lastTraceSequence: trace.sequence });
         const evidenceJson = JSON.stringify(evidence);
@@ -213,6 +223,9 @@ export function createEvaluationRunRuntime(dependencies: {
             || !("content" in storedInput) || typeof storedInput.content !== "string"
             || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash
             || run.status !== evidence.runStatus || run.version !== evidence.runVersion
+            || run.createdAt !== evidence.runCreatedAt
+            || run.completedAt !== evidence.runCompletedAt
+            || run.completedAt - run.createdAt !== evidence.elapsedMs
             || auditCausalTraceTimeline(traces).linkage !== "linked"
             || trace?.id !== evidence.lastTraceId
             || trace?.sequence !== evidence.lastTraceSequence

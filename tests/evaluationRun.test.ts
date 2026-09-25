@@ -44,6 +44,7 @@ async function fixture() {
   await db.schema.createTable("o_agentRun", (t) => {
     t.text("id").primary(); t.integer("projectId"); t.text("status"); t.integer("version");
     t.text("clientRequestId"); t.text("role"); t.text("scope"); t.text("input");
+    t.integer("createdAt"); t.integer("completedAt");
   });
   await db.schema.createTable("o_agentRunOutput", (t) => {
     t.text("runId"); t.text("contentHash");
@@ -78,6 +79,7 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
     const created = await runtime.create(manifest);
     await db("o_agentRun").insert({ id: "run-1", projectId: 7,
       status: "succeeded", version: 3,
+      createdAt: 110, completedAt: 150,
       role: "scriptAgent", scope: "read-only-project-guidance-v1",
       input: JSON.stringify({ content: "给出项目摘要" }),
       clientRequestId: evaluationCaseRequestId(created.id, "candidate", "DEV-EXT-001", 11) });
@@ -88,6 +90,8 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
     const recorded = await runtime.record(input);
     assert.equal(recorded.outputHash, "b".repeat(64));
     assert.equal(recorded.lastTraceSequence, 1);
+    assert.equal(recorded.elapsedMs, 40);
+    assert.equal(recorded.costMicros, null);
     assert.deepEqual(await runtime.record(input), recorded);
     assert.equal((await db("o_agentEvaluationCase")).length, 1);
     const inspected = await runtime.inspect(created.id);
@@ -98,6 +102,9 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
     await db("o_agentRun").where({ id: "run-1" }).update({ version: 4 });
     await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
     await db("o_agentRun").where({ id: "run-1" }).update({ version: 3 });
+    await db("o_agentRun").where({ id: "run-1" }).update({ completedAt: 151 });
+    await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
+    await db("o_agentRun").where({ id: "run-1" }).update({ completedAt: 150 });
     await db("o_agentRun").where({ id: "run-1" }).update({ input: JSON.stringify({ content: "换了输入" }) });
     await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
     await assert.rejects(runtime.record(input), /frozen case/u);
@@ -122,11 +129,14 @@ test("T11 rejects queued or trace-less Agent Runs before recording a case", asyn
       seed: 11, variant: "baseline" as const, agentRunId: "run-queued" };
     await db("o_agentRun").insert({ id: "run-queued", projectId: 7,
       status: "queued", version: 1,
+      createdAt: 110, completedAt: null,
       role: "scriptAgent", scope: "read-only-project-guidance-v1",
       input: JSON.stringify({ content: "给出项目摘要" }),
       clientRequestId: evaluationCaseRequestId(created.id, "baseline", "DEV-EXT-001", 11) });
     await assert.rejects(runtime.record(input), /terminal production Agent Run/u);
     await db("o_agentRun").where({ id: "run-queued" }).update({ status: "failed" });
+    await assert.rejects(runtime.record(input), /valid production Run timing/u);
+    await db("o_agentRun").where({ id: "run-queued" }).update({ completedAt: 150 });
     await assert.rejects(runtime.record(input), /lacks valid Agent Run evidence/u);
     await db("o_agentTrace").insert({ id: "trace-queued", runId: "run-queued", sequence: 1 });
     await db("o_agentRun").where({ id: "run-queued" }).update({ clientRequestId: "unrelated-request" });
