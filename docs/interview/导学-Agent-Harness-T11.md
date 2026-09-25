@@ -14,6 +14,8 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 沿 `src/agentRuntime/causalTrace.ts` 的 `auditCausalTraceTimeline` 检查来源 Trace：最后一个 ID 正确但中间前驱断开，为什么不能算有效评测证据？
 
+再核对 Output：为何不能只相信数据库里的 `contentHash` 字段？账本现在按生产 Runtime 的哈希规则重算正文并检查 schema；如果一个 Run 有两个 Output，当前单哈希证据格式会拒绝，而不是任取第一条。多阶段产物集合仍待设计。
+
 再看 Run 的 `createdAt`/`completedAt`：缺少完成时间时能否报告延迟？为什么未知 Provider 收费必须是 `null`，不能填 0？
 
 自测：为什么每个 case/seed/variant 要绑定不同 Agent Run？为何 queued Run 不能计入结果？如果一条来源 Run 的版本在记录之后变化，报告是否仍可采用？为什么一个真实 Runtime/Fake Model 的只读样例不代表 18 个 Golden case 已迁移？本阶段没有质量分、成本、延迟或安全硬门，因此不能得出策略收益结论。
