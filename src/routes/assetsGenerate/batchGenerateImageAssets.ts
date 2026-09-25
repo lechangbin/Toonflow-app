@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { assertWorkbenchProjectOwner, WorkbenchOwnerRejectedError,
+  type WorkbenchOwnerCheck } from "@/video/workbenchOwner";
 import {
   assetImageGenerationErrorEnvelope,
   createDefaultAssetImageGenerationDependencies,
@@ -21,6 +23,7 @@ import {
  */
 export function createBatchGenerateImageAssetsRouter(
   dependencies: () => AssetImageGenerationDependencies = createDefaultAssetImageGenerationDependencies,
+  authorize: WorkbenchOwnerCheck = assertWorkbenchProjectOwner,
 ) {
   const router = express.Router();
 
@@ -33,8 +36,16 @@ export function createBatchGenerateImageAssetsRouter(
       concurrentCount: z.number().int().min(1).optional(),
       items: z.array(z.object({ id: z.number() })),
     }),
-    async (req, res) => {
+    async (req, res, next) => {
       const { projectId, model, resolution, concurrentCount, items } = req.body;
+      try {
+        await authorize(req, projectId);
+      } catch (error) {
+        if (error instanceof WorkbenchOwnerRejectedError) {
+          return res.status(403).send({ message: error.message });
+        }
+        return next(error);
+      }
 
       const prepared = await prepareBatchAssetImages(dependencies(), {
         projectId,
