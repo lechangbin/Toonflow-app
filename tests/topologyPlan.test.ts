@@ -71,7 +71,8 @@ test("T20 handoff accepts only sender-owned hashed references under the edge lim
 
 test("T20 selection keeps equal-resource evidence and chooses the simplest passing topology", () => {
   const baseEvidence = { caseManifestHash: "a".repeat(64),
-    budgetHash: "b".repeat(64), resultsHash: "c".repeat(64),
+    seedSetHash: "e".repeat(64), budgetHash: "b".repeat(64),
+    resultsHash: "c".repeat(64),
     expectedRuns: 20, executedRuns: 20, repeatedSeeds: 2,
     qualityPassed: true, latencyPassed: true, costPassed: true,
     tokenPassed: true, retriesPassed: true, hardGateFailures: 0 };
@@ -84,6 +85,9 @@ test("T20 selection keeps equal-resource evidence and chooses the simplest passi
   { state: "candidate", topology: "T1" });
   assert.deepEqual(chooseSimplestTopology([evidence[0],
     { ...evidence[1], budgetHash: "d".repeat(64) }, evidence[2]]),
+  { state: "incomplete", topology: null });
+  assert.deepEqual(chooseSimplestTopology([evidence[0],
+    { ...evidence[1], seedSetHash: "d".repeat(64) }, evidence[2]]),
   { state: "incomplete", topology: null });
   assert.deepEqual(chooseSimplestTopology([evidence[0],
     { ...evidence[1], hardGateFailures: 1 },

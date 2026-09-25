@@ -115,7 +115,8 @@ export function validateTopologyHandoff(plan: TopologyPlan,
 
 const topologyEvidenceSchema = z.strictObject({
   topology: z.enum(["T0", "T1", "T2"]),
-  caseManifestHash: digest, budgetHash: digest, resultsHash: digest,
+  caseManifestHash: digest, seedSetHash: digest,
+  budgetHash: digest, resultsHash: digest,
   expectedRuns: z.number().int().positive(),
   executedRuns: z.number().int().nonnegative(),
   repeatedSeeds: z.number().int().min(2),
@@ -135,6 +136,7 @@ export function chooseSimplestTopology(inputs: readonly unknown[]): {
   const evidence = inputs.map((input) => topologyEvidenceSchema.parse(input));
   if (evidence.some((item, index) => item.topology !== ["T0", "T1", "T2"][index])
     || evidence.some((item) => item.caseManifestHash !== evidence[0].caseManifestHash
+      || item.seedSetHash !== evidence[0].seedSetHash
       || item.budgetHash !== evidence[0].budgetHash
       || item.expectedRuns !== evidence[0].expectedRuns
       || item.repeatedSeeds !== evidence[0].repeatedSeeds
