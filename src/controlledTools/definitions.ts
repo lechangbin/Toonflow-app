@@ -379,6 +379,8 @@ export const VIDEO_GENERATION_TOOL_DEFINITION = Object.freeze({
   revision: "toonflow.tool.generate-track-video.v1",
   inputSchema: frozenVideoApprovalScopeSchema,
   outputSchema: z.strictObject({ videoId: z.number().int().positive(),
+    generationTaskId: z.number().int().positive(),
+    artifactRevisionId: z.number().int().positive(),
     artifactHash: z.string().regex(/^[a-f0-9]{64}$/u) }),
   policy: Object.freeze({
     risk: Object.freeze({ mutation: "project-artifact", externalCost: "billable", completion: "asynchronous" }),

@@ -59,6 +59,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 媒体观察切片：新增独立 `o_agentVideoArtifact`，在写媒体前登记 request-scoped `write_pending`，写后读回以 SHA-256 核验，再转 `observed` 或取消后的 `late`。只有基本 MP4 容器头、严格 base64 和大小上限通过才落意图；写盘中断后可从已记录路径恢复观察，不再请求 Provider。Trace 增加 Video VendorRequest/Artifact 的 Run 归属关联；旧库以可空列升级，Project 删除时清理这些证据。3 个媒体观察 SQLite 用例、相关账本/保留共 11 个定向用例及 App TypeScript 检查通过。`observed` 还未提交为 Project Video，迟到结果明确不采纳；无真实 Vendor、取消 HTTP 或浏览器验收。
 
+受控 Video 本地提交切片：`videoArtifactCommit` 要求 Owner、精确审批/请求绑定、未取消且已观察的媒体、当前 Run version 和未漂移的 Track/Prompt，在同一事务中写 ProductionAction、GenerationTask、Video、ArtifactRevision、ToolReceipt/Output、Checkpoint、Run 与因果 Trace；重复提交只读原输出，关联表插入失败全回滚，迟到/目标变化拒绝。3 个 SQLite 定向用例及 App TypeScript 检查通过。GenerationTask 目前仅保存脱敏命令哈希/审批范围，不保存原始 Provider 命令；内部提交 Runtime 尚未与实际 Vendor adapter/HTTP 执行入口组合，也没有真实视频生成或浏览器验收。上一段“尚无项目提交事务”现由此局部更新，但这还不是可用的受控 Video 黄金链路。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。
