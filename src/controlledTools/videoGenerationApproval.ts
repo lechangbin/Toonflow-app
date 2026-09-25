@@ -140,6 +140,8 @@ export async function expireDueVideoGenerationApprovals(db: Knex,
     .where({ "run.role": "productionAgent",
       "run.scope": VIDEO_GENERATION_APPROVAL_SCOPE, "run.status": "waiting" })
     .whereIn("approval.status", ["pending", "approved"])
+    .whereNotExists(db("o_agentToolCall as call")
+      .select(db.raw("1")).whereRaw("call.approvalId = approval.id"))
     .where("approval.expiresAt", "<=", now).select("approval.id");
   if (projectId !== null) query.where("run.projectId", projectId);
   const due = await query;
@@ -149,6 +151,8 @@ export async function expireDueVideoGenerationApprovals(db: Knex,
       .where({ "approval.id": row.id,
         "run.scope": VIDEO_GENERATION_APPROVAL_SCOPE, "run.status": "waiting" })
       .whereIn("approval.status", ["pending", "approved"])
+      .whereNotExists(tx("o_agentToolCall as call")
+        .select(tx.raw("1")).whereRaw("call.approvalId = approval.id"))
       .where("approval.expiresAt", "<=", now)
       .select("approval.id", "approval.runId", "approval.receiptId",
         "run.projectId", "run.version").first();
@@ -288,6 +292,23 @@ export function createVideoGenerationApprovalRuntime(dependencies: {
           .orderBy("createdAt", "desc").limit(20).select("id");
         const found = await Promise.all(rows.map((row) => snapshot(db, projectId, row.id)));
         return found.filter((row): row is VideoGenerationApprovalSnapshot => row !== null);
+      });
+    },
+    /** Server-only exact scope read. It grants no dispatch authority by itself. */
+    async approvedScope(projectId: number, runId: string, approvalId: string,
+      actorUserId: number): Promise<FrozenVideoApprovalScope> {
+      return dependencies.work(async (db) => {
+        await owner(db, projectId, actorUserId);
+        const run = await db("o_agentRun").where({ id: runId, projectId,
+          role: "productionAgent", scope: VIDEO_GENERATION_APPROVAL_SCOPE }).first();
+        const approval = run && await db("o_agentToolApproval")
+          .where({ id: approvalId, runId, status: "approved" }).first();
+        if (!approval || approval.expiresAt <= dependencies.now()
+          || approval.contractHash !== toolDefinitionContractHash(tool)
+          || approval.toolRevision !== tool.revision) conflict();
+        const checked = await snapshot(db, projectId, runId);
+        if (!checked || checked.status !== "approved") conflict();
+        return parseFrozen(approval, projectId);
       });
     },
     async decide(input: VideoGenerationDecisionCommand): Promise<VideoGenerationApprovalSnapshot | null> {

@@ -45,6 +45,7 @@
 | Video 准备与提交分离 | 将旧异步生成函数直接作为模型 Tool | 旧函数在落库后立即请求 Vendor，超时后的失败不等于无外部效果；代价是受控 Video 当前只有无副作用准备 | 假 Vendor 单测证明准备不写 Production Action/Generation Task、不提交 Vendor；异步检查中目标变化被拒 |
 | Video 精确选型本地估算 | 从 Vendor Capability 推导价格或复用其他时长估算 | Capability 不是账单；Owner 只按当前 Project 和完整 output/audio 选型设置版本化费用上限，缺配置拒绝，代价是需要另行维护估算 | `videoQuotePolicy` 两个 SQLite 定向测试覆盖 Owner、revision、时长/画幅/音频隔离；尚无审批或 UI |
 | Video 批准与 Vendor 提交分离 | 批准时调用旧 `startVideoGenerationBatch` | 旧路径无法证明超时后供应商未接单；当前只持久化 Owner 的精确决策，保持 waiting/pending 且禁用 dispatch，代价是批准后仍需后续账本实现 | 3 个 SQLite 本地审批用例证明批准、拒绝和到期均无 ToolCall/GenerationTask/Video；认证路由无 execute |
+| Video 独立请求意图账本 | 直接复用图片账本或失败时重新调用 Vendor | 图片账本含 Asset/Image 专属字段；视频必须绑定 Track/命令与独立 Provider 回执。落账后结果不明时拒绝重放，代价是暂不能自动恢复生成 | 3 个内部账本定向用例证明单次意图、重复不重发、恢复转 unknown；尚无真实 Vendor 调用 |
 
 ## 自测与边界
 

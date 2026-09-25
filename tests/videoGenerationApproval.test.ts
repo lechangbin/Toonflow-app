@@ -91,6 +91,8 @@ test("Owner-local Video approval persists pending evidence, never dispatches", a
     assert.equal(approved?.runStatus, "waiting");
     assert.deepEqual(approved?.allowedActions, ["inspect"]);
     assert.equal((await approval.decide(decision))?.runVersion, approved?.runVersion);
+    assert.equal((await approval.approvedScope(7, pending.runId, pending.id, 1)).scopeHash,
+      pending.scopeHash);
     assert.equal((await db("o_agentToolReceipt").where({ runId: pending.runId }).first()).status,
       "pending", "approval is not a generated Video receipt");
     assert.equal((await db("o_agentToolCall")).length, 0);

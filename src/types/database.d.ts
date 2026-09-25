@@ -373,6 +373,25 @@ export interface o_agentVideoQuotePolicy {
   'updatedAt': number;
   'updatedByUserId': number;
 }
+export interface o_agentVideoVendorRequest {
+  'commandHash': string;
+  'createdAt': number;
+  'currency': string;
+  'estimatedMaxCostMicros': number;
+  'id'?: string;
+  'modelId': string;
+  'projectId': number;
+  'providerTaskId'?: string | null;
+  'requestId': string;
+  'runId': string;
+  'scopeHash': string;
+  'status': string;
+  'toolCallId': string;
+  'trackId': number;
+  'updatedAt': number;
+  'vendorId': string;
+  'version': number;
+}
 export interface o_agentWorkData {
   'createTime'?: number | null;
   'data'?: string | null;
@@ -720,6 +739,7 @@ export interface DB {
   "o_agentTrace": o_agentTrace;
   "o_agentVendorRequest": o_agentVendorRequest;
   "o_agentVideoQuotePolicy": o_agentVideoQuotePolicy;
+  "o_agentVideoVendorRequest": o_agentVideoVendorRequest;
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;
   "o_artStyle": o_artStyle;

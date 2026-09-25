@@ -817,6 +817,31 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["projectId", "scopeKey"]);
       },
     },
+    // Controlled Video submission intent is distinct from the image-specific Vendor ledger.
+    {
+      name: "o_agentVideoVendorRequest",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("toolCallId").notNullable().references("id").inTable("o_agentToolCall");
+        table.integer("projectId").notNullable();
+        table.integer("trackId").notNullable();
+        table.text("requestId").notNullable();
+        table.text("scopeHash").notNullable();
+        table.text("vendorId").notNullable();
+        table.text("modelId").notNullable();
+        table.text("commandHash").notNullable();
+        table.integer("estimatedMaxCostMicros").notNullable();
+        table.text("currency").notNullable();
+        table.text("status").notNullable();
+        table.text("providerTaskId");
+        table.integer("version").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["toolCallId"]);
+        table.unique(["requestId"]);
+      },
+    },
     // Agent Step：Run 内有序、可独立检查的执行步骤
     {
       name: "o_agentRunStep",
@@ -1927,6 +1952,26 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         OR (OLD.artifactHash IS NOT NULL AND NEW.artifactHash IS NOT OLD.artifactHash)
       BEGIN
         SELECT RAISE(ABORT, 'Agent Vendor observations cannot be replaced');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentVideoVendorRequest")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVideoVendorRequest_identity_immutable
+      BEFORE UPDATE OF runId, toolCallId, projectId, trackId, requestId,
+        scopeHash, vendorId, modelId, commandHash,
+        estimatedMaxCostMicros, currency, createdAt
+      ON o_agentVideoVendorRequest
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Video Vendor request identity is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVideoVendorRequest_observation_immutable
+      BEFORE UPDATE OF providerTaskId ON o_agentVideoVendorRequest
+      WHEN OLD.providerTaskId IS NOT NULL AND NEW.providerTaskId IS NOT OLD.providerTaskId
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Video Vendor observation cannot be replaced');
       END
     `);
   }
