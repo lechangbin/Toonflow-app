@@ -6,6 +6,7 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { createAgentRuntime } from "../src/agentRuntime";
+import { createEvaluationAssessmentQueue } from "../src/eval/evaluationAssessmentQueue";
 import { createEvaluationCoverageReport, renderEvaluationCoverageMarkdown } from "../src/eval/evaluationCoverageReport";
 import { createEvaluationAgentCase } from "../src/eval/evaluationAgentCase";
 import { createEvaluationRunRuntime } from "../src/eval/evaluationRun";
@@ -50,6 +51,12 @@ test("T11 freezes the 18 Golden definitions in one ledger without inventing exec
     assert.equal(coverage.cells.length, 36);
     assert.equal("qualityScore" in coverage, false);
     assert.match(renderEvaluationCoverageMarkdown(coverage), /Observed means linked production Run evidence, not a passed hard gate/u);
+    const pending = await createEvaluationAssessmentQueue(evaluation, created.id);
+    assert.equal(pending.expected, 72);
+    assert.equal(pending.observed, 0);
+    assert.equal(pending.pendingAssessment, 72);
+    assert.ok(pending.cells.every((cell) => cell.hardGates.every((gate) => gate.state === "not-evaluated")
+      && cell.quality.score === null && cell.failureClassification === "pending"));
     await db("o_project").insert({ id: 7, userId: 1, name: "评测项目" });
     const queue: Array<() => Promise<void>> = [];
     const runtime = createAgentRuntime({ work: async (operation) => operation(db),
@@ -69,6 +76,12 @@ test("T11 freezes the 18 Golden definitions in one ledger without inventing exec
     assert.deepEqual(after.baseline, { observed: 1, missing: 35 });
     assert.deepEqual(after.candidate, { observed: 0, missing: 36 });
     assert.equal(after.cells[0].baseline, "observed");
+    const queueAfter = await createEvaluationAssessmentQueue(evaluation, created.id);
+    assert.equal(queueAfter.observed, 1);
+    assert.equal(queueAfter.pendingAssessment, 72);
+    assert.equal(queueAfter.cells[0].runStatus, "succeeded");
+    assert.equal(queueAfter.cells[0].hardGates[0].state, "not-evaluated");
+    assert.equal(queueAfter.cells[0].quality.score, null);
     await db("o_agentRun").update({ version: 999 });
     await assert.rejects(createEvaluationCoverageReport(evaluation, created.id), /evidence has changed/u);
     await assert.rejects(freezeGoldenEvaluationRun(evaluation, { ...input,

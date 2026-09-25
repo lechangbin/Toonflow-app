@@ -4,11 +4,13 @@
 
 先读 `CONTEXT.md` 的 Evaluation Run 与 Agent Run 定义，再读 `docs/adr/0027-evaluate-through-production-agent-runs.md`。核心区别是：Evaluation Run 固定比较问题与样本，Agent Run 才执行一次实际 Agent 请求。若评测另写一套 Agent 流程，它通过也无法证明生产流程可用。
 
-阅读顺序：`src/eval/evaluationRun.ts` 的 `validateEvaluationRunManifest` → `createEvaluationRunRuntime().create` → `src/eval/evaluationAgentCase.ts` 的预检、AgentRuntime `start`/`inspect` → `record` → Evaluation Run `inspect`；随后对照 `src/lib/initDB.ts` 的两张表和更新触发器，最后跑两个 `tests/evaluation*.test.ts` 定向文件。注意 `record` 只取 terminal Run、Output 哈希和 Trace 锚点，不读取原始 Prompt；`inspect` 用 expected/recorded/missing 揭示尚未覆盖的矩阵，并复核来源证据有无变化。
+阅读顺序：`src/eval/evaluationRun.ts` 的 `validateEvaluationRunManifest` → `createEvaluationRunRuntime().create` → `src/eval/evaluationAgentCase.ts` 的预检、AgentRuntime `start`/`inspect` → `record` → Evaluation Run `inspect`；随后对照 `src/lib/initDB.ts` 的两张表和更新触发器，最后跑 `tests/evaluationRun.test.ts`、`tests/evaluationAgentCase.test.ts` 和 `tests/goldenEvaluationFreeze.test.ts`。注意 `record` 只取 terminal Run、Output 哈希和 Trace 锚点，不读取原始 Prompt；`inspect` 用 expected/recorded/missing 揭示尚未覆盖的矩阵，并复核来源证据有无变化。
 
 Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/goldenEval.ts` 的 18 例清单校验与规范化哈希 → `tests/goldenEvaluationFreeze.test.ts`。刚冻结时 72 个样本全部 missing；不要把 manifest 冻结解释成场景执行。
 
 覆盖报告再读 `src/eval/evaluationCoverageReport.ts`：固定 18-case、2-seed、2-variant 的分母；观察一条真实只读 Run 后，仅相应 cell 从 missing 转 observed。解释为何 observed 不是 hard-gate pass，来源 Run 版本被改写时为什么必须整份拒绝，而不能继续显示漂亮的覆盖率。
+
+待评审清单读 `src/eval/evaluationAssessmentQueue.ts`：一个 Run 已成功为何对应 Golden 硬门仍是 `not-evaluated`？为什么必需产物清单、rubric 版本和失败分类可以先列出来，却不能自行填“通过”？
 
 沿 `src/agentRuntime/causalTrace.ts` 的 `auditCausalTraceTimeline` 检查来源 Trace：最后一个 ID 正确但中间前驱断开，为什么不能算有效评测证据？
 
