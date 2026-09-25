@@ -281,6 +281,22 @@ export function createVideoGenerationApprovalRuntime(dependencies: {
           return await snapshot(db, input.projectId, prior.id) ?? conflict();
         });
       }
+      if (source) {
+        // Reject a forged or expired parent before asynchronous Vendor capability prep.
+        await dependencies.work((db) => db.transaction(async (tx) => {
+          await owner(tx, input.projectId, input.actorUserId);
+          const parent = await tx("o_agentRun").where({ id: source.parentRunId,
+            projectId: input.projectId, role: "productionAgent",
+            scope: "production-harness-v1", status: "running" })
+            .whereNull("cancellationRequestedAt").first("id", "input");
+          if (!parent || source.lease.runId !== parent.id) conflict();
+          let parentActor: unknown;
+          try { parentActor = JSON.parse(parent.input).actorUserId; }
+          catch { return conflict(); }
+          if (parentActor !== input.actorUserId) conflict();
+          await assertAgentRunLease(tx, source.lease, dependencies.now());
+        }));
+      }
       const frozen = await dependencies.scope.prepare(input.projectId, payload);
       return dependencies.work((db) => db.transaction(async (tx) => {
         await owner(tx, input.projectId, input.actorUserId);
