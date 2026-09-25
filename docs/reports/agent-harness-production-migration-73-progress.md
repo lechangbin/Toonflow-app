@@ -51,6 +51,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 审批范围准备切片：`videoApprovalScope` 将已验证的候选 payload/目标哈希/命令哈希与服务端精确选型 quote revision、费用上限绑定成单个 scope hash；复核时任一目标、命令或报价版本变化均拒绝。2 个纯单测及 App TypeScript 检查通过。它目前只产生内存候选，不持久化子 Run、未形成 Owner 审批，也不允许 Vendor 提交。
 
+受控 Video 本地审批切片：新建 `approved-billable-video-v1` 子 Run，持久化精确范围、Tool 合约、Step/Attempt、pending Receipt、审批、Checkpoint 与 Trace；认证 Owner 可通过 `/api/agentRuns/videoGenerationApproval/{propose,inspect,list,decide}` 审阅并批准/拒绝。批准前重跑命令/选型检查，事务内再次核对 Track/Prompt 与报价 revision；报价、命令、Prompt 漂移均冲突。批准仍把 Run 留在 `video-dispatch-not-enabled` 的 waiting 状态，只有 inspect，Receipt 保持 pending，ToolCall/GenerationTask/ProductionAction/Video 均未产生，也没有 execute 路由或模型 Tool 适配器。拒绝和到期只结算本地审批；启动恢复会结算过期的待审和已批准但未提交的审批。此切片 3 个 SQLite 与 2 个认证路由定向用例、关联的范围单测及 App TypeScript 检查通过；未跑全量套件、浏览器或真实 Provider。上一段“未持久化子 Run”是上一切片状态，由本段更新。下一步必须做独立 Video Vendor 请求账本、结果不确定禁止重放、迟到 Artifact 对账及受控提交，不能把当前批准称为视频已生成或已可提交。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。

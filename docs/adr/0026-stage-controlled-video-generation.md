@@ -1,6 +1,6 @@
 # ADR 0026: Stage controlled Video generation without reusing the manual dispatch
 
-Status: preflight contract only, T17 Issue #73 incomplete.
+Status: Owner-local approval review only; Vendor execution and T17 Issue #73 incomplete.
 
 ## Context
 
@@ -22,3 +22,5 @@ The second preparatory slice extracts `prepareVideoGenerationCommand` from the m
 An Owner-configured `o_agentVideoQuotePolicy` stores a versioned local approval estimate keyed by the exact Project, Vendor, Model, text-to-video capability, output selection and audio selection. The server rejects absent, invalid or mismatched policy rows; an Owner-only compare-and-swap update prevents silent overwrites. Authenticated `/api/agentRuns/videoQuote/get` and `/set` routes expose only this configuration, never a dispatch action; Project deletion purges its policy rows in the authorized transaction. This is an upper-bound estimate for a future Owner decision, **not** a Vendor quote, billing receipt, dispatch permit or assurance that a request will cost that amount. No Web setting, approval or Vendor call is connected yet. Approval must bind the quote revision and exact selection and recheck both before committing dispatch intent. Capability availability alone cannot invent a price.
 
 `videoApprovalScope` now binds the prepared payload, target-state hash, command hash, exact quote target, revision and amount into one candidate scope hash. Its `recheck` rejects a changed quote revision, Track/Prompt target or prepared command. It is still an in-memory candidate: without a durable child Run and Owner decision, the hash does not authorize dispatch.
+
+The next slice persists that exact scope in a dedicated `approved-billable-video-v1` child Run with Step, Attempt, pending ToolReceipt, Approval, Checkpoint and Trace. Authenticated Owner-only propose/inspect/list/decide routes are separate from the production model Tool catalog; no model adapter or Video dispatch endpoint is registered. Before an Owner approves, the runtime reruns command/capability and quote preparation and checks Track/Prompt plus quote again inside the decision transaction. Approval leaves the Run waiting with `video-dispatch-not-enabled`, only `inspect` allowed, pending receipt and no ToolCall, GenerationTask or Vendor request. Rejection and expiry close the local review without calling a Vendor; startup recovery expires stale pending/approved reviews. This intentionally stops at an approval record, not an authorized executable request. The future dispatch implementation must independently verify the scope, record a durable no-replay submission intent, and reconcile ambiguous or late Provider results before being exposed.

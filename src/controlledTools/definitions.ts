@@ -6,6 +6,7 @@ import { derivedChangeInstructionSchema } from "@/assets/derivedChangeInstructio
 import { scriptContentWriteInput, scriptWorkspaceWriteInput } from "./scriptWriteContract";
 import { billableImageScopeSchema } from "./billableImageLifecycle";
 import { storyboardWriteInput } from "./storyboardWriteContract";
+import { frozenVideoApprovalScopeSchema } from "./videoApprovalScope";
 
 const novelIdInput = z.strictObject({ novelId: z.number().int().positive() });
 const novelTextOutput = z.strictObject({
@@ -372,11 +373,36 @@ export const PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION = Object.freeze({
   adapterId: "storyboard-approval-proposal-v1",
 });
 
+/** Catalogued for durable Owner review; no adapter dispatch is registered yet. */
+export const VIDEO_GENERATION_TOOL_DEFINITION = Object.freeze({
+  name: "generate_track_video",
+  revision: "toonflow.tool.generate-track-video.v1",
+  inputSchema: frozenVideoApprovalScopeSchema,
+  outputSchema: z.strictObject({ videoId: z.number().int().positive(),
+    artifactHash: z.string().regex(/^[a-f0-9]{64}$/u) }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "project-artifact", externalCost: "billable", completion: "asynchronous" }),
+    capabilities: Object.freeze(["generate:track-video"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["approved-billable-video-v1"]),
+    scope: "run-project", approval: "per-request-exact-billable-scope",
+    idempotency: "one-dispatch-per-approval", retries: "new-operation-and-approval-only",
+    timeoutMs: 0, cancellation: "intent-does-not-revoke-provider-effect",
+    concurrency: "one-vendor-request-per-tool-call",
+    commit: "not-implemented-no-dispatch",
+    reconciliation: "manual-no-auto-replay-until-ledger-implemented",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "typed-bounded-output",
+  }),
+  adapterId: "video-dispatch-not-registered-v1",
+});
+
 export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION
   | typeof BILLABLE_IMAGE_TOOL_DEFINITION | typeof SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION
   | typeof PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION
   | typeof PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION
   | typeof STORYBOARD_WRITE_TOOL_DEFINITION
+  | typeof VIDEO_GENERATION_TOOL_DEFINITION
   | typeof PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION
   | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION
   | (typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS)[keyof typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS]): string {

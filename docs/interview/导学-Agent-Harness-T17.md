@@ -44,6 +44,7 @@
 | 空轨道单分镜审批 | 让模型调用旧批量 Socket 写入 | 旧流程先写分镜再创建轨道，可能部分提交；先限制到已有空轨道和相同时长，代价是暂不支持多分镜分组与新建轨道 | 假模型提案时无分镜写入；Owner 决策单事务提交，关联失败整体回滚；浏览器待验收 |
 | Video 准备与提交分离 | 将旧异步生成函数直接作为模型 Tool | 旧函数在落库后立即请求 Vendor，超时后的失败不等于无外部效果；代价是受控 Video 当前只有无副作用准备 | 假 Vendor 单测证明准备不写 Production Action/Generation Task、不提交 Vendor；异步检查中目标变化被拒 |
 | Video 精确选型本地估算 | 从 Vendor Capability 推导价格或复用其他时长估算 | Capability 不是账单；Owner 只按当前 Project 和完整 output/audio 选型设置版本化费用上限，缺配置拒绝，代价是需要另行维护估算 | `videoQuotePolicy` 两个 SQLite 定向测试覆盖 Owner、revision、时长/画幅/音频隔离；尚无审批或 UI |
+| Video 批准与 Vendor 提交分离 | 批准时调用旧 `startVideoGenerationBatch` | 旧路径无法证明超时后供应商未接单；当前只持久化 Owner 的精确决策，保持 waiting/pending 且禁用 dispatch，代价是批准后仍需后续账本实现 | 3 个 SQLite 本地审批用例证明批准、拒绝和到期均无 ToolCall/GenerationTask/Video；认证路由无 execute |
 
 ## 自测与边界
 
@@ -55,5 +56,6 @@
 - [ ] 说明派生资产的 `expectedVersion`、等价状态与目标状态哈希为何要在 Owner 批准时再校验。
 - [ ] 说明分镜为什么限定空轨道、同一时长，以及本地事务能保证什么、不能保证什么。
 - [ ] 说明 Video 的本地估算为何不等于 Vendor 报价，批准时还必须绑定 quote revision、命令与目标哈希。
+- [ ] 解释 Video 审批 Run 的 waiting/pending 状态为何不能描述成已提交供应商，并指出后续 no-replay 请求账本缺口。
 
 本阶段没有线上成本下降、成功率、延迟或真实生成质量数据；这些均为待测。T17 后续还要迁移多阶段生产 Step、批量分镜/轨道创建、批量图片和视频及完整 Web 状态投影，T21 才做最终系统验收。

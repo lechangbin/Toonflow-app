@@ -1,7 +1,31 @@
 import { createHash } from "node:crypto";
 
+import { z } from "zod";
+
 import type { ControlledVideoPreparation } from "./videoGenerationPreparation";
-import type { VideoQuoteSnapshot, VideoQuoteTarget } from "./videoQuotePolicy";
+import { videoGenerationProposalInput } from "./videoGenerationProposalContract";
+import { videoQuoteTargetSchema, type VideoQuoteSnapshot,
+  type VideoQuoteTarget } from "./videoQuotePolicy";
+
+const digest = z.string().regex(/^[a-f0-9]{64}$/u);
+export const frozenVideoApprovalScopeSchema = z.strictObject({
+  projectId: z.number().int().positive(),
+  payload: videoGenerationProposalInput,
+  payloadHash: digest, targetStateHash: digest, commandHash: digest,
+  quote: z.strictObject({ ...videoQuoteTargetSchema.shape,
+    estimatedMaxCostMicros: z.number().int().positive().max(1_000_000_000),
+    currency: z.string().regex(/^[A-Z]{3}$/u), revision: z.number().int().positive(),
+    updatedAt: z.number().int().nonnegative() }),
+  scopeHash: digest,
+  preview: z.strictObject({ scriptId: z.number().int().positive(),
+    trackId: z.number().int().positive(), promptRevisionId: z.number().int().positive(),
+    vendorId: z.string().trim().min(1).max(100),
+    modelId: z.string().trim().min(1).max(100),
+    capabilityId: z.literal("text-to-video"), duration: z.number().int().positive(),
+    payloadHash: digest, estimatedMaxCostMicros: z.number().int().positive(),
+    currency: z.string().regex(/^[A-Z]{3}$/u),
+    quoteRevision: z.number().int().positive(), disclaimer: z.string().min(1) }),
+});
 
 export interface FrozenVideoApprovalScope {
   projectId: number;
@@ -35,6 +59,19 @@ function quoteTarget(projectId: number,
     capabilityId: "text-to-video", output: item.output, audio: item.audio };
 }
 
+export function videoApprovalScopeHash(value: Pick<FrozenVideoApprovalScope,
+  "projectId" | "payloadHash" | "targetStateHash" | "commandHash" | "quote">): string {
+  const target: VideoQuoteTarget = { projectId: value.projectId,
+    vendorId: value.quote.vendorId, modelId: value.quote.modelId,
+    capabilityId: value.quote.capabilityId,
+    output: value.quote.output, audio: value.quote.audio };
+  return hash({ projectId: value.projectId, payloadHash: value.payloadHash,
+    targetStateHash: value.targetStateHash, commandHash: value.commandHash,
+    quote: { target, revision: value.quote.revision,
+      estimatedMaxCostMicros: value.quote.estimatedMaxCostMicros,
+      currency: value.quote.currency } });
+}
+
 /** Candidate only. Approval must call recheck before any durable authorization decision. */
 export function createVideoApprovalScope(dependencies: {
   prepare(projectId: number, raw: unknown): Promise<ControlledVideoPreparation>;
@@ -53,14 +90,12 @@ export function createVideoApprovalScope(dependencies: {
       || !/^[A-Z]{3}$/u.test(quote.currency)) {
       throw new VideoApprovalScopeConflictError();
     }
-    const binding = { projectId, payloadHash: prepared.payloadHash,
-      targetStateHash: prepared.targetStateHash, commandHash: prepared.commandHash,
-      quote: { target, revision: quote.revision,
-        estimatedMaxCostMicros: quote.estimatedMaxCostMicros,
-        currency: quote.currency } };
     return { projectId, payload: prepared.payload,
       payloadHash: prepared.payloadHash, targetStateHash: prepared.targetStateHash,
-      commandHash: prepared.commandHash, quote, scopeHash: hash(binding),
+      commandHash: prepared.commandHash, quote,
+      scopeHash: videoApprovalScopeHash({ projectId,
+        payloadHash: prepared.payloadHash, targetStateHash: prepared.targetStateHash,
+        commandHash: prepared.commandHash, quote }),
       preview: { ...prepared.preview,
         estimatedMaxCostMicros: quote.estimatedMaxCostMicros,
         currency: quote.currency, quoteRevision: quote.revision,
