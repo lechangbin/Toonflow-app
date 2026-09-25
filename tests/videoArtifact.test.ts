@@ -5,7 +5,7 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { createVideoArtifactRuntime } from "../src/controlledTools/videoArtifact";
-import { VideoRequestLedgerConflictError } from
+import { createVideoRequestLedger, VideoRequestLedgerConflictError } from
   "../src/controlledTools/videoRequestLedger";
 import initDB from "../src/lib/initDB";
 import { workOf } from "./databaseTestSupport";
@@ -127,6 +127,36 @@ test("Video result after cancellation remains late evidence and is not adopted",
     assert.equal((await db("o_agentVideoVendorRequest")
       .where({ requestId: "request-7" }).first()).status,
       "late_artifact_observed");
+    assert.equal((await db("o_video")).length, 0);
+  } finally { await db.destroy(); }
+});
+
+test("Video bytes after a cancellation intent are late even before local stop", async () => {
+  const context = await fixture();
+  const { db, artifact } = context;
+  try {
+    await db("o_agentVideoVendorRequest").where({ requestId: "request-7" })
+      .update({ status: "cancellation_requested", cancellationRequestedAt: 150 });
+    await db("o_agentRun").where({ id: "run-7" }).update({
+      cancellationRequestedAt: 150,
+      waitingReason: "vendor-cancellation-unconfirmed",
+      allowedActions: '["inspect","stop"]' });
+    const observed = await artifact.observe("request-7", encoded);
+    assert.equal(observed.status, "late");
+    assert.equal((await db("o_agentVideoVendorRequest")
+      .where({ requestId: "request-7" }).first()).status,
+      "late_artifact_observed");
+    const run = await db("o_agentRun").where({ id: "run-7" }).first();
+    assert.equal(run.allowedActions, '["inspect","stop"]');
+    const ledger = createVideoRequestLedger({ work: workOf(db),
+      now: () => 250, createId: () => "stop-trace",
+      recheck: async (scope) => scope,
+      quoteInTransaction: async () => ({ revision: 1,
+        estimatedMaxCostMicros: 250_000, currency: "USD" }) });
+    await ledger.stopWithoutReplay({ projectId: 7, actorUserId: 1,
+      requestId: "request-7", expectedVersion: run.version });
+    assert.equal((await db("o_agentRun").where({ id: "run-7" }).first()).status,
+      "cancelled");
     assert.equal((await db("o_video")).length, 0);
   } finally { await db.destroy(); }
 });

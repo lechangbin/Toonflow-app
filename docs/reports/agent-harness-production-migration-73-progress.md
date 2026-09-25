@@ -63,6 +63,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 编排顺序切片：增加纯内部 `videoGenerationExecution`，要求服务端读取 Owner 已批准范围，重新准备并比较命令哈希，先通过独立账本记请求意图，只有 `newIntent:true` 的首次调用者才可触及注入的 Provider port；重复调用只返回原 requestId。调用异常归 unknown、已观察但本地采纳冲突保留为待核对，不伪报成功。3 个 fake-port 定向单测与 App TypeScript 检查通过。还未接入生产 Vendor adapter 或 HTTP execute；当前观察器只接受 MP4 base64，Provider URL 需另设受约束获取路径，不能拿旧路径的任意 URL 下载直接接入。
 
+受控 Video 取消语义切片：`o_agentVideoVendorRequest` 新增本地 `cancellationRequestedAt`；Owner 内部操作只记录取消意图，不能证明供应商终止、免计费或可重试。`stopWithoutReplay` 可把取消中、结果未知或已迟到请求的本地 Run/Receipt/Step 关闭为 cancelled，同时保留请求、媒体及 Trace 对账证据。取消后迟到的 task ID 不重新打开 Run；视频字节标 `late`，即使先观察到媒体再提出取消，也会将已观察证据原子转为 late，禁止项目采纳。取消前后均不能再次申请新的 Vendor 意图。账本/媒体共 11 个定向 SQLite 单测和 App TypeScript 检查通过；无取消 HTTP、真实 Provider cancel/回调、浏览器或全量验收，不能称供应商实际已取消。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。

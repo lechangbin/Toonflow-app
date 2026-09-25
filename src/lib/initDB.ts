@@ -835,6 +835,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("currency").notNullable();
         table.text("status").notNullable();
         table.text("providerTaskId");
+        table.integer("cancellationRequestedAt");
         table.integer("version").notNullable();
         table.integer("createdAt").notNullable();
         table.integer("updatedAt").notNullable();
@@ -1990,6 +1991,15 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN OLD.providerTaskId IS NOT NULL AND NEW.providerTaskId IS NOT OLD.providerTaskId
       BEGIN
         SELECT RAISE(ABORT, 'Agent Video Vendor observation cannot be replaced');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVideoVendorRequest_cancellation_immutable
+      BEFORE UPDATE OF cancellationRequestedAt ON o_agentVideoVendorRequest
+      WHEN OLD.cancellationRequestedAt IS NOT NULL
+        AND NEW.cancellationRequestedAt IS NOT OLD.cancellationRequestedAt
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Video Vendor cancellation intent is immutable');
       END
     `);
   }

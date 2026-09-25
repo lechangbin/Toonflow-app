@@ -108,7 +108,8 @@ export function createVideoRequestLedger(dependencies: {
           return;
         }
         if (request.providerTaskId != null
-          || !["dispatch_recorded", "unknown"].includes(request.status)) conflict();
+          || !["dispatch_recorded", "unknown", "cancellation_requested"]
+            .includes(request.status)) conflict();
         const run = await tx("o_agentRun").where({ id: request.runId,
           projectId: request.projectId,
           scope: VIDEO_GENERATION_APPROVAL_SCOPE }).first();
@@ -129,15 +130,22 @@ export function createVideoRequestLedger(dependencies: {
           predecessorCheckpointId: prior.id,
           predecessorPayloadHash: prior.payloadHash,
           requestId, providerTaskId };
+        const cancellationPending = request.cancellationRequestedAt != null;
+        const stopped = run.status === "cancelled";
         const changed = await tx("o_agentVideoVendorRequest")
           .where({ id: request.id, version: request.version,
             providerTaskId: null })
-          .update({ providerTaskId, status: "submitted",
+          .update({ providerTaskId,
+            status: cancellationPending ? "cancellation_requested" : "submitted",
             version: request.version + 1, updatedAt: now });
         const changedRun = await tx("o_agentRun")
           .where({ id: run.id, version: run.version }).update({
-            waitingReason: "vendor-task-observed", attentionReason: null,
-            allowedActions: JSON.stringify(["inspect"]), version: run.version + 1,
+            waitingReason: cancellationPending || stopped
+              ? run.waitingReason : "vendor-task-observed",
+            attentionReason: cancellationPending || stopped
+              ? run.attentionReason : null,
+            allowedActions: cancellationPending || stopped ? run.allowedActions
+              : JSON.stringify(["inspect"]), version: run.version + 1,
             updatedAt: now });
         if (changed !== 1 || changedRun !== 1) conflict();
         await tx("o_agentRunCheckpoint").insert({ id: dependencies.createId(),
@@ -154,8 +162,9 @@ export function createVideoRequestLedger(dependencies: {
           toolReceiptId: call.receiptId, toolCallId: call.id,
           videoVendorRequestId: request.id,
           eventType: "vendor.video-request.task-observed",
-          runStatus: "waiting",
-          stepStatus: request.status === "unknown" ? "waiting" : "running",
+          runStatus: run.status,
+          stepStatus: stopped ? "cancelled"
+            : request.status === "unknown" ? "waiting" : "running",
           createdAt: now });
       }));
     },
@@ -167,6 +176,8 @@ export function createVideoRequestLedger(dependencies: {
           .where({ requestId }).first();
         if (!request) conflict();
         if (request.status === "unknown") return;
+        if (request.status === "cancellation_requested"
+          || request.status === "late_artifact_observed") return;
         if (request.status !== "dispatch_recorded") conflict();
         const run = await tx("o_agentRun").where({ id: request.runId,
           projectId: request.projectId }).first();
@@ -195,6 +206,108 @@ export function createVideoRequestLedger(dependencies: {
           eventType: "vendor.video-request.submission-unknown",
           runStatus: "waiting", stepStatus: "waiting",
           diagnostic: unknownDiagnostic, createdAt: now });
+      }));
+    },
+    /** A local cancellation intent is not evidence that the Provider stopped or waived a charge. */
+    async requestCancellation(input: { projectId: number; actorUserId: number;
+      requestId: string; expectedVersion: number }): Promise<void> {
+      if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
+        || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0
+        || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion <= 0
+        || !/^[A-Za-z0-9._:-]{1,128}$/u.test(input.requestId)) conflict();
+      await dependencies.work((db) => db.transaction(async (tx) => {
+        if (!await tx("o_project").where({ id: input.projectId,
+          userId: input.actorUserId }).first("id")) conflict();
+        const request = await tx("o_agentVideoVendorRequest")
+          .where({ projectId: input.projectId, requestId: input.requestId }).first();
+        if (!request) conflict();
+        const run = await tx("o_agentRun").where({ id: request.runId,
+          projectId: input.projectId, scope: VIDEO_GENERATION_APPROVAL_SCOPE }).first();
+        const call = await tx("o_agentToolCall")
+          .where({ id: request.toolCallId, runId: request.runId }).first();
+        if (!run || !call) conflict();
+        if (request.cancellationRequestedAt != null) return;
+        if (run.version !== input.expectedVersion || run.status !== "waiting"
+          || !["dispatch_recorded", "unknown", "submitted", "artifact_observed"]
+            .includes(request.status)) conflict();
+        const now = dependencies.now();
+        const observed = request.status === "artifact_observed";
+        const artifact = observed && await tx("o_agentVideoArtifact")
+          .where({ vendorRequestId: request.id, status: "observed" }).first();
+        if (observed && !artifact) conflict();
+        const changedRequest = await tx("o_agentVideoVendorRequest")
+          .where({ id: request.id, version: request.version })
+          .update({ status: observed ? "late_artifact_observed" : "cancellation_requested",
+            cancellationRequestedAt: now, version: request.version + 1, updatedAt: now });
+        if (observed) {
+          const changedArtifact = await tx("o_agentVideoArtifact")
+            .where({ id: artifact.id, status: "observed" })
+            .update({ status: "late", updatedAt: now });
+          if (changedArtifact !== 1) conflict();
+        }
+        const changedRun = await tx("o_agentRun")
+          .where({ id: run.id, version: run.version }).update({
+            cancellationRequestedAt: now, status: "waiting",
+            waitingReason: "vendor-cancellation-unconfirmed",
+            attentionReason: "vendor-effect-may-arrive",
+            allowedActions: JSON.stringify(["inspect", "stop"]),
+            version: run.version + 1, updatedAt: now });
+        if (changedRequest !== 1 || changedRun !== 1) conflict();
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId,
+          toolReceiptId: call.receiptId, toolCallId: call.id,
+          videoVendorRequestId: request.id,
+          videoArtifactId: artifact ? artifact.id : undefined,
+          eventType: "vendor.video-request.cancellation-requested",
+          runStatus: "waiting", createdAt: now });
+      }));
+    },
+    /** Close local execution without replaying or asserting a remote cancellation. */
+    async stopWithoutReplay(input: { projectId: number; actorUserId: number;
+      requestId: string; expectedVersion: number }): Promise<void> {
+      if (!Number.isSafeInteger(input.projectId) || input.projectId <= 0
+        || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0
+        || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion <= 0
+        || !/^[A-Za-z0-9._:-]{1,128}$/u.test(input.requestId)) conflict();
+      await dependencies.work((db) => db.transaction(async (tx) => {
+        if (!await tx("o_project").where({ id: input.projectId,
+          userId: input.actorUserId }).first("id")) conflict();
+        const request = await tx("o_agentVideoVendorRequest")
+          .where({ projectId: input.projectId, requestId: input.requestId }).first();
+        if (!request || !["cancellation_requested", "unknown",
+          "late_artifact_observed"].includes(request.status)) conflict();
+        const run = await tx("o_agentRun").where({ id: request.runId,
+          projectId: input.projectId, scope: VIDEO_GENERATION_APPROVAL_SCOPE }).first();
+        const call = await tx("o_agentToolCall")
+          .where({ id: request.toolCallId, runId: request.runId }).first();
+        if (!run || !call) conflict();
+        if (run.status === "cancelled" && run.allowedActions === '["inspect"]') return;
+        if (run.version !== input.expectedVersion || run.status !== "waiting") conflict();
+        const now = dependencies.now();
+        const changed = await tx("o_agentRun")
+          .where({ id: run.id, version: run.version }).update({
+            status: "cancelled", waitingReason: null,
+            attentionReason: "vendor-effect-not-disproven",
+            allowedActions: JSON.stringify(["inspect"]),
+            version: run.version + 1, completedAt: now, updatedAt: now });
+        if (changed !== 1) conflict();
+        await tx("o_agentToolCall").where({ id: call.id })
+          .whereNot("status", "succeeded")
+          .update({ status: "cancelled", updatedAt: now });
+        await tx("o_agentToolReceipt").where({ id: call.receiptId, status: "pending" })
+          .update({ status: "cancelled", updatedAt: now });
+        await tx("o_agentRunStep").where({ id: call.stepId })
+          .whereNot("status", "succeeded")
+          .update({ status: "cancelled", completedAt: now });
+        await tx("o_agentRunAttempt").where({ id: call.attemptId })
+          .whereNot("status", "succeeded")
+          .update({ status: "cancelled", completedAt: now });
+        await appendCausalTrace(tx, { id: dependencies.createId(), runId: run.id,
+          stepId: call.stepId, attemptId: call.attemptId,
+          toolReceiptId: call.receiptId, toolCallId: call.id,
+          videoVendorRequestId: request.id,
+          eventType: "vendor.video-request.stopped-without-replay",
+          runStatus: "cancelled", stepStatus: "cancelled", createdAt: now });
       }));
     },
     async reserve(input: { projectId: number; actorUserId: number;

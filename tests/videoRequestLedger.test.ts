@@ -173,3 +173,65 @@ test("ambiguous Video submission may later attach verified task identity, never 
     assert.equal((await db("o_video")).length, 0);
   } finally { await db.destroy(); }
 });
+
+test("Video cancellation records only local intent, then stops without replay", async () => {
+  const context = await fixture();
+  const { db, ledger, reserve } = context;
+  try {
+    const intent = await ledger.reserve(reserve);
+    const version = (await db("o_agentRun").where({ id: reserve.runId }).first()).version;
+    await assert.rejects(ledger.requestCancellation({ projectId: 7,
+      actorUserId: 2, requestId: intent.requestId, expectedVersion: version }),
+    VideoRequestLedgerConflictError);
+    await ledger.requestCancellation({ projectId: 7, actorUserId: 1,
+      requestId: intent.requestId, expectedVersion: version });
+    await ledger.requestCancellation({ projectId: 7, actorUserId: 1,
+      requestId: intent.requestId, expectedVersion: version });
+    const request = await db("o_agentVideoVendorRequest")
+      .where({ requestId: intent.requestId }).first();
+    assert.equal(request.status, "cancellation_requested");
+    assert(request.cancellationRequestedAt != null);
+    await assert.rejects(db("o_agentVideoVendorRequest")
+      .where({ id: intent.vendorRequestId })
+      .update({ cancellationRequestedAt: null }),
+    /cancellation intent is immutable/);
+    assert.equal((await ledger.reserve(reserve)).newIntent, false);
+    await ledger.markSubmissionAmbiguous(intent.requestId);
+    const waiting = await db("o_agentRun").where({ id: reserve.runId }).first();
+    assert.equal(waiting.waitingReason, "vendor-cancellation-unconfirmed");
+    assert.equal(waiting.allowedActions, '["inspect","stop"]');
+    await ledger.stopWithoutReplay({ projectId: 7, actorUserId: 1,
+      requestId: intent.requestId, expectedVersion: waiting.version });
+    assert.equal((await db("o_agentRun").where({ id: reserve.runId }).first()).status,
+      "cancelled");
+    assert.equal((await db("o_agentToolCall")).at(0)?.status, "cancelled");
+    assert.equal((await db("o_agentVideoVendorRequest")
+      .where({ requestId: intent.requestId }).first()).status,
+      "cancellation_requested");
+    assert.equal((await db("o_video")).length, 0);
+  } finally { await db.destroy(); }
+});
+
+test("late Provider task identity survives cancellation and cannot reopen a stopped Run", async () => {
+  const context = await fixture();
+  const { db, ledger, reserve } = context;
+  try {
+    const intent = await ledger.reserve(reserve);
+    const version = (await db("o_agentRun").where({ id: reserve.runId }).first()).version;
+    await ledger.requestCancellation({ projectId: 7, actorUserId: 1,
+      requestId: intent.requestId, expectedVersion: version });
+    const waiting = await db("o_agentRun").where({ id: reserve.runId }).first();
+    await ledger.stopWithoutReplay({ projectId: 7, actorUserId: 1,
+      requestId: intent.requestId, expectedVersion: waiting.version });
+    await ledger.recordProviderTask(intent.requestId, "provider-task-late");
+    await ledger.recordProviderTask(intent.requestId, "provider-task-late");
+    const request = await db("o_agentVideoVendorRequest")
+      .where({ requestId: intent.requestId }).first();
+    const run = await db("o_agentRun").where({ id: reserve.runId }).first();
+    assert.equal(request.providerTaskId, "provider-task-late");
+    assert.equal(request.status, "cancellation_requested");
+    assert.equal(run.status, "cancelled");
+    assert.equal(run.allowedActions, '["inspect"]');
+    assert.equal((await db("o_video")).length, 0);
+  } finally { await db.destroy(); }
+});

@@ -52,6 +52,7 @@ export function createVideoArtifactRuntime(dependencies: {
       const run = current && await tx("o_agentRun").where({ id: current.runId,
         projectId: current.projectId, scope: VIDEO_GENERATION_APPROVAL_SCOPE }).first();
       if (!current || !run || !["dispatch_recorded", "unknown", "submitted",
+        "cancellation_requested",
         "artifact_observed", "late_artifact_observed"].includes(current.status)) conflict();
       const known = await tx("o_agentVideoArtifact")
         .where({ vendorRequestId: current.id }).first();
@@ -84,13 +85,16 @@ export function createVideoArtifactRuntime(dependencies: {
       if (known.status !== "write_pending") return { requestId, artifactHash,
         mediaPath, status: known.status === "late" ? "late" as const
           : "observed" as const, duplicate: true };
-      if (!["dispatch_recorded", "unknown", "submitted"].includes(current.status)) conflict();
+      if (!["dispatch_recorded", "unknown", "submitted",
+        "cancellation_requested"].includes(current.status)) conflict();
       const run = await tx("o_agentRun").where({ id: current.runId,
         projectId: current.projectId, scope: VIDEO_GENERATION_APPROVAL_SCOPE }).first();
       const call = await tx("o_agentToolCall")
         .where({ id: current.toolCallId, runId: current.runId }).first();
       if (!run || !call || known.trackId !== current.trackId) conflict();
-      const late = run.status === "cancelled" || run.cancellationRequestedAt != null;
+      const late = run.status === "cancelled"
+        || run.cancellationRequestedAt != null
+        || current.cancellationRequestedAt != null;
       const now = dependencies.now();
       const status = late ? "late" as const : "observed" as const;
       const changedArtifact = await tx("o_agentVideoArtifact")
@@ -105,7 +109,7 @@ export function createVideoArtifactRuntime(dependencies: {
         .update({ status: late ? run.status : "waiting",
           waitingReason: late ? run.waitingReason : "video-artifact-awaiting-commit",
           attentionReason: late ? "inspect-late-video-artifact" : null,
-          allowedActions: JSON.stringify(["inspect"]),
+          allowedActions: late ? run.allowedActions : JSON.stringify(["inspect"]),
           version: run.version + 1, updatedAt: now });
       if (changedArtifact !== 1 || changedRequest !== 1
         || changedRun !== 1) conflict();

@@ -386,6 +386,7 @@ export interface o_agentVideoArtifact {
   'vendorRequestId': string;
 }
 export interface o_agentVideoVendorRequest {
+  'cancellationRequestedAt'?: number | null;
   'commandHash': string;
   'createdAt': number;
   'currency': string;
