@@ -20,6 +20,8 @@ const digest = z.string().regex(/^[a-f0-9]{64}$/u);
 const revision = z.string().trim().min(1).max(128);
 const caseId = z.string().regex(/^(DEV|HOLD|INC)-[A-Z]+-\d{3}$/u);
 const positiveInt = z.number().int().positive();
+const failureClass = z.enum(["none", "routing", "dependency", "permission",
+  "context", "vendor", "timeout", "quality", "evidence"]);
 
 export const ablationManifestSchema = z.strictObject({
   schemaVersion: z.literal(ABLATION_MANIFEST_VERSION),
@@ -30,6 +32,7 @@ export const ablationManifestSchema = z.strictObject({
   candidateVariants: z.array(z.string().min(1)).length(4),
   caseManifestHash: digest,
   caseIds: z.array(caseId).min(1),
+  expectedFailureClasses: z.record(caseId, failureClass),
   seeds: z.array(z.number().int().nonnegative()).min(2),
   revisions: z.strictObject({
     app: revision, runtime: revision, tool: revision,
@@ -65,6 +68,8 @@ export function validateAblationManifest(input: unknown): AblationManifest {
     || parsed.candidateVariants.length !== expected.length
     || parsed.candidateVariants.some((value, index) => value !== expected[index])
     || new Set(parsed.caseIds).size !== parsed.caseIds.length
+    || Object.keys(parsed.expectedFailureClasses).length !== parsed.caseIds.length
+    || parsed.caseIds.some((id) => parsed.expectedFailureClasses[id] === undefined)
     || new Set(parsed.seeds).size !== parsed.seeds.length
     || parsed.seeds.some((value, index) => index > 0 && value <= parsed.seeds[index - 1])) {
     throw new TypeError("Ablation variants, cases or repeated seeds are not frozen canonically");
@@ -84,8 +89,6 @@ export function expectedAblationRunKeys(manifest: AblationManifest): string[] {
       validated.seeds.map((seed) => `${variant}:${id}:${seed}`)));
 }
 
-const failureClass = z.enum(["none", "routing", "dependency", "permission",
-  "context", "vendor", "timeout", "quality", "evidence"]);
 export const ablationRunResultSchema = z.strictObject({
   manifestHash: digest,
   executedAt: z.number().int().nonnegative(),
@@ -113,6 +116,7 @@ export interface AblationVariantSummary {
   p95LatencyMs: number | null; latencyThresholdPassed: boolean;
   costOverLimit: number; retriesOverLimit: number;
   budgetExceeded: number; hardGateFailures: Record<string, number>;
+  unexpectedFailureClass: number;
   failureClasses: Record<string, number>;
   /** No composite score: every predeclared threshold must independently pass. */
   adoptable: boolean;
@@ -159,6 +163,8 @@ export function summarizeAblationResults(manifestInput: unknown,
       || entry.outputTokens > manifest.commonBudget.maxOutputTokens
       || entry.toolCalls > manifest.commonBudget.maxToolCalls
       || entry.latencyMs > manifest.commonBudget.timeoutMs).length;
+    const unexpectedFailureClass = rows.filter((entry) =>
+      entry.failureClass !== manifest.expectedFailureClasses[entry.caseId]).length;
     const missing = expectedPerVariant - rows.length;
     const latencyThresholdPassed = p95LatencyMs !== null
       && p95LatencyMs <= manifest.thresholds.maxP95LatencyMs;
@@ -166,9 +172,11 @@ export function summarizeAblationResults(manifestInput: unknown,
       missing, qualityPending, qualityBelowThreshold,
       p95LatencyMs, latencyThresholdPassed, costOverLimit, retriesOverLimit,
       budgetExceeded, hardGateFailures, failureClasses,
+      unexpectedFailureClass,
       adoptable: missing === 0 && qualityPending === 0 && qualityBelowThreshold === 0
         && latencyThresholdPassed && costOverLimit === 0 && retriesOverLimit === 0
-        && budgetExceeded === 0 && Object.values(hardGateFailures).every((count) => count === 0),
+        && budgetExceeded === 0 && unexpectedFailureClass === 0
+        && Object.values(hardGateFailures).every((count) => count === 0),
     };
   });
   return { manifestHash, expected: expectedKeys.size, executed: results.length,
