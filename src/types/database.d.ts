@@ -1,4 +1,4 @@
-// @db-hash 8dfe3dc75ad64f433a8d201ff805e2fc
+// @db-hash f44da8eda9b4cff53ea06b0618b25b1c
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -37,6 +37,24 @@ export interface o_agentDeploy {
   'name'?: string | null;
   'temperature'?: number | null;
   'vendorId'?: string | null;
+}
+export interface o_agentEvaluationCase {
+  'agentRunId': string;
+  'caseId': string;
+  'createdAt': number;
+  'evaluationRunId': string;
+  'evidenceHash': string;
+  'evidenceJson': string;
+  'id'?: string;
+  'seed': number;
+  'variant': string;
+}
+export interface o_agentEvaluationRun {
+  'createdAt': number;
+  'id'?: string;
+  'manifestHash': string;
+  'manifestJson': string;
+  'schemaVersion': string;
 }
 export interface o_agentEvidenceDeletionPermit {
   'runId'?: string;
@@ -329,8 +347,6 @@ export interface o_agentTrace {
   'eventType': string;
   'id'?: string;
   'imageArtifactId'?: string | null;
-  'videoVendorRequestId'?: string | null;
-  'videoArtifactId'?: string | null;
   'predecessorTraceId'?: string | null;
   'runId': string;
   'runStatus'?: string | null;
@@ -340,6 +356,8 @@ export interface o_agentTrace {
   'toolCallId'?: string | null;
   'toolReceiptId'?: string | null;
   'vendorRequestId'?: string | null;
+  'videoArtifactId'?: string | null;
+  'videoVendorRequestId'?: string | null;
 }
 export interface o_agentVendorRequest {
   'artifactHash'?: string | null;
@@ -364,6 +382,16 @@ export interface o_agentVendorRequest {
   'vendorId': string;
   'version': number;
 }
+export interface o_agentVideoArtifact {
+  'contentHash': string;
+  'createdAt': number;
+  'id'?: string;
+  'mediaPath': string;
+  'status': string;
+  'trackId': number;
+  'updatedAt': number;
+  'vendorRequestId': string;
+}
 export interface o_agentVideoQuotePolicy {
   'currency': string;
   'estimatedMaxCostMicros': number;
@@ -374,16 +402,6 @@ export interface o_agentVideoQuotePolicy {
   'scopeKey': string;
   'updatedAt': number;
   'updatedByUserId': number;
-}
-export interface o_agentVideoArtifact {
-  'contentHash': string;
-  'createdAt': number;
-  'id'?: string;
-  'mediaPath': string;
-  'status': string;
-  'trackId': number;
-  'updatedAt': number;
-  'vendorRequestId': string;
 }
 export interface o_agentVideoVendorRequest {
   'cancellationRequestedAt'?: number | null;
@@ -724,6 +742,8 @@ export interface DB {
   "memories": memories;
   "o_agentContextBundle": o_agentContextBundle;
   "o_agentDeploy": o_agentDeploy;
+  "o_agentEvaluationCase": o_agentEvaluationCase;
+  "o_agentEvaluationRun": o_agentEvaluationRun;
   "o_agentEvidenceDeletionPermit": o_agentEvidenceDeletionPermit;
   "o_agentImageArtifact": o_agentImageArtifact;
   "o_agentImageQuotePolicy": o_agentImageQuotePolicy;
@@ -751,8 +771,8 @@ export interface DB {
   "o_agentToolReceipt": o_agentToolReceipt;
   "o_agentTrace": o_agentTrace;
   "o_agentVendorRequest": o_agentVendorRequest;
-  "o_agentVideoQuotePolicy": o_agentVideoQuotePolicy;
   "o_agentVideoArtifact": o_agentVideoArtifact;
+  "o_agentVideoQuotePolicy": o_agentVideoQuotePolicy;
   "o_agentVideoVendorRequest": o_agentVideoVendorRequest;
   "o_agentWorkData": o_agentWorkData;
   "o_artifactRevision": o_artifactRevision;
