@@ -5,3 +5,4 @@
 3. 问：服务端发了 stop，就能证明没有视频/图片费用吗？答：不能。这个 Socket 更新只结算聊天流显示；供应商调用可能已经跨过网络边界。受控生成必须看独立 Owner 审批、请求意图账本、unknown/迟到媒体证据与 HTTP Run 状态。旧 Socket 仍是待迁移兼容路径。
 4. 问：T18 已完成了吗？答：没有。当前只完成停止回执止损与 Web 的近期 Run/证据抽屉等局部接缝；旧 Socket 生命周期所有权、跨入口审批和浏览器重连/回退验收未完成。不能把局部单测说成完整兼容迁移。
 5. 问：收到 stop 后旧 Agent 迟到调用 complete 怎么办？答：`MessageBuilder` 把 stop 当作本地终态，同一消息后续的 `complete`、`error` 和状态更新不再发送，重复 stop 也不再发送；定向单测覆盖。它不拦截已经在途的内容分片，也不代表 Vendor 效果已撤销。
+6. 问：为什么 Production Socket 有有效 JWT 仍需校验上下文？答：旧路由原先信任握手与 `updateContext` 的 Project/Script/隔离键，持有自己 token 的用户可以试探其他项目。现在用 token 内用户 ID 查 Project 归属，再查 Script 属于 Project，并要求隔离键与规范格式精确一致；未选剧本只用于连接，不能启动 chat。异步切换有序号栅栏，避免较早请求迟到后覆盖新上下文。

@@ -6,4 +6,6 @@ Issue：`lechangbin/Toonflow-app#74`。本 App 分支叠在 T17 Draft PR 上，�
 
 进一步在旧 `MessageBuilder` 上添加 stop 终态栅栏：停止后的迟到 `complete`、`error` 或状态更新不能覆盖停止回执，重复 stop 也不会再发一次。该栅栏只约束消息状态，不能阻止已在途的内容分片或外部效果；Web 仍须以受控 Run 的 HTTP 快照判断生产结果。
 
-定向验证：`tests/legacyStopLifecycle.test.ts` 2 例覆盖一次停止与迟到 finally；`tests/legacyMessageStopFence.test.ts` 2 例覆盖迟到终态与正常完成；App TypeScript 检查通过。Web 侧对应 `useChat` 定向测试确认发送请求不提前改消息状态。没有跑全量测试、构建、跨仓浏览器流程、真实 Provider 或 bundle 重建。后续 T18 要继续把旧 Socket 生命周期/前端完成回调迁走，完成共用 Run/审批/恢复体验及兼容回退；T21 才做完整验收。
+旧 Production Socket 原先只校验 JWT 是否有效，握手和 `updateContext` 却直接采用客户端提供的 Project/Script/隔离键。现按 token 内的用户 ID 校验 Project 归属、Script 与 Project 的关系及隔离键的精确格式；未选剧本只允许建立连接，不允许 chat。上下文切换在校验成功后才生效，并在切换时停止旧消息；并发校验的迟到结果不能覆盖较新选择，断连时 abort 当前消息。这仍是旧路由的边界加固，并非旧 Agent 已迁入 Harness。
+
+定向验证：`tests/legacyStopLifecycle.test.ts` 2 例覆盖一次停止与迟到 finally；`tests/legacyMessageStopFence.test.ts` 2 例覆盖迟到终态与正常完成；`tests/legacyProductionContext.test.ts` 2 例覆盖合法、越权、错配及未选剧本上下文；App TypeScript 检查通过。Web 侧对应 `useChat` 定向测试确认发送请求不提前改消息状态。没有跑全量测试、构建、跨仓浏览器流程、真实 Provider 或 bundle 重建。后续 T18 要继续把旧 Socket 生命周期/前端完成回调迁走，完成共用 Run/审批/恢复体验及兼容回退；T21 才做完整验收。
