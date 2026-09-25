@@ -11,6 +11,7 @@ export type VideoExecutionResult =
   | { status: "already-recorded"; requestId: string; requestStatus: string }
   | { status: "submission-unknown"; requestId: string }
   | { status: "artifact-awaiting-commit"; requestId: string; artifactHash: string }
+  | { status: "late-artifact"; requestId: string; artifactHash: string }
   | { status: "succeeded"; requestId: string; result: VideoArtifactCommitResult };
 
 export class VideoGenerationExecutionConflictError extends Error {
@@ -70,7 +71,7 @@ export function createVideoGenerationExecution(dependencies: {
         return { status: "submission-unknown", requestId: reservation.requestId };
       }
       if (observed.status === "late") return {
-        status: "artifact-awaiting-commit", requestId: reservation.requestId,
+        status: "late-artifact", requestId: reservation.requestId,
         artifactHash: observed.artifactHash };
       try {
         const expectedVersion = await dependencies.currentRunVersion(

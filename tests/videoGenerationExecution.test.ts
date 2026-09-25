@@ -44,6 +44,7 @@ function fixture() {
   let fresh = true;
   let invokeFails = false;
   let commitFails = false;
+  let late = false;
   let preparedHash = commandHash;
   const execution = createVideoGenerationExecution({
     existingRequest: async () => { calls.push("existingRequest");
@@ -68,7 +69,8 @@ function fixture() {
     observe: async () => { calls.push("observe"); return {
       requestId: "request-7", artifactHash: "a".repeat(64),
       mediaPath: "/7/agent-video/request-7/a.mp4",
-      status: "observed" as const, duplicate: false }; },
+      status: late ? "late" as const : "observed" as const,
+      duplicate: false }; },
     currentRunVersion: async () => { calls.push("version"); return 4; },
     commit: async () => { calls.push("commit");
       if (commitFails) throw new Error("target changed");
@@ -79,6 +81,7 @@ function fixture() {
     setFresh: (value: boolean) => { fresh = value; },
     setInvokeFails: (value: boolean) => { invokeFails = value; },
     setCommitFails: (value: boolean) => { commitFails = value; },
+    setLate: (value: boolean) => { late = value; },
     setPreparedHash: (value: string) => { preparedHash = value; } };
 }
 
@@ -114,4 +117,13 @@ test("Video timeout is unknown and failed local adoption retains observed eviden
   assert.equal(result.status, "artifact-awaiting-commit");
   assert.deepEqual(changed.calls, ["existingRequest", "approvedScope", "prepare", "reserve",
     "invoke", "observe", "version", "commit"]);
+});
+
+test("Video result after cancellation is late evidence, not awaiting adoption", async () => {
+  const context = fixture();
+  context.setLate(true);
+  const result = await context.execution.execute(input);
+  assert.equal(result.status, "late-artifact");
+  assert.deepEqual(context.calls, ["existingRequest", "approvedScope",
+    "prepare", "reserve", "invoke", "observe"]);
 });

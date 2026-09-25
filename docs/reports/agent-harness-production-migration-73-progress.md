@@ -73,6 +73,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 内部组合切片：`videoGenerationExecutionComposition` 已把 Owner 批准范围、共享命令准备、本地报价、独立意图账本、配置 Vendor port、受限媒体解析、媒体观察与项目采纳串成一条内部调用链；默认组合仍无 HTTP/model Tool 注册，环境未显式配置媒体 host 时 URL 结果被拒。假供应商/SQLite 定向测试验证一个 base64 结果只调用一次 Provider 并落 Video、timeout 与不受信 URL 保留原意图且不重放。组合测试还发现首次成功后重复执行会先因目标已存在 Video 而失败；已修为先认证并读取已落账请求，再做新请求的目标重验，竞态中的重验失败也会回读既有意图。相关执行/组合/账本共 12 个定向用例和 App TypeScript 检查通过；无真实 Provider、HTTP 执行入口、浏览器或跨进程验收，旧段“尚未组合”是历史切片状态。
 
+受控 Video 显式执行入口切片：新增独立 Owner HTTP `/api/agentRuns/videoGenerationExecution/{execute,cancel,stop,commit,artifact/recover}`，仅当操作员显式设 `TOONFLOW_CONTROLLED_VIDEO_EXECUTION=enabled` 才开放；默认 404，不会因批准自动请求供应商。路由 actor 仅来自已认证 token，409 提示状态冲突，不自动重试；execute 结果区分成功、原请求、提交未知、媒体待采纳和禁止采纳的迟到媒体。3 个注入假 Runtime 的定向路由单测和 App TypeScript 检查通过，未跑完整构建、浏览器、真实 Provider 或跨进程恢复。Web 尚无该执行按钮；运营环境不应仅凭此阶段测试启用计费路径。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。
