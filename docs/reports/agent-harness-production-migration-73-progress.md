@@ -95,6 +95,8 @@ Video 子审批读取再校验：Owner inspect 在来源父 Run 和权限判定�
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。
 
+旧 Production Agent 批量图片入口 Owner 边界：`batchGenerateAssetsImage` 现复用认证请求中的 Project Owner 检查，并在读取生成配置、预置 `o_image` 占位和启动后台 Vendor 调用之前拒绝非 Owner。定向单测验证 403 时零占位、零 Vendor 请求，原批量生命周期与派生资产路由相邻 2 例通过；App TypeScript 检查通过。测试的注入式 actor header 仅是测试桩，生产检查仍从 JWT middleware 写入的 `req.user` 取身份。这只是旧 HTTP 入口的授权收紧，不会把其异步批量生成变成 T09 式可恢复的付费 Tool；其余图片/资产工作台路由仍需独立审计。
+
 ## 阶段追问准备（非最终面经）
 
 1. 问：为什么生产工作区读取不能继续让前端 `getFlowData` 回调负责？答：旧工具通过 Socket 回调从前端得到数据，模型侧请求与实际读到的 Project/剧本数据缺少后端一致的授权、回执和恢复身份。新接缝把剧本归属与工作区行的 Project、剧本键在后端核对，并给 Tool 固定修订、scope 和能力；测试证明跨 Project ID 与重复行不会返回内容。它已接上只读生产 Run，但尚未替代旧生成工具。
