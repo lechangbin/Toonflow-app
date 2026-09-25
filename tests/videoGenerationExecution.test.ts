@@ -46,6 +46,11 @@ function fixture() {
   let commitFails = false;
   let preparedHash = commandHash;
   const execution = createVideoGenerationExecution({
+    existingRequest: async () => { calls.push("existingRequest");
+      return fresh ? null : { requestId: "request-7",
+        vendorRequestId: "vendor-row-7", toolCallId: "call-7",
+        status: "succeeded", newIntent: false };
+    },
     approvedScope: async () => { calls.push("approvedScope"); return scope; },
     prepare: async () => { calls.push("prepare"); return {
       vendorId: "agnes", command,
@@ -81,7 +86,7 @@ test("Video execution crosses Provider once only after approved scope and durabl
   const context = fixture();
   const result = await context.execution.execute(input);
   assert.equal(result.status, "succeeded");
-  assert.deepEqual(context.calls, ["approvedScope", "prepare", "reserve",
+  assert.deepEqual(context.calls, ["existingRequest", "approvedScope", "prepare", "reserve",
     "invoke", "observe", "version", "commit"]);
   context.setFresh(false);
   const repeated = await context.execution.execute(input);
@@ -94,19 +99,19 @@ test("Video command drift fails before request intent or Provider invocation", a
   context.setPreparedHash("different");
   await assert.rejects(context.execution.execute(input),
     VideoGenerationExecutionConflictError);
-  assert.deepEqual(context.calls, ["approvedScope", "prepare"]);
+  assert.deepEqual(context.calls, ["existingRequest", "approvedScope", "prepare"]);
 });
 
 test("Video timeout is unknown and failed local adoption retains observed evidence", async () => {
   const timeout = fixture();
   timeout.setInvokeFails(true);
   assert.equal((await timeout.execution.execute(input)).status, "submission-unknown");
-  assert.deepEqual(timeout.calls, ["approvedScope", "prepare", "reserve",
+  assert.deepEqual(timeout.calls, ["existingRequest", "approvedScope", "prepare", "reserve",
     "invoke", "markUnknown"]);
   const changed = fixture();
   changed.setCommitFails(true);
   const result = await changed.execution.execute(input);
   assert.equal(result.status, "artifact-awaiting-commit");
-  assert.deepEqual(changed.calls, ["approvedScope", "prepare", "reserve",
+  assert.deepEqual(changed.calls, ["existingRequest", "approvedScope", "prepare", "reserve",
     "invoke", "observe", "version", "commit"]);
 });

@@ -52,6 +52,7 @@
 | Video Owner 状态快照从证据重建 | approved 后沿用纯审批 waiting/pending 假设 | 生成后 Run/Receipt 会进入终态，旧假设会阻断 inspect；按 ToolCall/请求/Artifact 重建，并防止 TTL 抹掉已有请求 | 5 个本地审批/投影 SQLite 用例覆盖请求、停止、成功和过期后查看；尚无 Web 执行入口 |
 | Video Checkpoint 恢复按 scope 核对 | 将所有 Vendor 意图当图片请求校验 | Video 和 Image 共享 Checkpoint kind 但不同账本；按审批 scope 选择请求表，提交后核对 Project 媒体证据，避免重启误判腐坏 | Video 意图/提交定向恢复及相邻图片/通用恢复单测；跨进程和真实 Vendor 待 T21 |
 | Video URL 媒体获取受限 | 复用旧工作台任意 URL 下载 | 外部 URL 不能决定服务端访问范围；仅显式 host allowlist、公开 IPv4 固定解析、HTTPS、无跳转、有限响应，代价是部分 CDN 需单独配置/验证 | 3 个 fake-network 单测覆盖白名单、私有/混合 DNS、格式拒绝；无真实 CDN 验收 |
+| Video 重复执行先读原意图 | 每次都先重验当前 Track/Prompt | 首次成功本身会改变 Track，使合法重复请求误报版本冲突；认证后先核对原批准和请求身份，再仅为新意图重验 | fake Provider/SQLite 组合与账本用例覆盖成功后重复、超时后重复、TTL 后原意图；仍无真实 Provider 恰好一次保证 |
 
 ## 自测与边界
 

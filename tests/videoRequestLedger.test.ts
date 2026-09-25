@@ -94,6 +94,9 @@ test("Video request intent is durable before any Provider call and never reserve
     const repeated = await ledger.reserve(reserve);
     assert.equal(repeated.newIntent, false);
     assert.equal(repeated.requestId, first.requestId);
+    context.setNow(700_000);
+    assert.equal((await ledger.reserve(reserve)).requestId, first.requestId,
+      "existing intent remains inspectable after approval TTL");
     assert.equal((await db("o_agentVideoVendorRequest")).length, 1);
     await assert.rejects(db("o_agentVideoVendorRequest")
       .where({ id: first.vendorRequestId }).update({ commandHash: "x".repeat(64) }),

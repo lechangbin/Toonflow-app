@@ -28,7 +28,7 @@ function hash(value: unknown): string {
 
 export interface VideoRequestReservation {
   requestId: string; vendorRequestId: string; toolCallId: string;
-  status: "dispatch_recorded" | "unknown";
+  status: string;
   /** True only for the process that inserted the durable intent. No caller is composed yet. */
   newIntent: boolean;
 }
@@ -86,7 +86,41 @@ export function createVideoRequestLedger(dependencies: {
   quoteInTransaction(tx: Knex.Transaction, target: VideoQuoteTarget): Promise<{
     revision: number; estimatedMaxCostMicros: number; currency: string }>;
 }) {
+  async function existingRequest(input: { projectId: number; actorUserId: number;
+    runId: string; approvalId: string; scopeHash?: string }):
+    Promise<VideoRequestReservation | null> {
+    return dependencies.work(async (db) => {
+      if (!await db("o_project").where({ id: input.projectId,
+        userId: input.actorUserId }).first("id")) conflict();
+      const run = await db("o_agentRun").where({ id: input.runId,
+        projectId: input.projectId, role: "productionAgent",
+        scope: VIDEO_GENERATION_APPROVAL_SCOPE }).first("id");
+      const approval = run && await db("o_agentToolApproval")
+        .where({ id: input.approvalId, runId: input.runId,
+          status: "approved" }).first();
+      if (!approval || approval.contractHash !== toolDefinitionContractHash(tool)
+        || approval.toolRevision !== tool.revision) conflict();
+      let frozen: FrozenVideoApprovalScope;
+      try { frozen = frozenVideoApprovalScopeSchema.parse(JSON.parse(approval.payloadJson)); }
+      catch { return conflict(); }
+      if (frozen.projectId !== input.projectId
+        || frozen.scopeHash !== videoApprovalScopeHash(frozen)
+        || approval.payloadHash !== hash(frozen)
+        || input.scopeHash && input.scopeHash !== frozen.scopeHash) conflict();
+      const call = await db("o_agentToolCall")
+        .where({ approvalId: approval.id, runId: input.runId }).first();
+      if (!call) return null;
+      const request = await db("o_agentVideoVendorRequest")
+        .where({ toolCallId: call.id, runId: input.runId,
+          projectId: input.projectId, scopeHash: frozen.scopeHash }).first();
+      if (!request || call.receiptId !== approval.receiptId
+        || call.toolName !== tool.name || call.toolRevision !== tool.revision) conflict();
+      return { requestId: request.requestId, vendorRequestId: request.id,
+        toolCallId: call.id, status: request.status, newIntent: false };
+    });
+  }
   return {
+    existingRequest,
     /** Verified task observation is durable, but is not a Video Artifact or completion. */
     async recordProviderTask(requestId: string, providerTaskId: string): Promise<void> {
       if (!/^[A-Za-z0-9._:-]{1,128}$/u.test(requestId)
@@ -317,7 +351,14 @@ export function createVideoRequestLedger(dependencies: {
         || !frozenVideoApprovalScopeSchema.safeParse(input.scope).success
         || input.scope.projectId !== input.projectId
         || input.scope.scopeHash !== videoApprovalScopeHash(input.scope)) conflict();
-      await dependencies.recheck(input.scope);
+      const existing = await existingRequest({ ...input, scopeHash: input.scope.scopeHash });
+      if (existing) return existing;
+      try { await dependencies.recheck(input.scope); }
+      catch (error) {
+        const raced = await existingRequest({ ...input, scopeHash: input.scope.scopeHash });
+        if (raced) return raced;
+        throw error;
+      }
       return dependencies.work((db) => db.transaction(async (tx) => {
         if (!await tx("o_project").where({ id: input.projectId,
           userId: input.actorUserId }).first("id")) conflict();
@@ -327,7 +368,6 @@ export function createVideoRequestLedger(dependencies: {
         const approval = run && await tx("o_agentToolApproval")
           .where({ id: input.approvalId, runId: run.id }).first();
         if (!run || !approval || approval.status !== "approved"
-          || approval.expiresAt <= dependencies.now()
           || approval.contractHash !== toolDefinitionContractHash(tool)
           || approval.toolRevision !== tool.revision) conflict();
         let stored: FrozenVideoApprovalScope;
@@ -349,6 +389,7 @@ export function createVideoRequestLedger(dependencies: {
             toolCallId: existingCall.id, status: request.status,
             newIntent: false };
         }
+        if (approval.expiresAt <= dependencies.now()) conflict();
         if (run.version !== input.expectedVersion || run.status !== "waiting"
           || run.waitingReason !== "video-dispatch-not-enabled"
           || run.cancellationRequestedAt != null) conflict();

@@ -19,6 +19,8 @@ export class VideoGenerationExecutionConflictError extends Error {
 
 /** Internal one-call orchestrator; no route/model adapter is registered. */
 export function createVideoGenerationExecution(dependencies: {
+  existingRequest(input: { projectId: number; actorUserId: number;
+    runId: string; approvalId: string }): Promise<VideoRequestReservation | null>;
   approvedScope(projectId: number, runId: string, approvalId: string,
     actorUserId: number): Promise<FrozenVideoApprovalScope>;
   prepare(scope: FrozenVideoApprovalScope): Promise<{
@@ -37,6 +39,9 @@ export function createVideoGenerationExecution(dependencies: {
   return {
     async execute(input: { projectId: number; actorUserId: number;
       runId: string; approvalId: string; expectedVersion: number }): Promise<VideoExecutionResult> {
+      const existing = await dependencies.existingRequest(input);
+      if (existing) return { status: "already-recorded",
+        requestId: existing.requestId, requestStatus: existing.status };
       const scope = await dependencies.approvedScope(input.projectId,
         input.runId, input.approvalId, input.actorUserId);
       const prepared = await dependencies.prepare(scope);
