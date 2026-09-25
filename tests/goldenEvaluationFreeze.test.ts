@@ -19,7 +19,7 @@ const golden = JSON.parse(manifestSource) as { cases: Array<{ id: string }> };
 const revisions = { app: "app-1", schema: "schema-1", runtime: "runtime-1",
   tool: "tool-1", context: "context-1", memory: "memory-1",
   skill: "skill-1", model: "model-1", vendor: "vendor-1" };
-const caseInputs = golden.cases.map(({ id }) => ({ caseId: id,
+const caseInputs = golden.cases.map(({ id }) => ({ caseId: id, projectId: 7,
   content: `核对 ${id} 的冻结场景`, role: "scriptAgent" as const,
   scope: "read-only-project-guidance-v1" as const }));
 
