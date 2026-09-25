@@ -50,6 +50,8 @@
 
 ## 三面：反例、取舍与未完成项
 
+8af. 问：Project ID 和 Asset ID 都归属正确，旧批量图片接口为什么还要查 Owner？答：归属校验只证明资源之间的关系，不证明调用者有权花费 Project 的图片生成额度。该入口会先预置 `o_image` 并异步调用 Vendor，因此必须在任何本地占位或外部提交前从认证请求取得 actor 并核对 Project Owner。现在越权定向测试看到 403、零占位、零 Vendor 请求；它没有给旧异步生成增加可恢复账本，也不覆盖其他图片路由。证据：`src/routes/production/assets/batchGenerateAssetsImage.ts`、`tests/assetImageGeneration.test.ts`。
+
 9. 问：为什么暂不把生产 Agent 宣称为“可恢复生成工作流”？答：目前持久 Run 承载指导、单资产图片提案、派生资产和单条空轨道分镜的受控审批；旧 Socket 的批量图片、视频、多分镜与轨道创建还没有统一 typed Steps、幂等效果和恢复投影。声明整个生产链路已迁移会混淆局部审批成功与真实生成成功。
 10. 问：若要继续推进，优先顺序是什么？答：先为各生产效果定义独立 typed Step/Tool 和可验证输入、效果账本及 Owner 授权；再把批量图片、分镜/资产写入和视频逐条迁移并保留兼容回退；最后做跨进程重启、迟到结果、Web 状态和真实 Provider 验收。不能为了赶进度复用“模型回答成功”作为效果完成信号。
 
