@@ -69,7 +69,7 @@ test("T20 handoff accepts only sender-owned hashed references under the edge lim
     planHash: "c".repeat(64) }));
 });
 
-test("T20 selection keeps equal-resource evidence and chooses the simplest passing topology", () => {
+test("T20 metrics rank only an unverified threshold candidate under equal resources", () => {
   const baseEvidence = { caseManifestHash: "a".repeat(64),
     seedSetHash: "e".repeat(64), budgetHash: "b".repeat(64),
     resultsHash: "c".repeat(64),
@@ -79,18 +79,18 @@ test("T20 selection keeps equal-resource evidence and chooses the simplest passi
   const evidence = ["T0", "T1", "T2"].map((topology) =>
     ({ ...baseEvidence, topology }));
   assert.deepEqual(chooseSimplestTopology(evidence),
-    { state: "candidate", topology: "T0" });
+    { state: "unverified", topology: null, thresholdCandidate: "T0" });
   assert.deepEqual(chooseSimplestTopology([{ ...evidence[0],
     qualityPassed: false }, evidence[1], evidence[2]]),
-  { state: "candidate", topology: "T1" });
+  { state: "unverified", topology: null, thresholdCandidate: "T1" });
   assert.deepEqual(chooseSimplestTopology([evidence[0],
     { ...evidence[1], budgetHash: "d".repeat(64) }, evidence[2]]),
-  { state: "incomplete", topology: null });
+  { state: "incomplete", topology: null, thresholdCandidate: null });
   assert.deepEqual(chooseSimplestTopology([evidence[0],
     { ...evidence[1], seedSetHash: "d".repeat(64) }, evidence[2]]),
-  { state: "incomplete", topology: null });
+  { state: "incomplete", topology: null, thresholdCandidate: null });
   assert.deepEqual(chooseSimplestTopology([evidence[0],
     { ...evidence[1], hardGateFailures: 1 },
     { ...evidence[2], executedRuns: 19 }]),
-  { state: "incomplete", topology: null });
+  { state: "incomplete", topology: null, thresholdCandidate: null });
 });
