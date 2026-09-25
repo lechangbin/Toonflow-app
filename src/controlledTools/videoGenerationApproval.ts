@@ -32,8 +32,9 @@ export interface VideoGenerationApprovalSnapshot {
   allowedActions: string[]; scopeHash: string;
   payload: FrozenVideoApprovalScope["payload"];
   preview: FrozenVideoApprovalScope["preview"];
-  /** No Vendor request exists in this local approval slice. */
-  vendorRequest: null;
+  /** Durable local intent/status, not a Provider charge or completion guarantee. */
+  vendorRequest: null | { requestId: string; status: string;
+    providerTaskId: string | null; artifactStatus: string | null };
 }
 
 export interface VideoGenerationProposalCommand {
@@ -119,9 +120,33 @@ async function snapshot(db: Knex | Knex.Transaction, projectId: number,
   try { runInput = JSON.parse(run.input); } catch { return conflict(); }
   if (runInput.operationId !== approval.operationId
     || runInput.scopeHash !== frozen.scopeHash) conflict();
-  if (approval.status === "pending" || approval.status === "approved") {
-    if (run.status !== "waiting" || receipt.status !== "pending") conflict();
-  } else if (receipt.status !== "cancelled") conflict();
+  const call = await db("o_agentToolCall")
+    .where({ approvalId: approval.id, runId }).first();
+  let vendorRequest: VideoGenerationApprovalSnapshot["vendorRequest"] = null;
+  if (approval.status === "pending") {
+    if (call || run.status !== "waiting" || receipt.status !== "pending") conflict();
+  } else if (approval.status === "approved") {
+    if (!call) {
+      if (run.status !== "waiting" || receipt.status !== "pending") conflict();
+    } else {
+      const request = await db("o_agentVideoVendorRequest")
+        .where({ runId, toolCallId: call.id, projectId,
+          scopeHash: frozen.scopeHash }).first();
+      if (!request || call.receiptId !== receipt.id
+        || call.toolName !== tool.name || call.toolRevision !== tool.revision
+        || !["waiting", "succeeded", "cancelled"].includes(run.status)
+        || (run.status === "succeeded" && (receipt.status !== "succeeded"
+          || request.status !== "succeeded"))
+        || (run.status === "cancelled" && receipt.status !== "cancelled")
+        || (run.status === "waiting" && receipt.status !== "pending")) conflict();
+      const artifact = await db("o_agentVideoArtifact")
+        .where({ vendorRequestId: request.id }).first("status");
+      if (run.status === "succeeded" && artifact?.status !== "accepted") conflict();
+      vendorRequest = { requestId: request.requestId, status: request.status,
+        providerTaskId: request.providerTaskId ?? null,
+        artifactStatus: artifact?.status ?? null };
+    }
+  } else if (call || receipt.status !== "cancelled") conflict();
   let allowedActions: string[];
   try { allowedActions = JSON.parse(run.allowedActions); }
   catch { return conflict(); }
@@ -129,7 +154,7 @@ async function snapshot(db: Knex | Knex.Transaction, projectId: number,
     operationId: approval.operationId, status: approval.status as Status,
     runStatus: run.status, runVersion: run.version, expiresAt: approval.expiresAt,
     allowedActions, scopeHash: frozen.scopeHash,
-    payload: frozen.payload, preview: frozen.preview, vendorRequest: null };
+    payload: frozen.payload, preview: frozen.preview, vendorRequest };
 }
 
 export async function expireDueVideoGenerationApprovals(db: Knex,

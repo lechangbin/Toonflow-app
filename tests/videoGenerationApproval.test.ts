@@ -9,7 +9,11 @@ import { createVideoGenerationApprovalRuntime, expireDueVideoGenerationApprovals
   "../src/controlledTools/videoGenerationApproval";
 import { freezeVideoGenerationProposal } from
   "../src/controlledTools/videoGenerationProposalContract";
+import { createVideoArtifactCommitRuntime } from
+  "../src/controlledTools/videoArtifactCommit";
 import { createVideoQuotePolicy } from "../src/controlledTools/videoQuotePolicy";
+import { createVideoRequestLedger } from
+  "../src/controlledTools/videoRequestLedger";
 import initDB from "../src/lib/initDB";
 import { workOf } from "./databaseTestSupport";
 
@@ -61,7 +65,7 @@ async function fixture() {
     now: () => now, createId: () => `video-${++id}`,
     scope, quoteInTransaction: (tx, target) => quotePolicy.quote(target, tx),
     approvalTtlMs: 1_000 });
-  return { db, approval, quotePolicy,
+  return { db, approval, quotePolicy, scope,
     setNow: (value: number) => { now = value; },
     setCommandHash: (value: string) => { commandHash = value; } };
 }
@@ -151,5 +155,83 @@ test("Video rejection and expiration never become Vendor submissions", async () 
     assert.equal((await approval.inspect(7, other.runId, 1))?.status, "expired");
     assert.equal((await db("o_agentToolCall")).length, 0);
     assert.equal((await db("o_video")).length, 0);
+  } finally { await db.destroy(); }
+});
+
+test("Owner Video approval snapshot survives durable request and local stop", async () => {
+  const context = await fixture();
+  const { db, approval, quotePolicy, scope } = context;
+  try {
+    const pending = await approval.propose({ projectId: 7, actorUserId: 1,
+      clientRequestId: "request-stop", operationId: "operation-stop", payload });
+    const approved = await approval.decide({ projectId: 7, actorUserId: 1,
+      runId: pending.runId, approvalId: pending.id,
+      clientCommandId: "decision-stop", expectedVersion: pending.runVersion,
+      decision: "approve" });
+    assert(approved);
+    let id = 0;
+    const ledger = createVideoRequestLedger({ work: workOf(db),
+      now: () => 200, createId: () => `request-stop-${++id}`,
+      recheck: scope.recheck,
+      quoteInTransaction: (tx, target) => quotePolicy.quote(target, tx) });
+    const frozen = await approval.approvedScope(7, pending.runId, pending.id, 1);
+    const intent = await ledger.reserve({ projectId: 7, actorUserId: 1,
+      runId: pending.runId, approvalId: pending.id,
+      expectedVersion: approved.runVersion, scope: frozen });
+    assert.equal((await approval.inspect(7, pending.runId, 1))?.vendorRequest?.requestId,
+      intent.requestId);
+    await ledger.markSubmissionAmbiguous(intent.requestId);
+    const version = (await db("o_agentRun").where({ id: pending.runId }).first()).version;
+    await ledger.stopWithoutReplay({ projectId: 7, actorUserId: 1,
+      requestId: intent.requestId, expectedVersion: version });
+    const stopped = await approval.inspect(7, pending.runId, 1);
+    assert.equal(stopped?.runStatus, "cancelled");
+    assert.equal(stopped?.vendorRequest?.status, "unknown");
+    context.setNow(1_101);
+    await expireDueVideoGenerationApprovals(db, null, 1_101,
+      () => "request-stop-expiry-trace");
+    assert.equal((await approval.inspect(7, pending.runId, 1))?.status, "approved",
+      "an approval with a durable request must not be expired into a fresh-dispatch state");
+    assert.equal((await approval.list(7, 1)).at(0)?.runStatus, "cancelled");
+  } finally { await db.destroy(); }
+});
+
+test("Owner Video approval snapshot reports accepted request after local commit", async () => {
+  const context = await fixture();
+  const { db, approval, quotePolicy, scope } = context;
+  try {
+    const pending = await approval.propose({ projectId: 7, actorUserId: 1,
+      clientRequestId: "request-success", operationId: "operation-success", payload });
+    const approved = await approval.decide({ projectId: 7, actorUserId: 1,
+      runId: pending.runId, approvalId: pending.id,
+      clientCommandId: "decision-success", expectedVersion: pending.runVersion,
+      decision: "approve" });
+    assert(approved);
+    let id = 0;
+    const ledger = createVideoRequestLedger({ work: workOf(db),
+      now: () => 200, createId: () => `request-success-${++id}`,
+      recheck: scope.recheck,
+      quoteInTransaction: (tx, target) => quotePolicy.quote(target, tx) });
+    const frozen = await approval.approvedScope(7, pending.runId, pending.id, 1);
+    const intent = await ledger.reserve({ projectId: 7, actorUserId: 1,
+      runId: pending.runId, approvalId: pending.id,
+      expectedVersion: approved.runVersion, scope: frozen });
+    const artifactHash = "a".repeat(64);
+    await db("o_agentVideoArtifact").insert({ id: "artifact-success",
+      vendorRequestId: intent.vendorRequestId, trackId: 31,
+      mediaPath: `/7/agent-video/${intent.requestId}/${artifactHash}.mp4`,
+      contentHash: artifactHash, status: "observed",
+      createdAt: 200, updatedAt: 200 });
+    await db("o_agentVideoVendorRequest")
+      .where({ id: intent.vendorRequestId }).update({ status: "artifact_observed" });
+    const run = await db("o_agentRun").where({ id: pending.runId }).first();
+    const commit = createVideoArtifactCommitRuntime({ work: workOf(db),
+      now: () => 300, createId: () => `commit-${++id}` });
+    await commit.commit({ projectId: 7, actorUserId: 1,
+      requestId: intent.requestId, expectedVersion: run.version });
+    const completed = await approval.inspect(7, pending.runId, 1);
+    assert.equal(completed?.runStatus, "succeeded");
+    assert.equal(completed?.vendorRequest?.status, "succeeded");
+    assert.equal(completed?.vendorRequest?.artifactStatus, "accepted");
   } finally { await db.destroy(); }
 });
