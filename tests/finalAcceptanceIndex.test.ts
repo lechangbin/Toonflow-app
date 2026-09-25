@@ -8,6 +8,7 @@ const pending = { schemaVersion: "toonflow.final-acceptance-index.v1",
   issue: "lechangbin/Toonflow-app#77", revisionManifest: null,
   items: REQUIRED_ACCEPTANCE_IDS.map((id) => ({ id, state: "pending",
     evidenceRefs: [], testCommand: null, resultHash: null,
+    sourceComponent: null,
     sourceRevision: null, note: "待最终阶段执行" })),
   paidProviderCanary: { state: "not-run", reason: "尚未进行付费 Provider canary" } };
 
@@ -27,7 +28,8 @@ test("T21 filled metadata alone never completes acceptance without independent v
   const claimed = { ...pending, revisionManifest: manifest,
     items: pending.items.map((item) => ({ ...item, state: "passed",
       evidenceRefs: ["docs/reports/evidence.md"], testCommand: "targeted-test",
-      resultHash: "b".repeat(64), sourceRevision: "app-1" })) };
+      resultHash: "b".repeat(64), sourceComponent: "app",
+      sourceRevision: "app-1" })) };
   assert.equal(assessFinalAcceptance(claimed).ready, false);
   const denied = await verifyFinalAcceptance(claimed, async () => false);
   assert.equal(denied.ready, false);
@@ -40,6 +42,11 @@ test("T21 filled metadata alone never completes acceptance without independent v
   const staleResult = await verifyFinalAcceptance(stale, async () => true);
   assert.equal(staleResult.ready, false);
   assert.deepEqual(staleResult.unverified, ["functional"]);
+  const wrongComponent = { ...claimed, items: claimed.items.map((item, index) =>
+    index === 0 ? { ...item, sourceComponent: "web" } : item) };
+  const wrongComponentResult = await verifyFinalAcceptance(wrongComponent, async () => true);
+  assert.equal(wrongComponentResult.ready, false);
+  assert.deepEqual(wrongComponentResult.unverified, ["functional"]);
 });
 
 test("T21 evidence index rejects pass claims without reproducible evidence", () => {

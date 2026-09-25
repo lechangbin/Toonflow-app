@@ -16,6 +16,8 @@ const revisionManifestSchema = z.strictObject({
   memory: revision, skill: revision, topology: revision,
   model: revision, vendor: revision, cases: revision,
 });
+const sourceComponent = z.enum(["app", "web", "schema", "bundle", "runtime",
+  "tool", "context", "memory", "skill", "topology", "model", "vendor", "cases"]);
 
 export const finalAcceptanceIndexSchema = z.strictObject({
   schemaVersion: z.literal(FINAL_ACCEPTANCE_INDEX_VERSION),
@@ -27,6 +29,7 @@ export const finalAcceptanceIndexSchema = z.strictObject({
     evidenceRefs: z.array(evidenceRef),
     testCommand: z.string().min(1).max(1000).nullable(),
     resultHash: digest.nullable(),
+    sourceComponent: sourceComponent.nullable(),
     sourceRevision: revision.nullable(),
     note: z.string().min(1).max(1000),
   })).length(REQUIRED_ACCEPTANCE_IDS.length),
@@ -44,7 +47,8 @@ export function validateFinalAcceptanceIndex(input: unknown): FinalAcceptanceInd
   }
   for (const item of index.items) {
     if (item.state === "passed" && (item.evidenceRefs.length === 0
-      || !item.testCommand || !item.resultHash || !item.sourceRevision)) {
+      || !item.testCommand || !item.resultHash || !item.sourceComponent
+      || !item.sourceRevision)) {
       throw new TypeError(`Passed acceptance item ${item.id} has no reproducible evidence`);
     }
     if (item.state !== "passed" && item.resultHash !== null) {
@@ -81,7 +85,7 @@ export async function verifyFinalAcceptance(input: unknown, verify: (
   if (!index.revisionManifest || assessment.pending.length || assessment.failed.length) return assessment;
   const unverified: string[] = [];
   for (const item of index.items) {
-    if (!Object.values(index.revisionManifest).includes(item.sourceRevision!)
+    if (index.revisionManifest[item.sourceComponent!] !== item.sourceRevision
       || !await verify(item, index.revisionManifest)) unverified.push(item.id);
   }
   return { ...assessment, ready: unverified.length === 0, unverified };
