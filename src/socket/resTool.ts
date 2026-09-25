@@ -68,6 +68,7 @@ class MessageBuilder {
   private messageName?: string;
   private messageDatetime: string;
   private stopped = false;
+  private readonly isStopped = () => this.stopped;
 
   constructor(socket: Socket, messageId: string, role: "assistant" | "user" | "system", name?: string, datetime?: string) {
     this.socket = socket;
@@ -114,12 +115,12 @@ class MessageBuilder {
       status: "pending",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content,
     });
 
-    const stream = new AutoThinkingTextStream(this.socket, this.messageId, contentId, this);
+    const stream = new AutoThinkingTextStream(this.socket, this.messageId, contentId, this, this.isStopped);
     if (initialText) {
       stream.append(initialText);
     }
@@ -136,12 +137,12 @@ class MessageBuilder {
       status: "pending",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content,
     });
 
-    return new ContentStream<string>(this.socket, this.messageId, contentId, "markdown");
+    return new ContentStream<string>(this.socket, this.messageId, contentId, "markdown", this.isStopped);
   }
 
   // 添加思考内容
@@ -154,12 +155,12 @@ class MessageBuilder {
       status: "pending",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content,
     });
 
-    return new ThinkingStream(this.socket, this.messageId, contentId);
+    return new ThinkingStream(this.socket, this.messageId, contentId, this.isStopped);
   }
 
   // 添加搜索内容
@@ -172,12 +173,12 @@ class MessageBuilder {
       status: "pending",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content,
     });
 
-    return new SearchStream(this.socket, this.messageId, contentId);
+    return new SearchStream(this.socket, this.messageId, contentId, this.isStopped);
   }
 
   // 添加图片内容
@@ -190,7 +191,7 @@ class MessageBuilder {
       status: "complete",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content,
     });
@@ -208,7 +209,7 @@ class MessageBuilder {
       status: "complete",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content,
     });
@@ -226,12 +227,12 @@ class MessageBuilder {
       status: "pending",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content,
     });
 
-    return new ToolCallStream(this.socket, this.messageId, contentId, data.toolCallId);
+    return new ToolCallStream(this.socket, this.messageId, contentId, data.toolCallId, this.isStopped);
   }
 
   // 添加活动内容
@@ -248,7 +249,7 @@ class MessageBuilder {
       status: "complete",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content: activityContent,
     });
@@ -266,12 +267,12 @@ class MessageBuilder {
       status: "pending",
     };
 
-    this.socket.emit("content:add", {
+    if (!this.stopped) this.socket.emit("content:add", {
       messageId: this.messageId,
       content,
     });
 
-    return new ReasoningBuilder(this.socket, this.messageId, contentId);
+    return new ReasoningBuilder(this.socket, this.messageId, contentId, this.isStopped);
   }
 
   // 完成消息
@@ -310,12 +311,15 @@ class ContentStream<T> {
   protected messageId: string;
   protected contentId: string;
   protected contentType: ContentType;
+  protected isStopped: () => boolean;
 
-  constructor(socket: Socket, messageId: string, contentId: string, contentType: ContentType) {
+  constructor(socket: Socket, messageId: string, contentId: string,
+    contentType: ContentType, isStopped: () => boolean = () => false) {
     this.socket = socket;
     this.messageId = messageId;
     this.contentId = contentId;
     this.contentType = contentType;
+    this.isStopped = isStopped;
   }
 
   get id() {
@@ -324,6 +328,7 @@ class ContentStream<T> {
 
   // 流式追加数据
   append(chunk: string) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -337,6 +342,7 @@ class ContentStream<T> {
 
   // 合并/替换数据
   merge(data: T) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -350,6 +356,7 @@ class ContentStream<T> {
 
   // 完成内容
   complete(finalData?: T) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -362,6 +369,7 @@ class ContentStream<T> {
 
   // 错误
   error() {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -373,12 +381,13 @@ class ContentStream<T> {
 
 // 思考内容流
 class ThinkingStream extends ContentStream<ThinkingContent["data"]> {
-  constructor(socket: Socket, messageId: string, contentId: string) {
-    super(socket, messageId, contentId, "thinking");
+  constructor(socket: Socket, messageId: string, contentId: string, isStopped: () => boolean) {
+    super(socket, messageId, contentId, "thinking", isStopped);
   }
 
   // 追加思考文本
   appendText(chunk: string) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -392,6 +401,7 @@ class ThinkingStream extends ContentStream<ThinkingContent["data"]> {
 
   // 更新标题
   updateTitle(title: string) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -416,8 +426,9 @@ class AutoThinkingTextStream extends ContentStream<string> {
   private thinkingBuffer = "";
   private thinkingStartTime: number = 0;
 
-  constructor(socket: Socket, messageId: string, contentId: string, messageBuilder: MessageBuilder) {
-    super(socket, messageId, contentId, "text");
+  constructor(socket: Socket, messageId: string, contentId: string,
+    messageBuilder: MessageBuilder, isStopped: () => boolean) {
+    super(socket, messageId, contentId, "text", isStopped);
     this.messageBuilder = messageBuilder;
   }
 
@@ -436,6 +447,7 @@ class AutoThinkingTextStream extends ContentStream<string> {
   }
 
   override append(chunk: string) {
+    if (this.isStopped()) return this;
     if (!chunk) return this;
 
     let rest = this.pending + chunk;
@@ -490,6 +502,7 @@ class AutoThinkingTextStream extends ContentStream<string> {
   }
 
   override complete(finalData?: string) {
+    if (this.isStopped()) return this;
     if (finalData) {
       this.append(finalData);
     }
@@ -509,6 +522,7 @@ class AutoThinkingTextStream extends ContentStream<string> {
   }
 
   override error() {
+    if (this.isStopped()) return this;
     if (this.thinkingStream) {
       this.thinkingStream.error();
       this.thinkingStream = null;
@@ -554,12 +568,13 @@ class AutoThinkingTextStream extends ContentStream<string> {
 
 // 搜索内容流
 class SearchStream extends ContentStream<SearchContent["data"]> {
-  constructor(socket: Socket, messageId: string, contentId: string) {
-    super(socket, messageId, contentId, "search");
+  constructor(socket: Socket, messageId: string, contentId: string, isStopped: () => boolean) {
+    super(socket, messageId, contentId, "search", isStopped);
   }
 
   // 添加引用
   addReference(ref: Exclude<SearchContent["data"]["references"], undefined>[0]) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -573,6 +588,7 @@ class SearchStream extends ContentStream<SearchContent["data"]> {
 
   // 批量添加引用
   addReferences(refs: SearchContent["data"]["references"]) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -586,6 +602,7 @@ class SearchStream extends ContentStream<SearchContent["data"]> {
 
   // 更新标题
   updateTitle(title: string) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -602,13 +619,15 @@ class SearchStream extends ContentStream<SearchContent["data"]> {
 class ToolCallStream extends ContentStream<ToolCallContent["data"]> {
   private toolCallId: string;
 
-  constructor(socket: Socket, messageId: string, contentId: string, toolCallId: string) {
-    super(socket, messageId, contentId, "toolcall");
+  constructor(socket: Socket, messageId: string, contentId: string,
+    toolCallId: string, isStopped: () => boolean) {
+    super(socket, messageId, contentId, "toolcall", isStopped);
     this.toolCallId = toolCallId;
   }
 
   // 追加参数块
   appendArgs(chunk: string) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -622,6 +641,7 @@ class ToolCallStream extends ContentStream<ToolCallContent["data"]> {
 
   // 追加结果块
   appendResult(chunk: string) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -635,6 +655,7 @@ class ToolCallStream extends ContentStream<ToolCallContent["data"]> {
 
   // 设置完整结果
   setResult(result: string) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -648,6 +669,7 @@ class ToolCallStream extends ContentStream<ToolCallContent["data"]> {
 
   // 更新事件类型
   updateEventType(eventType: ToolCallContent["data"]["eventType"]) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -665,15 +687,18 @@ class ReasoningBuilder {
   private socket: Socket;
   private messageId: string;
   private contentId: string;
+  private isStopped: () => boolean;
 
-  constructor(socket: Socket, messageId: string, contentId: string) {
+  constructor(socket: Socket, messageId: string, contentId: string, isStopped: () => boolean) {
     this.socket = socket;
     this.messageId = messageId;
     this.contentId = contentId;
+    this.isStopped = isStopped;
   }
 
   // 添加子内容
   addContent(content: AIMessageContent) {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
@@ -687,6 +712,7 @@ class ReasoningBuilder {
 
   // 完成推理
   complete() {
+    if (this.isStopped()) return this;
     this.socket.emit("content:update", {
       messageId: this.messageId,
       contentId: this.contentId,
