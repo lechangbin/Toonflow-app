@@ -13,5 +13,6 @@
 9. 问：绕过执行适配器直接写账本，或修改已记录 Run 的输入，如何发现？答：`record` 和 `inspect` 都会解析 Run 持久化的输入，按 Runtime 的 `trim()` 规则核对正文哈希，并核对冻结的 role/scope 和样本请求 ID。伪造来源文本或换角色会拒绝；但 Project 数据快照和模型随机种子未冻结，不能宣称所有环境变量一致。
 10. 问：早期已经有一套 18-case 冻结表，为什么还要收敛？答：早期 Draft #90 冻结真实 Golden manifest 和覆盖分母，但使用独立的 Run/Case 表与请求身份；后续生产 Agent Run 账本如果另起一套，就会出现两个权威来源。当前选择把 18-case 原文、哈希和明确提供的输入契约冻结在同一配对账本里，并已移植“覆盖不等于质量”的报告语义。早期 Draft 仍需收敛处理，不能作为两套 schema 并列交付，更不能宣称 18 例已跑通。
 11. 问：覆盖报告为什么不能直接变成质量报告？答：它只按冻结的 case、seed 和 variant 统计“有无可复核生产 Run”，不会检查业务硬门、产物语义或人工 0/1/2 评分。即使所有 cell 都 observed，模型可能给出错误结论；现在一个真实只读样例只让基线侧 1/36 个 cell 从 missing 变 observed，且来源版本变更会使整份报告拒绝。质量和收益必须等 18 例真实场景及逐例证据齐全后另算。
+12. 问：只保存最后一条 Trace 的 ID 为什么仍不够？答：最后锚点可能真实存在，但中间事件的序号或前驱身份已经断裂；这时无法证明 Run 的因果路径。当前写入与重读都复用生产 Trace 审计，要求完整连通后才承认结构覆盖；定向测试故意把第二条事件指向错误前驱，账本拒绝。它仍只证明记录链连通，不替代业务硬门或产物语义核验。
 
 源码证据索引：`src/eval/evaluationRun.ts`（清单、写入、读取）、`src/eval/goldenEvaluationFreeze.ts`（真实 18-case 清单冻结）、`src/eval/evaluationCoverageReport.ts`（覆盖非质量报告）、`src/eval/evaluationAgentCase.ts`（真实 Runtime 接线）、`src/lib/initDB.ts`（两表与不可更新触发器）、`src/types/database.d.ts`（生成类型）、`tests/evaluationRun.test.ts`、`tests/evaluationAgentCase.test.ts` 与 `tests/goldenEvaluationFreeze.test.ts`（定向验证）、`docs/reports/agent-harness-evaluation-67-progress.md`（未完成边界）。
