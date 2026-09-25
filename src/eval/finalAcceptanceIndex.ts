@@ -56,7 +56,7 @@ export function validateFinalAcceptanceIndex(input: unknown): FinalAcceptanceInd
 
 /** Readiness never treats a missing paid canary as proof of Provider behavior. */
 export function assessFinalAcceptance(input: unknown): {
-  ready: boolean; pending: string[]; failed: string[];
+  ready: boolean; pending: string[]; failed: string[]; unverified: string[];
   paidProviderCanaryGap: boolean;
 } {
   const index = validateFinalAcceptanceIndex(input);
@@ -64,8 +64,25 @@ export function assessFinalAcceptance(input: unknown): {
     .map((item) => item.id);
   const failed = index.items.filter((item) => item.state === "failed")
     .map((item) => item.id);
+  const unverified = index.items.filter((item) => item.state === "passed")
+    .map((item) => item.id);
   const paidProviderCanaryGap = index.paidProviderCanary.state !== "passed";
-  return { ready: index.revisionManifest !== null
-    && pending.length === 0 && failed.length === 0,
-  pending, failed, paidProviderCanaryGap };
+  // A filled index is an assertion, not independent verification of its evidence.
+  return { ready: false, pending, failed, unverified, paidProviderCanaryGap };
+}
+
+/** Final acceptance requires an independent checker to read and verify every evidence reference. */
+export async function verifyFinalAcceptance(input: unknown, verify: (
+  item: FinalAcceptanceIndex["items"][number],
+  manifest: NonNullable<FinalAcceptanceIndex["revisionManifest"]>,
+) => Promise<boolean>): Promise<ReturnType<typeof assessFinalAcceptance>> {
+  const index = validateFinalAcceptanceIndex(input);
+  const assessment = assessFinalAcceptance(index);
+  if (!index.revisionManifest || assessment.pending.length || assessment.failed.length) return assessment;
+  const unverified: string[] = [];
+  for (const item of index.items) {
+    if (!Object.values(index.revisionManifest).includes(item.sourceRevision!)
+      || !await verify(item, index.revisionManifest)) unverified.push(item.id);
+  }
+  return { ...assessment, ready: unverified.length === 0, unverified };
 }
