@@ -18,6 +18,7 @@ export const evaluationRunManifestSchema = z.strictObject({
   studyId: identity,
   caseManifestHash: digest,
   caseIds: z.array(caseId).min(1),
+  caseInputs: z.array(z.strictObject({ caseId, contentHash: digest })).min(1),
   seeds: z.array(z.number().int().nonnegative()).min(2),
   variants: z.tuple([z.literal("baseline"), z.literal("candidate")]),
   baseline: revisions,
@@ -28,10 +29,18 @@ export type EvaluationRunManifest = z.infer<typeof evaluationRunManifestSchema>;
 export const parseEvaluationRevisions = (input: unknown) => revisions.parse(input);
 
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
+export const hashEvaluationInput = hash;
+
+export function evaluationCaseRequestId(evaluationRunId: string,
+  variant: "baseline" | "candidate", caseId: string, seed: number): string {
+  return `eval-${hash(JSON.stringify([evaluationRunId, variant, caseId, seed])).slice(0, 32)}`;
+}
 
 export function validateEvaluationRunManifest(input: unknown): EvaluationRunManifest {
   const manifest = evaluationRunManifestSchema.parse(input);
   if (new Set(manifest.caseIds).size !== manifest.caseIds.length
+    || manifest.caseInputs.length !== manifest.caseIds.length
+    || manifest.caseInputs.some((entry, index) => entry.caseId !== manifest.caseIds[index])
     || new Set(manifest.seeds).size !== manifest.seeds.length
     || manifest.seeds.some((seed, index) => index > 0 && seed <= manifest.seeds[index - 1])) {
     throw new TypeError("Evaluation Run cases or seeds are not frozen canonically");
@@ -104,6 +113,10 @@ export function createEvaluationRunRuntime(dependencies: {
           || !Number.isSafeInteger(run.version) || run.version <= 0) {
           throw new Error("Evaluation case requires a terminal production Agent Run");
         }
+        if (run.clientRequestId !== evaluationCaseRequestId(input.evaluationRunId,
+          input.variant, input.caseId, input.seed)) {
+          throw new Error("Evaluation case Agent Run request identity does not match the frozen cell");
+        }
         const output = await tx("o_agentRunOutput").where({ runId: run.id }).first("contentHash");
         const trace = await tx("o_agentTrace").where({ runId: run.id })
           .orderBy("sequence", "desc").first("id", "sequence");
@@ -160,6 +173,8 @@ export function createEvaluationRunRuntime(dependencies: {
           const output = await tx("o_agentRunOutput").where({ runId: evidence.agentRunId })
             .first("contentHash");
           if (!run || run.projectId !== evidence.projectId
+            || run.clientRequestId !== evaluationCaseRequestId(id,
+              evidence.variant, evidence.caseId, evidence.seed)
             || run.status !== evidence.runStatus || run.version !== evidence.runVersion
             || trace?.id !== evidence.lastTraceId
             || trace?.sequence !== evidence.lastTraceSequence
