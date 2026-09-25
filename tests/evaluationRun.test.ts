@@ -6,6 +6,8 @@ import type { Knex } from "knex";
 
 import { createEvaluationRunRuntime, evaluationCaseRequestId, hashEvaluationInput,
   validateEvaluationRunManifest } from "../src/eval/evaluationRun";
+import { AGENT_RUN_OUTPUT_SCHEMA_VERSION } from "../src/agentRuntime";
+import { createHash } from "node:crypto";
 import initDB from "../src/lib/initDB";
 
 const manifest = { schemaVersion: "toonflow.evaluation-run.v2",
@@ -47,7 +49,7 @@ async function fixture() {
     t.integer("createdAt"); t.integer("completedAt");
   });
   await db.schema.createTable("o_agentRunOutput", (t) => {
-    t.text("runId"); t.text("contentHash");
+    t.text("runId"); t.text("content"); t.text("contentHash"); t.text("schemaVersion");
   });
   await db.schema.createTable("o_agentTrace", (t) => {
     t.text("id").primary(); t.text("runId"); t.integer("sequence");
@@ -85,12 +87,15 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
       role: "scriptAgent", scope: "read-only-project-guidance-v1",
       input: JSON.stringify({ content: "给出项目摘要" }),
       clientRequestId: evaluationCaseRequestId(created.id, "candidate", "DEV-EXT-001", 11) });
-    await db("o_agentRunOutput").insert({ runId: "run-1", contentHash: "b".repeat(64) });
+    const outputContent = "可展示的评测回复";
+    const outputHash = createHash("sha256").update(JSON.stringify(outputContent)).digest("hex");
+    await db("o_agentRunOutput").insert({ runId: "run-1", content: outputContent,
+      contentHash: outputHash, schemaVersion: AGENT_RUN_OUTPUT_SCHEMA_VERSION });
     await db("o_agentTrace").insert({ id: "trace-1", runId: "run-1", sequence: 1 });
     const input = { evaluationRunId: created.id, caseId: "DEV-EXT-001",
       seed: 11, variant: "candidate" as const, agentRunId: "run-1" };
     const recorded = await runtime.record(input);
-    assert.equal(recorded.outputHash, "b".repeat(64));
+    assert.equal(recorded.outputHash, outputHash);
     assert.equal(recorded.lastTraceSequence, 1);
     assert.equal(recorded.elapsedMs, 40);
     assert.equal(recorded.costMicros, null);
@@ -111,6 +116,16 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
     await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
     await assert.rejects(runtime.record(input), /frozen case/u);
     await db("o_agentRun").where({ id: "run-1" }).update({ projectId: 7 });
+    await db("o_agentRunOutput").where({ runId: "run-1" }).update({ content: "被改写的回复" });
+    await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
+    await assert.rejects(runtime.record(input), /lacks valid Agent Run evidence/u);
+    await db("o_agentRunOutput").where({ runId: "run-1" }).update({ content: outputContent });
+    await db("o_agentRunOutput").insert({ runId: "run-1", content: "未纳入账本的第二输出",
+      contentHash: createHash("sha256").update(JSON.stringify("未纳入账本的第二输出")).digest("hex"),
+      schemaVersion: AGENT_RUN_OUTPUT_SCHEMA_VERSION });
+    await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
+    await assert.rejects(runtime.record(input), /lacks valid Agent Run evidence/u);
+    await db("o_agentRunOutput").where({ runId: "run-1", content: "未纳入账本的第二输出" }).delete();
     await db("o_agentRun").where({ id: "run-1" }).update({ input: JSON.stringify({ content: "换了输入" }) });
     await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
     await assert.rejects(runtime.record(input), /frozen case/u);
