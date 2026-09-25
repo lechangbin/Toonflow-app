@@ -18,7 +18,10 @@ export const evaluationRunManifestSchema = z.strictObject({
   studyId: identity,
   caseManifestHash: digest,
   caseIds: z.array(caseId).min(1),
-  caseInputs: z.array(z.strictObject({ caseId, contentHash: digest })).min(1),
+  caseInputs: z.array(z.strictObject({ caseId, contentHash: digest,
+    role: z.enum(["scriptAgent", "productionAgent"]),
+    scope: z.enum(["read-only-project-guidance-v1", "script-harness-guidance-v1",
+      "production-harness-v1"]) })).min(1),
   seeds: z.array(z.number().int().nonnegative()).min(2),
   variants: z.tuple([z.literal("baseline"), z.literal("candidate")]),
   baseline: revisions,
@@ -29,7 +32,7 @@ export type EvaluationRunManifest = z.infer<typeof evaluationRunManifestSchema>;
 export const parseEvaluationRevisions = (input: unknown) => revisions.parse(input);
 
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
-export const hashEvaluationInput = hash;
+export const hashEvaluationInput = (content: string) => hash(content.trim());
 
 export function evaluationCaseRequestId(evaluationRunId: string,
   variant: "baseline" | "candidate", caseId: string, seed: number): string {
@@ -97,17 +100,6 @@ export function createEvaluationRunRuntime(dependencies: {
           || !manifest.variants.includes(input.variant)) {
           throw new TypeError("Evaluation case is outside the frozen matrix");
         }
-        const existing = await tx("o_agentEvaluationCase").where({
-          evaluationRunId: input.evaluationRunId, caseId: input.caseId,
-          seed: input.seed, variant: input.variant,
-        }).first();
-        if (existing) {
-          if (existing.agentRunId !== input.agentRunId
-            || hash(existing.evidenceJson) !== existing.evidenceHash) {
-            throw new Error("Evaluation case was already bound to different or corrupt evidence");
-          }
-          return caseEvidenceSchema.parse(JSON.parse(existing.evidenceJson));
-        }
         const run = await tx("o_agentRun").where({ id: input.agentRunId }).first();
         if (!run || !["succeeded", "failed", "cancelled"].includes(run.status)
           || !Number.isSafeInteger(run.version) || run.version <= 0) {
@@ -116,6 +108,15 @@ export function createEvaluationRunRuntime(dependencies: {
         if (run.clientRequestId !== evaluationCaseRequestId(input.evaluationRunId,
           input.variant, input.caseId, input.seed)) {
           throw new Error("Evaluation case Agent Run request identity does not match the frozen cell");
+        }
+        const frozenInput = manifest.caseInputs.find((entry) => entry.caseId === input.caseId);
+        let storedInput: unknown;
+        try { storedInput = JSON.parse(run.input); } catch { /* fail closed below */ }
+        if (!frozenInput || !storedInput || typeof storedInput !== "object"
+          || !("content" in storedInput) || typeof storedInput.content !== "string"
+          || run.role !== frozenInput.role || run.scope !== frozenInput.scope
+          || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash) {
+          throw new Error("Evaluation source Agent Run input differs from the frozen case");
         }
         const output = await tx("o_agentRunOutput").where({ runId: run.id }).first("contentHash");
         const trace = await tx("o_agentTrace").where({ runId: run.id })
@@ -131,6 +132,20 @@ export function createEvaluationRunRuntime(dependencies: {
           outputHash: output?.contentHash ?? null,
           lastTraceId: trace.id, lastTraceSequence: trace.sequence });
         const evidenceJson = JSON.stringify(evidence);
+        const existing = await tx("o_agentEvaluationCase").where({
+          evaluationRunId: input.evaluationRunId, caseId: input.caseId,
+          seed: input.seed, variant: input.variant,
+        }).first();
+        if (existing) {
+          if (existing.agentRunId !== input.agentRunId
+            || hash(existing.evidenceJson) !== existing.evidenceHash) {
+            throw new Error("Evaluation case was already bound to different or corrupt evidence");
+          }
+          if (existing.evidenceJson !== evidenceJson) {
+            throw new Error("Evaluation source Agent Run evidence has changed or disappeared");
+          }
+          return evidence;
+        }
         await tx("o_agentEvaluationCase").insert({ id: dependencies.createId(),
           evaluationRunId: input.evaluationRunId, caseId: input.caseId,
           seed: input.seed, variant: input.variant, agentRunId: input.agentRunId,
@@ -168,6 +183,9 @@ export function createEvaluationRunRuntime(dependencies: {
             throw new Error("Evaluation case is outside or inconsistent with the frozen matrix");
           }
           const run = await tx("o_agentRun").where({ id: evidence.agentRunId }).first();
+          const frozenInput = manifest.caseInputs.find((entry) => entry.caseId === evidence.caseId);
+          let storedInput: unknown;
+          try { storedInput = run ? JSON.parse(run.input) : null; } catch { /* fail closed below */ }
           const trace = await tx("o_agentTrace").where({ runId: evidence.agentRunId })
             .orderBy("sequence", "desc").first("id", "sequence");
           const output = await tx("o_agentRunOutput").where({ runId: evidence.agentRunId })
@@ -175,6 +193,10 @@ export function createEvaluationRunRuntime(dependencies: {
           if (!run || run.projectId !== evidence.projectId
             || run.clientRequestId !== evaluationCaseRequestId(id,
               evidence.variant, evidence.caseId, evidence.seed)
+            || !frozenInput || run.role !== frozenInput.role || run.scope !== frozenInput.scope
+            || !storedInput || typeof storedInput !== "object"
+            || !("content" in storedInput) || typeof storedInput.content !== "string"
+            || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash
             || run.status !== evidence.runStatus || run.version !== evidence.runVersion
             || trace?.id !== evidence.lastTraceId
             || trace?.sequence !== evidence.lastTraceSequence
