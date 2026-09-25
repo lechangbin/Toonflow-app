@@ -11,6 +11,7 @@ const caseId = z.string().regex(/^(DEV|HOLD|INC)-[A-Z]+-\d{3}$/u);
 const revisions = z.strictObject({ app: revision, schema: revision,
   runtime: revision, tool: revision, context: revision,
   memory: revision, skill: revision, model: revision, vendor: revision });
+const COMMON_REVISIONS = ["schema", "model", "vendor"] as const;
 
 export const evaluationRunManifestSchema = z.strictObject({
   schemaVersion: z.literal(EVALUATION_RUN_VERSION),
@@ -34,6 +35,9 @@ export function validateEvaluationRunManifest(input: unknown): EvaluationRunMani
     || new Set(manifest.seeds).size !== manifest.seeds.length
     || manifest.seeds.some((seed, index) => index > 0 && seed <= manifest.seeds[index - 1])) {
     throw new TypeError("Evaluation Run cases or seeds are not frozen canonically");
+  }
+  if (COMMON_REVISIONS.some((key) => manifest.baseline[key] !== manifest.candidate[key])) {
+    throw new TypeError("Evaluation comparison changed a required common environment revision");
   }
   return manifest;
 }
