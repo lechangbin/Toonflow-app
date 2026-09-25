@@ -146,6 +146,8 @@ async function snapshot(db: Knex | Knex.Transaction, projectId: number,
       || typeof runInput.parentOperationId !== "string"
       || typeof runInput.skillId !== "string"
       || runInput.parentOperationId !== approval.operationId
+      || run.clientRequestId !== videoProposalClientRequestId(
+        runInput.parentRunId, runInput.parentOperationId)
       || runInput.proposalContractHash !== toolDefinitionContractHash(
         PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION)) conflict();
     const parent = await db("o_agentRun").where({ id: runInput.parentRunId,
@@ -154,10 +156,14 @@ async function snapshot(db: Knex | Knex.Transaction, projectId: number,
       .where({ runId: parent.id, operationId: runInput.parentOperationId,
         toolName: PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION.name,
         skillId: runInput.skillId }).first();
+    const binding = parent && await db("o_agentRunSkillBinding")
+      .where({ runId: parent.id, skillId: runInput.skillId }).first("revisionId");
     let allowed: unknown;
     try { allowed = JSON.parse(permission?.decisionJson ?? "null")?.allowed; }
     catch { return conflict(); }
-    if (!permission || createHash("sha256").update(permission.decisionJson)
+    if (!permission || !binding
+      || binding.revisionId !== permission.skillRevisionId
+      || createHash("sha256").update(permission.decisionJson)
       .digest("hex") !== permission.decisionHash
       || allowed !== true) conflict();
   }
