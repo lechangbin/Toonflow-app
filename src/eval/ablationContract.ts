@@ -95,17 +95,17 @@ export const ablationRunResultSchema = z.strictObject({
   variant: z.string().min(1), caseId, seed: z.number().int().nonnegative(),
   qualityScore: z.number().int().min(0).max(2).nullable(),
   qualityEvidenceIds: z.array(z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u)),
-  latencyMs: z.number().int().nonnegative(),
-  costMicros: z.number().int().nonnegative(),
-  inputTokens: z.number().int().nonnegative(),
-  outputTokens: z.number().int().nonnegative(),
-  toolCalls: z.number().int().nonnegative(),
-  retries: z.number().int().nonnegative(),
+  latencyMs: z.number().int().nonnegative().nullable(),
+  costMicros: z.number().int().nonnegative().nullable(),
+  inputTokens: z.number().int().nonnegative().nullable(),
+  outputTokens: z.number().int().nonnegative().nullable(),
+  toolCalls: z.number().int().nonnegative().nullable(),
+  retries: z.number().int().nonnegative().nullable(),
   failureClass,
-  hardGates: z.strictObject({ leakage: z.boolean(),
-    "holdout-contamination": z.boolean(),
-    "redaction-failure": z.boolean(),
-    "permission-escalation": z.boolean() }),
+  hardGates: z.strictObject({ leakage: z.boolean().nullable(),
+    "holdout-contamination": z.boolean().nullable(),
+    "redaction-failure": z.boolean().nullable(),
+    "permission-escalation": z.boolean().nullable() }),
 });
 export type AblationRunResult = z.infer<typeof ablationRunResultSchema>;
 
@@ -115,10 +115,14 @@ export interface AblationVariantSummary {
   qualityPending: number; qualityBelowThreshold: number;
   p95LatencyMs: number | null; latencyThresholdPassed: boolean;
   costOverLimit: number; retriesOverLimit: number;
-  budgetExceeded: number; hardGateFailures: Record<string, number>;
+  budgetExceeded: number; unknownMetrics: number;
+  hardGateFailures: Record<string, number>;
+  hardGateUnknown: Record<string, number>;
   unexpectedFailureClass: number;
   failureClasses: Record<string, number>;
-  /** No composite score: every predeclared threshold must independently pass. */
+  /** Local numbers only: this does not establish source Agent Run provenance. */
+  thresholdsPassed: boolean;
+  /** Remains false until an independent T11 source and review verifier exists. */
   adoptable: boolean;
 }
 
@@ -144,39 +148,47 @@ export function summarizeAblationResults(manifestInput: unknown,
   const expectedPerVariant = manifest.caseIds.length * manifest.seeds.length;
   const variants = [manifest.referenceVariant, ...manifest.candidateVariants].map((variant) => {
     const rows = results.filter((entry) => entry.variant === variant);
-    const latency = rows.map((entry) => entry.latencyMs).sort((a, b) => a - b);
+    const latency = rows.map((entry) => entry.latencyMs)
+      .filter((value): value is number => value !== null).sort((a, b) => a - b);
     const p95LatencyMs = latency.length
       ? latency[Math.ceil(latency.length * 0.95) - 1] : null;
     const hardGateFailures = Object.fromEntries(manifest.thresholds.zeroToleranceGateIds
-      .map((gate) => [gate, rows.filter((entry) => !entry.hardGates[gate]).length]));
+      .map((gate) => [gate, rows.filter((entry) => entry.hardGates[gate] === false).length]));
+    const hardGateUnknown = Object.fromEntries(manifest.thresholds.zeroToleranceGateIds
+      .map((gate) => [gate, rows.filter((entry) => entry.hardGates[gate] === null).length]));
     const failureClasses = Object.fromEntries(failureClass.options
       .map((kind) => [kind, rows.filter((entry) => entry.failureClass === kind).length]));
     const qualityPending = rows.filter((entry) => entry.qualityScore === null).length;
     const qualityBelowThreshold = rows.filter((entry) => entry.qualityScore !== null
       && entry.qualityScore < manifest.thresholds.minQualityScore).length;
     const costOverLimit = rows.filter((entry) =>
-      entry.costMicros > manifest.thresholds.maxCostMicrosPerCase).length;
+      entry.costMicros !== null && entry.costMicros > manifest.thresholds.maxCostMicrosPerCase).length;
     const retriesOverLimit = rows.filter((entry) =>
-      entry.retries > manifest.thresholds.maxRetriesPerCase).length;
+      entry.retries !== null && entry.retries > manifest.thresholds.maxRetriesPerCase).length;
     const budgetExceeded = rows.filter((entry) =>
-      entry.inputTokens > manifest.commonBudget.maxInputTokens
-      || entry.outputTokens > manifest.commonBudget.maxOutputTokens
-      || entry.toolCalls > manifest.commonBudget.maxToolCalls
-      || entry.latencyMs > manifest.commonBudget.timeoutMs).length;
+      entry.inputTokens !== null && entry.inputTokens > manifest.commonBudget.maxInputTokens
+      || entry.outputTokens !== null && entry.outputTokens > manifest.commonBudget.maxOutputTokens
+      || entry.toolCalls !== null && entry.toolCalls > manifest.commonBudget.maxToolCalls
+      || entry.latencyMs !== null && entry.latencyMs > manifest.commonBudget.timeoutMs).length;
+    const unknownMetrics = rows.filter((entry) =>
+      entry.latencyMs === null || entry.costMicros === null || entry.inputTokens === null
+      || entry.outputTokens === null || entry.toolCalls === null || entry.retries === null).length;
     const unexpectedFailureClass = rows.filter((entry) =>
       entry.failureClass !== manifest.expectedFailureClasses[entry.caseId]).length;
     const missing = expectedPerVariant - rows.length;
-    const latencyThresholdPassed = p95LatencyMs !== null
+    const latencyThresholdPassed = latency.length === rows.length && p95LatencyMs !== null
       && p95LatencyMs <= manifest.thresholds.maxP95LatencyMs;
+    const thresholdsPassed = missing === 0 && qualityPending === 0 && qualityBelowThreshold === 0
+      && latencyThresholdPassed && costOverLimit === 0 && retriesOverLimit === 0
+      && budgetExceeded === 0 && unknownMetrics === 0 && unexpectedFailureClass === 0
+      && Object.values(hardGateFailures).every((count) => count === 0)
+      && Object.values(hardGateUnknown).every((count) => count === 0);
     return { variant, expected: expectedPerVariant, executed: rows.length,
       missing, qualityPending, qualityBelowThreshold,
       p95LatencyMs, latencyThresholdPassed, costOverLimit, retriesOverLimit,
-      budgetExceeded, hardGateFailures, failureClasses,
+      budgetExceeded, unknownMetrics, hardGateFailures, hardGateUnknown, failureClasses,
       unexpectedFailureClass,
-      adoptable: missing === 0 && qualityPending === 0 && qualityBelowThreshold === 0
-        && latencyThresholdPassed && costOverLimit === 0 && retriesOverLimit === 0
-        && budgetExceeded === 0 && unexpectedFailureClass === 0
-        && Object.values(hardGateFailures).every((count) => count === 0),
+      thresholdsPassed, adoptable: false,
     };
   });
   return { manifestHash, expected: expectedKeys.size, executed: results.length,

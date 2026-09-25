@@ -11,3 +11,5 @@ Issue：`lechangbin/Toonflow-app#75`。此分支现已合入 T18 App 兼容切�
 定向假执行器补充：`src/eval/ablationRunner.ts` 现按冻结清单逐 variant/case/seed 传同一预算和修订给注入 adapter；只收严格的指标结构。adapter 抛错或返回原始 Prompt 等未知字段时，记录不含异常文本的 evidence failure 与未审质量，绝不形成采用结论。新增 2 个假 adapter 单测使相关定向用例共 6 个，App TypeScript 检查通过。它没有实现四种 Context/Skill 的实际运行效果，也没有执行完整 Golden case 或生成不可变结果文件；上一段“尚无执行器”指真实候选执行器，现只有等资源驱动壳。
 
 结果契约补强：清单现在按 case 冻结预期失败类别；例如未经授权请求的正确拒绝可预期 `permission`，正常成功则预期 `none`。汇总增加 `unexpectedFailureClass`，实际类别与预期不符即使质量和安全 gate 都通过，也不可采用。缺失或额外 case 预期在冻结时拒绝。6 个相关定向用例与类型检查通过；这仍不等于实际 case 清单已冻结或真实变体已运行。
+
+采用语义修正：原先纯指标汇总在 Fake adapter 填满质量/延迟/费用后可能返回 `adoptable: true`，但这些 ID 并未核对 T11 的真实 Agent Run 与业务评审。现单独报告 `thresholdsPassed`，而未接独立来源校验前 `adoptable` 恒为 false；不能把指标阈值通过当作方案采用。adapter 异常时延迟、费用、token、Tool 次数与重试数均记为 `null`，`unknownMetrics` 单独计数，不能以 0 冒充无费用或无资源消耗。四个安全硬门同样保持未知 `null`，`hardGateUnknown` 与真正的 `hardGateFailures` 分列；异常不能伪装成已发生泄露，也不能伪装成门禁通过。6 个 T19 定向测试与 TypeScript 检查通过；T11 的逐例真实结果和 T19 的来源核验仍未完成。

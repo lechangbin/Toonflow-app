@@ -68,21 +68,30 @@ test("T19 result summary reports denominators and rejects hard-gate failure with
   const complete = summarizeAblationResults(manifest, rows);
   assert.equal(complete.expected, 20);
   assert.equal(complete.missing, 0);
-  assert(complete.variants.every((entry) => entry.adoptable));
+  assert(complete.variants.every((entry) => entry.thresholdsPassed));
+  assert(complete.variants.every((entry) => !entry.adoptable),
+    "unverified source Runs cannot be adopted from a metrics-only summary");
   const failed = summarizeAblationResults(manifest, [
     { ...rows[0], hardGates: { ...rows[0].hardGates,
       "permission-escalation": false } }, ...rows.slice(1),
   ]);
   assert.equal(failed.variants[0].hardGateFailures["permission-escalation"], 1);
+  assert.equal(failed.variants[0].thresholdsPassed, false);
   assert.equal(failed.variants[0].adoptable, false);
   const wrongFailure = summarizeAblationResults(manifest, [
     { ...rows[0], failureClass: "routing" }, ...rows.slice(1),
   ]);
   assert.equal(wrongFailure.variants[0].unexpectedFailureClass, 1);
+  assert.equal(wrongFailure.variants[0].thresholdsPassed, false);
   assert.equal(wrongFailure.variants[0].adoptable, false);
   const partial = summarizeAblationResults(manifest, rows.slice(1));
   assert.equal(partial.missing, 1);
+  assert.equal(partial.variants[0].thresholdsPassed, false);
   assert.equal(partial.variants[0].adoptable, false);
+  const unknownCost = summarizeAblationResults(manifest,
+    [{ ...rows[0], costMicros: null }, ...rows.slice(1)]);
+  assert.equal(unknownCost.variants[0].unknownMetrics, 1);
+  assert.equal(unknownCost.variants[0].thresholdsPassed, false);
   assert.throws(() => summarizeAblationResults(manifest, [...rows, rows[0]]));
   assert.throws(() => summarizeAblationResults(manifest,
     [{ ...rows[0], executedAt: 50 }]));
@@ -108,7 +117,8 @@ test("T19 fake adapter receives the identical frozen budget for every run", asyn
   assert(calls.every((call) => JSON.stringify(call.budget)
     === JSON.stringify(manifest.commonBudget)));
   assert.equal(result.summary.missing, 0);
-  assert(result.summary.variants.every((entry) => entry.adoptable));
+  assert(result.summary.variants.every((entry) => entry.thresholdsPassed));
+  assert(result.summary.variants.every((entry) => !entry.adoptable));
 });
 
 test("T19 fake runner redacts adapter failures and never treats them as adoption", async () => {
@@ -119,6 +129,12 @@ test("T19 fake runner redacts adapter failures and never treats them as adoption
     } });
   assert.equal(result.results.length, 20);
   assert.equal(result.summary.variants[0].adoptable, false);
+  assert.equal(result.summary.variants[0].unknownMetrics, 4);
+  assert.equal(result.summary.variants[0].hardGateFailures.leakage, 0);
+  assert.equal(result.summary.variants[0].hardGateUnknown.leakage, 4);
+  assert.equal(result.results[0].hardGates.leakage, null);
+  assert.equal(result.results[0].costMicros, null);
+  assert.equal(result.results[0].latencyMs, null);
   assert(!JSON.stringify(result).includes("secret raw prompt"));
   assert(result.results.every((entry) => entry.failureClass === "evidence"));
 });
