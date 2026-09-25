@@ -75,6 +75,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 显式执行入口切片：新增独立 Owner HTTP `/api/agentRuns/videoGenerationExecution/{execute,cancel,stop,commit,artifact/recover}`，仅当操作员显式设 `TOONFLOW_CONTROLLED_VIDEO_EXECUTION=enabled` 才开放；默认 404，不会因批准自动请求供应商。路由 actor 仅来自已认证 token，409 提示状态冲突，不自动重试；execute 结果区分成功、原请求、提交未知、媒体待采纳和禁止采纳的迟到媒体。3 个注入假 Runtime 的定向路由单测和 App TypeScript 检查通过，未跑完整构建、浏览器、真实 Provider 或跨进程恢复。Web 尚无该执行按钮；运营环境不应仅凭此阶段测试启用计费路径。
 
+受控 Video 模型提案授权准备：新增独立 `propose:track-video` Project grant，只有认证 Owner 能以 expectedVersion 开启/撤销；生产 grant 快照可读其 active/version。它与图片、分镜、工作区读权限和实际计费 `generate:track-video` 完全分开，默认拒绝；`resolveProductionVideoProposalGrants` 只对 production-harness Run/role 给候选提案权限。6 个相关授权/HTTP 定向用例及 App TypeScript 检查通过。此切片仅提供权限位，尚未把 Video 提案 Tool 接给模型，也不允许 grant 直接触发审批或 Vendor。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。
