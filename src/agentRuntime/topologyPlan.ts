@@ -127,12 +127,14 @@ const topologyEvidenceSchema = z.strictObject({
 });
 export type TopologyEvidence = z.infer<typeof topologyEvidenceSchema>;
 
-/** A recommendation only; no runtime transition is enabled by this function. */
+/** Metrics-only ranking; source Run and review provenance are not verified here. */
 export function chooseSimplestTopology(inputs: readonly unknown[]): {
-  state: "incomplete" | "none-passed" | "candidate";
-  topology: "T0" | "T1" | "T2" | null;
+  state: "incomplete" | "none-passed" | "unverified";
+  topology: null;
+  thresholdCandidate: "T0" | "T1" | "T2" | null;
 } {
-  if (inputs.length !== 3) return { state: "incomplete", topology: null };
+  if (inputs.length !== 3) return { state: "incomplete", topology: null,
+    thresholdCandidate: null };
   const evidence = inputs.map((input) => topologyEvidenceSchema.parse(input));
   if (evidence.some((item, index) => item.topology !== ["T0", "T1", "T2"][index])
     || evidence.some((item) => item.caseManifestHash !== evidence[0].caseManifestHash
@@ -141,11 +143,12 @@ export function chooseSimplestTopology(inputs: readonly unknown[]): {
       || item.expectedRuns !== evidence[0].expectedRuns
       || item.repeatedSeeds !== evidence[0].repeatedSeeds
       || item.executedRuns !== item.expectedRuns)) {
-    return { state: "incomplete", topology: null };
+    return { state: "incomplete", topology: null, thresholdCandidate: null };
   }
   const first = evidence.find((item) => item.qualityPassed && item.latencyPassed
     && item.costPassed && item.tokenPassed && item.retriesPassed
     && item.hardGateFailures === 0);
-  return first ? { state: "candidate", topology: first.topology }
-    : { state: "none-passed", topology: null };
+  return first ? { state: "unverified", topology: null,
+    thresholdCandidate: first.topology }
+    : { state: "none-passed", topology: null, thresholdCandidate: null };
 }
