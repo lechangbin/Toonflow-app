@@ -6,5 +6,6 @@
 4. 问：什么时候值得用 T2？答：只有 T0、T1、T2 在同一冻结用例、预算和重复 seed 下都跑齐，且 T0/T1 未同时通过预声明的质量、延迟、成本、token、重试和安全硬门，而 T2 全部通过，才有选择 T2 的依据。当前没有这些结果，不能说 T2 优于单 Agent。选择函数返回候选，不自动上线。
 5. 问：为什么不做一个综合分选最高？答：安全硬门和成本上限不应被质量分抵消。实现按每个独立阈值和零容忍门判断；证据缺失、预算不同或任何硬门失败，都不能形成采用结论。定向单测验证预算不同会返回 incomplete。
 6. 问：角色执行时如何防止 planner 调用 specialist 的 Tool？答：确定性执行壳给每个 handler 一个受限 `invokeTool`，在调用注入 port 前用计划和可信权限目录核对该角色 Tool、累计 Tool 次数和时长；角色输出与交接还要检查所有权和严格 schema。假角色测试中 planner 尝试调用 specialist Tool，port 调用数为零。它不是生产沙箱，handler 若能绕过 port 直接调用外部系统仍需更底层隔离；真实 Run/租约接入也未完成。证据：`src/agentRuntime/topologySimulation.ts`、`tests/topologySimulation.test.ts`。
+7. 问：specialist 修改输入 handoff 的哈希，会不会污染 planner 的原始证据？答：不会。传给每个后续 handler 的是上一跳已校验 handoff 的隔离副本，内部记录和最终返回的 handoff 不与角色输入共享可变对象；单测让 specialist 修改副本的哈希，返回的 planner handoff 仍保持原值。这只保护实验执行壳的内存证据，不是生产持久证据完整性证明。
 
 追问底线：T19 实际消融、T20 重复对比、故障迁移分析和生产开关选择均未完成；T21 才做全量与真实环境验收。

@@ -73,3 +73,18 @@ test("T20 fake runner rejects unauthorized Tool and raw handoff Artifact", async
       rawPrompt: "should never cross" }] }),
   } }));
 });
+
+test("T20 role cannot mutate a preceding recorded handoff", async () => {
+  const result = await simulateTopology({ plan, permissions,
+    caseId: "DEV-EXT-001", seed: 11, contextBundleHash: "b".repeat(64),
+    now: () => 100, toolPort: async () => ({}), handlers: {
+      planner: async () => ({ artifacts: [ref("plan-1", "plan", "planner")] }),
+      specialist: async (context) => {
+        context.input!.artifacts[0].contentHash = "c".repeat(64);
+        return { artifacts: [ref("candidate-1", "candidate", "specialist")] };
+      },
+      verifier: async () => ({ artifacts: [ref("verification-1", "verification", "verifier"),
+        ref("final-1", "final", "verifier")] }),
+    } });
+  assert.equal(result.handoffs[0].artifacts[0].contentHash, "a".repeat(64));
+});
