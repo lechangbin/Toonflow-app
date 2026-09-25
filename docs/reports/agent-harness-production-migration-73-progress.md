@@ -79,6 +79,8 @@ Video 起点边界：审查共享 `startVideoGenerationBatch` 后确认现有手
 
 受控 Video 模型提案接入：`propose_track_video_generation` 已进入生产 Harness 的模型 Tool 目录，要求已发布 Skill 明确请求 Tool 与 `propose:track-video`，并核对当前 Project grant、父 Run 租约和 Owner。持久权限判定与待审子 Run 在同一事务中落库；子 Run 冻结父 Run、操作、Skill 和提案合约，Owner 检查时复核判定哈希，父 Run `/effects` 从持久证据投影 `videoEffects`。同操作重试读取原子审批，变更候选冲突；提案和 Owner 批准均不自动请求 Vendor。1 个假模型/SQLite 链路、7 个相邻 Harness/审批定向用例及 App TypeScript 检查通过；未运行全量测试、浏览器、真实 Provider 或跨进程验收。Web 尚无 Video 审批/执行 UI，旧批量视频仍未迁移，T17 不应标为完成。
 
+配套 Web Video 试用接线：Draft PR `lechangbin/Toonflow-web#8` 现在展示 `videoEffects`、完整待审候选、本地费用估算和原请求状态，增加 `videoProposal` 独立 grant、Owner 批准/拒绝与第二次明确确认的 Video execute。客户端在过期或已有请求时不提交，失败不自动重试；后端默认关闭的操作员开关仍是硬边界。Web 相关 7 个合约定向用例及非声明式 Vue 类型检查通过，未跑浏览器、真实 Provider 或全量测试。Web 尚无 Video 报价配置、取消/媒体恢复 UI，故不能将此接线描述为完整闭环。前段“Web 尚无”是上一切片状态，由本段更新。
+
 旧 Video 图片输入归属修正：原共享编排按 Storyboard/Asset ID 直接找图片，上传路径直接读取，未绑定当前 Project/Script。现在解析 Storyboard 时核对 Project/Script，解析 Asset 时核对 Project 及该 Script 的直接归属或显式关联，上传路径只接受本 Project/Script 下的 `video-inputs` 命名空间和安全文件名；不合范围在读取图片字节、创建 Production Action 或调用 Vendor 前拒绝。3 个独立 SQLite 归属用例与 2 个原视频编排定向用例、App TypeScript 检查通过；这不解决 HTTP Owner 授权、上传文件的内容来源证明或 Vendor 未知结果恢复。
 
 工作台 Owner 边界补充：上述五个会产生 Prompt/Video 效果的手动路由及 Video 输入上传路由现在除 JWT 登录外，还用认证 token 的 actor ID 核对每个目标 Project Owner；批量 Prompt 在任何生成前核对全部 Project，不允许前半批已写、后半批才因越权失败。定向路由测试覆盖六个入口、混合 Project 批次与缺失 actor，上传模块原有五例仍通过；App TypeScript 检查通过。其余工作台路由尚未纳入本切片，不能声称整个工作台授权审计完成，更不等于 Agent 受控审批。
