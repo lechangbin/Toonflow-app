@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { DatabaseWork } from "@/database";
+import { auditCausalTraceTimeline } from "@/agentRuntime/causalTrace";
 import { z } from "zod";
 
 import { hashGoldenEvalManifest, validateGoldenEvalManifest } from "./goldenEval";
@@ -130,9 +131,11 @@ export function createEvaluationRunRuntime(dependencies: {
           throw new Error("Evaluation source Agent Run input differs from the frozen case");
         }
         const output = await tx("o_agentRunOutput").where({ runId: run.id }).first("contentHash");
-        const trace = await tx("o_agentTrace").where({ runId: run.id })
-          .orderBy("sequence", "desc").first("id", "sequence");
-        if (!trace || !identity.safeParse(trace.id).success
+        const traces = await tx("o_agentTrace").where({ runId: run.id })
+          .orderBy("sequence", "asc").select("id", "sequence", "predecessorTraceId");
+        const trace = traces.at(-1);
+        if (auditCausalTraceTimeline(traces).linkage !== "linked"
+          || !trace || !identity.safeParse(trace.id).success
           || !Number.isSafeInteger(trace.sequence) || trace.sequence <= 0
           || output && !digest.safeParse(output.contentHash).success) {
           throw new Error("Evaluation case lacks valid Agent Run evidence");
@@ -197,8 +200,9 @@ export function createEvaluationRunRuntime(dependencies: {
           const frozenInput = manifest.caseInputs.find((entry) => entry.caseId === evidence.caseId);
           let storedInput: unknown;
           try { storedInput = run ? JSON.parse(run.input) : null; } catch { /* fail closed below */ }
-          const trace = await tx("o_agentTrace").where({ runId: evidence.agentRunId })
-            .orderBy("sequence", "desc").first("id", "sequence");
+          const traces = await tx("o_agentTrace").where({ runId: evidence.agentRunId })
+            .orderBy("sequence", "asc").select("id", "sequence", "predecessorTraceId");
+          const trace = traces.at(-1);
           const output = await tx("o_agentRunOutput").where({ runId: evidence.agentRunId })
             .first("contentHash");
           if (!run || run.projectId !== evidence.projectId
@@ -209,6 +213,7 @@ export function createEvaluationRunRuntime(dependencies: {
             || !("content" in storedInput) || typeof storedInput.content !== "string"
             || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash
             || run.status !== evidence.runStatus || run.version !== evidence.runVersion
+            || auditCausalTraceTimeline(traces).linkage !== "linked"
             || trace?.id !== evidence.lastTraceId
             || trace?.sequence !== evidence.lastTraceSequence
             || (output?.contentHash ?? null) !== evidence.outputHash) {

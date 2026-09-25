@@ -50,6 +50,7 @@ async function fixture() {
   });
   await db.schema.createTable("o_agentTrace", (t) => {
     t.text("id").primary(); t.text("runId"); t.integer("sequence");
+    t.text("predecessorTraceId");
   });
   let counter = 0;
   const runtime = createEvaluationRunRuntime({ work: async (operation) => operation(db),
@@ -81,12 +82,12 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
       input: JSON.stringify({ content: "给出项目摘要" }),
       clientRequestId: evaluationCaseRequestId(created.id, "candidate", "DEV-EXT-001", 11) });
     await db("o_agentRunOutput").insert({ runId: "run-1", contentHash: "b".repeat(64) });
-    await db("o_agentTrace").insert({ id: "trace-1", runId: "run-1", sequence: 4 });
+    await db("o_agentTrace").insert({ id: "trace-1", runId: "run-1", sequence: 1 });
     const input = { evaluationRunId: created.id, caseId: "DEV-EXT-001",
       seed: 11, variant: "candidate" as const, agentRunId: "run-1" };
     const recorded = await runtime.record(input);
     assert.equal(recorded.outputHash, "b".repeat(64));
-    assert.equal(recorded.lastTraceSequence, 4);
+    assert.equal(recorded.lastTraceSequence, 1);
     assert.deepEqual(await runtime.record(input), recorded);
     assert.equal((await db("o_agentEvaluationCase")).length, 1);
     const inspected = await runtime.inspect(created.id);
@@ -101,6 +102,11 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
     await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
     await assert.rejects(runtime.record(input), /frozen case/u);
     await db("o_agentRun").where({ id: "run-1" }).update({ input: JSON.stringify({ content: "给出项目摘要" }) });
+    await db("o_agentTrace").insert({ id: "trace-2", runId: "run-1",
+      sequence: 2, predecessorTraceId: "wrong" });
+    await assert.rejects(runtime.inspect(created.id), /evidence has changed/u);
+    await assert.rejects(runtime.record(input), /lacks valid Agent Run evidence/u);
+    await db("o_agentTrace").where({ id: "trace-2" }).delete();
     await assert.rejects(runtime.record({ ...input, seed: 29 }), /request identity/u);
     await assert.rejects(runtime.record({ ...input, caseId: "HOLD-EXT-001" }), /frozen matrix/u);
     await db("o_agentEvaluationCase").where({ caseId: input.caseId }).update({ evidenceHash: "c".repeat(64) });
