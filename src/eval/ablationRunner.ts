@@ -41,11 +41,11 @@ export async function runAblationMatrix(input: {
         } catch {
           // Never persist an adapter exception: it can contain a raw prompt or secret.
           metrics = { qualityScore: null, qualityEvidenceIds: [],
-            latencyMs: 0, costMicros: 0, inputTokens: 0,
-            outputTokens: 0, toolCalls: 0, retries: 0,
-            failureClass: "evidence", hardGates: { leakage: false,
-              "holdout-contamination": false, "redaction-failure": false,
-              "permission-escalation": false } };
+            latencyMs: null, costMicros: null, inputTokens: null,
+            outputTokens: null, toolCalls: null, retries: null,
+            failureClass: "evidence", hardGates: { leakage: null,
+              "holdout-contamination": null, "redaction-failure": null,
+              "permission-escalation": null } };
         }
         const result = ablationRunResultSchema.parse({ ...metrics,
           manifestHash, executedAt: input.now(), variant, caseId, seed });
