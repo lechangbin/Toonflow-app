@@ -6,6 +6,6 @@ Issue：`lechangbin/Toonflow-app#67`。本分支叠在 T17 App Draft PR #96 上�
 
 SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationCase` 每 variant/case/seed 至多绑定一个实际 Agent Run，并阻止在同一 Evaluation Run 重用该 Agent Run。写入只接收已终结、版本有效且有 Trace 的 Run，记录来源 Project、Run 版本/状态、Output 哈希和最后 Trace 身份；相同记录幂等，重绑定或清单外组合拒绝。读取重新校验清单/证据哈希、矩阵归属与来源 Run 当前证据，明确返回 expected/recorded/missing。新表的更新触发器阻止篡改已写记录；删除和长期保留政策尚未完备，不能把这一切片称为不可删除的最终审计档案。
 
-阶段验证：`tests/evaluationRun.test.ts` 4 例，覆盖清单拒绝、终态 Run 关联、幂等、重复 Run 拒绝、矩阵缺口、来源证据变化、queued/无 Trace 拒绝，以及真实 `initDB` 建表与更新触发器；App TypeScript 检查通过，生成数据库类型已同步。没有跑全量单测、Golden Eval、构建、浏览器或真实 Provider。
+阶段验证：`tests/evaluationRun.test.ts` 5 例，覆盖清单拒绝、终态 Run 关联、幂等、重复 Run 拒绝、矩阵缺口、来源证据变化、queued/无 Trace 拒绝、真实 `initDB` 建表与更新触发器，以及旧库补建新表时保留原 Project；App TypeScript 检查通过，生成数据库类型已同步。没有跑全量单测、Golden Eval、构建、浏览器或真实 Provider。
 
 后续 T11 必须把全部 Golden case 经生产 AgentRuntime 执行，增加逐例 rubric/安全硬门/时间/成本等安全结果、冻结报告与成对比较拒绝规则；相关修订应包括 Web/bundle 时再扩展清单。当前账本只证明结果关联契约，不证明任何候选优于基线。T19 的真实消融继续受 T11 阻塞，最终完整验收仍留 T21。
