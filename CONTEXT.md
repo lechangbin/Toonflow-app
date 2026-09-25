@@ -84,6 +84,10 @@ _Avoid_: Chat history, raw legacy Memory row
 A durable execution of one scoped request by an Agent role, with an authoritative lifecycle that survives transport disconnects and process restarts.
 _Avoid_: Production Action, Socket session, chat message
 
+**Evaluation Run**:
+A frozen comparison of Agent behavior across a declared case set and system revisions, whose case evidence points to actual Agent Runs.
+_Avoid_: Agent Run, Golden Eval result file, simulated Agent execution
+
 **Agent Step**:
 An ordered, typed unit of work within an Agent Run whose lifecycle and result can be inspected independently.
 _Avoid_: Generation Task, callback, stream chunk

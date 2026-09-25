@@ -637,6 +637,33 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       },
     },
     // Agent Run Command：客户端命令的幂等身份与预期版本
+    // Evaluation Run：冻结比较输入，逐例引用实际 Agent Run；不执行独立 Agent 路径
+    {
+      name: "o_agentEvaluationRun",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.string("schemaVersion").notNullable();
+        table.text("manifestJson").notNullable();
+        table.text("manifestHash").notNullable();
+        table.integer("createdAt").notNullable();
+      },
+    },
+    {
+      name: "o_agentEvaluationCase",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("evaluationRunId").notNullable().references("id").inTable("o_agentEvaluationRun");
+        table.text("caseId").notNullable();
+        table.integer("seed").notNullable();
+        table.text("variant").notNullable();
+        table.text("agentRunId").notNullable();
+        table.text("evidenceJson").notNullable();
+        table.text("evidenceHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.unique(["evaluationRunId", "caseId", "seed", "variant"]);
+        table.unique(["evaluationRunId", "agentRunId"]);
+      },
+    },
     {
       name: "o_agentRunCommand",
       builder: (table) => {
@@ -1737,6 +1764,13 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         SELECT RAISE(ABORT, 'Agent Run checkpoints are immutable');
       END
     `);
+  }
+  for (const table of ["o_agentEvaluationRun", "o_agentEvaluationCase"]) {
+    if (await knex.schema.hasTable(table)) {
+      await knex.raw(`CREATE TRIGGER IF NOT EXISTS ${table}_prevent_update
+        BEFORE UPDATE ON ${table}
+        BEGIN SELECT RAISE(ABORT, 'Evaluation evidence is immutable'); END`);
+    }
   }
   if (await knex.schema.hasTable("o_agentContextBundle")) {
     await knex.raw(`
