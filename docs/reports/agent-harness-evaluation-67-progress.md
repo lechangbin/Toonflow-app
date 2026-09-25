@@ -8,6 +8,8 @@ Issue：`lechangbin/Toonflow-app#67`。本分支叠在 T17 App Draft PR #96 上�
 
 冻结输入进一步包含 role/scope，哈希按 AgentRuntime 实际采用的 `trim()` 后正文计算；`record` 和 `inspect` 复核生产 Run 持久化的 input、role、scope，避免绕过执行适配器或事后改写来源输入。它并未冻结 Project 数据快照或供应商实际随机种子，完整同条件比较仍待后续阶段。
 
+同案 Project 可比性补充：冻结输入增加 Project ID，清单版本提升为 `toonflow.evaluation-run.v2`。执行适配器在调用 Model 前拒绝错 Project；绕过适配器直接 `record` 或在记录后改写来源 Project，账本写入/重读也会拒绝。7 个 T11 定向用例通过，含跨 Project 启动、记账和重读拒绝。这里只固定 Project 身份，未冻结该 Project 的小说章节、剧本及配置快照，故仍不能宣称 baseline/candidate 已在完全相同的数据条件下比较。
+
 Golden 清单收敛：`freezeGoldenEvaluationRun` 先使用现有 T02 校验器验证真实 18-case manifest，再要求调用方为 18 个 case 按原顺序显式提供待执行输入，最后在同一 `o_agentEvaluationRun` 中保存规范化清单原文、哈希及逐例输入指纹。刚冻结时 `inspect` 固定显示 18×2 variant×2 seed＝72 个预期但缺失的样本，绝不把历史 T02 结果伪装为新 Agent Run。测试里的逐例正文仅是冻结契约夹具，不是已迁移的真实 Golden 场景输入。早期 Draft PR #90 的独立 `o_evaluationRun`/`o_evaluationCase` 不会作为第二套最终 schema；两份 Draft 目前仍需收敛处理。
 
 覆盖报告已在单一账本上重写：`src/eval/evaluationCoverageReport.ts` 对每个 Golden case/seed 展示 baseline/candidate 的 observed/missing，固定 18 个 case、每侧 36 个样本分母，并输出机器可读对象与 Markdown。observed 只意味着真实生产 Run 证据通过 `inspect` 复核，绝不推导 hard-gate、人工评分或质量提升；来源 Run 改写时整份报告拒绝，而非输出部分可信统计。此实现移植了 #90 的覆盖/质量分离思想，但 #90 的独立表和结果契约仍需最终取舍，当前也不是结果级配对报告。
