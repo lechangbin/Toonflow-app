@@ -8,5 +8,6 @@
 4. 问：如果 Run 没完成或者缺少 Trace，能否记成结果？答：不能。`record` 只接收 terminal 状态、正版本和有效的最后 Trace；Output 可以为空以容纳失败 Run，但不可伪造成功。`inspect` 复核来源 Run 的状态、版本、Output 哈希和最后 Trace，不一致就停止输出有效比较。
 5. 问：这个阶段能说 Golden Eval 或消融结果了吗？答：不能。现在只有冻结/关联/缺口契约与一个实际 AgentRuntime + Fake Model 的只读 case 接线样例，共 6 个定向测试；未接 18 例 Golden Runtime 执行，未采集 rubric、成本、延迟或安全硬门，也没发布 baseline/candidate 成对报告。T19 真正消融仍被 T11 依赖阻塞，全量验收留到 T21。
 6. 问：新执行适配器如何避免另造一条 Agent 路径？答：它调用既有 AgentRuntime 的 `start` 和 `inspect`，用确定性的评测样本请求 ID 继承 Runtime 幂等性；只有确认真正终结，才把该 Run 的持久证据写入 Evaluation Run。预检不在冻结矩阵或修订不符时在启动前失败。测试的调度器和 Text Model 是本地 Fake，不能证明真实供应商或所有 Golden 场景已经走该链路。
+7. 问：为什么不能拿不同模型或数据库结构的两组 Run 直接比较？答：Model、Vendor 和 schema 改变会与候选策略变化混杂，无法归因。清单在 baseline/candidate 间要求这三种修订一致，若不同就在记录前拒绝；其他模块修订可作为候选差异保留。它仍是必要而非充分条件，预算相同与逐例质量、安全结果还未完成。
 
 源码证据索引：`src/eval/evaluationRun.ts`（清单、写入、读取）、`src/eval/evaluationAgentCase.ts`（真实 Runtime 接线）、`src/lib/initDB.ts`（两表与不可更新触发器）、`src/types/database.d.ts`（生成类型）、`tests/evaluationRun.test.ts` 与 `tests/evaluationAgentCase.test.ts`（定向验证）、`docs/reports/agent-harness-evaluation-67-progress.md`（未完成边界）。
