@@ -16,6 +16,15 @@ async page => {
     localStorage.setItem("project", JSON.stringify(stored));
   });
   await page.reload();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await page.getByRole("button", { name: "试用监督 Harness" }).isVisible()) break;
+    await page.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem("project") || "null");
+      stored.project = stored.allProject.find((entry) => entry.name === "Harness browser fixture");
+      localStorage.setItem("project", JSON.stringify(stored));
+    });
+    await page.reload();
+  }
   await page.getByRole("button", { name: "试用监督 Harness" }).click();
   const input = page.locator(".inputBox textarea");
   const send = page.locator("button.t-chat-sender__button__default");
