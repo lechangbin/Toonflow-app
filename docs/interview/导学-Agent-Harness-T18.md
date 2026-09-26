@@ -71,4 +71,6 @@
 | 切换先关门 | 校验期间暂不可 chat | Gate 状态测试 | 浏览器切换与断线验证 |
 | 客户端 ID 不可信 | 每次需查归属 | Production 上下文定向测试 | 全旧入口审计 |
 
-App/Web 的全量测试和构建已有预验收通过记录，Script 浏览器 start/succeeded/Trace/刷新与租约到期后恢复也有一次隔离环境实测；但测试 Project 绕过正常模型选择，页面监督模式不跨刷新自动开启，Production、写入审批、旧 Socket 黄金路径、全部跨仓浏览器矩阵与真实 Provider 均未验收。T18 的 Issue #74 仍开放，不能把这个子集称为完整兼容迁移。
+App/Web 的全量测试和构建已有预验收通过记录，Script 浏览器 start/succeeded/Trace/刷新、审批正路径与租约到期后恢复有隔离环境实测；但测试 Project 绕过正常模型选择，页面监督模式不跨刷新自动开启，Production、完整写入审批矩阵、旧 Socket 黄金路径、全部跨仓浏览器矩阵与真实 Provider 均未验收。T18 的 Issue #74 仍开放，不能把这个子集称为完整兼容迁移。
+
+补充浏览器实践：沿 `tests/fixtures/prepareHarnessBrowserFixture.ts`、`fakeOpenAITextServer.mjs` 和三个 `checkScript*Browser.js` 脚本分别复现停止版本冲突、Owner 直接提案的批准/拒绝，以及 Skill/Project grant 允许后的模型 Tool 提案。queued→running 可让按钮持有旧版本；Web 丢掉 409 会使停止意图消失；修复仅对明确冲突重读同一 Run 并复用命令 ID 重试。Trace 中 `run.cancellation-requested` 后仍可能 `succeeded`，不等于供应商撤销。模型提案的父 Run 有 `tool.proposal.created`，但 `storySkeleton` 直到 Owner 看全文并批准才改变。该夹具仍只覆盖 Script 子集；正常 Project 模型配置、Production、跨入口、旧 Socket 退场和完整恢复矩阵未验收。
