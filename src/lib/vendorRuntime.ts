@@ -80,6 +80,10 @@ function validateModels(vendorId: string, models: VendorModel[], promptProfiles?
     }
     if (modelNames.has(model.modelName)) throw new Error(`供应商 ${vendorId} 重复声明模型 ${model.modelName}`);
     modelNames.add(model.modelName);
+    if (model.type === "text" && model.contextWindowTokens !== undefined
+      && (!Number.isSafeInteger(model.contextWindowTokens) || (model.contextWindowTokens as number) <= 0)) {
+      throw new Error(`供应商 ${vendorId} 文本模型 ${model.modelName} 的 contextWindowTokens 无效`);
+    }
     if (model.type !== "video") return model;
 
     const videoModel = parseVideoModel(model);
