@@ -83,3 +83,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #104 holdout 状态显式化：当前 AgentRuntime holdout 三例在公开仓库中，开发过程已可读取；文件哈希与冻结清单不等于未接触盲测集。v3 配对报告现在固定写出 `holdoutIntegrity: unverified-public-corpus`，Markdown 同样说明不具封存盲测证明；v2 Golden 报告则标 `not-assessed`。定向新语料/Golden 报告测试和 TypeScript 通过。若最终要作独立 holdout 质量结论，需要新的封存流程及证明；当前不得把公开集结果称为未污染泛化证据。
 
 2026-09-27 #105 调用前预检边界：单格编排器新增可注入 `preflight`，在写 `inflight` 前检查实际模型/Skill/路由/Project 的静态条件；配置漂移时既不留下“Provider 效果未知”标记，也不调用模型。之后执行适配器仍须在 marker 写入后重复关键检查，以防预检与调用之间的状态变化。定向测试验证预检报错时 Model 回调为 0 且恢复检查仍安全；正式 runner 尚未把全部实际检查接入此钩子。
+
+2026-09-27 #105 矩阵顺序切片：`runtimeCorpusMatrixOrder.ts` 从冻结 v3 清单生成 36 对、72 侧的确定性顺序，每对相邻执行两侧，并在 36 对中平衡 baseline-first/candidate-first 各 18 对；续跑只过滤来源账本已经观察的 cell，重复或矩阵外身份拒绝。定向测试覆盖 72 唯一格、平衡首侧及 3 格后的稳定剩余顺序。它仅提供顺序，不调用模型；正式 driver 仍须在每格前先检查崩溃日志，再接 Skill 激活、预算与生产 Runtime。

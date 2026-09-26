@@ -43,5 +43,6 @@
 38. 问：正则脱敏门能证明没有任何秘密泄漏吗？答：不能。定向测试至少证明模拟 API key 赋值在 inspect 后进入 Output 时会被独立安全门标为 `output-missing-or-unsafe`；它覆盖已定义格式，不可能穷举未知凭据表示。评审投影仍需受保护目录和人工导出核查，检测不到的泄漏不能被描述为通过。
 39. 问：已经把 holdout 划为 3 例，为什么报告仍标 `unverified-public-corpus`？答：分区名称和 manifest 哈希只能证明用例身份没被静默换掉，不能证明候选 Skill 作者未见过这些公开用例。当前三例已在仓库内可读，因此不应称为封存盲测。配对报告显式写出未验证状态；若需要独立泛化结论，需另建受控封存集并保留访问与冻结证据，否则仅能把现有结果当公开压力分层。
 40. 问：为什么执行日志有 `inflight`，单格 runner 还需要调用前预检？答：明显的配置漂移、路由歧义或 Project 夹具不符若在外部调用前可发现，应在写 marker 前拒绝，避免制造一个实际上没有发 Provider 请求却需要人工核查的未知状态。预检不代替 marker 后执行适配器的复核；两者之间仍可能漂移。定向测试证明预检失败时模型回调为零且日志保持可安全恢复。
+41. 问：为什么 72 格不简单地先跑 36 个 baseline 再跑 36 个 candidate？答：长时间分批可能把 Provider 负载、限流或环境随时间变化混入处理差异。预定矩阵顺序让每个 case/seed 的两侧相邻执行，并交替谁先运行，36 对里各有 18 对先跑 baseline/candidate；续跑只过滤已观察来源。它降低简单顺序偏差但不保证随机化或消除时间效应，尤其 seed 仍不是模型随机种子。
 
 源码证据索引：`src/eval/evaluationRun.ts`（v2/v3 清单、写入、读取）、`src/eval/goldenEvaluationFreeze.ts`（T02 清单冻结）、`src/eval/agentRuntimeCorpus.ts`、`src/eval/agentRuntimeProjectFixture.ts`、`src/eval/agentRuntimeEvaluationFreeze.ts`（新语料与 fixture）、`src/eval/evaluationCaseDefinitions.ts`（两种来源的消费接口）、`src/eval/evaluationCoverageReport.ts`（覆盖非质量报告）、`src/eval/evaluationAssessmentQueue.ts`（未判定硬门/rubric 队列）、`src/eval/evaluationAgentCase.ts`（真实 Runtime 接线）、`tests/agentRuntimeCorpus.test.ts` 与原 T11 定向测试、`docs/reports/agent-harness-evaluation-67-progress.md`（未完成边界）。
