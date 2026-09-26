@@ -71,3 +71,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #105 比较合同准备：`runtimeCorpusTreatment.ts` 为推荐的 Skill-only A/B 方案增加 v3 清单前置校验，要求 Skill 修订确实不同、其余 App/Schema/Runtime/Tool/Context/Memory/Model/Vendor 修订完全相同；定向用例验证 72 格及隐藏模型、Vendor、Runtime、Context 改动被拒绝。`agent-harness-t11-paired-study-plan.md` 明确普通 Script 只读格为未受 Skill 处理的负对照，交替执行顺序、单并发、固定分母、未知成本和盲评/holdout 边界。此方案仍是待冻结的预注册草案，未建立两份实际 Skill 修订、未从配置独立核验模型政策，也未运行 72 格或取得人工评分。
 
 2026-09-27 #105 实际模型政策切片：`runtimeCorpusModelPolicy.ts` 固定 Agnes 文本模型、温度 0、输出上限 512、上下文窗口 524288 和最多两步，并为这些字段生成模型政策哈希；包装实际 Vendor `openTextCall` 结果时先核对绑定再强制两步上限。定向测试用真实 `initDB`/ConfiguredVendor 装配分别核对 Script 与 Production 逻辑模型，改温度立即拒绝；随后单格 Agnes 探针复跑成功，仍仅 1/72 observed、一次模型入口、一次受控读取、质量未验证。当前它验证目标和局部步骤上限，但尚无跨进程 72-cell 总调用预算、两侧 Skill 实际修订或人工评分；#105 保持开放。
+
+2026-09-27 #105 实际 Skill 绑定切片：`runtimeCorpusSkillBinding.ts` 在读取事务内从两类 Harness 的活动绑定联接已发布 Revision 与生命周期政策，复算内容/manifest 哈希、校验角色和只读意图，生成实际激活集合指纹。比较 baseline/candidate 时要求 Skill ID、请求 Tool 和 Project 能力列表一致；仅提示内容/Revision 可以不同。定向单测从真实 SkillRuntime 发布/激活两类 Skill，验证候选内容更换导致指纹变化、增加 Tool/能力被拒绝、已发布内容不可改、撤销 Revision 后检查失败。它还没验证逐例路由结果或为 72 格安装正式两版 Skill，故不能宣称完整执行条件已冻结。
