@@ -13,7 +13,7 @@
 3. 问：Script 路由并列或没有候选时怎么处理？答：新 `prepareScriptSkillRun` 要求唯一已发布且兼容的 Skill，路由与闭包绑定在 Run 创建事务内。并列或 unavailable 会使准备失败，事务回滚，不留下待执行 Run，也不调用 Model；不会按字典序假装用户已选择。定向测试覆盖唯一选择与拒绝，旧 Socket 路径没有因该接缝自动受控。追问：为何不退回旧 Agent？答：两条路径权限与证据契约不同，隐式回退会隐藏安全边界。
 4. 问：已经冻结 Skill，为什么构造 Prompt 时还要复核？答：Run 绑定保存的是修订身份与哈希，不应相信此时任何“当前文件”或激活指针。ContextBuilder 读取冻结解析计划，核验发布正文、manifest、角色及撤销状态，再把指令作为必需系统输入纳入模型容量预算；没有容量元数据就失败，不用无上限旧路径兜底。Bundle 只保存身份/哈希，不额外复制全文。追问：这样能保证回答质量吗？答：不能，只保证指令来源和预算边界可核查。
 5. 问：为何新 Harness 使用独立 scope 和 Tool v2？答：旧 scope 与 v1 ToolReceipt 已有持久合约，若直接扩展旧修订的策略，同一个修订哈希就会对应不同权限含义。新 `script-harness-guidance-v1` scope 要求 Skill 模式，v2 读取 Tool 在无授权闸门时直接拒绝；旧回执仍按 v1 检查。这样过渡时能区分两条链路，代价是还需迁移旧入口。追问：scope 本身授予数据权限吗？答：不授予，还需 Skill 请求和多层 grant。
-6. 问：为什么小说、规划工作区和剧本读取需要三个 grant？答：它们分别对应不同 Project 数据范围。`read:novel` 只支持小说章节，`read:script-workspace` 只支持骨架或策略字段，`read:script` 才允许按单个 ID 读取本 Project 剧本；前两者不自动开放第三者。每个 Tool 仍需冻结 Skill 声明、平台/Project/Run/角色交集，输出 schema 还设限长。定向测试覆盖授权正向与跨 Project 拒绝，不能当成所有历史读取入口已迁移。追问：Project grant 中途撤销呢？答：下一次 Tool 调用重新判断。
+6. 问：为什么小说、规划工作区和剧本读取需要三个 grant？答：它们分别对应不同 Project 数据范围。`read:novel` 只支持小说章节，`read:script-workspace` 只支持骨架或策略字段，`read:script` 才允许按单个 ID 读取本 Project 剧本；前两者不自动开放第三者。每个 Tool 仍需冻结 Skill 声明、平台/Project/Run/角色交集，输出 schema 还设限长。真实 Harness 组合的假模型测试不仅核对正向回执，也核对成功读取的因果事件确实指向该模型步骤和尝试，避免把旧回执身份误当新链路证据。它仍不能证明所有旧读取入口已迁移。追问：Project grant 中途撤销呢？答：下一次 Tool 调用重新判断；已成功读取的回执与原 Step/Attempt 归属保留，不因撤销被改写。
 7. 问：Run 冻结 Skill 后，Owner 撤销 Project grant 是否还有效？答：冻结的是“该 Skill 请求什么”，不是永续许可。每次 Tool 调用都从当前 Project grant 求交；一次模型执行中先读成功、Owner 撤销后再次读取会被拒，第一笔成功回执保留，第二笔只留下拒绝决策。撤销不能让模型忘掉已返回的数据，但能阻止继续访问。追问：为何不同时撤掉 Run binding？答：那会抹掉历史使用的是哪版指令，授权变化应独立留证。
 8. 问：写入候选为什么不能沿用旧 `setPlanData` 整包覆盖？答：旧入口跨规划与多剧本字段，模型输出一旦直接提交，很难给单个效果、目标状态和审批建立稳定身份。新候选限定一个规划字段、一个剧本创建或按 ID 更新，输入严格校验大小和类型，冻结序列化负载哈希、目标哈希和 Tool 修订。审批预览仅给目标与长度/哈希，提交还要重检当前数据。代价是多次操作及 Owner 审批。追问：候选阶段会改业务表吗？答：不会。
 9. 问：批准前如何让 Owner 真正看见模型要写什么？答：常规列表与 Trace 不复制创作正文，以免大段内容扩散；独立 Owner-only review 在读正文前核验审批状态、过期时间、Project 所属和证据，HTTP 明示不缓存。Web 只有在显示了与当前 approval ID、Run 版本和负载哈希一致的全文后才解锁批准，拒绝可直接提交。单测验证越权和旧版本拒绝，浏览器视觉及缓存行为还未最终验收。追问：仅展示哈希够吗？答：不够，哈希是身份校验，不是人类审阅内容。
@@ -29,7 +29,7 @@
 | 主题 | 关键路径与内部符号 | 对应问题 |
 | --- | --- | --- |
 | 准备、scope 与模型 | `src/agentRuntime/index.ts`、`src/agents/scriptAgent/harnessPreparation.ts`、`harnessRuntime.ts`、`tests/scriptHarnessPreparation.test.ts` | 1–5 |
-| 只读与授权 | `src/controlledTools/definitions.ts`、`src/skillRuntime/grants.ts`、`docs/reports/agent-harness-script-migration-72-progress.md` | 6–7 |
+| 只读、授权与因果归属 | `src/controlledTools/definitions.ts`、`src/controlledTools/index.ts`、`src/skillRuntime/grants.ts`、`tests/scriptHarnessPreparation.test.ts`、`docs/reports/agent-harness-script-migration-72-progress.md` | 6–7 |
 | 候选、审批与恢复 | `src/controlledTools/scriptWriteApproval.ts`、`tests/scriptWriteApproval.test.ts`、ADR-0022 | 8–13 |
 | HTTP 与兼容 | `src/routes/agentRuns/scriptWriteApprovals.ts`、`src/socket/routes/scriptAgent.ts`、`tests/scriptWriteApprovalRoutes.test.ts`、`tests/scriptHarnessRoutes.test.ts` | 9、12、14–15 |
 

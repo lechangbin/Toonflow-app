@@ -9,6 +9,7 @@
 | Run/Step/Attempt 与创建事务 | 理解准备失败为何不能留下半成品 Run | `src/agentRuntime/index.ts` | 高 |
 | 冻结 Skill、动态 grant | 区分指令身份和当前数据授权 | `src/agents/scriptAgent/harnessPreparation.ts`、`src/skillRuntime/grants.ts` | 高 |
 | ToolDefinition 与 Receipt | 说明读取/提案的版本化契约及结果证据 | `src/controlledTools/definitions.ts`、`src/controlledTools/scriptWriteApproval.ts` | 高 |
+| Tool 因果 Trace | 证明成功读取属于哪次 Model Step/Attempt，而非只看回执状态 | `src/agentRuntime/index.ts`、`src/controlledTools/index.ts`、`tests/scriptHarnessPreparation.test.ts` | 高 |
 | 租约、审批和目标状态哈希 | 防止失权模型或过时审批写入 | `src/controlledTools/scriptWriteApproval.ts`、`docs/adr/0022-supervise-script-writes-with-frozen-target-state.md` | 高 |
 | 新旧路径兼容 | 认识过渡期的两套入口及隔离风险 | `src/socket/routes/scriptAgent.ts`、Web Harness 客户端 | 高 |
 
@@ -28,6 +29,7 @@
 - [ ] 解释相同 `clientRequestId` 为什么不得重新准备 Skill；失败重试与新请求有什么区别。
 - [ ] 区分 Run 冻结的 Skill 请求和每次 Tool 调用时重读的 Project 当前 grant。
 - [ ] 列出 `read:novel`、`read:script-workspace`、`read:script` 的不同数据边界。
+- [ ] 从假 Model 的 Tool 调用追到 v2 回执与 `tool.started`/`tool.succeeded` Trace，并核对 Step/Attempt 身份。
 - [ ] 说明模型提案只建立子审批 Run，Owner 看全文、重检目标并批准后才发生写入。
 - [ ] 解释旧 Socket 修补与新 Harness 迁移不是同一件事；指出尚未迁移的规划/剧本旧行为。
 
@@ -37,7 +39,7 @@
 | --- | --- | --- | --- | --- |
 | 领域与边界 | Project Owner、规划、剧本 | `CONTEXT.md`、`docs/agents/domain.md`、ADR-0022 | 20 分钟 | 写入对象与审批者是谁 |
 | 准备与启动 | 创建事务、scope、幂等 | `src/agents/scriptAgent/harnessPreparation.ts`、`src/routes/agentRuns/startScriptHarness.ts`、`tests/scriptHarnessPreparation.test.ts` | 40 分钟 | 为什么准备失败不调 Model |
-| 只读路径 | Context 预算、Tool v2、Project 过滤 | `src/agents/scriptAgent/harnessRuntime.ts`、`src/controlledTools/definitions.ts`、受控 Tool 测试 | 45 分钟 | 数据如何过权限交集 |
+| 只读路径 | Context 预算、Tool v2、Project 过滤与因果归属 | `src/agents/scriptAgent/harnessRuntime.ts`、`src/agentRuntime/index.ts`、`src/controlledTools/index.ts`、`tests/scriptHarnessPreparation.test.ts` | 45 分钟 | 数据如何过权限交集并留下 Step/Attempt 证据 |
 | 写入候选 | 提案契约、目标状态、审批事务 | `src/controlledTools/scriptWriteApproval.ts`、`tests/scriptWriteApproval.test.ts` | 60 分钟 | 为什么批准前没有写入 |
 | HTTP 与 Web | 认证 actor、全文复核、显式切换 | `src/routes/agentRuns/scriptWriteApprovals.ts`、`tests/scriptWriteApprovalRoutes.test.ts`、Web Draft #7 | 45 分钟 | 用户实际如何监督 |
 | 旧路径与报告 | 并行入口的隔离和缺口 | `src/socket/routes/scriptAgent.ts`、`docs/reports/agent-harness-script-migration-72-progress.md` | 25 分钟 | 哪些还不能称为迁移完成 |
@@ -50,7 +52,7 @@ T16 是 Script Agent 从前端回调驱动的旧 Socket 流程向服务端持久
 
 ## 核心调用链
 
-认证 Owner → 启动 `script-harness-guidance-v1` → 创建事务里路由并冻结 Skill/依赖 → 构造有容量约束的 Context → Run 获取租约 → 模型调用受控读取或提出单项写入候选 → 每次检查 Skill、Project/Run/角色 grant → 读取产生 Receipt，提案产生独立 pending 子 Run → Owner 读取完整候选、批准/拒绝 → 批准事务重检目标哈希并提交单项写入、Receipt、Output 与 Trace。
+认证 Owner → 启动 `script-harness-guidance-v1` → 创建事务里路由并冻结 Skill/依赖 → 构造有容量约束的 Context → Run 获取租约 → 模型调用受控读取或提出单项写入候选 → 每次检查 Skill、Project/Run/角色 grant → 读取产生带 Step/Attempt 因果 Trace 的 Receipt，提案产生独立 pending 子 Run → Owner 读取完整候选、批准/拒绝 → 批准事务重检目标哈希并提交单项写入、Receipt、Output 与 Trace。
 
 旧 Socket 仍独立运行；其 JWT Owner、Memory 隔离键和剧本 Project 查询已收紧，不能据此说旧规划与剧本写入已经变成 typed Steps。
 
