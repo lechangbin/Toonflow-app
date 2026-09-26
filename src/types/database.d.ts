@@ -1,4 +1,4 @@
-// @db-hash f44da8eda9b4cff53ea06b0618b25b1c
+// @db-hash 19cbfb02ad57360901f695c568040343
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -37,6 +37,17 @@ export interface o_agentDeploy {
   'name'?: string | null;
   'temperature'?: number | null;
   'vendorId'?: string | null;
+}
+export interface o_agentEvaluationAssessment {
+  'assessmentHash': string;
+  'assessmentJson': string;
+  'caseId': string;
+  'createdAt': number;
+  'evaluationRunId': string;
+  'id'?: string;
+  'seed': number;
+  'sourceEvidenceHash': string;
+  'variant': string;
 }
 export interface o_agentEvaluationCase {
   'agentRunId': string;
@@ -742,6 +753,7 @@ export interface DB {
   "memories": memories;
   "o_agentContextBundle": o_agentContextBundle;
   "o_agentDeploy": o_agentDeploy;
+  "o_agentEvaluationAssessment": o_agentEvaluationAssessment;
   "o_agentEvaluationCase": o_agentEvaluationCase;
   "o_agentEvaluationRun": o_agentEvaluationRun;
   "o_agentEvidenceDeletionPermit": o_agentEvidenceDeletionPermit;

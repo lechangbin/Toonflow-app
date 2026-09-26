@@ -31,3 +31,7 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 阶段验证：`tests/evaluationRun.test.ts` 5 例、`tests/evaluationAgentCase.test.ts` 1 例和 `tests/goldenEvaluationFreeze.test.ts` 1 例，覆盖清单拒绝、终态 Run 关联、幂等、重复 Run 拒绝、矩阵缺口、来源证据变化、queued/无 Trace 拒绝、真实 `initDB` 建表与更新触发器、旧库补建新表时保留原 Project、一个真实 Runtime/Fake Model case，以及 18-case/72-cell 冻结与覆盖报告；报告用一个真实只读 Run 显示 1/36 的结构覆盖，改写来源版本后拒绝。App TypeScript 检查通过，生成数据库类型已同步。没有跑全量单测、Golden Eval Runner、构建、浏览器或真实 Provider。
 
 后续 T11 必须把全部 Golden case 经生产 AgentRuntime 执行，增加逐例可核验 rubric/安全硬门、产物引用、失败分类与真实费用来源，并生成结果级成对比较；相关修订应包括 Web/bundle 时再扩展清单。当前账本和单个只读接入样例只证明结构证据关联，不证明任何候选优于基线。T19 的真实消融继续受 T11 阻塞，最终完整验收仍留 T21。
+
+2026-09-26 评审结果账本切片：新增 `o_agentEvaluationAssessment`，每个 Evaluation Run/case/seed/variant 最多一条不可更新记录；`createEvaluationAssessmentLedger` 只接受已在生产 Run 证据账本观察到、并属于冻结 Golden manifest 的 cell。记录必须按冻结顺序完整列出 hard gate，附格式受限的证据引用；人工评分只能为 0/1/2 且需要评审人、理由和引用，待评审则必须保留 null。结果绑定来源 case 证据哈希，重读时再次调用 Evaluation Run 的来源校验；重复同内容提交幂等，冲突评审拒绝覆盖。Run 非成功时必须显式给失败分类，费用仍为 null。测试覆盖非法 gate/评分、重复与冲突、SQLite 更新触发器、来源证据漂移，以及一次真实 AgentRuntime/Fake Model Run 关联后的评审记录；`evaluationAssessment` 与 Golden 集成定向 2/2、TypeScript 检查通过，数据库类型已再生成。
+
+这只建立“谁基于哪条已观察 Run 提交了什么评审”的持久接口。证据路径目前只校验格式、不读取文件和哈希，评审人身份也是调用方声明；没有独立 hard-gate 执行器、校准后的人工 rubric、结果级成对报告、真实费用来源或 72-cell 执行。因此仍不能声称 hard gate 已经被系统独立验证、候选优于基线或 T11 已完成。
