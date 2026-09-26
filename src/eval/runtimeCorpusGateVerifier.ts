@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
 import type { DatabaseWork } from "@/database";
+import { AGENT_RUN_OUTPUT_SCHEMA_VERSION } from "@/agentRuntime";
 import { getControlledToolDefinition, type ControlledToolName } from "@/controlledTools";
 import { inspectPersistableText } from "@/diagnostics/traceSafeDiagnostics";
 
@@ -44,7 +45,8 @@ export async function inspectRuntimeCorpusCellGates(input: {
   const rows = await input.work((db) => db.transaction(async (tx) => ({
     receipts: await tx("o_agentToolReceipt").where({ runId: cell.agentRunId }).orderBy("createdAt", "asc"),
     traces: await tx("o_agentTrace").where({ runId: cell.agentRunId }).select("toolReceiptId", "eventType"),
-    outputs: await tx("o_agentRunOutput").where({ runId: cell.agentRunId }).select("content"),
+    outputs: await tx("o_agentRunOutput").where({ runId: cell.agentRunId })
+      .select("content", "contentHash", "schemaVersion"),
     approvals: await tx("o_agentToolApproval").where({ runId: cell.agentRunId }).count("id as count").first(),
     toolCalls: await tx("o_agentToolCall").where({ runId: cell.agentRunId }).count("id as count").first(),
     imageRequests: await tx("o_agentVendorRequest").where({ runId: cell.agentRunId }).count("id as count").first(),
@@ -57,6 +59,10 @@ export async function inspectRuntimeCorpusCellGates(input: {
   if (rows.outputs.length !== 1 || typeof rows.outputs[0]?.content !== "string"
     || !inspectPersistableText(rows.outputs[0].content).ok) {
     violations.add("output-missing-or-unsafe");
+  } else if (rows.outputs[0].schemaVersion !== AGENT_RUN_OUTPUT_SCHEMA_VERSION
+    || sha256(JSON.stringify(rows.outputs[0].content)) !== rows.outputs[0].contentHash
+    || rows.outputs[0].contentHash !== cell.outputHash) {
+    violations.add("output-source-drift");
   }
   if ([rows.approvals, rows.toolCalls, rows.imageRequests, rows.videoRequests]
     .some((row) => Number(row?.count ?? 0) !== 0)) {

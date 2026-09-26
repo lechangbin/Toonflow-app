@@ -58,4 +58,6 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 Skill 绑定练习：读 `runtimeCorpusSkillBinding.ts`。为何清单中的 `skill` 字符串不能证明两类 Harness 当时真正激活的 Revision？检查它如何复核发布状态、生命周期、内容/manifest 哈希、角色及只读意图，再比较两侧 Tool/能力清单是否相同。然后跟随逐例预检调用真实 Router，新增同优先级 Skill 会让 Harness case 歧义而拒绝；这个预检还须正式 runner 在每次调用前使用。
 
+来源竞态练习：读 `runtimeCorpusGateVerifier.ts` 与 `tests/agentRuntimeCorpus.test.ts` 的 `racedEvaluation`。先让 `evaluation.inspect` 取得旧来源，再把 Output 正文与哈希一起改成另一份安全文本；为什么只检查“正文与当前哈希相符”仍会误判？安全门必须再与冻结 cell 的 Output 哈希比较，漂移时返回 `output-source-drift`。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。

@@ -267,6 +267,13 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       blindingKey: Buffer.alloc(32, 7) }), /Output is missing, changed or unsafe/u);
     await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
       content: originalOutput.content, contentHash: originalOutput.contentHash });
+    const racedGate = await inspectRuntimeCorpusCellGates({ work,
+      evaluation: racedEvaluation, evaluationRunId: frozen.id,
+      variant: "baseline", caseId: first.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.ok(racedGate.violations.includes("output-source-drift"));
+    await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
+      content: originalOutput.content, contentHash: originalOutput.contentHash });
     await assert.rejects(createRuntimeCorpusBlindReviewBatch({ work, evaluation,
       evaluationRunId: frozen.id, blindingKey: Buffer.alloc(8) }), /256-bit key/u);
     const gates = await inspectRuntimeCorpusCellGates({ work, evaluation,
