@@ -200,6 +200,7 @@ const vendor: VendorConfig = {
       modelName: "agnes-3.0-flash",
       type: "text",
       think: true,
+      contextWindowTokens: 524_288,
     },
     {
       name: "Agnes 2.5 Flash",
