@@ -40,4 +40,6 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 新 v3 来源练习：读 `runtimeCorpusEvidenceArtifacts.ts`，从一条已观察的 v3 Agent Run 生成 Output、ToolReceipt、Trace 的固定投影；将三份文件写入隔离评审目录，并提交其真实 SHA-256。配对报告同时传 `artifactRoot` 与 `runtimeSafety` 后，`sourceProvenanceCheckedRuns` 才从 0 变 1。单改文件字节、单改评审声称的哈希、或只传目录不传 Runtime 依赖都应拒绝。说明这只证明文件与生产 Run 证据一致，既不验证回答语义，也不认证人工评审人的身份。
 
+真实供应商单格练习：读 `scripts/agnesRuntimeCorpusCanary.ts` 和 `docs/reports/agent-harness-t11-agnes-canary.md`。指出它怎样在内存 SQLite 中装配只读 Production Skill/Grant，从环境读取密钥，冻结 v3 清单并通过生产 Runtime 执行 DEV-RT-009；再解释摘要中 1/72 observed、1 条成功读取和 `verified-read-and-safety-only` 各自能与不能证明什么。当前脚本既不能断点续跑，也没有 candidate 实验和人工盲评；不要把它说成 T11 通过。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。
