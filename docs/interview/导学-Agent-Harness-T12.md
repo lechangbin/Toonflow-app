@@ -68,3 +68,9 @@
 ## 量化与验证（待测）
 
 建议在最终验收记录每次 Model Attempt 的预算、实际包含/省略来源、必需内容溢出率与来源拒绝分类，并检查 App/Web 行为。现有 T12 定向测试证明基础契约，未测线上 Token 成本、回答质量、真实 Provider 窗口准确性或跨仓浏览器链路；T16 才开始接入冻结 Skill 的生产 Run，旧 Socket 路径仍未全部迁移。
+
+## 后续 T12 增量：可选 Tool 投影
+
+只读 Novel Tool 的完整结果超出本类别剩余额度时，可选来源才尝试固定类型投影：正文前 128 个 Unicode code point，或前两条事件及详情前 80 个 code point。消息明确写出完整输出已省略；manifest 记录投影哈希、原完整消息哈希与版本化策略。投影仍超额则省略，必需 Tool 结果超额仍失败。Script Workspace 等新增 Tool 没有这两种 Novel 投影策略，不会错误解析成事件。对应 `src/context/sourceSelection.ts`、`src/context/toolSources.ts` 和 `tests/contextToolSources.test.ts`。
+
+自检：若关键事实在正文尾部，这项投影能否保证回答正确？不能；它只是可追溯的预算降级，不是语义摘要。后续应设计显式可定位片段或检索，而不是把固定前缀说成质量提升。T12 七个 Context 测试文件当前 18/18 定向用例通过，T16 的新增 Tool 兼容回归亦通过；最终全入口验收仍待 T21。

@@ -40,3 +40,7 @@ ToonFlow 的 Agent 需要读取 Project、Novel Chapter、Tool 结果和历史�
 ## 阶段证据缺口与交接
 
 给后续材料整合的事实：T12 是 ContextBundle 基础，含预算、来源筛选和局部 Runtime 冻结；个人具体 ownership、真实质量/Token/延迟收益、旧路径迁移程度均须逐项确认。高风险 Claim：不能说“全部 Agent 已走 ContextBuilder”“已彻底防注入”“Token 降低”“上线稳定运行”。本文件为阶段问答稿，最终 ASu 口播长度、逐题追问及事实一致性质量门禁仍须在全部 T 阶段和 T21 验收后统一复核。
+
+## 补充追问：可选 Tool 结果超预算
+
+17. 问：Tool Result 太长时为什么可以投影，又不算静默截断？答：我只对可选的两类 Novel 只读 Tool 使用固定、版本化的部分投影；消息明确说完整结果已省略，manifest 同时记录原完整消息哈希、投影哈希和策略。完整结果能放下时仍保留完整内容，投影放不下则记录省略；必需结果不能降成片段，直接在模型调用前失败。追问：这是不是语义摘要、能否保证保留关键事实？答：不是。正文只取前 128 个 Unicode code point，事件只取前两条及短详情，可能漏掉尾部关键事实；未来需要显式定位或可验证检索。追问：新增 Script Tool 是否也按 Novel 事件解析？答：不按。T16 扩充 Tool 集合后，我让投影只识别两种 Novel Tool，并用 Script Workspace 回归证明它不继承无关策略。对应代码在 `src/context/toolSources.ts`、`src/context/sourceSelection.ts`，七个 Context 文件 18/18 定向用例与类型检查通过；完整系统验收仍待 T21。
