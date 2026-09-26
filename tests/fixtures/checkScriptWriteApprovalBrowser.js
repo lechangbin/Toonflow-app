@@ -5,6 +5,8 @@ async page => {
   await page.getByRole("textbox", { name: "密码" }).fill("admin123");
   await page.getByRole("button", { name: "登录" }).click();
   await page.getByText("Harness browser fixture").first().waitFor();
+  const guide = page.getByRole("button", { name: "跳过引导" });
+  if (await guide.isVisible()) await guide.click();
   await page.goto(`${base}/#/scriptAgent`);
   const projectId = await page.evaluate(() => {
     const stored = JSON.parse(localStorage.getItem("project") || "null");
