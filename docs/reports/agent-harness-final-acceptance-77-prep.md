@@ -47,3 +47,11 @@ T11 把文件检查器接入配对报告 v2：明确给出 `artifactRoot` 时逐
 随后以同一隔离 Project 增加浏览器审批/拒绝用例：由 Owner HTTP 接口建立两条单字段候选，页面查看全文后批准其中一条、拒绝另一条，服务端再读确认仅批准目标字段发生变化。Run ID 和测试来源边界见 T18 报告。该用例没有经过模型 Tool 提案，不能替代 Skill 权限链；也未覆盖 Production、Reconnect、跨入口和完整兼容矩阵。因此浏览器类别仍 pending。
 
 再以全新隔离 Project 补上 Script 模型 Tool 正路径：测试 Skill 声明提案 Tool/Capability，Owner 从页面开启 Project grant；本地假 Model 返回函数调用。父 Run `f3f8d970-0137-4cbe-bfc1-cfd3d3f0fb2b` 的脱敏 Trace 有 `tool.proposal.created`，待审卡关联它；审批前服务端 `storySkeleton` 未变，Owner 查看全文并批准子 Run `155afc33-b552-4b92-bbed-89b61881699d` 后才出现精确候选值。`checkScriptModelProposalBrowser.js` 在临时数据库、假 Model 下复现，未调用付费 Provider。这只扩大 Script 正路径覆盖，不代表权限拒绝、恶意参数、Production Vendor、恢复或全入口兼容已验证，浏览器类别继续 pending。
+
+## 2026-09-26 T12 投影同步及全量预检
+
+T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Script Workspace Tool 不再误走 Novel 投影，T21 保留原有较完整的 T12 导学/面经并补充本次追问。当前 T21 组合的 `tests/context*.test.ts` 与 `tests/finalAcceptanceIndex.test.ts` 合计 21/21 定向用例、TypeScript `--noEmit` 通过。
+
+在当前源码组合上运行 `yarn test`，715/715 自动化测试通过；`yarn build` 成功。`yarn eval:golden` 的旧本地确定性假适配执行 18/18 case，硬门 18/18 通过，人工质量评分仍为 0/18；这不是 T11 的 72-cell 生产 AgentRuntime baseline/candidate 评测，也不能生成真实质量或费用结论。构建生成的 `data/serve/app.js` 仍为未暂存工作树产物，未冻结为发布来源修订；以上命令输出尚未归档为带哈希的独立验收证据。
+
+发布工作流新增 `validate` 前置 job：Linux/Node 24 安装锁定依赖后依次运行类型检查、全量自动化测试和本地确定性 Golden 硬门，三个平台构建均依赖此 job。它尚未在 GitHub Actions 的目标 tag 上实际运行，也不包含 Web 配对、浏览器、恢复、安全独立核验或 72-cell 生产评测；七类最终验收仍全部 pending。任何 `v*` 标签仍必须在最终索引被独立核验、阶段 Issue 收敛及生成物冻结后才可创建。
