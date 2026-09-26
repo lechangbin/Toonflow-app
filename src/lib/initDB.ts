@@ -665,6 +665,21 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       },
     },
     {
+      name: "o_agentEvaluationAssessment",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("evaluationRunId").notNullable().references("id").inTable("o_agentEvaluationRun");
+        table.text("caseId").notNullable();
+        table.integer("seed").notNullable();
+        table.text("variant").notNullable();
+        table.text("sourceEvidenceHash").notNullable();
+        table.text("assessmentJson").notNullable();
+        table.text("assessmentHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.unique(["evaluationRunId", "caseId", "seed", "variant"]);
+      },
+    },
+    {
       name: "o_agentRunCommand",
       builder: (table) => {
         table.text("id").notNullable();
@@ -1765,7 +1780,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       END
     `);
   }
-  for (const table of ["o_agentEvaluationRun", "o_agentEvaluationCase"]) {
+  for (const table of ["o_agentEvaluationRun", "o_agentEvaluationCase", "o_agentEvaluationAssessment"]) {
     if (await knex.schema.hasTable(table)) {
       await knex.raw(`CREATE TRIGGER IF NOT EXISTS ${table}_prevent_update
         BEFORE UPDATE ON ${table}
