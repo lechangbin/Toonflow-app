@@ -5,7 +5,7 @@ import test from "node:test";
 import knexFactory, { type Knex } from "knex";
 
 import { closeDatabase } from "../src/database";
-import { createVideoProduction } from "../src/video/production";
+import { createVideoProduction, prepareVideoGenerationCommand } from "../src/video/production";
 import { createVideoPromptGeneration } from "../src/video/promptGeneration";
 import { VideoPromptProfileRegistry } from "../src/video/promptProfile";
 import type { VideoModelSummary } from "../src/vendor";
@@ -311,4 +311,46 @@ test("a fake adapter failure rejects the Artifact and fails every owning record"
   } finally {
     await db.destroy();
   }
+});
+
+test("shared Video command preparation validates without writing or submitting to Vendor", async () => {
+  const db = await createDatabase();
+  const profiles = VideoPromptProfileRegistry.load(path.join(process.cwd(), "data", "promptProfiles", "video"));
+  await db("o_videoTrack").insert({ id: 13, projectId: 1, scriptId: 2, state: "未生成" });
+  try {
+    const prompt = await createVideoPromptGeneration({
+      db: workOf(db), profiles, getVendorModels: async () => [model],
+      generateDraft: async () => ({ subject: "A lantern" }), now: () => 100,
+    }).generateVideoPromptRevision({ trackId: 13, projectId: 1,
+      vendorId: "agnes", modelId: "agnes-video-v2.0",
+      capabilityId: "text-to-video", inputs: [],
+      output: { presetId: "720p", duration: 5, resolution: "720p", aspectRatio: "16:9" },
+      audio: { generation: "native", enabled: true }, requestedBy: "user",
+      strategy: "standard", brief: { subject: "A lantern" } });
+    const item = { trackId: 13, vendorId: "agnes", modelId: "agnes-video-v2.0",
+      capabilityId: "text-to-video" as const, inputs: [],
+      output: { presetId: "720p", duration: 5, resolution: "720p", aspectRatio: "16:9" as const },
+      audio: { generation: "native" as const, enabled: true },
+      promptRevisionId: prompt.promptRevisionId };
+    let submitted = 0;
+    const dependencies = { db: workOf(db), profiles,
+      vendor: { inspectVendor: async () => ({ vendorId: "agnes", name: "Agnes",
+        inputs: [], models: [model] }),
+      generateVideo: async () => { submitted++; return "VIDEO_BASE64"; } },
+      readImage: async () => { throw new Error("text-to-video must not read images"); } };
+    const beforeActions = Number((await db("o_productionAction").count("id as n").first())?.n);
+    const prepared = await prepareVideoGenerationCommand(dependencies, {
+      projectId: 1, scriptId: 2, item,
+    });
+    assert.equal(prepared.trackId, 13);
+    assert.equal(prepared.command.modelId, "agnes-video-v2.0");
+    assert.equal(prepared.commandSnapshot.capabilityId, "text-to-video");
+    assert.equal(submitted, 0);
+    assert.equal(Number((await db("o_productionAction").count("id as n").first())?.n), beforeActions);
+    assert.equal(Number((await db("o_generationTask").count("id as n").first())?.n), 0);
+    await assert.rejects(prepareVideoGenerationCommand(dependencies, {
+      projectId: 2, scriptId: 2, item,
+    }), /不属于当前 Project\/Script/);
+    assert.equal(submitted, 0);
+  } finally { await db.destroy(); }
 });

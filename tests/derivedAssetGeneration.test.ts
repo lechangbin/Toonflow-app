@@ -1388,7 +1388,7 @@ test("Production Agent 批量路由注入依赖完成衍生生成并稳定返回
     const harness = derivedImageHarness(knex);
     harness.media.set(ANCHOR_PATH, pngBuffer("PARENT-ANCHOR"));
 
-    await withDerivedTestServer(createBatchGenerateAssetsImageRouter(() => harness.deps), async (url) => {
+    await withDerivedTestServer(createBatchGenerateAssetsImageRouter(() => harness.deps, async () => {}), async (url) => {
       const response = await fetch(url + "/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1410,7 +1410,7 @@ test("Production Agent 批量路由注入依赖完成衍生生成并稳定返回
 
     // 项目图片模型未配置：稳定错误信封，不进入生成
     await knex("o_project").where("id", 1).update({ imageModel: null });
-    await withDerivedTestServer(createBatchGenerateAssetsImageRouter(() => harness.deps), async (url) => {
+    await withDerivedTestServer(createBatchGenerateAssetsImageRouter(() => harness.deps, async () => {}), async (url) => {
       const response = await fetch(url + "/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

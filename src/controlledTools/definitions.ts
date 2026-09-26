@@ -5,6 +5,9 @@ import { z } from "zod";
 import { derivedChangeInstructionSchema } from "@/assets/derivedChangeInstruction";
 import { scriptContentWriteInput, scriptWorkspaceWriteInput } from "./scriptWriteContract";
 import { billableImageScopeSchema } from "./billableImageLifecycle";
+import { storyboardWriteInput } from "./storyboardWriteContract";
+import { frozenVideoApprovalScopeSchema } from "./videoApprovalScope";
+import { videoGenerationProposalInput } from "./videoGenerationProposalContract";
 
 const novelIdInput = z.strictObject({ novelId: z.number().int().positive() });
 const novelTextOutput = z.strictObject({
@@ -91,6 +94,19 @@ export const HARNESS_TOOL_DEFINITIONS = Object.freeze({
     policy: Object.freeze({ ...harnessReadPolicy,
       capabilities: Object.freeze(["read:script"]) }),
     adapterId: "script-content-read-v1",
+  }),
+  get_production_workspace_text: Object.freeze({
+    name: "get_production_workspace_text",
+    revision: "toonflow.tool.get-production-workspace-text.v1",
+    inputSchema: z.strictObject({ scriptId: z.number().int().positive(),
+      key: z.enum(["scriptPlan", "storyboardTable"]) }),
+    outputSchema: z.strictObject({ scriptId: z.number().int().positive(),
+      key: z.enum(["scriptPlan", "storyboardTable"]), content: z.string().max(16_000) }),
+    policy: Object.freeze({ ...harnessReadPolicy,
+      capabilities: Object.freeze(["read:production-workspace"]),
+      roles: Object.freeze(["productionAgent"]),
+      scopes: Object.freeze(["production-harness-v1"]) }),
+    adapterId: "production-workspace-text-read-v1",
   }),
 });
 
@@ -259,8 +275,163 @@ export const BILLABLE_IMAGE_TOOL_DEFINITION = Object.freeze({
   adapterId: "billable-asset-image-v1",
 });
 
+/** A model may request review, never dispatch an Image Vendor request. */
+export const PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION = Object.freeze({
+  name: "propose_asset_image_generation",
+  revision: "toonflow.tool.propose-asset-image-generation.v1",
+  inputSchema: z.strictObject({ assetId: z.number().int().positive(),
+    vendorId: z.string().trim().min(1).max(100),
+    modelId: z.string().trim().min(1).max(100),
+    resolution: z.string().trim().min(1).max(100) }),
+  outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+    approvalId: z.string().min(1), status: z.literal("pending") }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "none", externalCost: "none", completion: "synchronous" }),
+    capabilities: Object.freeze(["propose:billable-image"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["production-harness-v1"]),
+    scope: "run-project", approval: "proposal-only-owner-billable-approval-required",
+    idempotency: "run-operation-id", retries: "explicit-new-operation",
+    timeoutMs: 0, cancellation: "proposal-survives-parent-run-cancellation",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "child-billable-approval-run-before-model-result",
+    reconciliation: "inspect-child-approval-run-and-vendor-ledger",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "bounded-approval-preview",
+  }),
+  adapterId: "billable-image-approval-proposal-v1",
+});
+
+/** A model can suggest a derived Asset change, but only the T08 Owner approval commits it. */
+export const PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION = Object.freeze({
+  name: "propose_derived_asset_write",
+  revision: "toonflow.tool.propose-derived-asset-write.v1",
+  inputSchema: DERIVED_ASSET_TOOL_DEFINITION.inputSchema,
+  outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+    approvalId: z.string().min(1), status: z.literal("pending") }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "none", externalCost: "none", completion: "synchronous" }),
+    capabilities: Object.freeze(["propose:derived-asset"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["production-harness-v1"]),
+    scope: "run-project", approval: "proposal-only-owner-decision-required",
+    idempotency: "run-operation-id", retries: "explicit-new-operation",
+    timeoutMs: 0, cancellation: "proposal-survives-parent-run-cancellation",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "child-derived-asset-approval-run-before-model-result",
+    reconciliation: "inspect-child-approval-run",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "bounded-approval-preview",
+  }),
+  adapterId: "derived-asset-approval-proposal-v1",
+});
+
+/** A single local Storyboard write. No image or Video provider is invoked. */
+export const STORYBOARD_WRITE_TOOL_DEFINITION = Object.freeze({
+  name: "create_storyboard_on_track",
+  revision: "toonflow.tool.create-storyboard-on-track.v1",
+  inputSchema: storyboardWriteInput,
+  outputSchema: z.strictObject({ storyboardId: z.number().int().positive(),
+    assetCount: z.number().int().nonnegative() }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "project-artifact", externalCost: "none", completion: "local-transaction" }),
+    capabilities: Object.freeze(["write:storyboard"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["approved-storyboard-write-v1"]),
+    scope: "run-project", approval: "per-operation-exact-payload",
+    idempotency: "run-operation-id", retries: "explicit-new-operation-after-conflict",
+    timeoutMs: 0, cancellation: "before-approval-only",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "storyboard-associations-receipt-checkpoint-trace-atomic",
+    reconciliation: "inspect-local-receipt-and-storyboard",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "typed-bounded-output",
+  }),
+  adapterId: "storyboard-local-write-v1",
+});
+
+/** A model may only request a supervised Storyboard write, never commit it. */
+export const PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION = Object.freeze({
+  name: "propose_storyboard_write",
+  revision: "toonflow.tool.propose-storyboard-write.v1",
+  inputSchema: storyboardWriteInput,
+  outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+    approvalId: z.string().min(1), status: z.literal("pending") }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "none", externalCost: "none", completion: "synchronous" }),
+    capabilities: Object.freeze(["propose:storyboard"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["production-harness-v1"]),
+    scope: "run-project", approval: "proposal-only-owner-decision-required",
+    idempotency: "run-operation-id", retries: "explicit-new-operation",
+    timeoutMs: 0, cancellation: "proposal-survives-parent-run-cancellation",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "child-storyboard-approval-run-before-model-result",
+    reconciliation: "inspect-child-approval-run",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "bounded-approval-preview",
+  }),
+  adapterId: "storyboard-approval-proposal-v1",
+});
+
+/** A model may request Owner review of one Track; it never owns Video dispatch. */
+export const PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION = Object.freeze({
+  name: "propose_track_video_generation",
+  revision: "toonflow.tool.propose-track-video-generation.v1",
+  inputSchema: videoGenerationProposalInput,
+  outputSchema: z.strictObject({ approvalRunId: z.string().min(1),
+    approvalId: z.string().min(1), status: z.literal("pending") }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "none", externalCost: "none", completion: "synchronous" }),
+    capabilities: Object.freeze(["propose:track-video"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["production-harness-v1"]),
+    scope: "run-project", approval: "proposal-only-owner-decision-required",
+    idempotency: "run-operation-id", retries: "explicit-new-operation",
+    timeoutMs: 0, cancellation: "proposal-survives-parent-run-cancellation",
+    concurrency: "serialized-sqlite-transaction",
+    commit: "child-video-approval-run-before-model-result",
+    reconciliation: "inspect-child-approval-run",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "bounded-approval-preview",
+  }),
+  adapterId: "video-approval-proposal-v1",
+});
+
+/** Catalogued for durable Owner review; no adapter dispatch is registered yet. */
+export const VIDEO_GENERATION_TOOL_DEFINITION = Object.freeze({
+  name: "generate_track_video",
+  revision: "toonflow.tool.generate-track-video.v1",
+  inputSchema: frozenVideoApprovalScopeSchema,
+  outputSchema: z.strictObject({ videoId: z.number().int().positive(),
+    generationTaskId: z.number().int().positive(),
+    artifactRevisionId: z.number().int().positive(),
+    artifactHash: z.string().regex(/^[a-f0-9]{64}$/u) }),
+  policy: Object.freeze({
+    risk: Object.freeze({ mutation: "project-artifact", externalCost: "billable", completion: "asynchronous" }),
+    capabilities: Object.freeze(["generate:track-video"]),
+    roles: Object.freeze(["productionAgent"]),
+    scopes: Object.freeze(["approved-billable-video-v1"]),
+    scope: "run-project", approval: "per-request-exact-billable-scope",
+    idempotency: "one-dispatch-per-approval", retries: "new-operation-and-approval-only",
+    timeoutMs: 0, cancellation: "intent-does-not-revoke-provider-effect",
+    concurrency: "one-vendor-request-per-tool-call",
+    commit: "not-implemented-no-dispatch",
+    reconciliation: "manual-no-auto-replay-until-ledger-implemented",
+    compensation: "none", redaction: "fail-closed",
+    contextProjection: "typed-bounded-output",
+  }),
+  adapterId: "video-dispatch-not-registered-v1",
+});
+
 export function toolDefinitionContractHash(definition: ControlledToolDefinition | typeof DERIVED_ASSET_TOOL_DEFINITION
   | typeof BILLABLE_IMAGE_TOOL_DEFINITION | typeof SCRIPT_WORKSPACE_WRITE_TOOL_DEFINITION
+  | typeof PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION
+  | typeof PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION
+  | typeof STORYBOARD_WRITE_TOOL_DEFINITION
+  | typeof VIDEO_GENERATION_TOOL_DEFINITION
+  | typeof PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION
+  | typeof PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION
   | typeof SCRIPT_CONTENT_WRITE_TOOL_DEFINITION
   | (typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS)[keyof typeof SCRIPT_PROPOSAL_TOOL_DEFINITIONS]): string {
   return createHash("sha256").update(JSON.stringify({

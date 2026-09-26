@@ -24,7 +24,10 @@ export async function deleteProjectAgentEvidence(tx: Knex.Transaction, projectId
   await tx("o_agentTrace").whereIn("runId", runIds).delete();
   await tx("o_agentImageArtifact").whereIn("vendorRequestId",
     tx("o_agentVendorRequest").where({ projectId }).select("id")).delete();
+  await tx("o_agentVideoArtifact").whereIn("vendorRequestId",
+    tx("o_agentVideoVendorRequest").where({ projectId }).select("id")).delete();
   await tx("o_agentVendorRequest").where({ projectId }).delete();
+  await tx("o_agentVideoVendorRequest").where({ projectId }).delete();
   await tx("o_agentToolCall").whereIn("runId", runIds).delete();
   await tx("o_agentToolApproval").whereIn("runId", runIds).delete();
   await tx("o_agentToolReceipt").whereIn("runId", runIds).delete();
@@ -44,4 +47,5 @@ export async function deleteProjectAgentEvidence(tx: Knex.Transaction, projectId
   await tx("o_agentRun").where({ projectId }).delete();
   await tx("o_agentProjectCapabilityGrant").where({ projectId }).delete();
   await tx("o_agentImageQuotePolicy").where({ projectId }).delete();
+  await tx("o_agentVideoQuotePolicy").where({ projectId }).delete();
 }

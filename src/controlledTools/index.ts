@@ -9,6 +9,7 @@ import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import type { DatabaseWork } from "@/database";
 import { getDatabaseRuntime } from "@/database";
 import { authorizeBoundSkillTool } from "@/skillRuntime/permissions";
+import { readProductionWorkspaceText } from "@/agents/productionAgent/harnessWorkspaceRead";
 import {
   inspectPersistableText,
   projectTraceSafeDiagnostic,
@@ -19,7 +20,11 @@ import {
 import { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, getControlledToolDefinition, toolDefinitionContractHash,
   type ControlledToolName } from "./definitions";
 
-export { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, SCRIPT_PROPOSAL_TOOL_DEFINITIONS, getControlledToolDefinition,
+export { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
+  PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION, getControlledToolDefinition,
+  PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION,
   toolDefinitionContractHash } from "./definitions";
 export type { ControlledToolName } from "./definitions";
 
@@ -183,6 +188,10 @@ function defaultAdapters(work: DatabaseWork): Record<ControlledToolName, ToolAda
         projectId: context.projectId }).first("id", "name", "content");
       if (!row) throw new Error("Authorized script disappeared");
       return { scriptId: row.id, name: row.name ?? "", content: row.content ?? "" };
+    }),
+    get_production_workspace_text: async (context, input) => work((db) => {
+      const parsed = HARNESS_TOOL_DEFINITIONS.get_production_workspace_text.inputSchema.parse(input);
+      return readProductionWorkspaceText(db, { projectId: context.projectId, ...parsed });
     }),
   };
 }

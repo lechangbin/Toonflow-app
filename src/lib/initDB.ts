@@ -801,6 +801,64 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["projectId", "vendorId", "modelId", "resolution"]);
       },
     },
+    // Owner-configured Video approval estimate; not a Vendor quote or invoice.
+    {
+      name: "o_agentVideoQuotePolicy",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.integer("projectId").notNullable();
+        table.text("scopeKey").notNullable();
+        table.text("scopeJson").notNullable();
+        table.integer("estimatedMaxCostMicros").notNullable();
+        table.text("currency").notNullable();
+        table.integer("revision").notNullable();
+        table.integer("updatedByUserId").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["projectId", "scopeKey"]);
+      },
+    },
+    // Controlled Video submission intent is distinct from the image-specific Vendor ledger.
+    {
+      name: "o_agentVideoVendorRequest",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("toolCallId").notNullable().references("id").inTable("o_agentToolCall");
+        table.integer("projectId").notNullable();
+        table.integer("trackId").notNullable();
+        table.text("requestId").notNullable();
+        table.text("scopeHash").notNullable();
+        table.text("vendorId").notNullable();
+        table.text("modelId").notNullable();
+        table.text("commandHash").notNullable();
+        table.integer("estimatedMaxCostMicros").notNullable();
+        table.text("currency").notNullable();
+        table.text("status").notNullable();
+        table.text("providerTaskId");
+        table.integer("cancellationRequestedAt");
+        table.integer("version").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["toolCallId"]);
+        table.unique(["requestId"]);
+      },
+    },
+    // Request-scoped Video media evidence; never implies acceptance into o_video by itself.
+    {
+      name: "o_agentVideoArtifact",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("vendorRequestId").notNullable()
+          .references("id").inTable("o_agentVideoVendorRequest");
+        table.integer("trackId").notNullable();
+        table.text("mediaPath").notNullable();
+        table.text("contentHash").notNullable();
+        table.text("status").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.unique(["vendorRequestId", "contentHash"]);
+      },
+    },
     // Agent Step：Run 内有序、可独立检查的执行步骤
     {
       name: "o_agentRunStep",
@@ -1082,6 +1140,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("toolCallId").references("id").inTable("o_agentToolCall");
         table.text("vendorRequestId").references("id").inTable("o_agentVendorRequest");
         table.text("imageArtifactId").references("id").inTable("o_agentImageArtifact");
+        table.text("videoVendorRequestId").references("id").inTable("o_agentVideoVendorRequest");
+        table.text("videoArtifactId").references("id").inTable("o_agentVideoArtifact");
         table.text("predecessorTraceId").references("id").inTable("o_agentTrace");
         table.integer("sequence").notNullable();
         table.string("eventType").notNullable();
@@ -1911,6 +1971,45 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         OR (OLD.artifactHash IS NOT NULL AND NEW.artifactHash IS NOT OLD.artifactHash)
       BEGIN
         SELECT RAISE(ABORT, 'Agent Vendor observations cannot be replaced');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentVideoVendorRequest")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVideoVendorRequest_identity_immutable
+      BEFORE UPDATE OF runId, toolCallId, projectId, trackId, requestId,
+        scopeHash, vendorId, modelId, commandHash,
+        estimatedMaxCostMicros, currency, createdAt
+      ON o_agentVideoVendorRequest
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Video Vendor request identity is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVideoVendorRequest_observation_immutable
+      BEFORE UPDATE OF providerTaskId ON o_agentVideoVendorRequest
+      WHEN OLD.providerTaskId IS NOT NULL AND NEW.providerTaskId IS NOT OLD.providerTaskId
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Video Vendor observation cannot be replaced');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVideoVendorRequest_cancellation_immutable
+      BEFORE UPDATE OF cancellationRequestedAt ON o_agentVideoVendorRequest
+      WHEN OLD.cancellationRequestedAt IS NOT NULL
+        AND NEW.cancellationRequestedAt IS NOT OLD.cancellationRequestedAt
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Video Vendor cancellation intent is immutable');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentVideoArtifact")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentVideoArtifact_identity_immutable
+      BEFORE UPDATE OF vendorRequestId, trackId, mediaPath, contentHash, createdAt
+      ON o_agentVideoArtifact
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Video artifact identity is immutable');
       END
     `);
   }

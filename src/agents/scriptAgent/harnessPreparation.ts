@@ -16,9 +16,10 @@ export class ScriptHarnessOwnershipError extends Error {
 
 /** Opt-in Script Run preparation. Missing or ambiguous Skills fail before Model scheduling. */
 export async function prepareScriptSkillRun(tx: Knex.Transaction, input: {
-  runId: string; projectId: number; role: "scriptAgent";
+  runId: string; projectId: number; role: "scriptAgent" | "productionAgent";
   content: string; createdAt: number; actorUserId?: number;
 }, createId: () => string): Promise<void> {
+  if (input.role !== "scriptAgent") throw new TypeError("Script role is required");
   if (!Number.isSafeInteger(input.actorUserId) || input.actorUserId! <= 0
     || !await tx("o_project").where({ id: input.projectId,
       userId: input.actorUserId }).first("id")) {

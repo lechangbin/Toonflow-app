@@ -40,19 +40,25 @@ function imageVideoCommand(base64 = "FRAME", overrides: Record<string, unknown> 
   };
 }
 
-test("Agnes adapter advertises V2.0 without advertising Video 2.5", () => {
+test("Agnes adapter advertises current Flash models alongside V2.0 compatibility", () => {
   const adapter = loadAdapter({});
   const videoModels = adapter.vendor.models.filter((model: any) => model.type === "video");
 
   assert.deepEqual(
     videoModels.map((model: any) => model.modelName),
-    ["agnes-video-v2.0"],
+    ["agnes-video-2.5-flash", "agnes-video-v2.0"],
   );
+  assert.ok(adapter.vendor.models.some((model: any) => model.modelName === "agnes-3.0-flash"));
+  assert.ok(adapter.vendor.models.some((model: any) => model.modelName === "agnes-image-2.5-flash"));
   assert.deepEqual(
     videoModels[0].capabilities.map((capability: any) => capability.id),
-    ["text-to-video", "image-to-video", "keyframe-to-video"],
+    ["text-to-video", "image-to-video", "first-last-frame"],
   );
   assert.ok(videoModels[0].capabilities.every((capability: any) => capability.audio.policy === "always"));
+  assert.deepEqual(videoModels[0].capabilities[0].outputPresets[0], {
+    id: "720p", resolution: "720p", durations: { kind: "integer-range", min: 4, max: 12, step: 1 },
+    aspectRatios: ["16:9", "9:16"],
+  });
 });
 
 test("thinking mode is translated at the OpenAI-compatible HTTP boundary", async () => {
@@ -107,37 +113,106 @@ test("image editing normalizes raw Base64 references to documented Data URIs", a
   assert.equal(result, "data:image/png;base64,RESULT");
 });
 
-test("Agnes image models enforce their configured six-reference limit", async () => {
+test("Image 2.5 Flash keeps the modern size, ratio and reference wire contract", async () => {
   let submitted: any;
+  const adapter = loadAdapter({ axios: { post: async (_url: string, body: any) => {
+    submitted = body;
+    return { data: { data: [{ b64_json: "RESULT" }] } };
+  } } });
+  const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-image-2.5-flash");
+  await adapter.imageRequest({ prompt: "Preserve the subject.",
+    referenceList: [{ type: "image", sourceType: "base64", base64: "REFERENCE" }],
+    size: "1K", aspectRatio: "16:9" }, model);
+  assert.equal(model.maxReferenceImages, 6);
+  assert.equal(submitted.model, "agnes-image-2.5-flash");
+  assert.equal(submitted.size, "1K");
+  assert.equal(submitted.ratio, "16:9");
+  assert.deepEqual(submitted.extra_body,
+    { response_format: "b64_json", image: ["data:image/png;base64,REFERENCE"] });
+});
+
+test("Video 2.5 Flash maps text and Base64 image inputs to modern task fields", async () => {
+  const submitted: any[] = [];
+  const polled: string[] = [];
   const adapter = loadAdapter({
     axios: {
       post: async (_url: string, body: any) => {
-        submitted = body;
+        submitted.push(body);
+        return { data: { video_id: `video-${submitted.length}` } };
+      },
+      get: async (url: string) => {
+        polled.push(url);
+        return { data: { status: "completed", url: "https://result.invalid/video.mp4" } };
+      },
+    },
+    pollTask: async (poll: () => Promise<any>) => poll(),
+    urlToBase64: async (url: string) => `encoded:${url}`,
+  });
+  const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-video-2.5-flash");
+  const modernCommand = { modelId: "agnes-video-2.5-flash",
+    output: { presetId: "720p", duration: 4, resolution: "720p", aspectRatio: "16:9" } };
+  await adapter.videoRequest(textVideoCommand(modernCommand), model);
+  await adapter.videoRequest(imageVideoCommand("FIRST", modernCommand), model);
+  await adapter.videoRequest({ ...textVideoCommand(modernCommand), capabilityId: "first-last-frame",
+    firstFrame: { mediaType: "image", base64: "FIRST" },
+    lastFrame: { mediaType: "image", base64: "LAST" } }, model);
+  assert.deepEqual(submitted[0], { model: "agnes-video-2.5-flash",
+    prompt: "A slow dolly-in toward a lantern.", mode: "text", seconds: "4",
+    size: "720P", aspect_ratio: "16:9", n: 1 });
+  assert.equal(submitted[1].mode, "keyframe");
+  assert.equal(submitted[1].first_frame, "data:image/png;base64,FIRST");
+  assert.equal(submitted[2].last_frame, "data:image/png;base64,LAST");
+  assert.ok(polled.every((url) => url.includes("model_name=agnes-video-2.5-flash")));
+  assert.ok(submitted.every((body) => !("num_frames" in body) && !("width" in body)));
+  await assert.rejects(adapter.videoRequest({ ...textVideoCommand(modernCommand),
+    capabilityId: "keyframe-to-video", firstFrame: { mediaType: "image", base64: "FIRST" },
+    intermediateKeyframe: { mediaType: "image", base64: "MIDDLE" },
+    lastFrame: { mediaType: "image", base64: "LAST" } }, model), /intermediate keyframe/u);
+});
+
+test("Agnes Image 2.1 and 2.5 reject excess references before submitting", async () => {
+  const submitted: any[] = [];
+  const adapter = loadAdapter({
+    axios: {
+      post: async (_url: string, body: any) => {
+        submitted.push(body);
         return { data: { data: [{ b64_json: "RESULT" }] } };
       },
     },
   });
-  const model = adapter.vendor.models.find((item: any) => item.modelName === "agnes-image-2.1-flash");
-
-  await adapter.imageRequest(
-    {
-      prompt: "Compose the selected references.",
-      referenceList: Array.from({ length: 7 }, (_, index) => ({
-        type: "image",
-        sourceType: "base64",
-        base64: `REFERENCE_${index + 1}`,
-      })),
-      size: "1K",
-      aspectRatio: "16:9",
-    },
-    model,
-  );
-
-  assert.equal(model.maxReferenceImages, 6);
-  assert.deepEqual(
-    submitted.extra_body.image,
-    Array.from({ length: 6 }, (_, index) => `data:image/png;base64,REFERENCE_${index + 1}`),
-  );
+  for (const modelName of ["agnes-image-2.1-flash", "agnes-image-2.5-flash"]) {
+    const model = adapter.vendor.models.find((item: any) => item.modelName === modelName);
+    await adapter.imageRequest(
+      {
+        prompt: "Compose the selected references.",
+        referenceList: Array.from({ length: 6 }, (_, index) => ({
+          type: "image",
+          sourceType: "base64",
+          base64: `REFERENCE_${index + 1}`,
+        })),
+        size: "1K",
+        aspectRatio: "16:9",
+      },
+      model,
+    );
+    assert.equal(model.maxReferenceImages, 6);
+    assert.deepEqual(
+      submitted.at(-1).extra_body.image,
+      Array.from({ length: 6 }, (_, index) => `data:image/png;base64,REFERENCE_${index + 1}`),
+    );
+    const callsBeforeExcess = submitted.length;
+    await assert.rejects(adapter.imageRequest(
+      {
+        prompt: "Compose the selected references.",
+        referenceList: Array.from({ length: 7 }, (_, index) => ({
+          type: "image", sourceType: "base64", base64: `REFERENCE_${index + 1}`,
+        })),
+        size: "1K", aspectRatio: "16:9",
+      },
+      model,
+    ), /at most 6 reference images/u);
+    assert.equal(submitted.length, callsBeforeExcess);
+  }
 });
 
 test("V2.0 text-to-video submits documented dimensions and an 8n+1 frame count", async () => {

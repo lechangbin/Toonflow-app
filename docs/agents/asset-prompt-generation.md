@@ -36,7 +36,7 @@ The prompt must make people, scenes, and props narratively distinctive. Generic 
 
 Each Asset Reference is human-uploaded and requires a human-written description. Store its declared visual role, required transfers, and explicit exclusions. Reserve an image-analysis service seam and lifecycle metadata for later AI-assisted descriptions, while keeping manual description mandatory in this version.
 
-The configured limit shown by the UI is six references, matching the current Agnes Image 2.1 Flash capability. Agnes Image 2.5 Flash remains a separate capability-validation task; its expected superset does not change the current limit until a real contract test confirms it.
+The configured limit shown by the UI is six references. Agnes Image 2.5 Flash has now been tested independently in #32: text-only, one, two, and six Base64 PNG references returned non-empty images; seven references returned HTTP 400 with an explicit maximum of six. The configured Agnes adapter lists Image 2.5 Flash with the same `size`/`ratio` and `extra_body.image` translation as 2.1, so the current UI limit remains six. These isolated requests do not prove the full Script → Asset Brief → Asset Reference → Vendor → Asset image production chain.
 
 Asset References belong only to base Assets. A Derived Asset rejects human Asset References and instead receives exactly one system-resolved Parent Asset Anchor: the parent Asset's currently accepted image. Missing, unauthorized, or unreadable anchors are stable pre-submission failures rather than text-only fallbacks.
 

@@ -15,7 +15,8 @@ async function fixture() {
   await db.schema.createTable("o_agentTrace", (t) => {
     t.text("id").primary(); t.text("runId"); t.text("stepId"); t.text("attemptId");
     t.text("toolReceiptId"); t.text("toolCallId"); t.text("vendorRequestId");
-    t.text("imageArtifactId"); t.text("predecessorTraceId"); t.integer("sequence");
+    t.text("imageArtifactId"); t.text("videoVendorRequestId");
+    t.text("videoArtifactId"); t.text("predecessorTraceId"); t.integer("sequence");
     t.text("eventType"); t.text("runStatus"); t.text("stepStatus");
     t.text("diagnosticSchemaVersion"); t.text("diagnostic"); t.integer("createdAt");
   });
@@ -24,7 +25,9 @@ async function fixture() {
   await db("o_agentTrace").insert([
     { id: "trace-1", runId: "run-1", sequence: 1, eventType: "run.created", createdAt: 200 },
     { id: "trace-2", runId: "run-1", predecessorTraceId: "trace-1", sequence: 2,
-      eventType: "vendor.request.submission-unknown", runStatus: "waiting", createdAt: 100 },
+      eventType: "vendor.request.submission-unknown", runStatus: "waiting",
+      videoVendorRequestId: "video-request-1", videoArtifactId: "video-artifact-1",
+      createdAt: 100 },
   ]);
   return { db, runtime: createAgentTraceEvidenceRuntime(async (operation) => operation(db)) };
 }
@@ -41,6 +44,8 @@ test("owner-only export uses sequence, excludes payload fields and rejects corru
     assert.equal(exported?.retention.databaseRetention, "project-lifetime");
     assert.equal(exported?.redaction.result, "passed");
     assert.deepEqual(exported?.events.map((event) => event.id), ["trace-1", "trace-2"]);
+    assert.equal(exported?.events[1].videoVendorRequestId, "video-request-1");
+    assert.equal(exported?.events[1].videoArtifactId, "video-artifact-1");
     assert.ok(exported!.events[1].createdAt < exported!.events[0].createdAt);
     assert.equal(JSON.stringify(exported).includes("mediaPath"), false);
     await assert.rejects(runtime.export({ ...input, actorUserId: 2 }), AgentTraceExportUnavailableError);

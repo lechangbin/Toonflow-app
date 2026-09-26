@@ -25,6 +25,8 @@ export interface AgentTraceExportEvent {
   toolCallId?: string;
   vendorRequestId?: string;
   imageArtifactId?: string;
+  videoVendorRequestId?: string;
+  videoArtifactId?: string;
   eventType: string;
   runStatus?: string;
   stepStatus?: string;
@@ -44,7 +46,8 @@ export interface AgentTraceExport {
 }
 
 const eventKeys = ["id", "sequence", "predecessorTraceId", "stepId", "attemptId", "toolReceiptId",
-  "toolCallId", "vendorRequestId", "imageArtifactId", "eventType", "runStatus", "stepStatus",
+  "toolCallId", "vendorRequestId", "imageArtifactId", "videoVendorRequestId",
+  "videoArtifactId", "eventType", "runStatus", "stepStatus",
   "diagnostic", "createdAt"];
 const diagnosticKeys = ["schemaVersion", "audience", "failureClass", "stage", "kind", "severity",
   "certainty", "expectedness", "retryDisposition", "attributes", "causes", "name", "operation",
@@ -77,7 +80,7 @@ function projectEvent(row: any): AgentTraceExportEvent {
   const event: AgentTraceExportEvent = { id: row.id, sequence: row.sequence,
     eventType: row.eventType, createdAt: row.createdAt };
   for (const key of ["predecessorTraceId", "stepId", "attemptId", "toolReceiptId", "toolCallId",
-    "vendorRequestId", "imageArtifactId"] as const) {
+    "vendorRequestId", "imageArtifactId", "videoVendorRequestId", "videoArtifactId"] as const) {
     const value = optionalIdentifier(row[key]);
     if (value) event[key] = value;
   }

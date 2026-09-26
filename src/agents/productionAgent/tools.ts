@@ -98,6 +98,39 @@ function createSocketQueue(delayMs = 800) {
   };
 }
 
+/** A legacy browser callback can disappear; timeout means unknown, never no-effect. */
+export function waitLegacyStoryboardAck(
+  emit: (payload: unknown, callback: (response: unknown) => void) => void,
+  payload: unknown, timeoutMs = 20_000,
+): Promise<unknown> {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new TypeError("Legacy Storyboard acknowledgement timeout is invalid");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("legacy storyboard acknowledgement timed out; effect unknown"));
+    }, timeoutMs);
+    const callback = (response: any) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (response?.success !== true || response?.error) {
+        reject(new Error("legacy storyboard acknowledgement is not an explicit success"));
+      } else resolve(response);
+    };
+    try { emit(payload, callback); }
+    catch (error) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    }
+  });
+}
+
 export default (toolCpnfig: ToolConfig) => {
   const { resTool, toolsNames, msg } = toolCpnfig;
   const { socket } = resTool;
@@ -398,26 +431,20 @@ export default (toolCpnfig: ToolConfig) => {
           associateAssetsIds: raw.associateAssetsIds ?? [],
           shouldGenerateImage: raw.shouldGenerateImage,
         };
-        socketQueue(
-          () =>
-            new Promise((resolve, reject) =>
-              socket.emit("addStoryboard", { ...data }, (res: any) => {
-                if (res?.error) return reject(new Error(res.error));
-                resolve(res);
-              }),
-            ),
-        )
-          .then((res) => {
-            thinking.appendText("新增的分镜数据:\n" + JSON.stringify(data, null, 2));
-            thinking.updateTitle("新增分镜成功");
-            thinking.complete();
-          })
-          .catch((e) => {
-            thinking.appendText("新增的分镜数据:\n" + JSON.stringify(data, null, 2));
-            thinking.updateTitle("新增分镜失败");
-            thinking.complete();
-          });
-        return true;
+        try {
+          const acknowledged = await socketQueue(() => waitLegacyStoryboardAck(
+            (payload, callback) => socket.emit("addStoryboard", payload, callback),
+            { ...data },
+          ));
+          thinking.appendText("新增的分镜数据:\n" + JSON.stringify(data, null, 2));
+          thinking.updateTitle("分镜提交已收到确认");
+          thinking.complete();
+          return acknowledged ?? "分镜提交已收到确认";
+        } catch {
+          thinking.updateTitle("分镜提交结果待核对");
+          thinking.complete();
+          return "分镜提交结果不确定；请在分镜面板核对，不要自动重试。";
+        }
       },
     }),
   };

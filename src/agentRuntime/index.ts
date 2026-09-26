@@ -23,6 +23,10 @@ import {
   TOOL_DEFINITIONS,
   HARNESS_TOOL_DEFINITIONS,
   SCRIPT_PROPOSAL_TOOL_DEFINITIONS,
+  PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION,
+  PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION,
   toolDefinitionContractHash,
   type ControlledToolName,
   type ControlledToolDependencies,
@@ -65,7 +69,10 @@ export const AGENT_RUN_OUTPUT_SCHEMA_VERSION = "toonflow.agent-run-output.v1" as
 export const READ_ONLY_AGENT_ROLE = "scriptAgent" as const;
 export const READ_ONLY_AGENT_SCOPE = "read-only-project-guidance-v1" as const;
 export const SCRIPT_HARNESS_SCOPE = "script-harness-guidance-v1" as const;
+export const PRODUCTION_HARNESS_ROLE = "productionAgent" as const;
+export const PRODUCTION_HARNESS_SCOPE = "production-harness-v1" as const;
 const LOGICAL_TARGET: TextModelTarget = { kind: "logical", key: "scriptAgent:decisionAgent" };
+const PRODUCTION_LOGICAL_TARGET: TextModelTarget = { kind: "logical", key: "productionAgent:decisionAgent" };
 const PROMPT_VERSION = "toonflow.read-only-project-guidance.v1";
 const DEFAULT_PROCESS_EPOCH = uuid();
 const SYSTEM_PROMPT = [
@@ -79,12 +86,20 @@ const SCRIPT_PROPOSAL_SYSTEM_PROMPT = [SYSTEM_PROMPT,
   "若 Tool 权限允许，你可以提出单字段规划或单个剧本的待审批候选。提案不会写入 Project，只有 Owner 查看全文并批准后才可能生效。",
   "只能报告提案处于待审批状态，不得把提案或模型输出表述为已批准、已保存或已生成成品。",
 ].join("\n");
+const PRODUCTION_READ_PROMPT_VERSION = "toonflow.production-harness-guidance.v3";
+const PRODUCTION_READ_SYSTEM_PROMPT = [
+  "你是 Toonflow 生产工作区的受控指导 Agent。",
+  "只能根据已绑定 Skill、项目上下文和授权 Tool 回答；模型的提案不等于 Owner 批准或效果提交。不得把待审候选声称为已生成图片、视频、分镜或已修改项目。",
+  "如需拍摄计划或分镜表，只能调用 get_production_workspace_text，并指定真实剧本 ID。",
+  "不允许调用旧 Socket 回调；事实不足时明确说明。",
+  "若获得相应权限，只能提出单资产图片、派生资产、现有空轨道的单条分镜或现有轨道的单条文生视频候选，供 Owner 独立审批。提案本身不生成、不扣费、不保存生产效果。",
+].join("\n");
 
 export interface StartAgentRunInput {
   schemaVersion: typeof AGENT_RUN_START_SCHEMA_VERSION;
   projectId: number;
-  role: typeof READ_ONLY_AGENT_ROLE;
-  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE;
+  role: typeof READ_ONLY_AGENT_ROLE | typeof PRODUCTION_HARNESS_ROLE;
+  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE | typeof PRODUCTION_HARNESS_SCOPE;
   clientRequestId: string;
   content: string;
   actorUserId?: number;
@@ -103,8 +118,8 @@ export interface CancelAgentRunInput extends InspectAgentRunInput {
 
 export interface ListAgentRunsInput {
   projectId: number;
-  role: typeof READ_ONLY_AGENT_ROLE;
-  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE;
+  role: typeof READ_ONLY_AGENT_ROLE | typeof PRODUCTION_HARNESS_ROLE;
+  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE | typeof PRODUCTION_HARNESS_SCOPE;
   actorUserId?: number;
 }
 
@@ -186,8 +201,8 @@ export interface AgentRunCheckpointSnapshot {
 export interface AgentRunSnapshot {
   id: string;
   projectId: number;
-  role: typeof READ_ONLY_AGENT_ROLE;
-  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE;
+  role: typeof READ_ONLY_AGENT_ROLE | typeof PRODUCTION_HARNESS_ROLE;
+  scope: typeof READ_ONLY_AGENT_SCOPE | typeof SCRIPT_HARNESS_SCOPE | typeof PRODUCTION_HARNESS_SCOPE;
   clientRequestId: string;
   requestFingerprint: string;
   status: AgentRunStatus;
@@ -230,12 +245,30 @@ export interface AgentRunDependencies {
   leaseDurationMs?: number;
   controlledTools?: ReturnType<typeof createControlledToolRuntime>;
   prepareRun?: (tx: Knex.Transaction, input: { runId: string; projectId: number;
-    role: typeof READ_ONLY_AGENT_ROLE; content: string; createdAt: number;
+    role: typeof READ_ONLY_AGENT_ROLE | typeof PRODUCTION_HARNESS_ROLE;
+    content: string; createdAt: number;
     actorUserId?: number }) => Promise<void>;
   skillMode?: { grants: NonNullable<ControlledToolDependencies["skillGrants"]> };
+  productionMode?: true;
   proposeScriptWrite?: (input: { projectId: number; parentRunId: string;
     skillId: string; lease: AgentRunLease; operationId: string;
     kind: "workspace" | "script"; payload: unknown }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
+  proposeBillableImage?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    assetId: number; vendorId: string; modelId: string; resolution: string }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
+  proposeDerivedAsset?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    payload: unknown }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
+  proposeStoryboard?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    payload: unknown }) => Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
+  proposeVideo?: (input: { projectId: number; parentRunId: string;
+    skillId: string; lease: AgentRunLease; operationId: string;
+    payload: unknown }) => Promise<
       { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }>;
 }
 
@@ -567,6 +600,21 @@ function projectFailure(error: unknown): TraceSafeDiagnostic {
 }
 
 export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRuntime {
+  if (dependencies.productionMode && (!dependencies.skillMode || dependencies.proposeScriptWrite)) {
+    throw new TypeError("Production Harness requires guarded Skill mode without Script proposal Tools");
+  }
+  if (dependencies.proposeBillableImage && !dependencies.productionMode) {
+    throw new TypeError("Billable image proposal Tool requires Production Harness mode");
+  }
+  if (dependencies.proposeDerivedAsset && !dependencies.productionMode) {
+    throw new TypeError("Derived Asset proposal Tool requires Production Harness mode");
+  }
+  if (dependencies.proposeStoryboard && !dependencies.productionMode) {
+    throw new TypeError("Storyboard proposal requires Production Harness mode");
+  }
+  if (dependencies.proposeVideo && !dependencies.productionMode) {
+    throw new TypeError("Video proposal requires Production Harness mode");
+  }
   if (dependencies.skillMode && (!dependencies.prepareRun || dependencies.controlledTools)) {
     throw new TypeError("Skill mode requires atomic preparation and its own guarded Tool runtime");
   }
@@ -576,6 +624,14 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   const workerId = dependencies.workerId ?? uuid();
   const processEpoch = dependencies.processEpoch ?? DEFAULT_PROCESS_EPOCH;
   const leaseDurationMs = dependencies.leaseDurationMs ?? DEFAULT_AGENT_RUN_LEASE_MS;
+  const activeRole = dependencies.productionMode ? PRODUCTION_HARNESS_ROLE : READ_ONLY_AGENT_ROLE;
+  const activeScope = dependencies.productionMode ? PRODUCTION_HARNESS_SCOPE
+    : dependencies.skillMode ? SCRIPT_HARNESS_SCOPE : READ_ONLY_AGENT_SCOPE;
+  const activeTarget = dependencies.productionMode ? PRODUCTION_LOGICAL_TARGET : LOGICAL_TARGET;
+  const activePrompt = dependencies.productionMode ? PRODUCTION_READ_SYSTEM_PROMPT
+    : dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_SYSTEM_PROMPT : SYSTEM_PROMPT;
+  const activePromptVersion = dependencies.productionMode ? PRODUCTION_READ_PROMPT_VERSION
+    : dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_PROMPT_VERSION : PROMPT_VERSION;
   const controlledTools = dependencies.controlledTools ?? createControlledToolRuntime({
     work: dependencies.work, now: dependencies.now, createId: dependencies.createId,
     ...(dependencies.skillMode ? { skillGrants: dependencies.skillMode.grants } : {}),
@@ -584,8 +640,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     return dependencies.work(async (db) => {
       const run = await db("o_agentRun").where({ id: input.runId,
         projectId: input.projectId }).first("scope");
-      if (!run) return null;
-      if (run.scope === SCRIPT_HARNESS_SCOPE
+      if (!run || run.scope !== activeScope) return null;
+      if ([SCRIPT_HARNESS_SCOPE, PRODUCTION_HARNESS_SCOPE].includes(run.scope)
         && (!Number.isSafeInteger(input.actorUserId) || input.actorUserId! <= 0
           || !await db("o_project").where({ id: input.projectId,
             userId: input.actorUserId }).first("id"))) return null;
@@ -595,12 +651,11 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
 
   async function list(input: ListAgentRunsInput): Promise<AgentRunListSnapshot> {
     if (!Number.isInteger(input.projectId) || input.projectId <= 0
-      || input.role !== READ_ONLY_AGENT_ROLE
-      || ![READ_ONLY_AGENT_SCOPE, SCRIPT_HARNESS_SCOPE].includes(input.scope)) {
+      || input.role !== activeRole || input.scope !== activeScope) {
       throw new TypeError("Agent Run 列表范围无效");
     }
     return dependencies.work(async (db) => {
-      if (input.scope === SCRIPT_HARNESS_SCOPE
+      if ((input.scope === SCRIPT_HARNESS_SCOPE || input.scope === PRODUCTION_HARNESS_SCOPE)
         && (!Number.isSafeInteger(input.actorUserId) || input.actorUserId! <= 0
           || !await db("o_project").where({ id: input.projectId,
             userId: input.actorUserId }).first("id"))) {
@@ -633,8 +688,8 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     });
     return dependencies.work((db) => db.transaction(async (trx) => {
       const run = await trx("o_agentRun").where({ id: input.runId, projectId: input.projectId }).first();
-      if (!run) return null;
-      if (run.scope === SCRIPT_HARNESS_SCOPE
+      if (!run || run.scope !== activeScope) return null;
+      if ([SCRIPT_HARNESS_SCOPE, PRODUCTION_HARNESS_SCOPE].includes(run.scope)
         && (!Number.isSafeInteger(input.actorUserId) || input.actorUserId! <= 0
           || !await trx("o_project").where({ id: input.projectId,
             userId: input.actorUserId }).first("id"))) return null;
@@ -788,11 +843,10 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       });
       if (!prepared) return;
       const preparedSkillId = prepared.skillId;
-      const systemContract = dependencies.proposeScriptWrite
-        ? SCRIPT_PROPOSAL_SYSTEM_PROMPT : SYSTEM_PROMPT;
+      const systemContract = activePrompt;
       let call: ConfiguredTextCall;
       try {
-        call = await dependencies.openTextCall(LOGICAL_TARGET);
+        call = await dependencies.openTextCall(activeTarget);
       } catch (error) {
         throw new ClassifiedAgentRunError({
           failureClass: "Vendor", stage: "vendor-request", kind: "executionFailed", severity: "error",
@@ -837,8 +891,21 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         invocation.messages = [{ role: "system", content: systemContract },
           { role: "assistant", content: projectFacts }, { role: "user", content: prepared.input.content }];
       }
-      const modelToolDefinitions = dependencies.skillMode
-        ? { ...HARNESS_TOOL_DEFINITIONS,
+      const modelToolDefinitions = dependencies.productionMode
+        ? { get_production_workspace_text: HARNESS_TOOL_DEFINITIONS.get_production_workspace_text,
+          ...(dependencies.proposeBillableImage
+            ? { propose_asset_image_generation: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION } : {}),
+          ...(dependencies.proposeDerivedAsset
+            ? { propose_derived_asset_write: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION } : {}),
+          ...(dependencies.proposeStoryboard
+            ? { propose_storyboard_write: PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION } : {}),
+          ...(dependencies.proposeVideo
+            ? { propose_track_video_generation: PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION } : {}) }
+        : dependencies.skillMode
+        ? { get_novel_text: HARNESS_TOOL_DEFINITIONS.get_novel_text,
+          get_novel_events: HARNESS_TOOL_DEFINITIONS.get_novel_events,
+          get_script_workspace: HARNESS_TOOL_DEFINITIONS.get_script_workspace,
+          get_script_content: HARNESS_TOOL_DEFINITIONS.get_script_content,
           ...(dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_TOOL_DEFINITIONS : {}) }
         : TOOL_DEFINITIONS;
       const toolContracts = Object.values(modelToolDefinitions).map((definition) => ({
@@ -853,7 +920,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           })));
           const bundle = await createContextBuilder({ work: dependencies.work,
             now: dependencies.now, createId: dependencies.createId }).build({
-            runId, stepId, attemptId, projectId: prepared.projectId, role: READ_ONLY_AGENT_ROLE,
+            runId, stepId, attemptId, projectId: prepared.projectId, role: activeRole,
             systemContract, stepIntent: prepared.input.content,
             toolAndPermissionContract, modelRevision: `${call.target.vendorId}:${call.target.modelId}`,
             budget: { contextWindowTokens: call.target.contextWindowTokens,
@@ -957,28 +1024,104 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
           return { status: "unavailable", kind: "executionFailed" };
         }
       }
+      async function proposeBillableImage(payload: { assetId: number; vendorId: string;
+        modelId: string; resolution: string }, operationId: string): Promise<unknown> {
+        if (!dependencies.proposeBillableImage || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeBillableImage({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, ...payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
+      async function proposeDerivedAsset(payload: unknown, operationId: string): Promise<unknown> {
+        if (!dependencies.proposeDerivedAsset || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeDerivedAsset({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
+      async function proposeStoryboard(payload: unknown, operationId: string): Promise<unknown> {
+        if (!dependencies.proposeStoryboard || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeStoryboard({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
+      async function proposeVideo(payload: unknown, operationId: string): Promise<unknown> {
+        if (!dependencies.proposeVideo || !preparedSkillId) {
+          return { status: "unavailable", kind: "authorizationFailed" };
+        }
+        try {
+          return await dependencies.proposeVideo({ projectId: toolProjectId,
+            parentRunId: runId, skillId: preparedSkillId,
+            lease: toolLease, operationId, payload });
+        } catch {
+          return { status: "unavailable", kind: "executionFailed" };
+        }
+      }
       const result = await call.invokeText({
         messages: invocation.messages,
         tools: {
-          get_novel_text: tool({
+          ...(!dependencies.productionMode ? { get_novel_text: tool({
             description: "读取当前项目中指定章节的原文；输入为章节记录 ID。",
-            inputSchema: modelToolDefinitions.get_novel_text.inputSchema,
+            inputSchema: (dependencies.skillMode
+              ? HARNESS_TOOL_DEFINITIONS.get_novel_text : TOOL_DEFINITIONS.get_novel_text).inputSchema,
             execute: async ({ novelId }, options) => invokeReadTool("get_novel_text", { novelId }, options.toolCallId),
-          }),
-          get_novel_events: tool({
+          }), get_novel_events: tool({
             description: "读取当前项目中指定章节关联的事件；输入为章节记录 ID。",
-            inputSchema: modelToolDefinitions.get_novel_events.inputSchema,
+            inputSchema: (dependencies.skillMode
+              ? HARNESS_TOOL_DEFINITIONS.get_novel_events : TOOL_DEFINITIONS.get_novel_events).inputSchema,
             execute: async ({ novelId }, options) => invokeReadTool("get_novel_events", { novelId }, options.toolCallId),
-          }),
-          ...(dependencies.skillMode ? { get_script_workspace: tool({
+          }) } : {}),
+          ...(dependencies.skillMode && !dependencies.productionMode ? { get_script_workspace: tool({
             description: "读取当前项目的故事骨架或改编策略工作区文本。",
             inputSchema: HARNESS_TOOL_DEFINITIONS.get_script_workspace.inputSchema,
             execute: async ({ key }, options) => invokeReadTool("get_script_workspace", { key }, options.toolCallId),
           }) } : {}),
-          ...(dependencies.skillMode ? { get_script_content: tool({
+          ...(dependencies.skillMode && !dependencies.productionMode ? { get_script_content: tool({
             description: "读取当前项目中指定剧本的内容；输入为剧本记录 ID。",
             inputSchema: HARNESS_TOOL_DEFINITIONS.get_script_content.inputSchema,
             execute: async ({ scriptId }, options) => invokeReadTool("get_script_content", { scriptId }, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.productionMode ? { get_production_workspace_text: tool({
+            description: "只读当前项目指定剧本的拍摄计划或分镜表文本。",
+            inputSchema: HARNESS_TOOL_DEFINITIONS.get_production_workspace_text.inputSchema,
+            execute: async ({ scriptId, key }, options) => invokeReadTool(
+              "get_production_workspace_text", { scriptId, key }, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeBillableImage ? { propose_asset_image_generation: tool({
+            description: "仅提出单次资产图片生成候选；不提交 Vendor、不扣费、不写入图片。",
+            inputSchema: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION.inputSchema,
+            execute: async (payload, options) => proposeBillableImage(payload, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeDerivedAsset ? { propose_derived_asset_write: tool({
+            description: "仅提出派生资产创建或更新候选；不会写入，Owner 审批后才可能生效。",
+            inputSchema: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION.inputSchema,
+            execute: async (payload, options) => proposeDerivedAsset(payload, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeStoryboard ? { propose_storyboard_write: tool({
+            description: "仅提出在现有空 Video Track 创建单条分镜的候选；Owner 审批前不写入。",
+            inputSchema: PRODUCTION_STORYBOARD_PROPOSAL_TOOL_DEFINITION.inputSchema,
+            execute: async (payload, options) => proposeStoryboard(payload, options.toolCallId),
+          }) } : {}),
+          ...(dependencies.proposeVideo ? { propose_track_video_generation: tool({
+            description: "仅提出现有轨道的单条文生视频候选；Owner 审批和独立执行前不请求供应商。",
+            inputSchema: PRODUCTION_VIDEO_PROPOSAL_TOOL_DEFINITION.inputSchema,
+            execute: async (payload, options) => proposeVideo(payload, options.toolCallId),
           }) } : {}),
           ...(dependencies.proposeScriptWrite ? { propose_script_workspace_write: tool({
             description: "仅提出当前项目单个规划字段的待审批候选；不会写入，Owner 查看全文并批准后才可能生效。",
@@ -1067,16 +1210,13 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
   }
 
   async function start(input: StartAgentRunInput): Promise<AgentRunSnapshot> {
-    if (input.schemaVersion !== AGENT_RUN_START_SCHEMA_VERSION || input.role !== READ_ONLY_AGENT_ROLE
-      || ![READ_ONLY_AGENT_SCOPE, SCRIPT_HARNESS_SCOPE].includes(input.scope)) {
+    if (input.schemaVersion !== AGENT_RUN_START_SCHEMA_VERSION || input.role !== activeRole
+      || input.scope !== activeScope) {
       throw new TypeError("不支持的 Agent Run 契约");
-    }
-    if ((input.scope === SCRIPT_HARNESS_SCOPE) !== Boolean(dependencies.skillMode)) {
-      throw new TypeError("Script Harness scope requires guarded Skill mode");
     }
     if (dependencies.skillMode && (!Number.isSafeInteger(input.actorUserId)
       || input.actorUserId! <= 0)) {
-      throw new TypeError("Script Harness requires an authenticated Project actor");
+      throw new TypeError("Harness requires an authenticated Project actor");
     }
     const clientRequestId = input.clientRequestId.trim();
     const content = input.content.trim();
@@ -1119,10 +1259,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       const project = await trx("o_project").where("id", input.projectId).first("id");
       if (!project) throw new AgentRunProjectNotFoundError(input.projectId);
       await trx("o_agentRunStep").insert({
-        id: stepId, runId, ordinal: 1, kind: "model", logicalTarget: JSON.stringify(LOGICAL_TARGET),
+        id: stepId, runId, ordinal: 1, kind: "model", logicalTarget: JSON.stringify(activeTarget),
         resolvedTarget: null, promptFingerprint: fingerprint({
-          version: dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_PROMPT_VERSION : PROMPT_VERSION,
-          prompt: dependencies.proposeScriptWrite ? SCRIPT_PROPOSAL_SYSTEM_PROMPT : SYSTEM_PROMPT,
+          version: activePromptVersion, prompt: activePrompt,
         }), status: "pending",
       });
       await trx("o_agentRunAttempt").insert({

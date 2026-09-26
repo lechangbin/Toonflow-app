@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { Knex } from "knex";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
+import { VIDEO_GENERATION_APPROVAL_SCOPE } from
+  "@/controlledTools/videoGenerationApproval";
 
 import {
   AGENT_RUN_CHECKPOINT_KINDS,
@@ -28,6 +30,7 @@ const WAITING_ALLOWED_ACTIONS = JSON.stringify(["inspect"]);
 
 interface InterruptedRunRow {
   id: string;
+  scope: string;
   version: number;
   status: string;
   requestFingerprint: string;
@@ -193,7 +196,9 @@ async function validateCheckpointChain(
       throw new Error("Agent Run checkpoint invocation fingerprint is invalid");
     }
     if (row.kind === "vendor-request-intent" && parsedPayload.kind === "vendor-request-intent") {
-      const request = await trx("o_agentVendorRequest as request")
+      const requestTable = run.scope === VIDEO_GENERATION_APPROVAL_SCOPE
+        ? "o_agentVideoVendorRequest" : "o_agentVendorRequest";
+      const request = await trx(`${requestTable} as request`)
         .join("o_agentToolCall as call", "call.id", "request.toolCallId")
         .where({ "request.runId": run.id, "request.requestId": parsedPayload.requestId,
           "request.scopeHash": parsedPayload.scopeHash, "call.stepId": row.stepId,
@@ -201,7 +206,9 @@ async function validateCheckpointChain(
       if (!request) throw new Error("Agent Run Vendor request checkpoint has no matching intent");
     }
     if (row.kind === "provider-task-observed" && parsedPayload.kind === "provider-task-observed") {
-      const request = await trx("o_agentVendorRequest").where({ runId: run.id,
+      const requestTable = run.scope === VIDEO_GENERATION_APPROVAL_SCOPE
+        ? "o_agentVideoVendorRequest" : "o_agentVendorRequest";
+      const request = await trx(requestTable).where({ runId: run.id,
         requestId: parsedPayload.requestId, providerTaskId: parsedPayload.providerTaskId }).first("id");
       if (!request) throw new Error("Agent Run Provider task checkpoint has no matching observation");
     }
@@ -214,18 +221,51 @@ async function validateCheckpointChain(
         throw new Error("Agent Run committed Step evidence is invalid");
       }
       if (predecessor?.kind === "vendor-request-intent" || predecessor?.kind === "provider-task-observed") {
-        let committed: { assetId: number; imageId: number; artifactHash: string };
-        try { committed = JSON.parse(output.content); }
-        catch { throw new Error("Agent Run committed image output is invalid"); }
-        const request = await trx("o_agentVendorRequest as request")
-          .join("o_agentToolCall as call", "call.id", "request.toolCallId")
-          .join("o_agentImageArtifact as artifact", "artifact.vendorRequestId", "request.id")
-          .where({ "request.runId": run.id, "request.assetId": committed.assetId,
-            "request.imageId": committed.imageId, "request.artifactHash": committed.artifactHash,
-            "request.status": "succeeded", "artifact.contentHash": committed.artifactHash,
-            "artifact.status": "accepted", "call.stepId": row.stepId, "call.attemptId": row.attemptId })
-          .first("request.id");
-        if (!request) throw new Error("Agent Run committed image has no accepted artifact");
+        if (run.scope === VIDEO_GENERATION_APPROVAL_SCOPE) {
+          let committed: { videoId: number; generationTaskId: number;
+            artifactRevisionId: number; artifactHash: string };
+          try { committed = JSON.parse(output.content); }
+          catch { throw new Error("Agent Run committed Video output is invalid"); }
+          const request = await trx("o_agentVideoVendorRequest as request")
+            .join("o_agentToolCall as call", "call.id", "request.toolCallId")
+            .join("o_agentVideoArtifact as artifact", "artifact.vendorRequestId", "request.id")
+            .join("o_video as video", "video.filePath", "artifact.mediaPath")
+            .join("o_generationTask as task", "task.id", "video.generationTaskId")
+            .join("o_artifactRevision as revision", "revision.id", "video.artifactRevisionId")
+            .whereRaw("artifact.trackId = request.trackId")
+            .whereRaw("video.projectId = request.projectId")
+            .whereRaw("video.videoTrackId = request.trackId")
+            .whereRaw("task.projectId = request.projectId")
+            .whereRaw("task.videoTrackId = request.trackId")
+            .whereRaw("revision.videoTrackId = request.trackId")
+            .whereRaw("revision.videoId = video.id")
+            .whereRaw("revision.generationTaskId = task.id")
+            .whereRaw("task.artifactRevisionId = revision.id")
+            .where({ "request.runId": run.id,
+              "request.status": "succeeded", "artifact.contentHash": committed.artifactHash,
+              "artifact.status": "accepted",
+              "video.id": committed.videoId,
+              "task.id": committed.generationTaskId,
+              "task.status": "succeeded",
+              "revision.id": committed.artifactRevisionId,
+              "revision.status": "generated",
+              "call.stepId": row.stepId,
+              "call.attemptId": row.attemptId }).first("request.id");
+          if (!request) throw new Error("Agent Run committed Video has no accepted artifact");
+        } else {
+          let committed: { assetId: number; imageId: number; artifactHash: string };
+          try { committed = JSON.parse(output.content); }
+          catch { throw new Error("Agent Run committed image output is invalid"); }
+          const request = await trx("o_agentVendorRequest as request")
+            .join("o_agentToolCall as call", "call.id", "request.toolCallId")
+            .join("o_agentImageArtifact as artifact", "artifact.vendorRequestId", "request.id")
+            .where({ "request.runId": run.id, "request.assetId": committed.assetId,
+              "request.imageId": committed.imageId, "request.artifactHash": committed.artifactHash,
+              "request.status": "succeeded", "artifact.contentHash": committed.artifactHash,
+              "artifact.status": "accepted", "call.stepId": row.stepId, "call.attemptId": row.attemptId })
+            .first("request.id");
+          if (!request) throw new Error("Agent Run committed image has no accepted artifact");
+        }
       }
     }
     const current = { ...row, kind: row.kind as AgentRunCheckpointKind, parsedPayload };
@@ -360,7 +400,7 @@ export async function recoverInterruptedAgentRuns(db: Knex, recoveredAt = Date.n
     ).orWhereExists(
       db("o_agentRunAttempt").select(db.raw("1")).whereRaw("o_agentRunAttempt.runId = o_agentRun.id"),
     ))
-    .select("id", "version", "status", "requestFingerprint", "lastCommittedStepId", "attentionReason", "leaseExpiresAt") as InterruptedRunRow[];
+    .select("id", "scope", "version", "status", "requestFingerprint", "lastCommittedStepId", "attentionReason", "leaseExpiresAt") as InterruptedRunRow[];
   for (const candidate of candidateRuns) {
     await db.transaction(async (trx) => {
       const run = await trx("o_agentRun").where({ id: candidate.id, status: candidate.status, version: candidate.version }).first() as InterruptedRunRow | undefined;
