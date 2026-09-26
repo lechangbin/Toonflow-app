@@ -4,8 +4,9 @@ import { createEvaluationCoverageReport } from "./evaluationCoverageReport";
 import { createEvaluationRunRuntime } from "./evaluationRun";
 import type { DatabaseWork } from "@/database";
 import { createRuntimeCorpusSafetyReport } from "./runtimeCorpusGateVerifier";
+import { verifyRuntimeCorpusEvidenceArtifactProvenance } from "./runtimeCorpusEvidenceArtifacts";
 
-export const PAIRED_ASSESSMENT_REPORT_VERSION = "toonflow.paired-assessment-report.v2" as const;
+export const PAIRED_ASSESSMENT_REPORT_VERSION = "toonflow.paired-assessment-report.v3" as const;
 type Evaluation = ReturnType<typeof createEvaluationRunRuntime>;
 type Assessment = ReturnType<typeof createEvaluationAssessmentLedger>;
 type SideState = "missing-run" | "unassessed" | "run-failed" | "pending-review" | "gate-failed"
@@ -31,6 +32,7 @@ export interface PairedAssessmentReport {
   observedRuns: number;
   assessedRuns: number;
   evidenceFileCheckedRuns: number;
+  sourceProvenanceCheckedRuns: number;
   cells: Array<{ caseId: string; partition: string; seed: number;
     baseline: PairedAssessmentSide; candidate: PairedAssessmentSide;
     provisionalScoreDelta: number | null }>;
@@ -49,6 +51,9 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
   if (!isRuntimeCorpus && options.runtimeSafety) {
     throw new TypeError("Runtime safety verification requires an AgentRuntime corpus");
   }
+  if (isRuntimeCorpus && options.artifactRoot !== undefined && !options.runtimeSafety) {
+    throw new TypeError("Runtime artifact provenance requires the Runtime safety dependency");
+  }
   const safety = options.runtimeSafety ? await createRuntimeCorpusSafetyReport({
     ...options.runtimeSafety, evaluation, evaluationRunId }) : null;
   if (safety && (safety.expected !== coverage.expectedPerVariant * 2
@@ -64,6 +69,7 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
   const byKey = new Map<string, EvaluationAssessment>(inspected.assessments.map((entry) =>
     [key(entry.variant, entry.caseId, entry.seed), entry]));
   const verifiedFiles = new Map<string, Array<{ ref: string; sha256: string }>>();
+  let sourceProvenanceCheckedRuns = 0;
   if (options.artifactRoot !== undefined) {
     for (const review of inspected.assessments) {
       const verified = await verifyEvaluationAssessmentArtifacts(options.artifactRoot, review);
@@ -73,6 +79,12 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
         throw new Error("Assessment file verification contract changed");
       }
       verifiedFiles.set(key(review.variant, review.caseId, review.seed), verified.files);
+      if (isRuntimeCorpus && review.quality.state === "reviewed"
+        && review.failureClassification === null) {
+        await verifyRuntimeCorpusEvidenceArtifactProvenance({
+          work: options.runtimeSafety!.work, evaluation, assessment: review });
+        sourceProvenanceCheckedRuns++;
+      }
     }
   }
   const side = (variant: "baseline" | "candidate", caseId: string, seed: number,
@@ -116,7 +128,8 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
     completePairs: cells.filter((cell) => cell.provisionalScoreDelta !== null).length,
     blockedPairs: cells.filter((cell) => cell.provisionalScoreDelta === null).length,
     observedRuns: coverage.baseline.observed + coverage.candidate.observed,
-    assessedRuns: inspected.assessed, evidenceFileCheckedRuns: verifiedFiles.size, cells };
+    assessedRuns: inspected.assessed, evidenceFileCheckedRuns: verifiedFiles.size,
+    sourceProvenanceCheckedRuns, cells };
 }
 
 export function renderEvaluationPairedAssessmentMarkdown(report: PairedAssessmentReport): string {
@@ -128,8 +141,9 @@ export function renderEvaluationPairedAssessmentMarkdown(report: PairedAssessmen
     `Pairs: ${report.completePairs}/${report.expectedPairs} provisionally reviewed; ${report.blockedPairs} blocked`,
     `Production Runs: ${report.observedRuns}/${report.expectedPairs * 2} observed; ${report.assessedRuns} assessed`,
     `Evidence reference files: ${report.evidenceFileCheckedRuns}/${report.assessedRuns} independently resolved and hashed.`,
-    "Gate decisions, scores and assessor identity are submitted assessments, not independently verified; file hashing does not validate their semantics or source-Run linkage.",
-    "For AgentRuntime corpus cells, machine checks establish fixture-consistent reads and no recorded effects only; semantic quality and case-specific source lineage remain unverified.",
+    `Source-Run artifact provenance: ${report.sourceProvenanceCheckedRuns}/${report.assessedRuns} independently matched to production evidence projections.`,
+    "Gate decisions, scores and assessor identity are submitted assessments, not independently verified; file hashing alone does not validate their semantics or source-Run linkage.",
+    "For AgentRuntime corpus cells, machine checks establish fixture-consistent permitted reads and no recorded effects only; semantic output quality remains unverified.",
     "A score delta is shown only when both sides have submitted passing gates and reviewed quality. It is not a causal improvement claim.",
     "Cost is unknown; this report makes no latency or cost comparison.", "",
     "| Case | Partition | Seed | Baseline | Candidate | Provisional score delta |",

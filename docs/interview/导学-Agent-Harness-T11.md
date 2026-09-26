@@ -38,4 +38,6 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 文件证据练习：读 `evaluationArtifactVerifier.ts` 和 `evaluationPairedAssessmentReport.ts`。先不传 `artifactRoot` 生成报告，确认 `evidenceFileCheckedRuns` 为 0；再提供隔离测试目录，查看两侧返回的实际文件哈希；最后改动一个已声明 SHA-256 的产物字节，确认报告整体拒绝。解释为何文件哈希正确仍不能证明 hard-gate 判定正确、评审人真实、或该文件确实来自引用的生产 Run。报告 v2 只把文件级验真接入可选路径，最终验收尚未完成。
 
+新 v3 来源练习：读 `runtimeCorpusEvidenceArtifacts.ts`，从一条已观察的 v3 Agent Run 生成 Output、ToolReceipt、Trace 的固定投影；将三份文件写入隔离评审目录，并提交其真实 SHA-256。配对报告同时传 `artifactRoot` 与 `runtimeSafety` 后，`sourceProvenanceCheckedRuns` 才从 0 变 1。单改文件字节、单改评审声称的哈希、或只传目录不传 Runtime 依赖都应拒绝。说明这只证明文件与生产 Run 证据一致，既不验证回答语义，也不认证人工评审人的身份。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。

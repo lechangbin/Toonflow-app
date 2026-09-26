@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
@@ -14,8 +15,10 @@ import { createEvaluationCoverageReport } from "../src/eval/evaluationCoverageRe
 import { createEvaluationAgentCase } from "../src/eval/evaluationAgentCase";
 import { createRuntimeCorpusSafetyReport,
   inspectRuntimeCorpusCellGates } from "../src/eval/runtimeCorpusGateVerifier";
+import { createRuntimeCorpusEvidenceArtifacts,
+  verifyRuntimeCorpusEvidenceArtifactProvenance } from "../src/eval/runtimeCorpusEvidenceArtifacts";
 import { createEvaluationPairedAssessmentReport } from "../src/eval/evaluationPairedAssessmentReport";
-import { createEvaluationRunRuntime } from "../src/eval/evaluationRun";
+import { createEvaluationRunRuntime, evaluationCaseRequestId } from "../src/eval/evaluationRun";
 import { freezeAgentRuntimeEvaluationRun } from "../src/eval/agentRuntimeEvaluationFreeze";
 import { materializeAgentRuntimeProjectFixture,
   verifyMaterializedAgentRuntimeProjectFixture } from "../src/eval/agentRuntimeProjectFixture";
@@ -177,6 +180,7 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
   const previousLog = console.log;
   console.log = () => {};
   try { await initDB(db); } finally { console.log = previousLog; }
+  let artifactRoot: string | null = null;
   try {
     const manifestSource = fs.readFileSync(path.resolve("data/eval/agent-runtime-corpus-v1/manifest.json"), "utf8");
     const corpus = validateAgentRuntimeCorpus(JSON.parse(manifestSource) as unknown);
@@ -240,26 +244,54 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     assert.deepEqual({ expected: safety.expected, observed: safety.observed,
       verified: safety.verified, failed: safety.failed, missing: safety.missing },
     { expected: 72, observed: 1, verified: 1, failed: 0, missing: 71 });
+    const projected = await createRuntimeCorpusEvidenceArtifacts({ work, evaluation,
+      evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11 });
+    artifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), "toonflow-runtime-evidence-"));
+    fs.mkdirSync(path.join(artifactRoot, "artifacts"));
+    for (const artifact of projected) {
+      fs.writeFileSync(path.join(artifactRoot, "artifacts", `${artifact.kind}.json`),
+        artifact.content);
+    }
+    const outputRef = "artifacts/agent-run-output.json";
     const assessment = createEvaluationAssessmentLedger({ work, evaluation,
       now: () => 300, createId: () => `review-${++serial}` });
     await assessment.record({ evaluationRunId: frozen.id, variant: "baseline",
       caseId: first.id, seed: 11, assessorId: "fixture-reviewer", method: "manual-review",
       hardGates: first.hardGates.map((gate) => ({ id: gate.id, passed: true,
-        evidenceRefs: ["docs/reports/agent-harness-t11-case-matrix.md"] })),
-      artifacts: first.requiredArtifacts.map((kind) => ({ kind,
-        ref: "docs/reports/agent-harness-t11-case-matrix.md", sha256: digest })),
+        evidenceRefs: [outputRef] })),
+      artifacts: projected.map(({ kind, sha256 }) => ({ kind,
+        ref: `artifacts/${kind}.json`, sha256 })),
       quality: { state: "reviewed", rubricVersion: corpus.qualityRubricVersion,
         score: 2, reviewerId: "fixture-reviewer", reason: "fixture-only review",
-        evidenceRefs: ["docs/reports/agent-harness-t11-case-matrix.md"] },
+        evidenceRefs: [outputRef] },
       failureClassification: null });
     const pairedWithoutGate = await createEvaluationPairedAssessmentReport(
       evaluation, assessment, frozen.id);
     assert.equal(pairedWithoutGate.cells[0].baseline.state, "unverified-safety");
+    await assert.rejects(createEvaluationPairedAssessmentReport(evaluation,
+      assessment, frozen.id, { artifactRoot }), /artifact provenance requires/u);
     const pairedWithGate = await createEvaluationPairedAssessmentReport(
       evaluation, assessment, frozen.id, { runtimeSafety: { work,
         readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
     assert.equal(pairedWithGate.cells[0].baseline.state, "pending-semantic-verification");
     assert.equal(pairedWithGate.completePairs, 0);
+    const pairedWithProvenance = await createEvaluationPairedAssessmentReport(
+      evaluation, assessment, frozen.id, { artifactRoot, runtimeSafety: { work,
+        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
+    assert.equal(pairedWithProvenance.sourceProvenanceCheckedRuns, 1);
+    assert.equal(pairedWithProvenance.evidenceFileCheckedRuns, 1);
+    assert.equal(pairedWithProvenance.cells[0].baseline.state, "pending-semantic-verification");
+    fs.writeFileSync(path.join(artifactRoot, "artifacts", "agent-run-output.json"), "tampered");
+    await assert.rejects(createEvaluationPairedAssessmentReport(evaluation,
+      assessment, frozen.id, { artifactRoot, runtimeSafety: { work,
+        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } }),
+    /digest differs/u);
+    fs.writeFileSync(path.join(artifactRoot, "artifacts", "agent-run-output.json"),
+      projected.find((artifact) => artifact.kind === "agent-run-output")!.content);
+    const reviewed = (await assessment.inspect(frozen.id)).assessments[0];
+    await assert.rejects(verifyRuntimeCorpusEvidenceArtifactProvenance({ work, evaluation,
+      assessment: { ...reviewed, artifacts: reviewed.artifacts.map((artifact) => ({ ...artifact,
+        sha256: "0".repeat(64) })) } }), /differ from source Agent Run/u);
     await db("o_agentToolReceipt").update({ inputHash: "0".repeat(64) });
     const foreign = await inspectRuntimeCorpusCellGates({ work, evaluation,
       evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
@@ -331,5 +363,42 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       role: first.role, scope: first.scope,
       content: first.content }), /Project state differs from frozen fixture/u);
     assert.equal(modelCalls, 1, "mutated Project is rejected before another Model call");
-  } finally { await db.destroy(); }
+    const originalChapter = (JSON.parse(fixtureSource) as {
+      novels: Array<{ id: number; text: string }> }).novels.find((item) => item.id === 10)!.text;
+    await db("o_novel").where({ id: 10 }).update({ chapterData: originalChapter });
+    const failedCase = corpus.cases[3];
+    const toCancel = await runtime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+      clientRequestId: evaluationCaseRequestId(frozen.id, "baseline", failedCase.id, 11),
+      projectId: 7, actorUserId: 1,
+      role: failedCase.role, scope: failedCase.scope, content: failedCase.content });
+    assert.equal((await runtime.cancel({ runId: toCancel.id, projectId: 7,
+      actorUserId: 1, clientCommandId: "cancel-corpus-cell", expectedVersion: toCancel.version }))?.status,
+    "cancelled");
+    await evaluation.record({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: failedCase.id, seed: 11, agentRunId: toCancel.id });
+    const failedCell = (await evaluation.inspect(frozen.id)).cases.find((item) =>
+      item.caseId === failedCase.id && item.seed === 11 && item.variant === "baseline")!;
+    assert.equal(failedCell.runStatus, "cancelled");
+    assert.equal((await db("o_agentRunOutput").where({ runId: failedCell.agentRunId })).length, 0);
+    fs.writeFileSync(path.join(artifactRoot, "artifacts", "failed-run.json"),
+      JSON.stringify({ runId: failedCell.agentRunId, status: "cancelled" }));
+    await assessment.record({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: failedCase.id, seed: 11, assessorId: "fixture-reviewer", method: "manual-review",
+      hardGates: failedCase.hardGates.map((gate) => ({ id: gate.id, passed: false,
+        evidenceRefs: ["artifacts/failed-run.json"] })),
+      artifacts: [], quality: { state: "pending", rubricVersion: corpus.qualityRubricVersion,
+        score: null, reviewerId: null, reason: "Run cancelled before Model execution",
+        evidenceRefs: [] },
+      failureClassification: { primary: "Decision", stage: "agent-run", kind: "cancelled" } });
+    const withFailedCell = await createEvaluationPairedAssessmentReport(evaluation,
+      assessment, frozen.id, { artifactRoot, runtimeSafety: { work,
+        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
+    assert.equal(withFailedCell.cells.find((cell) => cell.caseId === failedCase.id
+      && cell.seed === 11)!.baseline.state, "run-failed");
+    assert.equal(withFailedCell.sourceProvenanceCheckedRuns, 1);
+    assert.equal(withFailedCell.expectedPairs, 36);
+  } finally {
+    if (artifactRoot) fs.rmSync(artifactRoot, { recursive: true, force: true });
+    await db.destroy();
+  }
 });
