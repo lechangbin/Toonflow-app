@@ -854,7 +854,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       async function invokeReadTool(toolName: ControlledToolName, novelId: number, operationId: string): Promise<unknown> {
         try {
           const result = await controlledTools.execute({
-            runId, projectId: toolProjectId, operationId, toolName,
+            runId, projectId: toolProjectId, stepId, attemptId, operationId, toolName,
             revision: TOOL_DEFINITIONS[toolName].revision, input: { novelId }, lease: toolLease,
           });
           return result.status === "recorded" && result.receipt.status === "succeeded"
