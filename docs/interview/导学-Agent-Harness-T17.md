@@ -78,3 +78,5 @@
 当前 Agnes 模型接入补课：沿 `data/vendor/agnes.ts` 的模型声明 → `src/video/capability.ts` 的 provider-independent 能力校验 → `src/lib/vendorRuntime.ts` 的已配置模型绑定 → `tests/agnesVendorAdapter.test.ts` 与生成的 `src/lib/vendor.json` 阅读。重点解释为什么业务侧仍选 `720p`，而适配器才把 Video 2.5 Flash 变成 `720P`、`seconds` 和 `mode`；为何 V2.0 的帧数规则不能照搬。Image 2.5 的六张 Base64 PNG 参考图成功、七张 HTTP 400 拒绝证明了输入数量上限，但不证明 Toonflow 生产资产链路或视觉质量。视频真实提交两次收到明确队列满，不能写成成功或费用为零的已验事实。
 
 补充区分图片输入证据来源：公开 Video 2.5 示例使用图片 URL，用户反馈 Base64 图片已实测可用；代码据此把单图/首尾帧字节变成 Data URI，单测只验证请求形态。本轮未拿到成功视频任务，面试时应明确说“用户先前实测兼容，本次独立复验待队列恢复”，不要把假网络测试答成真实产物。
+
+配置化 Vendor 实测阅读练习：先读 `src/vendor/index.ts` 的 `createConfiguredVendor` 与 `src/vendor/loader.ts` 的 `loadConfiguredVendor`，再追到 `src/lib/vendorRuntime.ts` 和 `data/vendor/agnes.ts` 的文本、图片请求；说明内存配置中的 key 怎样到达适配器而不写入 Project 或仓库。2026-09-27 的单并发探针让 Agnes 3.0 Flash 经配置化 Text/AI SDK 路径返回精确标记，让 Image 2.5 Flash 经同一配置加载路径与一张 Base64 参考图返回非空 PNG；另有源级适配器文生图与单参考图成功。输出哈希和大小见 T17 阶段报告，但图像字节未纳入仓库证据，且未经过 Asset Brief、Owner 图片审批、持久 VendorRequest 或 Artifact Revision。自测时把“配置化 Vendor 可请求”与“生产 Agent 生成链已验收”分成两个结论，不要混为一谈。Video Base64 首帧的本轮真实提交仍被队列满挡住，没有产物。
