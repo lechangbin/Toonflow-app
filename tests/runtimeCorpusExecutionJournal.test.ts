@@ -89,8 +89,14 @@ test("T11 journal binds completion to a new source-verified v3 cell and predeces
       previousCheckpointSha256: second.sha256, sequence: 3, secretValues: [secret],
       execute: async () => { extraCalls++; } }), /already completed/u);
     assert.equal(extraCalls, 0);
+    await assert.rejects(runRuntimeCorpusCell({ journal, db, directory,
+      cellId: `baseline:${corpus.cases[1].id}:11`,
+      previousCheckpointSha256: second.sha256, sequence: 3, secretValues: [secret],
+      execute: async () => { throw new Error("simulated uncertain Provider outcome"); } }),
+    /uncertain Provider outcome/u);
+    await assert.rejects(journal.assertResumeSafe(), /unresolved in-flight/u);
     await fs.writeFile(second.path, "tampered");
-    await assert.rejects(journal.assertResumeSafe(), /completion or checkpoint is corrupt/u);
+    await assert.rejects(journal.assertResumeSafe(), /completion or checkpoint is corrupt|unresolved in-flight/u);
   } finally {
     await journal?.close();
     await db.destroy();

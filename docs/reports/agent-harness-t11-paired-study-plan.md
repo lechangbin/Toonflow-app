@@ -1,0 +1,25 @@
+# T11 paired AgentRuntime study · preregistration draft
+
+Status: engineering contract, **not an executed study or quality result**. The checked-in 18-case AgentRuntime corpus is distinct from T02's deterministic Golden 18 cases. This plan must be frozen before the first 72-cell paired run; do not revise holdout cases or treatment wording after seeing their outputs.
+
+## Treatment and comparison boundary
+
+- Recommended A/B factor: the content of the read-only Script/Production Harness Skill. Baseline gives concise source-reading guidance; candidate additionally asks for explicit provenance, uncertainty, and approval-boundary explanation. Neither side gains a Tool, Project grant, write permission, generation permission, or larger model budget. The exact two published Skill revision hashes and content are to be frozen in the Evaluation Run before execution.
+- App, schema, Runtime, Tool, Context, Memory, Model, and Vendor revisions must be equal. `assertSkillOnlyRuntimeCorpusTreatment` rejects a study that changes any of those axes or leaves Skill unchanged. This is necessary, not sufficient: the runner must independently read the active Skill binding and actual configured Model policy for every cell, rather than trusting an injected revision callback.
+- Ordinary `read-only-project-guidance-v1` Script cases do not route through a Harness Skill. Report that stratum as an unchanged negative control; do not attribute its difference to the Skill treatment. Report Script Harness and Production Harness separately, then overall, with all 36 pairs retained.
+- Each pair uses the same frozen input, fixture bytes, Project owner, Model target, temperature, output/step budget and allowed Tools. Agnes text target is `agnes-3.0-flash`; the exact bound policy must be hashed into the frozen Model revision. Seeds 11 and 29 identify repeated cells but do **not** set Provider randomness. Call concurrency is 1. No image/video generation is part of this study.
+
+## Execution and failure accounting
+
+- Freeze manifest/fixture/revisions, publish the two treatment Skill revisions, verify grants, then create sanitized `checkpoint-0000.sqlite` with 0 observed cells. Never write the live API key or raw outputs to GitHub.
+- Use deterministic pair order with alternating baseline-first/candidate-first execution to limit simple time-order bias. For each cell: verify current treatment binding and model budget, write `inflight`, execute through the production AgentRuntime, bind its terminal Run, checkpoint without Vendor secrets, independently reopen and verify the one-cell transition, then mark complete. A crash or uncertain Provider result stops automatic execution; after an actual power loss, manual reconciliation is mandatory because Windows directory fsync is not portable.
+- Preserve every missing, failed, cancelled, unsafe, unreviewed and scored cell in the 72-side/36-pair denominators. A 429, timeout, malformed response, unexpected grant, or fixture drift is a configuration/Provider/Runtime failure with its own classification, not a score of zero for model quality. No automatic retry of uncertain external calls.
+- `costMicros` remains null without a trusted usage/price receipt. The free key and user-provided usage cap do not prove zero marginal cost. Latency is sourced from terminal Run timestamps; a response-time comparison is descriptive unless environment and run-order effects are controlled.
+
+## Review and claims
+
+- Export protected Output/ToolReceipt/Trace projections and a separate private A/B mapping. Check the exported model text for self-identifying treatment cues before handing it to reviewers. Reviewer identities, calibration examples, independent 0/1/2 scores, disagreement records and adjudication are still required; no AI-generated draft score is an independent human review.
+- Machine checks cover source linkage, expected read receipts, scope, redaction and absence of unauthorized proposals or billable effects. Natural-language fact accuracy and whether holdout examples influenced treatment authoring remain human/process checks. Any confirmed leakage or contamination invalidates the affected comparison rather than becoming a low rubric score.
+- Publish source-linked machine and human reports only after all 72 cells have a reconciled state and independent review is complete. Show per-stratum paired differences and uncertainty descriptively; do not claim causal quality improvement or cost savings from the canary, Fake Model tests, pending review, or unverified holdout integrity.
+
+Remaining decisions before real matrix execution: confirm the exact treatment wording and human reviewer(s), then freeze actual Skill/Model policy hashes and the execution manifest. Until then, stage-level focused tests are allowed; final full-suite/build/browser verification remains T21.
