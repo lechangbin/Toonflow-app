@@ -709,7 +709,10 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
     .map(ensureImageDataUri);
   const configuredLimit = Number(model.maxReferenceImages);
   const maxReferenceImages = Number.isInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : rawImageRefs.length;
-  const imageRefs = rawImageRefs.slice(0, maxReferenceImages);
+  if (rawImageRefs.length > maxReferenceImages) {
+    throw new TypeError(`Agnes ${model.modelName} accepts at most ${maxReferenceImages} reference images`);
+  }
+  const imageRefs = rawImageRefs;
   const isModernImage = model.modelName === "agnes-image-2.1-flash"
     || model.modelName === "agnes-image-2.5-flash";
   const body: any = {
@@ -725,8 +728,7 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   if (isModernImage) body.ratio = ratio;
   if (imageRefs.length > 0) body.extra_body.image = imageRefs;
 
-  const referenceCount = imageRefs.length === rawImageRefs.length ? `${imageRefs.length}` : `${imageRefs.length}/${rawImageRefs.length}`;
-  logger(`[Agnes 图片] 提交 ${model.modelName}，参考图 ${referenceCount} 张，尺寸 ${body.size}，比例 ${ratio}`);
+  logger(`[Agnes 图片] 提交 ${model.modelName}，参考图 ${imageRefs.length} 张，尺寸 ${body.size}，比例 ${ratio}`);
 
   return await runImageRequestSerially(async (): Promise<string> => {
     // 只有获得本地串行执行槽后才宣告 generating；仍在队列中的请求保持等待中。

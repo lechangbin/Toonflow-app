@@ -170,12 +170,12 @@ test("Video 2.5 Flash maps text and Base64 image inputs to modern task fields", 
     lastFrame: { mediaType: "image", base64: "LAST" } }, model), /intermediate keyframe/u);
 });
 
-test("Agnes Image 2.1 and 2.5 models enforce the observed six-reference limit", async () => {
-  let submitted: any;
+test("Agnes Image 2.1 and 2.5 reject excess references before submitting", async () => {
+  const submitted: any[] = [];
   const adapter = loadAdapter({
     axios: {
       post: async (_url: string, body: any) => {
-        submitted = body;
+        submitted.push(body);
         return { data: { data: [{ b64_json: "RESULT" }] } };
       },
     },
@@ -185,7 +185,7 @@ test("Agnes Image 2.1 and 2.5 models enforce the observed six-reference limit", 
     await adapter.imageRequest(
       {
         prompt: "Compose the selected references.",
-        referenceList: Array.from({ length: 7 }, (_, index) => ({
+        referenceList: Array.from({ length: 6 }, (_, index) => ({
           type: "image",
           sourceType: "base64",
           base64: `REFERENCE_${index + 1}`,
@@ -197,9 +197,21 @@ test("Agnes Image 2.1 and 2.5 models enforce the observed six-reference limit", 
     );
     assert.equal(model.maxReferenceImages, 6);
     assert.deepEqual(
-      submitted.extra_body.image,
+      submitted.at(-1).extra_body.image,
       Array.from({ length: 6 }, (_, index) => `data:image/png;base64,REFERENCE_${index + 1}`),
     );
+    const callsBeforeExcess = submitted.length;
+    await assert.rejects(adapter.imageRequest(
+      {
+        prompt: "Compose the selected references.",
+        referenceList: Array.from({ length: 7 }, (_, index) => ({
+          type: "image", sourceType: "base64", base64: `REFERENCE_${index + 1}`,
+        })),
+        size: "1K", aspectRatio: "16:9",
+      },
+      model,
+    ), /at most 6 reference images/u);
+    assert.equal(submitted.length, callsBeforeExcess);
   }
 });
 
