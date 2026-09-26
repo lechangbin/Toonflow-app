@@ -58,6 +58,8 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 处理 Skill 练习：读 `runtimeCorpusTreatmentSkills.ts` 的两版通用文本、Script/Production manifest 和发布/切换函数。为什么要使用同两个 Skill ID 的不同 Revision，而非为候选额外开 Tool 或 Project 授权？检查首次发布时怎样得到 baseline/candidate 实际指纹，切换中断后怎样依据绑定版本修复，再指出没有持久方案文件和真实 72-cell driver 时仍不能声称已评测。
 
+方案文件练习：读 `runtimeCorpusStudyPlan.ts`。重启后为什么要同时核对 Evaluation Run 清单哈希、模型政策哈希和 Skill 指纹？观察文件只存可恢复 ID/摘要，不含 API key、原始 Output；哈希只用于检测意外改动，不是防攻击签名，也不能替代 `runtimeCorpusExecutionJournal.ts` 的外部调用边界。
+
 实验设计练习：读 `runtimeCorpusTreatment.ts` 与 `docs/reports/agent-harness-t11-paired-study-plan.md`。为什么 Skill-only 比较还要锁定 App/Schema/Runtime/Tool/Context/Memory/Model/Vendor？哪些普通 Script 只读 case 不受 Skill 处理、只能作负对照？若两次“seed”仅是不同请求身份，为什么不能称为受控随机重复？本文件是预注册草案，不能当成已经观察到的收益。
 
 模型绑定练习：读 `runtimeCorpusModelPolicy.ts` 和 Agnes 单格脚本。区分“清单声明的 Model 修订”和“Vendor 从当前数据库解析出的实际目标”；尝试在定向测试中把 Production 温度改为 1，观察为何在 Model 调用前拒绝。固定两步上限也不等于 72 格总调用次数已持久计量；进程崩溃后仍需先核查外部效果。

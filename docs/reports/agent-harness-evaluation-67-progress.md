@@ -86,4 +86,6 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 
 2026-09-27 #105 矩阵顺序切片：`runtimeCorpusMatrixOrder.ts` 从冻结 v3 清单生成 36 对、72 侧的确定性顺序，每对相邻执行两侧，并在 36 对中平衡 baseline-first/candidate-first 各 18 对；续跑只过滤来源账本已经观察的 cell，重复或矩阵外身份拒绝。定向测试覆盖 72 唯一格、平衡首侧及 3 格后的稳定剩余顺序。它仅提供顺序，不调用模型；正式 driver 仍须在每格前先检查崩溃日志，再接 Skill 激活、预算与生产 Runtime。
 
-2026-09-27 #105 两版 Skill 发布切片：`runtimeCorpusTreatmentSkills.ts` 提供不含逐例答案的普通只读/来源约束两套 Script、Production 文本，用同两个 Skill Definition 发布 baseline/candidate 各一版；两侧 manifest 的角色、只读意图、Tool、能力、依赖、资源与路由政策不变。发布器先激活 baseline，切到 candidate 实测活动指纹并核对权限相等，再切回 baseline；逐格切换操作按当前绑定版本幂等，断在两类 Skill 切换中间可在调用前重新修复。定向单测在真实 SkillRuntime/SQLite 中验证两版指纹不同、Tool 数相同、候选切换/重复/切回以及错误指纹拒绝。尚未把该发布器与 72-cell runner、持久方案文件和真实 Agnes 调用装配，文本也未得到人工评审，不能视为实验已经开始。
+2026-09-27 #105 两版 Skill 发布切片：`runtimeCorpusTreatmentSkills.ts` 提供不含逐例答案的普通只读/来源约束两套 Script、Production 文本，用同两个 Skill Definition 发布 baseline/candidate 各一版；两侧 manifest 的角色、只读意图、Tool、能力、依赖、资源与路由政策不变。发布器先激活 baseline，切到 candidate 实测活动指纹并核对权限相等，再切回 baseline；逐格切换操作按当前绑定版本幂等，断在两类 Skill 切换中间可在调用前重新修复。定向单测在真实 SkillRuntime/SQLite 中验证两版指纹不同、Tool 数相同、候选切换/重复/切回以及错误指纹拒绝。尚未把该发布器与 72-cell runner 和真实 Agnes 配对调用装配，文本也未得到人工评审，不能视为实验已经开始。
+
+2026-09-27 #105 非秘密续跑方案：`runtimeCorpusStudyPlan.ts` 将 Evaluation Run ID/清单哈希、模型政策哈希及两版 Skill 的 ID/活动指纹以独占新文件保存，并对规范对象计算校验哈希；重开时要求与预期冻结身份完全一致，拒绝符号链接、重复写入、不同模型政策或字节篡改。测试确认不包含 API key 字段。该文件只是可恢复元数据，不是凭据库或防恶意篡改签名；Windows 目录持久性限制仍在，尚未接入 72-cell driver。
