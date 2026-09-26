@@ -91,3 +91,9 @@ T11 执行口径核对发现，T02 的 18 例是确定性领域场景，不是�
 用户授权后续继续使用 Agnes key，所有真实调用保持单并发，密钥仅来自进程环境。T17 修订 `756a89b5` 的 Agnes 适配器先通过源级 Vendor Runtime 完成一次文生图和一次 Base64 单参考图生成，得到有效 PNG；随后用内存 SQLite 装载同一配置，通过 `createConfiguredVendor` 的真实配置加载与 AI SDK 路径调用 Agnes 3.0 Flash 文本模型，返回精确预期标记；Image 2.5 Flash 经配置化 Vendor 单参考图生成返回 851854 字节 PNG，SHA-256 `c42f5e6eae6e2cdead2f671d9013b12705b2119d53bf7f98b64c0231438b141f`。其它两张图片的大小与哈希见 T17 阶段报告。内存数据库在调用结束后销毁，未持久化密钥或修改用户 Project。
 
 Video 2.5 Flash 的一张 Base64 首帧先经技能 CLI dry-run 检查为 `keyframe`、4 秒、`720P`，实际提交仍明确返回 `video_queue_full` 503，没有任务 ID；队列拒绝不能判定 Base64 首帧是否被服务商接受。应用适配器虽然已有假网络输入映射测试，这次没有视频 Artifact、CDN host 或播放证据。上述文本/图片探针证明配置化 Vendor 层能实际请求当前模型，却没有经过 Project→Asset Brief/Prompt Revision→Owner 审批→持久 VendorRequest→Artifact Revision→工作台读回；输出图片字节未归档成仓库证据，只有脱敏元数据与哈希。因此七类最终验收仍全部 pending，不能据此设置 `paidProviderCanary=passed` 来代表三模型或生产链路均已验收，也不得发布版本。
+
+## 2026-09-27 隔离生产 AgentRun 真实只读探针
+
+T17 增加可显式运行的 `scripts/agnesProductionReadCanary.ts`，已逐级合入 T11→T18→T19→T20→本分支。它在内存 SQLite 中构造最小 Project/Script/生产工作区、已发布只读 Skill 与 Owner grant，把逻辑决策模型绑定 Agnes 3.0 Flash，限制最多两个模型步骤并只提供 `get_production_workspace_text`。密钥仅从 `AGNES_API_KEY` 环境变量读取。最终一次真实模型调用后，Run `succeeded`，读取回执 1、输出 1（SHA-256 `75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070`）、其他 ToolReceipt 0、生成 VendorRequest 0；定向 Production Run 用例 1/1 和类型检查通过。这比 Vendor-only 文本探针多验证了 Skill→grant→模型→受控读取→Run 输出的局部链路，但仍是内存 Fixture，不是用户 Project/浏览器/付费生成或跨进程验收。
+
+首次运行在真实模型调用前因 Agnes 文本模型没有声明 `contextWindowTokens` 而以 `contextMissing` 失败。为了验证其余链路，探针只在内存 `customModels` 中给同名模型声明 4096-token fixture 预算；这是实验预算，不是经 Agnes 官方核实的模型容量，也没有修改默认适配器。因此默认生产 Skill Run 仍存在可复现的配置阻断，functional/compatibility 类别不能因为这次隔离成功而转为 `passed`。后续应先取得可信容量或设计显式安全降级并补定向回归，再做真实项目数据、浏览器和完整效果链验收。七类最终状态继续全部 pending，发布门槛不变。
