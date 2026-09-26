@@ -63,6 +63,9 @@ test("T11 assessment persists one reviewed result only for an observed Golden pr
       quality: { ...result.quality, evidenceRefs: [] } }));
     await assert.rejects(ledger.record({ ...result, artifacts: result.artifacts.slice(0, 1) }),
       /required artifacts/u);
+    await assert.rejects(ledger.record({ ...result,
+      failureClassification: { primary: "Model", stage: "generation", kind: "failed" } }),
+      /source failure/u);
     assert.equal((await db("o_agentEvaluationAssessment")).length, 0);
     const recorded = await ledger.record(result);
     assert.equal(recorded.sourceEvidenceHash.length, 64);
