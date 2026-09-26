@@ -927,6 +927,42 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["skillId", "semanticVersion"]);
       },
     },
+    // Skill ResourceRevision：按已声明 ID 和哈希冻结资源正文
+    {
+      name: "o_agentSkillResourceRevision",
+      builder: (table) => {
+        table.text("skillRevisionId").notNullable().references("id").inTable("o_agentSkillRevision");
+        table.text("resourceId").notNullable();
+        table.text("mediaType").notNullable();
+        table.text("content").notNullable();
+        table.text("contentHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.primary(["skillRevisionId", "resourceId"]);
+      },
+    },
+    // SkillRevision 生命周期策略：不改写已发布内容，只更新能否继续激活
+    {
+      name: "o_agentSkillRevisionPolicy",
+      builder: (table) => {
+        table.text("revisionId").notNullable().primary().references("id").inTable("o_agentSkillRevision");
+        table.text("state").notNullable();
+        table.integer("version").notNullable();
+        table.integer("updatedAt").notNullable();
+      },
+    },
+    // Project 对 Skill Tool 能力的显式授权；不存在即默认拒绝
+    {
+      name: "o_agentProjectCapabilityGrant",
+      builder: (table) => {
+        table.integer("projectId").notNullable();
+        table.text("capability").notNullable();
+        table.text("state").notNullable();
+        table.integer("version").notNullable();
+        table.integer("changedByUserId").notNullable();
+        table.integer("updatedAt").notNullable();
+        table.primary(["projectId", "capability"]);
+      },
+    },
     // Skill Binding：一次激活指向已发布修订；回滚也只改变这里
     {
       name: "o_agentSkillBinding",
@@ -948,6 +984,63 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.text("manifestHash").notNullable();
         table.integer("boundAt").notNullable();
         table.primary(["runId", "skillId"]);
+      },
+    },
+    // Run 依赖闭包：记录根、精确修订与依赖边，不复制 Skill 正文
+    {
+      name: "o_agentRunSkillResolution",
+      builder: (table) => {
+        table.text("runId").notNullable().primary().references("id").inTable("o_agentRun");
+        table.text("schemaVersion").notNullable();
+        table.text("planJson").notNullable();
+        table.text("planHash").notNullable();
+        table.integer("boundAt").notNullable();
+      },
+    },
+    // Skill 路由决定：只存查询哈希和候选原因，不持久化用户原文
+    {
+      name: "o_agentSkillRouteDecision",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.integer("projectId").notNullable();
+        table.text("schemaVersion").notNullable();
+        table.text("intent").notNullable();
+        table.text("queryHash").notNullable();
+        table.text("decisionJson").notNullable();
+        table.text("decisionHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.index(["runId", "createdAt"]);
+      },
+    },
+    // Skill Tool 权限判定：仅存修订身份、Tool 和缺失层，不存调用载荷
+    {
+      name: "o_agentSkillPermissionDecision",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("skillId").notNullable();
+        table.text("skillRevisionId").notNullable();
+        table.text("operationId").notNullable();
+        table.text("toolName").notNullable();
+        table.text("decisionJson").notNullable();
+        table.text("decisionHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.unique(["runId", "operationId"]);
+      },
+    },
+    // Skill 资源访问：记录冻结资源身份和哈希，不重复存正文
+    {
+      name: "o_agentSkillResourceAccess",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("skillId").notNullable();
+        table.text("skillRevisionId").notNullable();
+        table.text("resourceId").notNullable();
+        table.text("contentHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.index(["runId", "createdAt"]);
       },
     },
     // Project Memory：仅从已提交 Agent Step Output 捕获的有来源定位的连续性证据
@@ -1634,6 +1727,102 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
       BEGIN
         SELECT RAISE(ABORT, 'Agent Run Skill binding is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentRunSkillResolution")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentRunSkillResolution_prevent_update
+      BEFORE UPDATE ON o_agentRunSkillResolution
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Run Skill resolution is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentRunSkillResolution_prevent_delete
+      BEFORE DELETE ON o_agentRunSkillResolution
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Run Skill resolution is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillRouteDecision")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillRouteDecision_prevent_update
+      BEFORE UPDATE ON o_agentSkillRouteDecision
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill route decision is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillRouteDecision_prevent_delete
+      BEFORE DELETE ON o_agentSkillRouteDecision
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill route decision is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillPermissionDecision")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillPermissionDecision_prevent_update
+      BEFORE UPDATE ON o_agentSkillPermissionDecision
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill permission decision is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillPermissionDecision_prevent_delete
+      BEFORE DELETE ON o_agentSkillPermissionDecision
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill permission decision is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillResourceAccess")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillResourceAccess_prevent_update
+      BEFORE UPDATE ON o_agentSkillResourceAccess
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill resource access is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillResourceAccess_prevent_delete
+      BEFORE DELETE ON o_agentSkillResourceAccess
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill resource access is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillResourceRevision")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillResourceRevision_prevent_update
+      BEFORE UPDATE ON o_agentSkillResourceRevision
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill ResourceRevision is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillResourceRevision_prevent_delete
+      BEFORE DELETE ON o_agentSkillResourceRevision
+      BEGIN
+        SELECT RAISE(ABORT, 'Skill ResourceRevision is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillRevisionPolicy")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillRevisionPolicy_one_way
+      BEFORE UPDATE ON o_agentSkillRevisionPolicy
+      WHEN NOT (NEW.version = OLD.version + 1
+        AND ((OLD.state = 'active' AND NEW.state IN ('deprecated', 'revoked'))
+          OR (OLD.state = 'deprecated' AND NEW.state = 'revoked')))
+      BEGIN
+        SELECT RAISE(ABORT, 'SkillRevision lifecycle is one-way');
       END
     `);
   }

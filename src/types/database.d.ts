@@ -1,4 +1,4 @@
-// @db-hash 2c3798b20584a15fe6b1614ab6056aea
+// @db-hash 8dfe3dc75ad64f433a8d201ff805e2fc
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -63,6 +63,14 @@ export interface o_agentImageQuotePolicy {
   'updatedAt': number;
   'updatedByUserId': number;
   'vendorId': string;
+}
+export interface o_agentProjectCapabilityGrant {
+  'capability'?: string;
+  'changedByUserId': number;
+  'projectId'?: number;
+  'state': string;
+  'updatedAt': number;
+  'version': number;
 }
 export interface o_agentProjectMemory {
   'confidence': string;
@@ -169,6 +177,13 @@ export interface o_agentRunSkillBinding {
   'runId'?: string;
   'skillId'?: string;
 }
+export interface o_agentRunSkillResolution {
+  'boundAt': number;
+  'planHash': string;
+  'planJson': string;
+  'runId'?: string;
+  'schemaVersion': string;
+}
 export interface o_agentRunStep {
   'completedAt'?: number | null;
   'id'?: string;
@@ -193,6 +208,34 @@ export interface o_agentSkillDefinition {
   'id'?: string;
   'name': string;
 }
+export interface o_agentSkillPermissionDecision {
+  'createdAt': number;
+  'decisionHash': string;
+  'decisionJson': string;
+  'id'?: string;
+  'operationId': string;
+  'runId': string;
+  'skillId': string;
+  'skillRevisionId': string;
+  'toolName': string;
+}
+export interface o_agentSkillResourceAccess {
+  'contentHash': string;
+  'createdAt': number;
+  'id'?: string;
+  'resourceId': string;
+  'runId': string;
+  'skillId': string;
+  'skillRevisionId': string;
+}
+export interface o_agentSkillResourceRevision {
+  'content': string;
+  'contentHash': string;
+  'createdAt': number;
+  'mediaType': string;
+  'resourceId'?: string;
+  'skillRevisionId'?: string;
+}
 export interface o_agentSkillRevision {
   'content': string;
   'contentHash': string;
@@ -204,6 +247,23 @@ export interface o_agentSkillRevision {
   'semanticVersion': string;
   'skillId': string;
   'status': string;
+}
+export interface o_agentSkillRevisionPolicy {
+  'revisionId'?: string;
+  'state': string;
+  'updatedAt': number;
+  'version': number;
+}
+export interface o_agentSkillRouteDecision {
+  'createdAt': number;
+  'decisionHash': string;
+  'decisionJson': string;
+  'id'?: string;
+  'intent': string;
+  'projectId': number;
+  'queryHash': string;
+  'runId': string;
+  'schemaVersion': string;
 }
 export interface o_agentToolApproval {
   'contractHash': string;
@@ -624,6 +684,7 @@ export interface DB {
   "o_agentEvidenceDeletionPermit": o_agentEvidenceDeletionPermit;
   "o_agentImageArtifact": o_agentImageArtifact;
   "o_agentImageQuotePolicy": o_agentImageQuotePolicy;
+  "o_agentProjectCapabilityGrant": o_agentProjectCapabilityGrant;
   "o_agentProjectMemory": o_agentProjectMemory;
   "o_agentRun": o_agentRun;
   "o_agentRunAttempt": o_agentRunAttempt;
@@ -631,10 +692,16 @@ export interface DB {
   "o_agentRunCommand": o_agentRunCommand;
   "o_agentRunOutput": o_agentRunOutput;
   "o_agentRunSkillBinding": o_agentRunSkillBinding;
+  "o_agentRunSkillResolution": o_agentRunSkillResolution;
   "o_agentRunStep": o_agentRunStep;
   "o_agentSkillBinding": o_agentSkillBinding;
   "o_agentSkillDefinition": o_agentSkillDefinition;
+  "o_agentSkillPermissionDecision": o_agentSkillPermissionDecision;
+  "o_agentSkillResourceAccess": o_agentSkillResourceAccess;
+  "o_agentSkillResourceRevision": o_agentSkillResourceRevision;
   "o_agentSkillRevision": o_agentSkillRevision;
+  "o_agentSkillRevisionPolicy": o_agentSkillRevisionPolicy;
+  "o_agentSkillRouteDecision": o_agentSkillRouteDecision;
   "o_agentToolApproval": o_agentToolApproval;
   "o_agentToolCall": o_agentToolCall;
   "o_agentToolDefinition": o_agentToolDefinition;
