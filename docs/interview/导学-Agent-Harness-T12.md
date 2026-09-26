@@ -53,7 +53,7 @@
 2. 问题：相关性检索可能接触越权文本。机制：先按 Project、Script、Role、修订和保留状态过滤，再做内容哈希与排序。落点：`selectEligibleContextSources`。
 3. 问题：重试时重新拼上下文会变。机制：一次 Attempt 固定精确消息和无原文来源清单，后续刷新写 successor。落点：`createContextBuilder().build/inspect`。
 4. 问题：Project 文本和历史回答可能注入指令。机制：它们以标记为数据的低权威消息进入，不继承 system 权限。落点：`src/context/index.ts` 与来源加载器。
-5. 问题：真实 Tool 执行虽有成功回执，却无法证明属于哪个 Step。机制：Runtime 将 Step/Attempt 身份传给受控 Tool，Tool 的开始及终态 Trace 记录该身份，重放核对原始身份；来源加载器只接受前置 Step 的成功因果事件。落点：`invokeReadTool`、`createControlledToolRuntime`、`createCommittedToolContextSourceLoader`。当前测试直接验证下一 Step 来源接口，尚未实现同一步多轮 Model 调度。
+5. 问题：真实 Tool 执行虽有成功回执，却无法证明属于哪个 Step。机制：Runtime 将 Step/Attempt 身份传给受控 Tool，Tool 的开始及终态 Trace 记录该身份，重放核对原始身份；来源加载器还从 Attempt 表复核它确属同一 Run 的前置 Step，损坏的跨 Step/Run 记录拒绝。落点：`invokeReadTool`、`createControlledToolRuntime`、`createCommittedToolContextSourceLoader`。当前测试直接验证下一 Step 来源接口，尚未实现同一步多轮 Model 调度。
 
 ## 关键设计决策
 
