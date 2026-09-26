@@ -55,3 +55,17 @@ T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Scrip
 在当前源码组合上运行 `yarn test`，715/715 自动化测试通过；`yarn build` 成功。`yarn eval:golden` 的旧本地确定性假适配执行 18/18 case，硬门 18/18 通过，人工质量评分仍为 0/18；这不是 T11 的 72-cell 生产 AgentRuntime baseline/candidate 评测，也不能生成真实质量或费用结论。构建生成的 `data/serve/app.js` 仍为未暂存工作树产物，未冻结为发布来源修订；以上命令输出尚未归档为带哈希的独立验收证据。
 
 发布工作流新增 `validate` 前置 job：Linux/Node 24 安装锁定依赖后依次运行类型检查、全量自动化测试和本地确定性 Golden 硬门，三个平台构建均依赖此 job。它尚未在 GitHub Actions 的目标 tag 上实际运行，也不包含 Web 配对、浏览器、恢复、安全独立核验或 72-cell 生产评测；七类最终验收仍全部 pending。任何 `v*` 标签仍必须在最终索引被独立核验、阶段 Issue 收敛及生成物冻结后才可创建。
+
+用户选择先做零费用工程准备，T11/T19/T20 的真实质量结论保持未验证，不调用付费 Provider，也不代填人工 rubric。当前个人仓库默认分支 `develop` 的 GitHub Actions workflow 列表为 0，新增发布工作流尚只存在于草稿堆叠分支，不能通过 `workflow_dispatch` 在 GitHub 实跑；不得以本机 YAML 解析替代跨平台 Actions 结果。
+
+| 最终类别 | 当前可核对的预验收 | 正式 `passed` 之前仍需 |
+| --- | --- | --- |
+| functional | App 当前组合 715/715 Node 测试、类型检查通过 | 冻结源码和数据后复跑完整相关契约，并归档可复算输出 |
+| compatibility | 旧 Socket 止损测试及 Script 正路径局部浏览器用例 | 旧入口退场/迁移、App/Web 共同 Run 行为及回滚矩阵 |
+| recovery | 单个隔离 Script Run 的进程中断被分为 `interrupted-model-call` | 多入口、审批、付费请求未知效果与跨进程恢复矩阵 |
+| security | Project/Tool/Skill 权限的定向拒绝测试 | 跨入口越权、恶意 Tool 参数、导出脱敏与浏览器网络响应核验 |
+| evaluation | T02 本地假适配 18/18 硬门；T11 账本与配对报告契约 | 72-cell 生产 Runtime 执行、独立 hard-gate/人工评审和来源核对；零费用阶段不得给质量结论 |
+| build | 当前 App `yarn build`；先前 Web 六文件阶段配对 | 最终 App/Web 修订、全部 bundle 哈希冻结，目标 tag 的 Actions 平台构建 |
+| browser | Script 启动、停止、刷新、审批/拒绝、模型提案局部成功 | Production、跨入口、Reconnect、恢复、旧 Socket 全路径可重复自动化 |
+
+T19 仍只有等资源假 adapter 与拒绝契约，T20 仍只有隔离角色执行壳和未核验阈值候选；两者没有真实候选效果，更无生产拓扑采用决定。这些是发布门槛，不应被 App 单测通过或 18 例本地 Golden 掩盖。
