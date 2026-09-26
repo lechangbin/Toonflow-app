@@ -37,8 +37,12 @@ export function createCommittedToolContextSourceLoader(work: DatabaseWork) {
         const priorSteps = await db("o_agentRunStep").where({ runId: input.runId })
           .where("ordinal", "<", currentStep.ordinal).select("id", "ordinal");
         const priorStepIds = new Set(priorSteps.map((step) => step.id));
+        const priorAttempts = await db("o_agentRunAttempt").where({ runId: input.runId })
+          .whereIn("stepId", [...priorStepIds]).select("id", "stepId");
+        const attemptSteps = new Map(priorAttempts.map((attempt) => [attempt.id, attempt.stepId]));
         const successTraces = new Map(traceRows.filter((trace) => trace.eventType === "tool.succeeded"
-          && typeof trace.toolReceiptId === "string" && priorStepIds.has(trace.stepId))
+          && typeof trace.toolReceiptId === "string" && priorStepIds.has(trace.stepId)
+          && attemptSteps.get(trace.attemptId) === trace.stepId)
           .map((trace) => [trace.toolReceiptId as string, trace]));
         const rows = await db("o_agentToolReceipt").where({ runId: input.runId, status: "succeeded" })
           .whereIn("id", input.receiptIds).orderBy("id", "asc");
