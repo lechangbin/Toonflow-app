@@ -17,7 +17,12 @@ test("schema ensure is idempotent and creates distinct ToolCall, VendorRequest a
     for (const key of ["runId", "toolCallId", "requestId", "scopeHash", "providerTaskId", "artifactHash", "cancellationRequestedAt"]) {
       assert.ok(vendorColumns[key], `missing ${key}`);
     }
-    const definitions = await db.raw("SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'o_agent%identity_immutable'");
+    const definitions = await db.raw(`SELECT name, sql FROM sqlite_master
+      WHERE type = 'trigger' AND name IN (
+        'o_agentImageArtifact_identity_immutable',
+        'o_agentToolCall_identity_immutable',
+        'o_agentVendorRequest_identity_immutable'
+      )`);
     assert.deepEqual(definitions.map((row: { name: string }) => row.name).sort(), [
       "o_agentImageArtifact_identity_immutable", "o_agentToolCall_identity_immutable", "o_agentVendorRequest_identity_immutable",
     ]);
