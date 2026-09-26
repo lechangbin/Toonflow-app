@@ -80,7 +80,8 @@ export function createEvaluationAssessmentLedger(dependencies: {
         || new Set(assessment.artifacts.map((artifact) => artifact.kind)).size !== assessment.artifacts.length
         || (assessment.quality.state === "reviewed"
           && !hasRequiredArtifacts(assessment, definition.requiredArtifacts))
-        || (source.runStatus !== "succeeded" && !assessment.failureClassification)) {
+        || (source.runStatus !== "succeeded" && !assessment.failureClassification)
+        || (source.runStatus === "succeeded" && assessment.failureClassification)) {
         throw new TypeError("Assessment differs from frozen gates, required artifacts, rubric or source failure");
       }
       const assessmentJson = JSON.stringify(assessment);
@@ -137,7 +138,9 @@ export function createEvaluationAssessmentLedger(dependencies: {
           || assessment.quality.rubricVersion !== golden.qualityRubricVersion
           || new Set(assessment.artifacts.map((artifact) => artifact.kind)).size !== assessment.artifacts.length
           || (assessment.quality.state === "reviewed"
-            && !hasRequiredArtifacts(assessment, definition.requiredArtifacts))) {
+            && !hasRequiredArtifacts(assessment, definition.requiredArtifacts))
+          || (source.runStatus !== "succeeded" && !assessment.failureClassification)
+          || (source.runStatus === "succeeded" && assessment.failureClassification)) {
           throw new Error("Evaluation assessment differs from frozen source evidence");
         }
         assessments.set(key, assessment);
