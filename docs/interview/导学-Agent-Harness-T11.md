@@ -50,4 +50,6 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 中断练习：读 `runtimeCorpusExecutionJournal.ts` 的目录锁、`inflight` 和 `completed` 标记。若外部 Model 调用后进程崩溃且没有完成 checkpoint，恢复进程能否只因该格 missing 就重试？不能；日志要求人工核查未知效果。完成时会重开前后两份去密钥快照，复核 v3 账本中恰好多一个已终结来源 Run 的格子；篡改快照或孤儿文件也会拒绝。该实现只针对进程崩溃，Windows 缺少可移植的目录 fsync，不能承诺突然断电后目录项顺序可靠；组件也尚未接入 72-cell runner。
 
+单格编排练习：读 `runtimeCorpusCellRunner.ts`，指出外部 Model 的唯一可调用位置为何必须在 `begin` 之后；为何执行异常不删除 `inflight`。重复已完成 cell 时，`begin` 会在调用执行回调前拒绝。再说明它只固定顺序，尚未承担三类 Runtime 组装、真实模型预算与完整矩阵驱动。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。

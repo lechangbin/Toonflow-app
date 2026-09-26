@@ -9,6 +9,7 @@ import knexFactory from "knex";
 import { freezeAgentRuntimeEvaluationRun } from "../src/eval/agentRuntimeEvaluationFreeze";
 import { createEvaluationRunRuntime, evaluationCaseRequestId } from "../src/eval/evaluationRun";
 import { writeSanitizedRuntimeCorpusCheckpoint } from "../src/eval/runtimeCorpusCheckpoint";
+import { runRuntimeCorpusCell } from "../src/eval/runtimeCorpusCellRunner";
 import { openRuntimeCorpusExecutionJournal } from "../src/eval/runtimeCorpusExecutionJournal";
 import initDB from "../src/lib/initDB";
 
@@ -67,6 +68,7 @@ test("T11 journal binds completion to a new source-verified v3 cell and predeces
     };
     const baseline = `baseline:${caseName.id}:11`;
     await journal.begin(baseline, initial.sha256);
+    await assert.rejects(journal.complete(baseline, initial), /discontinuous/u);
     await assert.rejects(journal.assertResumeSafe(), /unresolved in-flight/u);
     await journal.close();
     journal = await openRuntimeCorpusExecutionJournal(directory, frozen.id);
@@ -78,14 +80,15 @@ test("T11 journal binds completion to a new source-verified v3 cell and predeces
     await journal.assertResumeSafe();
     await assert.rejects(journal.begin(baseline, first.sha256), /already completed/u);
     const candidate = `candidate:${caseName.id}:11`;
-    await journal.begin(candidate, first.sha256);
-    await assert.rejects(journal.complete(candidate, first), /discontinuous|transition/u);
-    await assert.rejects(journal.assertResumeSafe(), /unresolved in-flight/u);
-    await addCell("candidate", "run-candidate");
-    const second = await writeSanitizedRuntimeCorpusCheckpoint({ db, directory,
-      sequence: 2, secretValues: [secret] });
-    await journal.complete(candidate, second);
+    const second = await runRuntimeCorpusCell({ journal, db, directory, cellId: candidate,
+      previousCheckpointSha256: first.sha256, sequence: 2, secretValues: [secret],
+      execute: () => addCell("candidate", "run-candidate") });
     await journal.assertResumeSafe();
+    let extraCalls = 0;
+    await assert.rejects(runRuntimeCorpusCell({ journal, db, directory, cellId: candidate,
+      previousCheckpointSha256: second.sha256, sequence: 3, secretValues: [secret],
+      execute: async () => { extraCalls++; } }), /already completed/u);
+    assert.equal(extraCalls, 0);
     await fs.writeFile(second.path, "tampered");
     await assert.rejects(journal.assertResumeSafe(), /completion or checkpoint is corrupt/u);
   } finally {
