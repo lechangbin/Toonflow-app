@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
@@ -11,6 +12,22 @@ import { createConfiguredVendor, type ConfiguredVendorDependencies } from "../sr
 import { resolveTextTarget } from "../src/vendor/loader";
 
 const promptProfiles = VideoPromptProfileRegistry.load(path.join(process.cwd(), "data", "promptProfiles", "video"));
+
+test("configured Agnes 3.0 Flash exposes the user-confirmed 512K context budget", async () => {
+  const knex = await createKnex();
+  try {
+    await knex("o_vendorConfig").insert({ id: "agnes",
+      inputValues: JSON.stringify({ apiKey: "fixture-key", baseUrl: "https://apihub.agnes-ai.com" }),
+      models: "[]", enable: 1 });
+    const source = readFileSync(path.join(process.cwd(), "data", "vendor", "agnes.ts"), "utf8");
+    const vendor = createConfiguredVendor(makeDeps(knex, { agnes: source }));
+    const call = await vendor.openTextCall({ kind: "direct", vendorId: "agnes",
+      modelId: "agnes-3.0-flash" });
+    assert.equal(call.target.contextWindowTokens, 524_288);
+  } finally {
+    await knex.destroy();
+  }
+});
 
 const imageVendorSource = `
 const vendor = {
