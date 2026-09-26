@@ -48,6 +48,8 @@ test("T11 checked-in Runtime corpus has 18 concrete requests bound to real fixtu
   assert.equal(corpus.cases.length, 18);
   assert.equal(new Set(corpus.cases.map((item) => item.content)).size, 18);
   assert.ok(corpus.cases.every((item) => !item.content.includes(item.id)));
+  assert.equal(corpus.cases[12].optionalToolCalls?.length, 6);
+  assert.equal(corpus.cases[16].optionalToolCalls?.length, 2);
   for (const item of corpus.cases) {
     const bytes = fs.readFileSync(path.resolve(item.fixture.path));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), item.fixture.sha256);
@@ -79,6 +81,12 @@ test("T11 Runtime corpus rejects incomplete, duplicate and capability-incompatib
   const noFixture = manifest();
   noFixture.cases[0].fixture.sha256 = "unfrozen";
   assert.throws(() => validateAgentRuntimeCorpus(noFixture), /fixture|sha256/u);
+  const optionalWrongScope = JSON.parse(fs.readFileSync(path.resolve(
+    "data/eval/agent-runtime-corpus-v1/manifest.json"), "utf8")) as {
+      cases: Array<{ optionalToolCalls?: unknown[] }> };
+  optionalWrongScope.cases[12].optionalToolCalls = [
+    { name: "get_production_workspace_text", input: { scriptId: 11, key: "scriptPlan" } }];
+  assert.throws(() => validateAgentRuntimeCorpus(optionalWrongScope), /outside the case scope/u);
 });
 
 test("T11 freezes a separate Runtime corpus with 72 missing cells and verified fixture bytes", async () => {

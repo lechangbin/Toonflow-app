@@ -83,7 +83,8 @@ export async function inspectRuntimeCorpusCellGates(input: {
           : "toonflow.tool.get-production-workspace-text.v1";
     const tool = getControlledToolDefinition(toolCase.name as ControlledToolName, revision);
     if (tool && (tool.policy.scopes as readonly string[]).includes(definition.scope)
-      && definition.expectedToolCalls.some((expected) => expected.name === toolCase.name
+      && [...definition.expectedToolCalls, ...(definition.optionalToolCalls ?? [])]
+        .some((expected) => expected.name === toolCase.name
         && isDeepStrictEqual(expected.input, toolCase.input))) {
       allowed.set(sha256(JSON.stringify({ toolName: toolCase.name,
         revision, input: toolCase.input })), toolCase.output);

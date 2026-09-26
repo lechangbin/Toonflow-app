@@ -34,6 +34,7 @@ const entry = z.strictObject({ id: caseId,
   fixture,
   hardGates: z.array(z.strictObject({ id: identity, statement: text })).min(1),
   expectedToolCalls: z.array(expectedToolCall).max(4),
+  optionalToolCalls: z.array(expectedToolCall).max(6).optional(),
   requiredArtifacts: z.array(identity).min(1),
   expectedFailureClass: z.strictObject({ primary: identity, stage: identity, kind: identity }),
   rubric: z.strictObject({ focus: text,
@@ -64,13 +65,14 @@ export function validateAgentRuntimeCorpus(value: unknown): AgentRuntimeCorpus {
       || (item.role === "productionAgent") !== (item.scope === "production-harness-v1")) {
       throw new TypeError("AgentRuntime corpus case partition or role/scope is incompatible");
     }
+    const allowedToolCalls = [...item.expectedToolCalls, ...(item.optionalToolCalls ?? [])];
     if (new Set(item.hardGates.map((gate) => gate.id)).size !== item.hardGates.length
-      || new Set(item.expectedToolCalls.map((call) => JSON.stringify(call))).size !== item.expectedToolCalls.length
+      || new Set(allowedToolCalls.map((call) => JSON.stringify(call))).size !== allowedToolCalls.length
       || new Set(item.requiredArtifacts).size !== item.requiredArtifacts.length
       || item.rubric.anchors.some((anchor, index) => anchor.score !== index)) {
       throw new TypeError("AgentRuntime corpus case gates, artifacts or rubric are not canonical");
     }
-    if (item.expectedToolCalls.some((call) => item.scope === "read-only-project-guidance-v1"
+    if (allowedToolCalls.some((call) => item.scope === "read-only-project-guidance-v1"
       ? !["get_novel_text", "get_novel_events"].includes(call.name)
       : item.scope === "production-harness-v1"
         ? call.name !== "get_production_workspace_text"

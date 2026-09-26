@@ -586,6 +586,12 @@
         }
       ],
       "expectedToolCalls": [],
+      "optionalToolCalls": [{"name":"get_novel_text","input":{"novelId":10}},
+        {"name":"get_novel_text","input":{"novelId":12}},
+        {"name":"get_novel_text","input":{"novelId":13}},
+        {"name":"get_novel_events","input":{"novelId":10}},
+        {"name":"get_novel_events","input":{"novelId":12}},
+        {"name":"get_novel_events","input":{"novelId":13}}],
       "requiredArtifacts": [
         "agent-run-output",
         "tool-receipts",
@@ -774,6 +780,8 @@
         }
       ],
       "expectedToolCalls": [],
+      "optionalToolCalls": [{"name":"get_production_workspace_text","input":{"scriptId":11,"key":"scriptPlan"}},
+        {"name":"get_production_workspace_text","input":{"scriptId":11,"key":"storyboardTable"}}],
       "requiredArtifacts": [
         "agent-run-output",
         "tool-receipts",
