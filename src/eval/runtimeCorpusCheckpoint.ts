@@ -21,8 +21,6 @@ export async function writeSanitizedRuntimeCorpusCheckpoint(input: {
   const basename = `checkpoint-${String(input.sequence).padStart(4, "0")}.sqlite`;
   const target = path.join(directory, basename);
   const temporary = path.join(directory, `${basename}.pending`);
-  await fs.stat(target).then(() => { throw new Error("Runtime checkpoint already exists"); },
-    (error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; });
   const originals = await input.db("o_vendorConfig").select("id", "inputValues");
   let pendingCreated = false;
   try {
@@ -40,9 +38,19 @@ export async function writeSanitizedRuntimeCorpusCheckpoint(input: {
     if (input.secretValues.some((value) => snapshot.includes(Buffer.from(value, "utf8")))) {
       throw new Error("Runtime checkpoint still contains a guarded secret");
     }
-    await fs.writeFile(temporary, snapshot, { flag: "wx", mode: 0o600 });
+    const handle = await fs.open(temporary, "wx", 0o600);
     pendingCreated = true;
-    await fs.rename(temporary, target);
+    try { await handle.writeFile(snapshot); await handle.sync(); }
+    finally { await handle.close(); }
+    // A hard link publishes the synced bytes without rename's overwrite-on-Windows race.
+    try { await fs.link(temporary, target); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+        throw new Error("Runtime checkpoint already exists");
+      }
+      throw error;
+    }
+    await fs.unlink(temporary);
     pendingCreated = false;
     return { path: target, sha256: digest(snapshot), bytes: snapshot.length };
   } finally {

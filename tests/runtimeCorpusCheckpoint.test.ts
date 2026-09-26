@@ -49,3 +49,35 @@ test("T11 checkpoint persists evidence but never serializes the live Vendor key"
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test("T11 concurrent publishers cannot overwrite the same checkpoint sequence", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "toonflow-runtime-publish-"));
+  const databases = [0, 1].map(() => knexFactory({ client: "better-sqlite3",
+    connection: { filename: ":memory:" }, useNullAsDefault: true,
+    pool: { min: 1, max: 1 } }));
+  const secret = "sk-test-concurrent-secret";
+  try {
+    for (const db of databases) {
+      await db.raw("PRAGMA foreign_keys = OFF");
+      await db.schema.createTable("o_skillList", (table) => table.text("id").primary());
+      const originalLog = console.log;
+      console.log = () => undefined;
+      try { await initDB(db); } finally { console.log = originalLog; }
+      await db("o_vendorConfig").where({ id: "agnes" })
+        .update({ inputValues: JSON.stringify({ apiKey: secret }) });
+    }
+    const results = await Promise.allSettled(databases.map((db) =>
+      writeSanitizedRuntimeCorpusCheckpoint({ db, directory, sequence: 0,
+        secretValues: [secret] })));
+    const succeeded = results.filter((result) => result.status === "fulfilled");
+    assert.equal(succeeded.length, 1);
+    assert.equal(results.filter((result) => result.status === "rejected").length, 1);
+    const target = path.join(directory, "checkpoint-0000.sqlite");
+    const bytes = await fs.readFile(target);
+    assert.equal(bytes.includes(Buffer.from(secret)), false);
+    assert.equal((await fs.readdir(directory)).filter((name) => name.endsWith(".pending")).length, 0);
+  } finally {
+    await Promise.all(databases.map((db) => db.destroy()));
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

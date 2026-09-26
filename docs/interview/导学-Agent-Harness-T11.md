@@ -48,4 +48,6 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 混合执行练习：读 `evaluationAgentCase.ts` 的 `runtimeForCase`。为什么只按 role 路由仍不够？同是 scriptAgent，普通只读和 Script Harness 的 scope、Skill/Grant 前置条件不同；Production Harness 又是第三套。跟随 `tests/agentRuntimeCorpus.test.ts` 的三个局部 Fake Model 运行，核对每类 Run 的 role/scope、受控 ToolReceipt 与安全核验。它复用生产 Runtime，而不是另造评测专用执行器。
 
+中断练习：读 `runtimeCorpusExecutionJournal.ts` 的目录锁、`inflight` 和 `completed` 标记。若外部 Model 调用后进程崩溃且没有完成 checkpoint，恢复进程能否只因该格 missing 就重试？不能；日志要求人工核查未知效果。完成时会重开前后两份去密钥快照，复核 v3 账本中恰好多一个已终结来源 Run 的格子；篡改快照或孤儿文件也会拒绝。该实现只针对进程崩溃，Windows 缺少可移植的目录 fsync，不能承诺突然断电后目录项顺序可靠；组件也尚未接入 72-cell runner。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。
