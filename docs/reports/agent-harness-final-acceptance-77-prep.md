@@ -56,7 +56,7 @@ T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Scrip
 
 发布工作流新增 `validate` 前置 job：Linux/Node 24 安装锁定依赖后依次运行类型检查、全量自动化测试和本地确定性 Golden 硬门，三个平台构建均依赖此 job。它尚未在 GitHub Actions 的目标 tag 上实际运行，也不包含 Web 配对、浏览器、恢复、安全独立核验或 72-cell 生产评测；七类最终验收仍全部 pending。任何 `v*` 标签仍必须在最终索引被独立核验、阶段 Issue 收敛及生成物冻结后才可创建。
 
-用户选择先做零费用工程准备，T11/T19/T20 的真实质量结论保持未验证，不调用付费 Provider，也不代填人工 rubric。当前个人仓库默认分支 `develop` 的 GitHub Actions workflow 列表为 0，新增发布工作流尚只存在于草稿堆叠分支，不能通过 `workflow_dispatch` 在 GitHub 实跑；不得以本机 YAML 解析替代跨平台 Actions 结果。
+用户先选择零费用工程准备，后来授权受限并发真实测试，但服务商/API 地址、模型和费用上限仍待明确；当前尚未调用付费 Provider，T11/T19/T20 的真实质量结论保持未验证，也不代填人工 rubric。当前个人仓库默认分支 `develop` 的 GitHub Actions workflow 列表为 0，新增发布工作流尚只存在于草稿堆叠分支，不能通过 `workflow_dispatch` 在 GitHub 实跑；不得以本机 YAML 解析替代跨平台 Actions 结果。
 
 | 最终类别 | 当前可核对的预验收 | 正式 `passed` 之前仍需 |
 | --- | --- | --- |
@@ -71,3 +71,5 @@ T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Scrip
 T19 仍只有等资源假 adapter 与拒绝契约，T20 仍只有隔离角色执行壳和未核验阈值候选；两者没有真实候选效果，更无生产拓扑采用决定。这些是发布门槛，不应被 App 单测通过或 18 例本地 Golden 掩盖。
 
 同日再次用独立临时数据库、全新浏览器 profile 和本地假文本 Model 复测 Script 模型 Tool 提案链。旧夹具因首次使用引导遮住 Harness 按钮超时；T18 加入条件跳过后，第二份全新环境一次通过模型提案、Owner 审批前不写入、审批后精确字段回读，父 Run `edc87290-febd-48c5-86a6-17e0b99646a0`、审批 Run `863b82df-75f8-4a81-85c4-3d2a33309b6e`。此次只证明 Script 正路径夹具可在干净 profile 重复，不覆盖 Production、其他两条夹具的干净 profile 重跑、断连/恢复或七类最终独立核验；本地服务与浏览器会话均已停止，隔离临时数据库未当作项目数据提交。
+
+T11 新增单变体串行执行入口后已逐级同步至 T21：预检冻结正文/修订、按 case/seed 逐格等待，并可限制单次新增 cell、复核后续跑。T11 与 T21 的 `tests/evaluationAgentCase.test.ts` 均为 2/2 通过，T21 类型检查通过；测试使用 Fake Model，观察到的局部最大并发为 1。该入口不提供跨进程全局限流，亦不证明真实服务商调用、72-cell 完成或质量收益。合入后没有重做完整 App 测试或发布验收，七类状态仍为 pending。
