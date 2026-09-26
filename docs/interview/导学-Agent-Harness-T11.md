@@ -42,4 +42,6 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 真实供应商单格练习：读 `scripts/agnesRuntimeCorpusCanary.ts` 和 `docs/reports/agent-harness-t11-agnes-canary.md`。指出它怎样在内存 SQLite 中装配只读 Production Skill/Grant，从环境读取密钥，冻结 v3 清单并通过生产 Runtime 执行 DEV-RT-009；再解释摘要中 1/72 observed、1 条成功读取和 `verified-read-and-safety-only` 各自能与不能证明什么。当前脚本既不能断点续跑，也没有 candidate 实验和人工盲评；不要把它说成 T11 通过。
 
+检查点练习：读 `runtimeCorpusCheckpoint.ts`。为什么不能把包含 Agnes 配置的内存数据库直接序列化到磁盘？沿清空 `o_vendorConfig.inputValues` → `VACUUM` → 密钥字节扫描 → 新文件写入 → 恢复内存配置解释边界。加载时为何还要检查 SQLite 完整性、Vendor 配置仍为空？指出它只解决已完成 cell 的本地证据恢复，不能保证在 Provider 调用中途崩溃后安全重试。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。
