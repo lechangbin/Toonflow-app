@@ -16,13 +16,16 @@ test("only a committed, schema-valid ToolReceipt in this Project Run enters Cont
     await db.schema.createTable("o_agentRunStep", (table) => {
       table.text("id").primary(); table.text("runId"); table.integer("ordinal");
     });
+    await db.schema.createTable("o_agentRunAttempt", (table) => {
+      table.text("id").primary(); table.text("runId"); table.text("stepId");
+    });
     await db.schema.createTable("o_agentToolReceipt", (table) => {
       table.text("id").primary(); table.text("runId"); table.text("toolName");
       table.text("toolRevision"); table.text("status"); table.text("outputJson"); table.text("outputHash");
       table.integer("updatedAt");
     });
     await db.schema.createTable("o_agentTrace", (table) => {
-      table.text("id").primary(); table.text("runId"); table.text("stepId"); table.integer("sequence");
+      table.text("id").primary(); table.text("runId"); table.text("stepId"); table.text("attemptId"); table.integer("sequence");
       table.text("predecessorTraceId"); table.text("toolReceiptId"); table.text("eventType");
       table.integer("createdAt");
     });
@@ -30,6 +33,9 @@ test("only a committed, schema-valid ToolReceipt in this Project Run enters Cont
     await db("o_agentRunStep").insert([{ id: "step-before", runId: "run-7", ordinal: 1 },
       { id: "step-current", runId: "run-7", ordinal: 2 },
       { id: "step-after", runId: "run-7", ordinal: 3 }]);
+    await db("o_agentRunAttempt").insert([{ id: "attempt-before", runId: "run-7", stepId: "step-before" },
+      { id: "attempt-current", runId: "run-7", stepId: "step-current" },
+      { id: "attempt-foreign", runId: "run-9", stepId: "step-before" }]);
     const output = JSON.stringify({ novelId: 2, chapterIndex: 1, chapter: "序章", text: "可读原文" });
     const base = { toolName: "get_novel_text", toolRevision: TOOL_DEFINITIONS.get_novel_text.revision,
       status: "succeeded", outputJson: output, outputHash: hash(output), updatedAt: 10 };
@@ -37,7 +43,7 @@ test("only a committed, schema-valid ToolReceipt in this Project Run enters Cont
       { id: "foreign", runId: "run-9", ...base },
       { id: "pending", runId: "run-7", ...base, status: "pending" },
       { id: "invalid", runId: "run-7", ...base, outputHash: "0".repeat(64) }]);
-    await db("o_agentTrace").insert([{ id: "trace-1", runId: "run-7", stepId: "step-before", sequence: 1,
+    await db("o_agentTrace").insert([{ id: "trace-1", runId: "run-7", stepId: "step-before", attemptId: "attempt-before", sequence: 1,
       predecessorTraceId: null, toolReceiptId: "valid", eventType: "tool.succeeded", createdAt: 10 }]);
     const loader = createCommittedToolContextSourceLoader(async (operation) => operation(db));
     const candidates = await loader.load({ runId: "run-7", stepId: "step-current", projectId: 7,
@@ -48,6 +54,15 @@ test("only a committed, schema-valid ToolReceipt in this Project Run enters Cont
       receiptIds: ["valid"] }), /outside Project scope/);
     await assert.rejects(loader.load({ runId: "run-7", stepId: "step-after", projectId: 7,
       receiptIds: ["invalid"] }), /evidence is invalid/);
+    await db("o_agentTrace").where({ id: "trace-1" }).update({ attemptId: "attempt-current" });
+    await assert.rejects(loader.load({ runId: "run-7", stepId: "step-current", projectId: 7,
+      receiptIds: ["valid"] }), /evidence is invalid/,
+    "a successful Trace with an Attempt from another Step is not a valid source");
+    await db("o_agentTrace").where({ id: "trace-1" }).update({ attemptId: "attempt-foreign" });
+    await assert.rejects(loader.load({ runId: "run-7", stepId: "step-current", projectId: 7,
+      receiptIds: ["valid"] }), /evidence is invalid/,
+    "an Attempt from another Run cannot lend provenance to this Tool result");
+    await db("o_agentTrace").where({ id: "trace-1" }).update({ attemptId: "attempt-before" });
     await db("o_agentTrace").where({ id: "trace-1" }).update({ stepId: "step-current" });
     await assert.rejects(loader.load({ runId: "run-7", stepId: "step-current", projectId: 7,
       receiptIds: ["valid"] }), /evidence is invalid/,
