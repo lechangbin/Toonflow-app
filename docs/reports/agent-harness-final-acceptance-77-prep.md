@@ -64,7 +64,7 @@ T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Scrip
 | compatibility | 旧 Socket 止损测试及 Script 正路径局部浏览器用例 | 旧入口退场/迁移、App/Web 共同 Run 行为及回滚矩阵 |
 | recovery | 单个隔离 Script Run 的进程中断被分为 `interrupted-model-call` | 多入口、审批、付费请求未知效果与跨进程恢复矩阵 |
 | security | Project/Tool/Skill 权限的定向拒绝测试 | 跨入口越权、恶意 Tool 参数、导出脱敏与浏览器网络响应核验 |
-| evaluation | T02 本地假适配 18/18 硬门；T11 账本与配对报告契约 | 72-cell 生产 Runtime 执行、独立 hard-gate/人工评审和来源核对；零费用阶段不得给质量结论 |
+| evaluation | T02 本地假适配 18/18 硬门；T11 账本、串行续跑与配对报告契约 | 72-cell 生产 Runtime 执行、独立 hard-gate/人工评审和来源核对；真实评测前不得给质量结论 |
 | build | 当前 App `yarn build`；先前 Web 六文件阶段配对 | 最终 App/Web 修订、全部 bundle 哈希冻结，目标 tag 的 Actions 平台构建 |
 | browser | Script 启动、停止、刷新、审批/拒绝、模型提案局部成功 | Production、跨入口、Reconnect、恢复、旧 Socket 全路径可重复自动化 |
 
