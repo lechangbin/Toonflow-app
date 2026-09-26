@@ -13,6 +13,7 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 已提供独立的 `script-harness-guidance-v1` Run scope 和 HTTP 启动/控制入口。新 scope 必须由 Skill 模式创建；启动事务核对 JWT 操作者确为 Project Owner，旧的只读 Run 入口不能创建新 scope，旧 inspect/cancel/list 无 Owner 信息时看不到新 scope。独立控制入口从 JWT 取 Owner 身份。旧 Script Socket 执行链尚未切换。
 - 两个只读 Tool 保留原 v1 修订和旧 scope，Harness 新 scope 使用独立 v2 修订/契约哈希；v2 若没有 Skill 授权闸门，受控 Tool 直接拒绝。历史 v1 ToolReceipt 仍按 v1 读取，不因 v2 发布而被误判损坏。新默认 Script Harness Runtime 组合启动准备器、Context 容量保护、配置 Vendor 与 T15 的 Project 当前 grant 解析器。
 - 增加定向正向链路：Owner 显式开启 Project `read:novel` grant，唯一选中的已发布 Skill 声明 `get_novel_text` 与所需能力；Model 在冻结 Skill Context 下调用受控 Tool，获得本 Project 章节，留下 v2 ToolReceipt 和允许的 PermissionDecision。另一条未声明 Tool 的 Skill 仍被拒绝。这里使用注入的假 Model，不涉及真实 Provider。
+- 正向链路现在直接核对 v2 Novel 与规划工作区只读 Tool 的成功 Trace 均指向该 Harness Run 的 Model Step/Attempt，不仅核对回执状态与 Skill 权限判定；这是 T12 因果来源接线在 T16 组合路径中的定向回归，尚未覆盖多轮 Model 或真实进程重启。
 - 收紧暂存的旧 Socket 边界：连接时从签名 JWT 取用户 ID，核验 Project Owner，并要求客户端 Memory 隔离键恰为本 Project 的 `projectId:scriptAgent`；旧 `get_script_content` 查询也加上 Project 条件，不能仅凭跨项目剧本 ID 读取内容。这是并行旧路径的隔离修补，不是新 Harness 的 Tool 迁移。
 - 定向验证新 Harness 在 Model 调度回调执行前取消：持久 Run 与 Step 进入 cancelled，重复 start 返回原 Run，之后即使旧调度回调运行也不调用 Model；全新 Runtime 实例可凭数据库 inspect/list 恢复已成功和已取消 Run 的状态。这里只模拟进程内新实例，并未做真实进程重启或运行中中断验收。
 - 新 Harness 增加后端受控 `get_script_workspace`：模型只能指定 `storySkeleton` 或 `adaptationStrategy`，后端按 Run Project 读取规划工作区，输出长度受 Tool schema 限制；不再为这项读取依赖前端 `getPlanData` 回调。它采用独立 Tool 修订和 `read:script-workspace` 能力，须由 Project Owner 单独授予、Skill 冻结修订声明并经过平台/Project/Run/角色交集；默认无 grant 时拒绝且不产生读取回执。旧 Socket 仍使用前端回调，新 Tool 不提供写入。孤立的待处理工作区读取回执也纳入重启恢复的失败结算。
@@ -31,6 +32,8 @@ Issue：`lechangbin/Toonflow-app#72`。本分支基于仍未验收的 T15 Skill 
 - 模型侧写入候选已接上独立提案 Tool，而非直接写 Tool：规划字段与单个剧本候选各有不可变 Tool 修订，仅要求 `propose:script-workspace` / `propose:script` 能力，不能自行授权 `write:*`。Owner 可分别设置可撤销 Project grant；冻结 Skill 必须声明相应 Tool 与能力。模型调用持有父 Run 的有效租约时，在同一事务中记录 Skill PermissionDecision 并建立子审批 Run；拒绝只留下权限判定、没有子提案。子 Run 冻结父 Run/操作/Skill 关联，重连投影复核权限判定哈希，父 Run 已完成也不意味着子提案获批。定向假模型测试覆盖提案、等待、全文复核、Owner 批准后才写入、grant 撤销、错误租约与跨类型未声明 Tool 拒绝；未调用真实 Provider。
 
 ## 阶段验证与边界
+
+此轮新增的 Harness v2 Tool Trace 归属断言在 `tests/scriptHarnessPreparation.test.ts` 的定向用例与 TypeScript 检查中通过。其余阶段验证记录如下；后续 T21 预验收基线不替代 T16 最终跨边界验收。
 
 最近一轮模型提案、grant HTTP、审批 Runtime/HTTP、Script 准备共 6 个定向测试通过，涵盖冻结 Skill 与当前 grant 交集、模型提案到 Owner 批准的独立闭环、撤销、错误租约及作用域拒绝；`yarn lint`（TypeScript noEmit）通过。写入审批 Runtime 与数据库就绪模块此前有 9 个定向用例通过，写入候选与目标状态有 5 个定向用例通过；受控 Tool、Context 等相关定向用例也通过。Web Harness/审批客户端共 6 个定向测试和无输出类型检查通过；普通 `yarn type-check` 在这个 Web 工作树的链接依赖下碰到其他既有文件的 TS2742 声明可移植性错误，未当作通过。未运行全量测试、构建、浏览器或真实 Provider。
 
