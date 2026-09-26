@@ -69,3 +69,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #105 单格编排切片：`runtimeCorpusCellRunner.ts` 把 `begin` → 注入的生产 cell 执行 → 去密钥快照 → `complete` 固定为一个顺序边界。已完成 cell 再次调用时在执行回调前拒绝，定向 Fake 来源 Run 测试验证不会额外启动调用。执行回调抛错或快照/完成校验失败时故意保留未完成标记，须人工核查 Provider 是否收到请求；这不是自动重试机制。当前模块仍未装配三类真实 Runtime、两套处理 Skill、全局模型预算及 72-cell CLI，因而 #105 保持开放。
 
 2026-09-27 #105 比较合同准备：`runtimeCorpusTreatment.ts` 为推荐的 Skill-only A/B 方案增加 v3 清单前置校验，要求 Skill 修订确实不同、其余 App/Schema/Runtime/Tool/Context/Memory/Model/Vendor 修订完全相同；定向用例验证 72 格及隐藏模型、Vendor、Runtime、Context 改动被拒绝。`agent-harness-t11-paired-study-plan.md` 明确普通 Script 只读格为未受 Skill 处理的负对照，交替执行顺序、单并发、固定分母、未知成本和盲评/holdout 边界。此方案仍是待冻结的预注册草案，未建立两份实际 Skill 修订、未从配置独立核验模型政策，也未运行 72 格或取得人工评分。
+
+2026-09-27 #105 实际模型政策切片：`runtimeCorpusModelPolicy.ts` 固定 Agnes 文本模型、温度 0、输出上限 512、上下文窗口 524288 和最多两步，并为这些字段生成模型政策哈希；包装实际 Vendor `openTextCall` 结果时先核对绑定再强制两步上限。定向测试用真实 `initDB`/ConfiguredVendor 装配分别核对 Script 与 Production 逻辑模型，改温度立即拒绝；随后单格 Agnes 探针复跑成功，仍仅 1/72 observed、一次模型入口、一次受控读取、质量未验证。当前它验证目标和局部步骤上限，但尚无跨进程 72-cell 总调用预算、两侧 Skill 实际修订或人工评分；#105 保持开放。

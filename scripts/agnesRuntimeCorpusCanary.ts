@@ -4,7 +4,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { stepCountIs } from "ai";
 import knexFactory from "knex";
 
 import { createAgentRuntime, PRODUCTION_HARNESS_ROLE,
@@ -17,6 +16,8 @@ import { materializeAgentRuntimeProjectFixture,
   verifyMaterializedAgentRuntimeProjectFixture } from "../src/eval/agentRuntimeProjectFixture";
 import { createEvaluationRunRuntime } from "../src/eval/evaluationRun";
 import { inspectRuntimeCorpusCellGates } from "../src/eval/runtimeCorpusGateVerifier";
+import { bindT11AgnesTextCall, T11_AGNES_TEXT_POLICY_REVISION } from
+  "../src/eval/runtimeCorpusModelPolicy";
 import initDB from "../src/lib/initDB";
 import { createSkillRuntime } from "../src/skillRuntime";
 import { createProjectSkillGrantRuntime, resolveProductionSkillGrants } from
@@ -89,7 +90,7 @@ async function main(): Promise<void> {
       tool: revision("src/controlledTools/definitions.ts"),
       context: revision("src/context/index.ts"),
       memory: revision("src/memory/projectMemory.ts"), skill: draft.contentHash,
-      model: "agnes-3.0-flash", vendor: revision("data/vendor/agnes.ts") };
+      model: T11_AGNES_TEXT_POLICY_REVISION, vendor: revision("data/vendor/agnes.ts") };
     const evaluation = createEvaluationRunRuntime({ work, now: Date.now, createId });
     const frozen = await freezeAgentRuntimeEvaluationRun(evaluation, {
       manifestSource, studyId: "agnes-t11-single-cell-canary", seeds: [11, 29],
@@ -104,12 +105,11 @@ async function main(): Promise<void> {
       skillMode: { grants: resolveProductionSkillGrants },
       openTextCall: async (target) => {
         assert.deepEqual(target, { kind: "logical", key: "productionAgent:decisionAgent" });
-        const call = await vendor.openTextCall(target);
-        assert.equal(call.target.contextWindowTokens, 524_288);
+        const call = bindT11AgnesTextCall(await vendor.openTextCall(target));
         return { ...call, invokeText: (input) => {
           modelInvocations++;
           if (modelInvocations > 1) throw new Error("Canary Model budget exceeded");
-          return call.invokeText({ ...input, stopWhen: stepCountIs(2) });
+          return call.invokeText(input);
         } };
       } });
     const adapter = createEvaluationAgentCase({ evaluation, runtime,
