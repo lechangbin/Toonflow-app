@@ -52,6 +52,8 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 单格编排练习：读 `runtimeCorpusCellRunner.ts`，指出外部 Model 的唯一可调用位置为何必须在 `begin` 之后；为何执行异常不删除 `inflight`。重复已完成 cell 时，`begin` 会在调用执行回调前拒绝。再说明它只固定顺序，尚未承担三类 Runtime 组装、真实模型预算与完整矩阵驱动。
 
+预检练习：同一编排器在 `begin` 前提供 `preflight`。模拟模型绑定漂移，观察 marker 和 Model 回调都不会出现；解释为什么真正的执行适配器在 marker 后仍须重新检查修订与夹具，以免预检/调用间的状态变化绕过保护。
+
 实验设计练习：读 `runtimeCorpusTreatment.ts` 与 `docs/reports/agent-harness-t11-paired-study-plan.md`。为什么 Skill-only 比较还要锁定 App/Schema/Runtime/Tool/Context/Memory/Model/Vendor？哪些普通 Script 只读 case 不受 Skill 处理、只能作负对照？若两次“seed”仅是不同请求身份，为什么不能称为受控随机重复？本文件是预注册草案，不能当成已经观察到的收益。
 
 模型绑定练习：读 `runtimeCorpusModelPolicy.ts` 和 Agnes 单格脚本。区分“清单声明的 Model 修订”和“Vendor 从当前数据库解析出的实际目标”；尝试在定向测试中把 Production 温度改为 1，观察为何在 Model 调用前拒绝。固定两步上限也不等于 72 格总调用次数已持久计量；进程崩溃后仍需先核查外部效果。

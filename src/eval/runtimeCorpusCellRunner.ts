@@ -14,8 +14,10 @@ export async function runRuntimeCorpusCell(input: {
   previousCheckpointSha256: string;
   sequence: number;
   secretValues: string[];
+  preflight?(): Promise<void>;
   execute(): Promise<unknown>;
 }) {
+  await input.preflight?.();
   await input.journal.begin(input.cellId, input.previousCheckpointSha256);
   await input.execute();
   const saved = await writeSanitizedRuntimeCorpusCheckpoint({ db: input.db,

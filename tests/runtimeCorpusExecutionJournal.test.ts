@@ -67,6 +67,14 @@ test("T11 journal binds completion to a new source-verified v3 cell and predeces
         caseId: caseName.id, seed: 11, agentRunId: runId });
     };
     const baseline = `baseline:${caseName.id}:11`;
+    let preflightModelCalls = 0;
+    await assert.rejects(runRuntimeCorpusCell({ journal, db, directory,
+      cellId: baseline, previousCheckpointSha256: initial.sha256,
+      sequence: 1, secretValues: [secret],
+      preflight: async () => { throw new Error("model binding drift"); },
+      execute: async () => { preflightModelCalls++; } }), /model binding drift/u);
+    assert.equal(preflightModelCalls, 0);
+    await journal.assertResumeSafe();
     await journal.begin(baseline, initial.sha256);
     await assert.rejects(journal.complete(baseline, initial), /discontinuous/u);
     await assert.rejects(journal.assertResumeSafe(), /unresolved in-flight/u);
