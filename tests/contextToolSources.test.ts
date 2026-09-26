@@ -5,7 +5,7 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { createCommittedToolContextSourceLoader } from "../src/context/toolSources";
-import { TOOL_DEFINITIONS } from "../src/controlledTools";
+import { HARNESS_TOOL_DEFINITIONS, TOOL_DEFINITIONS } from "../src/controlledTools";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -54,6 +54,18 @@ test("only a committed, schema-valid ToolReceipt in this Project Run enters Cont
     assert.equal(candidates[0].compact?.transform.sourceContentHash, candidates[0].contentHash);
     assert.equal(candidates[0].compact?.transform.strategy, "novel-text-prefix-128");
     assert.equal(candidates[0].compact?.content.includes("可读原文".repeat(600)), false);
+    const workspaceOutput = JSON.stringify({ key: "storySkeleton", content: "已读草稿".repeat(600) });
+    await db("o_agentToolReceipt").insert({ id: "workspace", runId: "run-7",
+      toolName: "get_script_workspace", toolRevision: HARNESS_TOOL_DEFINITIONS.get_script_workspace.revision,
+      status: "succeeded", outputJson: workspaceOutput, outputHash: hash(workspaceOutput), updatedAt: 10 });
+    await db("o_agentTrace").insert({ id: "trace-2", runId: "run-7", stepId: "step-before",
+      attemptId: "attempt-before", sequence: 2, predecessorTraceId: "trace-1",
+      toolReceiptId: "workspace", eventType: "tool.succeeded", createdAt: 12 });
+    const workspace = await loader.load({ runId: "run-7", stepId: "step-current", projectId: 7,
+      receiptIds: ["workspace"] });
+    assert.equal(workspace[0].compact, undefined,
+      "new Script Tools must not inherit an unrelated Novel projection strategy");
+    assert.ok(workspace[0].content.includes("已读草稿"));
     await assert.rejects(loader.load({ runId: "run-7", stepId: "step-current", projectId: 9,
       receiptIds: ["valid"] }), /outside Project scope/);
     await assert.rejects(loader.load({ runId: "run-7", stepId: "step-after", projectId: 7,
