@@ -12,7 +12,9 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 待评审清单读 `src/eval/evaluationAssessmentQueue.ts`：一个 Run 已成功为何对应 Golden 硬门仍是 `not-evaluated`？为什么必需产物清单、rubric 版本和失败分类可以先列出来，却不能自行填“通过”？
 
-新增评审账本读 `src/eval/evaluationAssessment.ts`：为什么必须先有已观察的生产 Run、按冻结 Golden 顺序逐项提交 hard gate、对 0/1/2 评分附评审人和证据引用？为什么已评审状态必须列齐必需产物种类？为何同内容重复提交可以幂等而冲突评审不能覆盖？记录/重读如何绑定来源 Run 证据哈希？注意当前只校验证据路径形态，未读取文件、核对 artifact 哈希或独立验证评分人身份；`evaluationAssessmentQueue` 仍是静态工作队列，不代表评审结果。
+新增评审账本读 `src/eval/evaluationAssessment.ts`：为什么必须先有已观察的生产 Run、按冻结 Golden 顺序逐项提交 hard gate、对 0/1/2 评分附评审人和证据引用？为什么已评审状态必须列齐必需产物种类？为何同内容重复提交可以幂等而冲突评审不能覆盖？记录/重读如何绑定来源 Run 证据哈希？提交阶段只校验证据路径形态；`evaluationAssessmentQueue` 仍是静态工作队列，不代表评审结果。
+
+文件验真读 `src/eval/evaluationArtifactVerifier.ts`：检查器为何要明确根目录、拒绝穿越或越界、读取真实文件并重算声明产物 SHA-256？为什么它返回的 `gateSemanticsVerified` 与 `reviewerIdentityVerified` 仍是 `false`？结合测试说明文件级检查器尚未接入配对报告，也没有真实 72-cell 产物，不能将“有复算函数”偷换为“评测证据已核验”。
 
 结果级矩阵读 `src/eval/evaluationPairedAssessmentReport.ts`：36 对的分母为什么不能因缺失 Run 或失败而缩小？从一个真实 Run 和一个已提交评审出发，解释 `missing-run`、`unassessed`、`pending-review`、`gate-failed`、`run-failed` 与 `reviewed` 的区别。分差只有同案同 seed 双侧已提交硬门通过且评审完成时才出现；为什么它仍只能叫暂定分差，不能称为候选质量提升？
 
