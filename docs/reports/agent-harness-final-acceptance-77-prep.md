@@ -83,3 +83,5 @@ T17 加入 Agnes 3.0 Flash、Image 2.5 Flash、Video 2.5 Flash 目录与适配�
 最终七类验收仍全部 pending；正式冻结前还需将 App/Web/Model/Vendor/数据库/产物修订固定，在同一来源组合上重跑全量测试、72-cell 与人工 rubric、真实受控生产生成链、恢复/安全/浏览器矩阵及可复算证据。当前不得打发布标签或创建 Release。
 
 随后修正 Agnes 图片适配器的静默截断：六张参考图原样提交，超过已实测上限的七张在任何网络 POST 前明确拒绝，避免无提示丢失素材。T17 修订 `756a89b5` 已沿依赖分支同步到当前 T21；当前组合的 Agnes/能力目录/Runtime 定向测试仍为 32/32，`yarn lint` 通过。此修正没有改变上述 Provider 探针的覆盖范围，也不触发七类状态更新。
+
+T11 执行口径核对发现，T02 的 18 例是确定性领域场景，不是已经准备好的 18 条生产 Agent 输入。必须先冻结逐例 Runtime fixture、Project 状态与原 hard gate 的证据映射，或明确版本化新的 AgentRuntime corpus；不能用通用提示词填满 72 格后沿用 T02 的 18/18 结论。详见 T11 阶段报告与 Issue #67；evaluation 类别继续 pending。
