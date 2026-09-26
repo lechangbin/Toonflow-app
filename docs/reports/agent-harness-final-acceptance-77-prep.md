@@ -27,3 +27,7 @@ Issue：`lechangbin/Toonflow-app#77`。本文件记录验收证据索引契约�
 - 第三条 Run `af163834-44b4-4918-ad77-b407634a35ae` 使用 30 秒慢假服务，确认假服务已收到一次调用后中断 App 进程；租约过期后再次重启。浏览器刷新并重新进入 Harness，`list/inspect` 返回 `waiting` 与 `interrupted-model-call`，Trace 为 `run.created → run.started → interrupted-model-call`。临时 SQLite 查询该 Run 的持久 Output 数为 0；假服务日志仅有一次模型请求，重启未重放。它证明这个受控场景的故障分类，不涵盖多进程、真实 Provider 对账或所有恢复分支。
 
 这是一轮手工浏览器预验收，未覆盖 Production、写入审批/拒绝、视频/图片 Vendor、所有旧 Socket 黄金路径、跨入口共同 UI、完整安全矩阵和 Golden Eval；七类最终验收索引仍全部 pending。最终发布前还要把环境搭建与浏览器断言自动化、保存脱敏日志和哈希，并在冻结 App/Web 修订上重跑。
+
+## 2026-09-26 T11 评审记录接线后的复测
+
+T11 新增不可更新的 Golden cell 评审记录表与来源证据复核，并逐级合入 App T21。T11 分支的两项相关定向测试、TypeScript 检查和完整 App Node 测试均退出码 0；T21 合入后两项定向、`yarn lint`、`yarn build` 与完整 App Node 测试也退出码 0。构建仍产生待最终冻结时提交/核对的 `data/serve/app.js`；此次命令输出未保存为带结果哈希的独立发布证据。现有 72-cell Golden 矩阵仍未逐例执行，评审证据路径仅验证格式，不能据此把评测类别写成 passed。
