@@ -1,6 +1,6 @@
 # Agent Harness T11 导学：评测记录与生产执行的边界
 
-> 阶段学习材料。已有持久生产 Run 证据账本和逐 cell 的不可更新评审记录接口，但 72-cell 未执行、证据引用未独立验真，也没有结果级成对报告；按用户要求不生成简历文案。
+> 阶段学习材料。已有持久生产 Run 证据账本、逐 cell 的不可更新评审记录与暂定配对报告，但 72-cell 未执行、证据引用未独立验真；按用户要求不生成简历文案。
 
 先读 `CONTEXT.md` 的 Evaluation Run 与 Agent Run 定义，再读 `docs/adr/0027-evaluate-through-production-agent-runs.md`。核心区别是：Evaluation Run 固定比较问题与样本，Agent Run 才执行一次实际 Agent 请求。若评测另写一套 Agent 流程，它通过也无法证明生产流程可用。
 
@@ -12,7 +12,9 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 待评审清单读 `src/eval/evaluationAssessmentQueue.ts`：一个 Run 已成功为何对应 Golden 硬门仍是 `not-evaluated`？为什么必需产物清单、rubric 版本和失败分类可以先列出来，却不能自行填“通过”？
 
-新增评审账本读 `src/eval/evaluationAssessment.ts`：为什么必须先有已观察的生产 Run、按冻结 Golden 顺序逐项提交 hard gate、对 0/1/2 评分附评审人和证据引用？为何同内容重复提交可以幂等而冲突评审不能覆盖？记录/重读如何绑定来源 Run 证据哈希？注意当前只校验证据路径形态，未读取文件、核对 artifact 哈希或独立验证评分人身份；`evaluationAssessmentQueue` 也尚未消费新记录生成完整结果级报告。
+新增评审账本读 `src/eval/evaluationAssessment.ts`：为什么必须先有已观察的生产 Run、按冻结 Golden 顺序逐项提交 hard gate、对 0/1/2 评分附评审人和证据引用？为什么已评审状态必须列齐必需产物种类？为何同内容重复提交可以幂等而冲突评审不能覆盖？记录/重读如何绑定来源 Run 证据哈希？注意当前只校验证据路径形态，未读取文件、核对 artifact 哈希或独立验证评分人身份；`evaluationAssessmentQueue` 仍是静态工作队列，不代表评审结果。
+
+结果级矩阵读 `src/eval/evaluationPairedAssessmentReport.ts`：36 对的分母为什么不能因缺失 Run 或失败而缩小？从一个真实 Run 和一个已提交评审出发，解释 `missing-run`、`unassessed`、`pending-review`、`gate-failed`、`run-failed` 与 `reviewed` 的区别。分差只有同案同 seed 双侧已提交硬门通过且评审完成时才出现；为什么它仍只能叫暂定分差，不能称为候选质量提升？
 
 沿 `src/agentRuntime/causalTrace.ts` 的 `auditCausalTraceTimeline` 检查来源 Trace：最后一个 ID 正确但中间前驱断开，为什么不能算有效评测证据？
 
@@ -20,7 +22,7 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 再看 Run 的 `createdAt`/`completedAt`：缺少完成时间时能否报告延迟？为什么未知 Provider 收费必须是 `null`，不能填 0？
 
-自测：为什么每个 case/seed/variant 要绑定不同 Agent Run？为何 queued Run 不能计入结果？如果一条来源 Run 的版本在记录之后变化，报告是否仍可采用？为什么一个真实 Runtime/Fake Model 的只读样例不代表 18 个 Golden case 已迁移？当前接口允许记录人工质量分与硬门判定，但没有独立验真、完整分母或可信费用，所以仍不能得出策略收益结论。
+自测：为什么每个 case/seed/variant 要绑定不同 Agent Run？为何 queued Run 不能计入结果？如果一条来源 Run 的版本在记录之后变化，报告是否仍可采用？为什么一个真实 Runtime/Fake Model 的只读样例不代表 18 个 Golden case 已迁移？当前接口虽有完整矩阵分母，并允许记录人工质量分与硬门判定，但没有 72-cell 实际覆盖、独立验真或可信费用，所以仍不能得出策略收益结论。
 
 新自测：若 baseline 与 candidate 使用同一 case ID 但不同输入正文，哪一层拒绝？若有人直接调用账本把一个无关终态 Run 填入样本，哪个请求身份检查拒绝？注意 seed 当前仅参与样本请求 ID，还不是 Model 随机性控制。
 
