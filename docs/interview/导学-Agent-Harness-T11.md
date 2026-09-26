@@ -29,3 +29,5 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 交叉核对旧 Draft PR #90：它的独立表与覆盖报告为何不能和当前账本并列上线？怎样迁移其 18-case 分母和“覆盖非质量”语义，同时只保留一个 Evaluation Run 身份？
 
 对照清单的 baseline/candidate：schema、Model、Vendor 被要求相同，否则改变的不只是候选策略；App、Runtime、Tool、Context、Memory、Skill 可因实验而不同。解释为什么“版本相同”仍不能代替同预算、同数据和真实逐例测量。
+
+文件证据练习：读 `evaluationArtifactVerifier.ts` 和 `evaluationPairedAssessmentReport.ts`。先不传 `artifactRoot` 生成报告，确认 `evidenceFileCheckedRuns` 为 0；再提供隔离测试目录，查看两侧返回的实际文件哈希；最后改动一个已声明 SHA-256 的产物字节，确认报告整体拒绝。解释为何文件哈希正确仍不能证明 hard-gate 判定正确、评审人真实、或该文件确实来自引用的生产 Run。报告 v2 只把文件级验真接入可选路径，最终验收尚未完成。

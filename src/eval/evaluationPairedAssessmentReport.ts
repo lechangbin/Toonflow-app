@@ -1,8 +1,9 @@
 import { createEvaluationAssessmentLedger, type EvaluationAssessment } from "./evaluationAssessment";
+import { verifyEvaluationAssessmentArtifacts } from "./evaluationArtifactVerifier";
 import { createEvaluationCoverageReport } from "./evaluationCoverageReport";
 import { createEvaluationRunRuntime } from "./evaluationRun";
 
-export const PAIRED_ASSESSMENT_REPORT_VERSION = "toonflow.paired-assessment-report.v1" as const;
+export const PAIRED_ASSESSMENT_REPORT_VERSION = "toonflow.paired-assessment-report.v2" as const;
 type Evaluation = ReturnType<typeof createEvaluationRunRuntime>;
 type Assessment = ReturnType<typeof createEvaluationAssessmentLedger>;
 type SideState = "missing-run" | "unassessed" | "run-failed" | "pending-review" | "gate-failed" | "reviewed";
@@ -12,6 +13,7 @@ export interface PairedAssessmentSide {
   sourceEvidenceHash: string | null;
   score: 0 | 1 | 2 | null;
   failedGates: string[];
+  evidenceFiles: Array<{ ref: string; sha256: string }> | null;
 }
 
 export interface PairedAssessmentReport {
@@ -25,6 +27,7 @@ export interface PairedAssessmentReport {
   blockedPairs: number;
   observedRuns: number;
   assessedRuns: number;
+  evidenceFileCheckedRuns: number;
   cells: Array<{ caseId: string; partition: string; seed: number;
     baseline: PairedAssessmentSide; candidate: PairedAssessmentSide;
     provisionalScoreDelta: number | null }>;
@@ -34,7 +37,8 @@ const key = (variant: string, caseId: string, seed: number) => `${variant}:${cas
 
 /** A complete matrix of submitted reviews, never a verified quality or cost conclusion. */
 export async function createEvaluationPairedAssessmentReport(evaluation: Evaluation,
-  assessment: Assessment, evaluationRunId: string): Promise<PairedAssessmentReport> {
+  assessment: Assessment, evaluationRunId: string,
+  options: { artifactRoot?: string } = {}): Promise<PairedAssessmentReport> {
   const coverage = await createEvaluationCoverageReport(evaluation, evaluationRunId);
   const inspected = await assessment.inspect(evaluationRunId);
   if (inspected.expected !== coverage.expectedPerVariant * 2) {
@@ -42,19 +46,34 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
   }
   const byKey = new Map<string, EvaluationAssessment>(inspected.assessments.map((entry) =>
     [key(entry.variant, entry.caseId, entry.seed), entry]));
+  const verifiedFiles = new Map<string, Array<{ ref: string; sha256: string }>>();
+  if (options.artifactRoot !== undefined) {
+    for (const review of inspected.assessments) {
+      const verified = await verifyEvaluationAssessmentArtifacts(options.artifactRoot, review);
+      if (verified.sourceEvidenceHash !== review.sourceEvidenceHash
+        || !verified.artifactHashesVerified || verified.gateSemanticsVerified
+        || verified.reviewerIdentityVerified) {
+        throw new Error("Assessment file verification contract changed");
+      }
+      verifiedFiles.set(key(review.variant, review.caseId, review.seed), verified.files);
+    }
+  }
   const side = (variant: "baseline" | "candidate", caseId: string, seed: number,
     observed: boolean): PairedAssessmentSide => {
     const review = byKey.get(key(variant, caseId, seed));
     if (!observed) {
       if (review) throw new Error("Assessment exists without an observed production Run");
-      return { state: "missing-run", sourceEvidenceHash: null, score: null, failedGates: [] };
+      return { state: "missing-run", sourceEvidenceHash: null, score: null,
+        failedGates: [], evidenceFiles: null };
     }
-    if (!review) return { state: "unassessed", sourceEvidenceHash: null, score: null, failedGates: [] };
+    if (!review) return { state: "unassessed", sourceEvidenceHash: null, score: null,
+      failedGates: [], evidenceFiles: null };
     const failedGates = review.hardGates.filter((gate) => !gate.passed).map((gate) => gate.id);
     const state = review.failureClassification ? "run-failed" : failedGates.length ? "gate-failed"
       : review.quality.state === "pending" ? "pending-review" : "reviewed";
     return { state, sourceEvidenceHash: review.sourceEvidenceHash,
-      score: review.quality.score, failedGates };
+      score: review.quality.score, failedGates,
+      evidenceFiles: verifiedFiles.get(key(variant, caseId, seed)) ?? null };
   };
   const cells = coverage.cells.map((cell) => {
     const baseline = side("baseline", cell.caseId, cell.seed, cell.baseline === "observed");
@@ -72,7 +91,7 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
     completePairs: cells.filter((cell) => cell.provisionalScoreDelta !== null).length,
     blockedPairs: cells.filter((cell) => cell.provisionalScoreDelta === null).length,
     observedRuns: coverage.baseline.observed + coverage.candidate.observed,
-    assessedRuns: inspected.assessed, cells };
+    assessedRuns: inspected.assessed, evidenceFileCheckedRuns: verifiedFiles.size, cells };
 }
 
 export function renderEvaluationPairedAssessmentMarkdown(report: PairedAssessmentReport): string {
@@ -83,7 +102,8 @@ export function renderEvaluationPairedAssessmentMarkdown(report: PairedAssessmen
     `Golden manifest: ${report.caseManifestHash}`,
     `Pairs: ${report.completePairs}/${report.expectedPairs} provisionally reviewed; ${report.blockedPairs} blocked`,
     `Production Runs: ${report.observedRuns}/${report.expectedPairs * 2} observed; ${report.assessedRuns} assessed`,
-    "Gate decisions and scores are submitted assessments; evidence references and assessor identity are not independently verified.",
+    `Evidence reference files: ${report.evidenceFileCheckedRuns}/${report.assessedRuns} independently resolved and hashed.`,
+    "Gate decisions, scores and assessor identity are submitted assessments, not independently verified; file hashing does not validate their semantics or source-Run linkage.",
     "A score delta is shown only when both sides have submitted passing gates and reviewed quality. It is not a causal improvement claim.",
     "Cost is unknown; this report makes no latency or cost comparison.", "",
     "| Case | Partition | Seed | Baseline | Candidate | Provisional score delta |",

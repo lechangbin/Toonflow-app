@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
@@ -16,6 +18,15 @@ const goldenManifestJson = fs.readFileSync(path.join(process.cwd(),
 const golden = JSON.parse(goldenManifestJson);
 
 test("T11 assessment persists one reviewed result only for an observed Golden production Run", async () => {
+  const artifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), "toonflow-paired-assessment-"));
+  fs.mkdirSync(path.join(artifactRoot, "artifacts"));
+  fs.mkdirSync(path.join(artifactRoot, "docs/reports"), { recursive: true });
+  fs.writeFileSync(path.join(artifactRoot, "artifacts/model-count.json"), '{"calls":2}\n');
+  fs.writeFileSync(path.join(artifactRoot, "artifacts/candidate-names.json"), '["a","b"]\n');
+  fs.writeFileSync(path.join(artifactRoot, "docs/reports/verified-gate.md"), "fixture gate\n");
+  fs.writeFileSync(path.join(artifactRoot, "docs/reports/review.md"), "fixture review\n");
+  const fileHash = (relative: string) => createHash("sha256")
+    .update(fs.readFileSync(path.join(artifactRoot, relative))).digest("hex");
   const db = knexFactory({ client: "better-sqlite3",
     connection: { filename: ":memory:" }, useNullAsDefault: true });
   const originalLog = console.log;
@@ -47,9 +58,9 @@ test("T11 assessment persists one reviewed result only for an observed Golden pr
       hardGates: golden.cases[0].hardGates.map((gate: { id: string }) =>
         ({ id: gate.id, passed: true, evidenceRefs: ["docs/reports/verified-gate.md"] })),
       artifacts: [{ kind: "modelCallCount", ref: "artifacts/model-count.json",
-        sha256: "b".repeat(64) },
+        sha256: fileHash("artifacts/model-count.json") },
       { kind: "candidateNames", ref: "artifacts/candidate-names.json",
-        sha256: "c".repeat(64) }],
+        sha256: fileHash("artifacts/candidate-names.json") }],
       quality: { state: "reviewed" as const, rubricVersion: golden.qualityRubricVersion,
         score: 2 as const, reviewerId: "reviewer-1", reason: "逐项人工核对",
         evidenceRefs: ["docs/reports/review.md"] },
@@ -97,9 +108,22 @@ test("T11 assessment persists one reviewed result only for an observed Golden pr
     assert.equal(paired.blockedPairs, 35);
     assert.equal(paired.cells[0].provisionalScoreDelta, 1);
     assert.equal(paired.disclaimer, "self-reported-assessments-not-independent-verification");
+    assert.equal(paired.evidenceFileCheckedRuns, 0);
+    const checked = await createEvaluationPairedAssessmentReport(evaluation, ledger,
+      "evaluation-1", { artifactRoot });
+    assert.equal(checked.evidenceFileCheckedRuns, 2);
+    assert.equal(checked.cells[0].baseline.evidenceFiles?.length, 4);
+    assert.equal(checked.cells[0].candidate.evidenceFiles?.length, 4);
+    assert.match(renderEvaluationPairedAssessmentMarkdown(checked), /2\/2 independently resolved/u);
+    fs.writeFileSync(path.join(artifactRoot, "artifacts/model-count.json"), '{"calls":3}\n');
+    await assert.rejects(createEvaluationPairedAssessmentReport(evaluation, ledger,
+      "evaluation-1", { artifactRoot }), /digest differs/u);
     observed.cases[0].runVersion = 4;
     await assert.rejects(ledger.inspect("evaluation-1"), /frozen source evidence/u);
     await assert.rejects(createEvaluationPairedAssessmentReport(evaluation, ledger, "evaluation-1"),
       /frozen source evidence/u);
-  } finally { await db.destroy(); }
+  } finally {
+    await db.destroy();
+    fs.rmSync(artifactRoot, { recursive: true, force: true });
+  }
 });
