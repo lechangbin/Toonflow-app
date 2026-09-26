@@ -50,8 +50,9 @@ async function main() {
       semanticVersion: "1.0.0", content: "只提供只读的本地测试建议。",
       manifest: { schemaVersion: "toonflow.skill-manifest.v1",
         skillId: definition.id, semanticVersion: "1.0.0",
-        compatibleRoles: ["scriptAgent"], intents: ["read-only-guidance"],
-        dependencies: [], requestedTools: [], requestedCapabilities: [], resources: [],
+        compatibleRoles: ["scriptAgent"], intents: ["read-only-guidance", "script-proposal"],
+        dependencies: [], requestedTools: ["propose_script_workspace_write"],
+        requestedCapabilities: ["propose:script-workspace"], resources: [],
         routing: { priority: 10, keywords: [] }, attribution: "local-browser-fixture" } });
     await skills.publish({ revisionId: draft.id, expectedContentHash: draft.contentHash });
     await skills.activate({ skillId: definition.id, revisionId: draft.id,
