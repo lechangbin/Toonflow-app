@@ -20,6 +20,12 @@ async function createDatabase(): Promise<Knex> {
     table.integer("cancellationRequestedAt");
     table.text("leaseOwnerId"); table.text("leaseEpoch"); table.integer("leaseExpiresAt"); table.integer("fence");
   });
+  await db.schema.createTable("o_agentRunStep", (table) => {
+    table.text("id").primary(); table.text("runId"); table.text("status");
+  });
+  await db.schema.createTable("o_agentRunAttempt", (table) => {
+    table.text("id").primary(); table.text("runId"); table.text("stepId"); table.text("status");
+  });
   await db.schema.createTable("o_novel", (table) => {
     table.integer("id").primary(); table.integer("projectId"); table.integer("chapterIndex");
     table.text("chapter"); table.text("chapterData");
@@ -41,7 +47,8 @@ async function createDatabase(): Promise<Knex> {
     table.unique(["runId", "operationId"]);
   });
   await db.schema.createTable("o_agentTrace", (table) => {
-    table.text("id").primary(); table.text("runId"); table.text("toolReceiptId"); table.text("predecessorTraceId");
+    table.text("id").primary(); table.text("runId"); table.text("stepId"); table.text("attemptId");
+    table.text("toolReceiptId"); table.text("predecessorTraceId");
     table.integer("sequence"); table.text("eventType"); table.text("runStatus"); table.text("diagnosticSchemaVersion");
     table.text("diagnostic"); table.integer("createdAt"); table.unique(["runId", "sequence"]);
   });
@@ -50,6 +57,9 @@ async function createDatabase(): Promise<Knex> {
     status: "running", leaseOwnerId: "worker-1",
     leaseEpoch: "epoch-1", leaseExpiresAt: 200, fence: 1,
   });
+  await db("o_agentRunStep").insert({ id: "step-1", runId: "run-1", status: "running" });
+  await db("o_agentRunAttempt").insert({ id: "attempt-1", runId: "run-1",
+    stepId: "step-1", status: "running" });
   await db("o_novel").insert([
     { id: 10, projectId: 7, chapterIndex: 1, chapter: "开篇", chapterData: "一段安全的小说正文" },
     { id: 11, projectId: 8, chapterIndex: 2, chapter: "隔离", chapterData: "别的项目正文" },
@@ -92,6 +102,30 @@ test("controlled read Tools persist bounded outputs, immutable revisions, receip
     assert.deepEqual(traces.map((row) => row.predecessorTraceId), [null, traces[0].id, traces[1].id, traces[2].id]);
     assert.ok(traces.every((row) => !JSON.stringify(row).includes("小说正文")), "Trace never copies project text");
     assert.equal(traces[1].toolReceiptId, text.receipt.id);
+  } finally { await db.destroy(); }
+});
+
+test("a read Tool binds successful Trace to its active Step and Attempt for later Context", async () => {
+  const db = await createDatabase();
+  try {
+    const tools = runtime(db);
+    const scoped = { ...request("get_novel_text", "scoped-read", 10),
+      stepId: "step-1", attemptId: "attempt-1" };
+    const result = await tools.execute(scoped);
+    assert.equal(result.status, "recorded");
+    const traces = await db("o_agentTrace").where({ runId: "run-1" }).orderBy("sequence");
+    assert.deepEqual(traces.map((row) => [row.eventType, row.stepId, row.attemptId]),
+      [["tool.started", "step-1", "attempt-1"], ["tool.succeeded", "step-1", "attempt-1"]]);
+    assert.deepEqual(await tools.execute(scoped), result,
+      "the same operation may replay only inside its original Attempt");
+    await db("o_agentRunAttempt").insert({ id: "attempt-2", runId: "run-1",
+      stepId: "step-1", status: "running" });
+    await assert.rejects(tools.execute({ ...scoped, attemptId: "attempt-2" }),
+      ToolOperationConflictError);
+    const denied = await tools.execute({ ...request("get_novel_text", "wrong-attempt", 10),
+      stepId: "step-1", attemptId: "missing-attempt" });
+    assert.equal(denied.status, "rejected");
+    assert.equal((await db("o_agentToolReceipt").where({ operationId: "wrong-attempt" })).length, 0);
   } finally { await db.destroy(); }
 });
 

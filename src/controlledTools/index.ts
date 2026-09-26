@@ -23,6 +23,8 @@ export type { ControlledToolName } from "./definitions";
 export interface ExecuteControlledToolInput {
   runId: string;
   projectId: number;
+  stepId?: string;
+  attemptId?: string;
   operationId: string;
   toolName: ControlledToolName;
   revision: string;
@@ -93,11 +95,14 @@ function safeDiagnostic(kind: "contractRejected" | "authorizationFailed" | "exec
 
 async function insertTrace(
   trx: Knex.Transaction,
-  input: { runId: string; receiptId: string; eventType: string; now: number; createId(): string; diagnosticKind?: "authorizationFailed" | "executionFailed" | "invalidOutput" | "timeout" },
+  input: { runId: string; stepId?: string; attemptId?: string; receiptId: string;
+    eventType: string; now: number; createId(): string;
+    diagnosticKind?: "authorizationFailed" | "executionFailed" | "invalidOutput" | "timeout" },
 ): Promise<void> {
   const diagnostic = input.diagnosticKind ? safeDiagnostic(input.diagnosticKind, "trace") : undefined;
   await appendCausalTrace(trx, {
     id: input.createId(), runId: input.runId, toolReceiptId: input.receiptId,
+    ...(input.stepId ? { stepId: input.stepId, attemptId: input.attemptId } : {}),
     eventType: input.eventType, diagnostic, createdAt: input.now,
   });
 }
@@ -162,6 +167,9 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
       const parsed = definition?.inputSchema.safeParse(request.input);
       if (!definition || request.revision !== definition.revision || !parsed?.success
         || !request.runId || !Number.isSafeInteger(request.projectId) || request.projectId <= 0
+        || (request.stepId === undefined) !== (request.attemptId === undefined)
+        || (request.stepId !== undefined && !/^[A-Za-z0-9._:@-]{1,128}$/u.test(request.stepId))
+        || (request.attemptId !== undefined && !/^[A-Za-z0-9._:@-]{1,128}$/u.test(request.attemptId))
         || !/^[A-Za-z0-9._:-]{1,128}$/u.test(request.operationId)) {
         return { status: "rejected", diagnostic: safeDiagnostic("contractRejected", "toolReceipt") };
       }
@@ -176,6 +184,13 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
           .first("id", "projectId");
         if (!run || request.lease.runId !== request.runId) return { kind: "rejected" as const };
         await assertAgentRunLease(trx, request.lease, now);
+        if (request.stepId && request.attemptId) {
+          const step = await trx("o_agentRunStep").where({ id: request.stepId,
+            runId: request.runId, status: "running" }).first("id");
+          const attempt = await trx("o_agentRunAttempt").where({ id: request.attemptId,
+            runId: request.runId, stepId: request.stepId, status: "running" }).first("id");
+          if (!step || !attempt) return { kind: "rejected" as const };
+        }
         const contractHash = toolDefinitionContractHash(definition);
         const catalog = await trx("o_agentToolDefinition").where({ name: definition.name, revision: definition.revision }).first();
         if (catalog && catalog.contractHash !== contractHash) throw new ToolEvidenceCorruptError();
@@ -186,6 +201,14 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
         const existing = await trx("o_agentToolReceipt").where({ runId: run.id, operationId: request.operationId }).first();
         if (existing) {
           if (existing.toolName !== definition.name || existing.toolRevision !== definition.revision || existing.inputHash !== inputHash) {
+            throw new ToolOperationConflictError();
+          }
+          const origin = await trx("o_agentTrace").where({ runId: run.id,
+            toolReceiptId: existing.id }).whereIn("eventType", ["tool.started", "tool.denied"])
+            .orderBy("sequence", "asc").first("stepId", "attemptId");
+          if (!origin) throw new ToolEvidenceCorruptError();
+          if ((origin.stepId ?? null) !== (request.stepId ?? null)
+            || (origin.attemptId ?? null) !== (request.attemptId ?? null)) {
             throw new ToolOperationConflictError();
           }
           return { kind: "existing" as const, receipt: readReceipt(existing) };
@@ -202,6 +225,7 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
         });
         await insertTrace(trx, {
           runId: run.id, receiptId, eventType: authorizedNovel ? "tool.started" : "tool.denied",
+          ...(request.stepId ? { stepId: request.stepId, attemptId: request.attemptId } : {}),
           now, createId: dependencies.createId,
           ...(!authorizedNovel ? { diagnosticKind: "authorizationFailed" as const } : {}),
         });
@@ -249,6 +273,7 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
         if (changed !== 1) throw new ToolEvidenceCorruptError();
         await insertTrace(trx, {
           runId: request.runId, receiptId: current.id,
+          ...(request.stepId ? { stepId: request.stepId, attemptId: request.attemptId } : {}),
           eventType: failure ? "tool.failed" : "tool.succeeded", now: completedAt,
           createId: dependencies.createId, ...(failure ? { diagnosticKind: failure } : {}),
         });
