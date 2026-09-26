@@ -25,8 +25,12 @@ import {
   type AgentRunCheckpointPayload,
 } from "@/agentRuntime";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
+import { assertAgentRunLease, type AgentRunLease } from "@/agentRuntime/lease";
+import { resolveProductionDerivedAssetProposalGrants } from "@/skillRuntime/grants";
+import { authorizeBoundSkillDefinition } from "@/skillRuntime/permissions";
 
-import { DERIVED_ASSET_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
+import { DERIVED_ASSET_TOOL_DEFINITION, PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION,
+  toolDefinitionContractHash } from "./definitions";
 
 export const DERIVED_ASSET_RUN_SCOPE = "approved-derived-asset-write-v1" as const;
 export const DERIVED_ASSET_RUN_ROLE = "productionAgent" as const;
@@ -43,6 +47,19 @@ export interface ProposeDerivedAssetInput {
   clientRequestId: string;
   operationId: string;
   payload: unknown;
+}
+
+export interface ProposeDerivedAssetFromAgentInput {
+  projectId: number;
+  parentRunId: string;
+  skillId: string;
+  lease: AgentRunLease;
+  operationId: string;
+  payload: unknown;
+}
+
+export function derivedAssetProposalClientRequestId(parentRunId: string, operationId: string): string {
+  return `derived-proposal:${hash(`${parentRunId}:${operationId}`).slice(0, 64)}`;
 }
 
 export interface DecideDerivedAssetInput {
@@ -67,12 +84,15 @@ export interface DerivedAssetApprovalSnapshot {
   status: ApprovalStatus;
   expiresAt: number;
   preview: { effect: "create" | "update"; parentAssetId: number; assetId: number | null; expectedVersion: number; name: string; dimensions: string[] };
+  payload?: Payload;
   runStatus: string;
   runVersion: number;
   allowedActions: string[];
   receiptStatus: string;
   receiptOutput?: { assetId: number; revision: number; effect: "created" | "updated" };
   attentionReason?: string;
+  sourceRunId?: string;
+  sourceOperationId?: string;
 }
 
 export interface DerivedAssetWriteDependencies {
@@ -228,7 +248,37 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number, runI
   const receipt = approval && await db("o_agentToolReceipt").where({ id: approval.receiptId, runId }).first();
   const catalog = await db("o_agentToolDefinition").where({ name: tool.name, revision: tool.revision }).first();
   if (!approval || !receipt) throw new DerivedAssetWriteRejectedError("unsafe");
+  let source: { parentRunId?: unknown; parentOperationId?: unknown;
+    skillId?: unknown; proposalContractHash?: unknown };
+  try { source = JSON.parse(run.input); } catch { throw new DerivedAssetWriteRejectedError("unsafe"); }
+  const hasSource = source.parentRunId !== undefined || source.parentOperationId !== undefined
+    || source.skillId !== undefined || source.proposalContractHash !== undefined;
+  if (hasSource) {
+    if (typeof source.parentRunId !== "string" || typeof source.parentOperationId !== "string"
+      || typeof source.skillId !== "string"
+      || source.proposalContractHash !== toolDefinitionContractHash(
+        PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION)
+      || approval.operationId !== source.parentOperationId) {
+      throw new DerivedAssetWriteRejectedError("unsafe");
+    }
+    const parent = await db("o_agentRun").where({ id: source.parentRunId,
+      projectId, role: "productionAgent", scope: "production-harness-v1" }).first("id");
+    const binding = parent && await db("o_agentRunSkillBinding")
+      .where({ runId: parent.id, skillId: source.skillId }).first("revisionId");
+    const permission = binding && await db("o_agentSkillPermissionDecision")
+      .where({ runId: parent.id, operationId: source.parentOperationId,
+        skillId: source.skillId,
+        toolName: PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION.name }).first();
+    if (!permission || permission.skillRevisionId !== binding.revisionId
+      || hash(permission.decisionJson) !== permission.decisionHash) {
+      throw new DerivedAssetWriteRejectedError("unsafe");
+    }
+    try {
+      if (JSON.parse(permission.decisionJson).allowed !== true) throw new Error("denied");
+    } catch { throw new DerivedAssetWriteRejectedError("unsafe"); }
+  }
   let preview: DerivedAssetApprovalSnapshot["preview"];
+  let verifiedPayload: Payload | undefined;
   let evidenceCorrupt = !(["pending", "approved", "rejected", "expired", "conflicted", "corrupt"] as string[]).includes(approval.status)
     || (approval.status === "pending" && receipt.status !== "pending")
     || (approval.status === "approved" && receipt.status !== "succeeded")
@@ -244,6 +294,7 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number, runI
       || receipt.inputHash !== approval.payloadHash
       || receipt.operationId !== approval.operationId
       || !inspectPersistableText(approval.payloadJson).ok) throw new Error("invalid approval evidence");
+    verifiedPayload = parsed;
   } catch {
     evidenceCorrupt = true;
     preview = { effect: "update", parentAssetId: 0, assetId: null, expectedVersion: 0,
@@ -261,17 +312,20 @@ async function readSnapshot(db: Knex | Knex.Transaction, projectId: number, runI
     toolName: tool.name, toolRevision: approval.toolRevision, payloadHash: approval.payloadHash,
     contractHash: approval.contractHash, status: evidenceCorrupt ? "corrupt" : approval.status, expiresAt: approval.expiresAt,
     preview, runStatus: run.status, runVersion: run.version,
+    ...(!evidenceCorrupt && verifiedPayload ? { payload: verifiedPayload } : {}),
     allowedActions: evidenceCorrupt ? ["inspect"] : JSON.parse(run.allowedActions), receiptStatus: receipt.status,
     ...(receiptOutput ? { receiptOutput } : {}),
     ...(run.attentionReason ? { attentionReason: run.attentionReason } : {}),
+    ...(hasSource ? { sourceRunId: source.parentRunId as string,
+      sourceOperationId: source.parentOperationId as string } : {}),
   };
 }
 
 /** User-supervised local write seam. The proposal is durable before any approval action. */
 export function createDerivedAssetWriteRuntime(dependencies: DerivedAssetWriteDependencies) {
   const ttl = dependencies.approvalTtlMs ?? DERIVED_ASSET_APPROVAL_TTL_MS;
-  return {
-    async propose(input: ProposeDerivedAssetInput): Promise<DerivedAssetApprovalSnapshot> {
+  async function persistProposal(input: ProposeDerivedAssetInput,
+    source?: ProposeDerivedAssetFromAgentInput): Promise<DerivedAssetApprovalSnapshot | null> {
       const parsed = tool.inputSchema.safeParse(input.payload);
       if (!parsed.success || !Number.isSafeInteger(input.projectId) || input.projectId <= 0
         || !/^[A-Za-z0-9._:-]{1,128}$/u.test(input.clientRequestId)
@@ -284,10 +338,60 @@ export function createDerivedAssetWriteRuntime(dependencies: DerivedAssetWriteDe
       const payloadHash = hash(payloadJson);
       const contractHash = toolDefinitionContractHash(tool);
       const requestFingerprint = hash(JSON.stringify({ projectId: input.projectId, actorUserId: input.actorUserId, role: DERIVED_ASSET_RUN_ROLE,
-        scope: DERIVED_ASSET_RUN_SCOPE, operationId: input.operationId, toolRevision: tool.revision, payloadHash }));
+        scope: DERIVED_ASSET_RUN_SCOPE, operationId: input.operationId, toolRevision: tool.revision, payloadHash,
+        ...(source ? { parentRunId: source.parentRunId, skillId: source.skillId } : {}) }));
       const now = dependencies.now();
       return dependencies.work((db) => db.transaction(async (tx) => {
         await assertProjectOwner(tx, input.projectId, input.actorUserId);
+        if (source) {
+          const parent = await tx("o_agentRun").where({ id: source.parentRunId,
+            projectId: input.projectId, role: "productionAgent", scope: "production-harness-v1",
+            status: "running" }).whereNull("cancellationRequestedAt").first("id", "input");
+          let parentActor: unknown;
+          try { parentActor = JSON.parse(parent?.input).actorUserId; }
+          catch { throw new DerivedAssetWriteRejectedError("scope"); }
+          if (!parent || parentActor !== input.actorUserId
+            || source.lease.runId !== parent.id) throw new DerivedAssetWriteRejectedError("scope");
+          await assertAgentRunLease(tx, source.lease, now);
+          const proposalTool = PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION;
+          const proposalContractHash = toolDefinitionContractHash(proposalTool);
+          const proposalCatalog = await tx("o_agentToolDefinition")
+            .where({ name: proposalTool.name, revision: proposalTool.revision }).first("contractHash");
+          if (proposalCatalog && proposalCatalog.contractHash !== proposalContractHash) {
+            throw new DerivedAssetWriteRejectedError("unsafe");
+          }
+          if (!proposalCatalog) await tx("o_agentToolDefinition").insert({
+            id: dependencies.createId(), name: proposalTool.name, revision: proposalTool.revision,
+            contractHash: proposalContractHash, policy: JSON.stringify(proposalTool.policy), createdAt: now,
+          });
+          const grants = await resolveProductionDerivedAssetProposalGrants(tx, {
+            runId: parent.id, projectId: input.projectId });
+          const authority = await authorizeBoundSkillDefinition(tx, {
+            runId: parent.id, projectId: input.projectId,
+            skillId: source.skillId, ...grants }, proposalTool);
+          const decisionJson = JSON.stringify(authority.decision);
+          const previous = await tx("o_agentSkillPermissionDecision")
+            .where({ runId: parent.id, operationId: source.operationId }).first();
+          if (previous) {
+            if (previous.skillId !== source.skillId || previous.toolName !== proposalTool.name
+              || previous.skillRevisionId !== authority.skillRevisionId
+              || hash(previous.decisionJson) !== previous.decisionHash) {
+              throw new DerivedAssetWriteRejectedError("unsafe");
+            }
+            let recorded: { allowed?: unknown };
+            try { recorded = JSON.parse(previous.decisionJson); }
+            catch { throw new DerivedAssetWriteRejectedError("unsafe"); }
+            if (recorded.allowed !== true || !authority.decision.allowed) return null;
+          } else {
+            await tx("o_agentSkillPermissionDecision").insert({
+              id: dependencies.createId(), runId: parent.id, skillId: source.skillId,
+              skillRevisionId: authority.skillRevisionId, operationId: source.operationId,
+              toolName: proposalTool.name, decisionJson,
+              decisionHash: hash(decisionJson), createdAt: now,
+            });
+            if (!authority.decision.allowed) return null;
+          }
+        }
         const existing = await tx("o_agentRun").where({ projectId: input.projectId, role: DERIVED_ASSET_RUN_ROLE,
           scope: DERIVED_ASSET_RUN_SCOPE, clientRequestId: input.clientRequestId }).first();
         if (existing) {
@@ -313,7 +417,11 @@ export function createDerivedAssetWriteRuntime(dependencies: DerivedAssetWriteDe
         await tx("o_agentRun").insert({
           id: runId, projectId: input.projectId, scriptId: payload.scriptId, role: DERIVED_ASSET_RUN_ROLE,
           scope: DERIVED_ASSET_RUN_SCOPE, clientRequestId: input.clientRequestId,
-          requestFingerprint, input: JSON.stringify({ operationId: input.operationId, payloadHash }),
+          requestFingerprint, input: JSON.stringify({ operationId: input.operationId, payloadHash,
+            ...(source ? { parentRunId: source.parentRunId,
+              parentOperationId: source.operationId, skillId: source.skillId,
+              proposalContractHash: toolDefinitionContractHash(
+                PRODUCTION_DERIVED_ASSET_PROPOSAL_TOOL_DEFINITION) } : {}) }),
           status: "waiting", waitingReason: "tool-approval", attentionReason: "tool-approval-required",
           allowedActions: JSON.stringify(["inspect", "approve", "reject"]), version: 1,
           createdAt: now, updatedAt: now, startedAt: now, fence: 0,
@@ -350,6 +458,24 @@ export function createDerivedAssetWriteRuntime(dependencies: DerivedAssetWriteDe
         if (!snapshot) throw new DerivedAssetWriteRejectedError("unsafe");
         return snapshot;
       }));
+  }
+  return {
+    async propose(input: ProposeDerivedAssetInput): Promise<DerivedAssetApprovalSnapshot> {
+      return (await persistProposal(input))!;
+    },
+
+    async proposeFromAgent(source: ProposeDerivedAssetFromAgentInput): Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }> {
+      const actorUserId = await dependencies.work(async (db) => {
+        const project = await db("o_project").where({ id: source.projectId }).first("userId");
+        return Number(project?.userId);
+      });
+      const result = await persistProposal({ projectId: source.projectId, actorUserId,
+        clientRequestId: derivedAssetProposalClientRequestId(
+          source.parentRunId, source.operationId), operationId: source.operationId,
+        payload: source.payload }, source);
+      return result ? { status: "pending", approvalRunId: result.runId,
+        approvalId: result.id } : { status: "denied" };
     },
 
     async inspect(projectId: number, runId: string, actorUserId: number): Promise<DerivedAssetApprovalSnapshot | null> {

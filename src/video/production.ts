@@ -25,6 +25,7 @@ import {
   type VideoGenerationItem,
   type VideoTrackInputReference,
 } from "./productionContract";
+import { resolveVideoInputPath } from "./inputResolution";
 
 export { videoGenerationBatchRequestSchema, videoGenerationItemSchema } from "./productionContract";
 export type { VideoGenerationBatchRequest } from "./productionContract";
@@ -36,7 +37,15 @@ interface PreparedGeneration {
   generationTaskId: number;
   artifactRevisionId: number;
   command: ValidatedVideoGenerationCommand;
+  commandSnapshot: Record<string, unknown>;
   vendorId: string;
+}
+
+export interface PreparedVideoCommand {
+  trackId: number;
+  vendorId: string;
+  command: ValidatedVideoGenerationCommand;
+  commandSnapshot: Record<string, unknown>;
 }
 
 /**
@@ -67,32 +76,18 @@ function serialize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-async function resolveInputPath(database: Knex, reference: VideoTrackInputReference): Promise<string> {
-  if (reference.source === "uploaded-media") return reference.filePath!;
-  if (reference.source === "storyboard") {
-    const row = await database("o_storyboard").where("id", reference.sourceId).select("filePath").first();
-    if (!row?.filePath) throw new Error(`Storyboard ${reference.sourceId} 没有可用图片`);
-    return row.filePath;
-  }
-  const row = await database("o_assets")
-    .where("o_assets.id", reference.sourceId)
-    .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-    .select("o_image.filePath")
-    .first();
-  if (!row?.filePath) throw new Error(`Asset ${reference.sourceId} 没有可用图片`);
-  return row.filePath;
-}
-
 async function resolveImages(
-  dependencies: VideoProductionDependencies,
+  dependencies: Pick<VideoProductionDependencies, "db" | "readImage">,
   references: VideoTrackInputReference[],
+  projectId: number, scriptId: number,
 ): Promise<Map<string, ResolvedImage>> {
   const roles = new Set<string>();
   const resolved = new Map<string, ResolvedImage>();
   for (const reference of references) {
     if (roles.has(reference.role)) throw new Error(`输入角色 ${reference.role} 只能出现一次`);
     roles.add(reference.role);
-    const filePath = await dependencies.db((db) => resolveInputPath(db, reference));
+    const filePath = await dependencies.db((db) =>
+      resolveVideoInputPath(db, reference, projectId, scriptId));
     resolved.set(reference.role, { mediaType: "image", base64: await dependencies.readImage(filePath) });
   }
   return resolved;
@@ -184,6 +179,38 @@ async function materializePrompt(
   return { profileId: profile.id, renderedPrompt: rendered };
 }
 
+/** Read/validate only. The caller must separately own Vendor submission and its durable intent. */
+export async function prepareVideoGenerationCommand(
+  dependencies: Pick<VideoProductionDependencies, "db" | "profiles" | "vendor" | "readImage">,
+  input: { projectId: number; scriptId: number; item: VideoGenerationItem },
+): Promise<PreparedVideoCommand> {
+  const { item } = input;
+  const track = await dependencies.db((db) => db("o_videoTrack")
+    .where({ id: item.trackId, projectId: input.projectId, scriptId: input.scriptId })
+    .first("id"));
+  if (!track) throw new Error(`Video Track ${item.trackId} 不属于当前 Project/Script`);
+  const inspection = await dependencies.vendor.inspectVendor(item.vendorId);
+  const model = inspection.models.find(
+    (candidate) => candidate.type === "video" && candidate.modelName === item.modelId,
+  );
+  if (!model || model.type !== "video") {
+    throw new Error(`未找到 Video Model ${item.vendorId}:${item.modelId}`);
+  }
+  const capability = model.capabilities.find((candidate) => candidate.id === item.capabilityId);
+  if (!capability) throw new Error(`${item.vendorId}:${item.modelId} 不支持 ${item.capabilityId}`);
+  validateVideoTrackInputReferences(capability, item.inputs);
+  const promptRevision = await dependencies.db((db) =>
+    materializePrompt(db, item, input.projectId, dependencies.profiles));
+  if (capability.promptProfileId !== promptRevision.profileId) {
+    throw new Error(`${item.modelId}/${item.capabilityId} 要求 Prompt Profile ${capability.promptProfileId}`);
+  }
+  const images = await resolveImages(dependencies, item.inputs, input.projectId, input.scriptId);
+  const command = validateVideoGenerationCommand(model,
+    buildCommand(item, promptRevision.renderedPrompt, images));
+  return { trackId: item.trackId, vendorId: item.vendorId, command,
+    commandSnapshot: commandSnapshot(command, item.inputs) };
+}
+
 async function normalizeAdapterResult(dependencies: VideoProductionDependencies, result: string): Promise<string> {
   if (!result.startsWith("http")) return result;
   return dependencies.downloadVideo(result);
@@ -242,35 +269,16 @@ async function executePrepared(dependencies: VideoProductionDependencies, prepar
 export function createVideoProduction(dependencies: VideoProductionDependencies) {
 async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVideoGenerationBatch> {
   const input = videoGenerationBatchRequestSchema.parse(inputValue);
-  const profiles = dependencies.profiles;
   const preparedItems: Omit<PreparedGeneration, "trackId" | "videoId" | "generationTaskId" | "artifactRevisionId">[] = [];
 
   for (const item of input.items) {
-    const track = await dependencies.db((db) =>
-      db("o_videoTrack")
-        .where({ id: item.trackId, projectId: input.projectId, scriptId: input.scriptId })
-        .first(),
-    );
-    if (!track) throw new Error(`Video Track ${item.trackId} 不属于当前 Project/Script`);
-    const inspection = await dependencies.vendor.inspectVendor(item.vendorId);
-    const model = inspection.models.find(
-      (candidate) => candidate.type === "video" && candidate.modelName === item.modelId,
-    );
-    if (!model || model.type !== "video") {
-      throw new Error(`未找到 Video Model ${item.vendorId}:${item.modelId}`);
-    }
-    const capability = model.capabilities.find((candidate) => candidate.id === item.capabilityId);
-    if (!capability) throw new Error(`${item.vendorId}:${item.modelId} 不支持 ${item.capabilityId}`);
-    validateVideoTrackInputReferences(capability, item.inputs);
-    const promptRevision = await dependencies.db((db) => materializePrompt(db, item, input.projectId, profiles));
-    if (capability.promptProfileId !== promptRevision.profileId) {
-      throw new Error(`${item.modelId}/${item.capabilityId} 要求 Prompt Profile ${capability.promptProfileId}`);
-    }
-    const images = await resolveImages(dependencies, item.inputs);
-    const command = validateVideoGenerationCommand(model, buildCommand(item, promptRevision.renderedPrompt, images));
+    const prepared = await prepareVideoGenerationCommand(dependencies, {
+      projectId: input.projectId, scriptId: input.scriptId, item,
+    });
     preparedItems.push({
-      command,
-      vendorId: item.vendorId,
+      command: prepared.command,
+      commandSnapshot: prepared.commandSnapshot,
+      vendorId: prepared.vendorId,
       videoPath: dependencies.createVideoPath(input.projectId),
     });
   }
@@ -311,7 +319,7 @@ async function startVideoGenerationBatch(inputValue: unknown): Promise<StartedVi
           modelId: item.modelId,
           capabilityId: item.capabilityId,
           promptRevisionId: item.promptRevisionId,
-          commandSnapshot: serialize(commandSnapshot(preparedItems[index].command, item.inputs)),
+          commandSnapshot: serialize(preparedItems[index].commandSnapshot),
           status: "running",
           startedAt: dependencies.now(),
         });

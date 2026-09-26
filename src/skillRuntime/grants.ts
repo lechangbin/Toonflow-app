@@ -6,6 +6,11 @@ import type { ControlledToolName } from "@/controlledTools/definitions";
 const READ_NOVEL = "read:novel" as const;
 const READ_SCRIPT_WORKSPACE = "read:script-workspace" as const;
 const READ_SCRIPT = "read:script" as const;
+const READ_PRODUCTION_WORKSPACE = "read:production-workspace" as const;
+const PROPOSE_BILLABLE_IMAGE = "propose:billable-image" as const;
+const PROPOSE_DERIVED_ASSET = "propose:derived-asset" as const;
+const PROPOSE_STORYBOARD = "propose:storyboard" as const;
+const PROPOSE_VIDEO = "propose:track-video" as const;
 const PROPOSE_SCRIPT_WORKSPACE = "propose:script-workspace" as const;
 const PROPOSE_SCRIPT = "propose:script" as const;
 
@@ -23,7 +28,10 @@ export function createProjectSkillGrantRuntime(dependencies: {
 }) {
   async function setCapability(input: { projectId: number; actorUserId: number;
     expectedVersion: number; active: boolean }, capability: typeof READ_NOVEL | typeof READ_SCRIPT_WORKSPACE
-      | typeof READ_SCRIPT | typeof PROPOSE_SCRIPT_WORKSPACE | typeof PROPOSE_SCRIPT) {
+      | typeof READ_SCRIPT | typeof READ_PRODUCTION_WORKSPACE
+      | typeof PROPOSE_SCRIPT_WORKSPACE | typeof PROPOSE_SCRIPT
+      | typeof PROPOSE_BILLABLE_IMAGE | typeof PROPOSE_DERIVED_ASSET
+      | typeof PROPOSE_STORYBOARD | typeof PROPOSE_VIDEO) {
     if (![input.projectId, input.actorUserId].every((value) =>
       Number.isSafeInteger(value) && value > 0)
       || !Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0
@@ -60,6 +68,51 @@ export function createProjectSkillGrantRuntime(dependencies: {
     }));
   }
   return {
+    async inspectProduction(projectId: number, actorUserId: number) {
+      if (![projectId, actorUserId].every((value) =>
+        Number.isSafeInteger(value) && value > 0)) {
+        throw new TypeError("Production grant inspect is invalid");
+      }
+      return dependencies.work(async (db) => {
+        if (!await db("o_project").where({ id: projectId,
+          userId: actorUserId }).first("id")) {
+          throw new ProjectSkillGrantOwnershipError();
+        }
+        const rows = await db("o_agentProjectCapabilityGrant")
+          .where({ projectId }).whereIn("capability", [READ_PRODUCTION_WORKSPACE,
+            PROPOSE_BILLABLE_IMAGE, PROPOSE_DERIVED_ASSET,
+            PROPOSE_STORYBOARD, PROPOSE_VIDEO]);
+        const snapshot = (capability: string) => {
+          const row = rows.find((entry) => entry.capability === capability);
+          return { active: row?.state === "active", version: Number(row?.version ?? 0) };
+        };
+        return { workspace: snapshot(READ_PRODUCTION_WORKSPACE),
+          imageProposal: snapshot(PROPOSE_BILLABLE_IMAGE),
+          derivedProposal: snapshot(PROPOSE_DERIVED_ASSET),
+          storyboardProposal: snapshot(PROPOSE_STORYBOARD),
+          videoProposal: snapshot(PROPOSE_VIDEO) };
+      });
+    },
+    async setReadProductionWorkspace(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, READ_PRODUCTION_WORKSPACE);
+    },
+    async setProposeBillableImage(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, PROPOSE_BILLABLE_IMAGE);
+    },
+    async setProposeDerivedAsset(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, PROPOSE_DERIVED_ASSET);
+    },
+    async setProposeStoryboard(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, PROPOSE_STORYBOARD);
+    },
+    async setProposeVideo(input: { projectId: number; actorUserId: number;
+      expectedVersion: number; active: boolean }) {
+      return setCapability(input, PROPOSE_VIDEO);
+    },
     async inspectScriptProposals(projectId: number, actorUserId: number) {
       if (![projectId, actorUserId].every((value) =>
         Number.isSafeInteger(value) && value > 0)) {
@@ -125,6 +178,9 @@ export async function resolveScriptProposalGrants(tx: Knex.Transaction, input: {
 export async function resolveReadOnlyScriptSkillGrants(tx: Knex.Transaction, input: {
   runId: string; projectId: number; toolName: ControlledToolName;
 }) {
+  if (input.toolName === "get_production_workspace_text") {
+    throw new TypeError("Production Tool cannot use Script Skill grants");
+  }
   const run = await tx("o_agentRun").where({ id: input.runId,
     projectId: input.projectId }).first("id", "role", "scope");
   const project = await tx("o_project").where({ id: input.projectId }).first("id");
@@ -142,4 +198,92 @@ export async function resolveReadOnlyScriptSkillGrants(tx: Knex.Transaction, inp
       || run.scope === "script-harness-guidance-v1" ? [capability] : [],
     roleGrants: run.role === "scriptAgent" ? [capability] : [],
   };
+}
+
+/** Production capability is distinct from Script grants and defaults to deny. */
+export async function resolveProductionSkillGrants(tx: Knex.Transaction, input: {
+  runId: string; projectId: number; toolName: ControlledToolName;
+}) {
+  if (input.toolName !== "get_production_workspace_text") {
+    throw new TypeError("Unsupported Production Tool grant request");
+  }
+  const run = await tx("o_agentRun").where({ id: input.runId,
+    projectId: input.projectId }).first("id", "role", "scope");
+  const project = await tx("o_project").where({ id: input.projectId }).first("id");
+  if (!run || !project) throw new Error("Production grant is outside Run Project scope");
+  const grant = await tx("o_agentProjectCapabilityGrant")
+    .where({ projectId: input.projectId, capability: READ_PRODUCTION_WORKSPACE,
+      state: "active" }).first("version");
+  return { platformGrants: [READ_PRODUCTION_WORKSPACE],
+    projectGrants: grant ? [READ_PRODUCTION_WORKSPACE] : [],
+    runGrants: run.scope === "production-harness-v1" ? [READ_PRODUCTION_WORKSPACE] : [],
+    roleGrants: run.role === "productionAgent" ? [READ_PRODUCTION_WORKSPACE] : [] };
+}
+
+/** A model proposal cannot borrow actual generation authority. */
+export async function resolveProductionImageProposalGrants(tx: Knex.Transaction, input: {
+  runId: string; projectId: number;
+}) {
+  const run = await tx("o_agentRun").where({ id: input.runId,
+    projectId: input.projectId }).first("id", "role", "scope");
+  const project = await tx("o_project").where({ id: input.projectId }).first("id");
+  if (!run || !project) throw new Error("Production image proposal is outside Run Project scope");
+  const grant = await tx("o_agentProjectCapabilityGrant")
+    .where({ projectId: input.projectId, capability: PROPOSE_BILLABLE_IMAGE,
+      state: "active" }).first("version");
+  return { platformGrants: [PROPOSE_BILLABLE_IMAGE],
+    projectGrants: grant ? [PROPOSE_BILLABLE_IMAGE] : [],
+    runGrants: run.scope === "production-harness-v1" ? [PROPOSE_BILLABLE_IMAGE] : [],
+    roleGrants: run.role === "productionAgent" ? [PROPOSE_BILLABLE_IMAGE] : [] };
+}
+
+/** Derived Asset proposals require a distinct Owner grant, never write authority. */
+export async function resolveProductionDerivedAssetProposalGrants(tx: Knex.Transaction, input: {
+  runId: string; projectId: number;
+}) {
+  const run = await tx("o_agentRun").where({ id: input.runId,
+    projectId: input.projectId }).first("id", "role", "scope");
+  const project = await tx("o_project").where({ id: input.projectId }).first("id");
+  if (!run || !project) throw new Error("Production derived Asset proposal is outside Run Project scope");
+  const grant = await tx("o_agentProjectCapabilityGrant")
+    .where({ projectId: input.projectId, capability: PROPOSE_DERIVED_ASSET,
+      state: "active" }).first("version");
+  return { platformGrants: [PROPOSE_DERIVED_ASSET],
+    projectGrants: grant ? [PROPOSE_DERIVED_ASSET] : [],
+    runGrants: run.scope === "production-harness-v1" ? [PROPOSE_DERIVED_ASSET] : [],
+    roleGrants: run.role === "productionAgent" ? [PROPOSE_DERIVED_ASSET] : [] };
+}
+
+/** Storyboard proposal authority never includes the actual write capability. */
+export async function resolveProductionStoryboardProposalGrants(tx: Knex.Transaction, input: {
+  runId: string; projectId: number;
+}) {
+  const run = await tx("o_agentRun").where({ id: input.runId,
+    projectId: input.projectId }).first("id", "role", "scope");
+  const project = await tx("o_project").where({ id: input.projectId }).first("id");
+  if (!run || !project) throw new Error("Production Storyboard proposal is outside Run Project scope");
+  const grant = await tx("o_agentProjectCapabilityGrant")
+    .where({ projectId: input.projectId, capability: PROPOSE_STORYBOARD,
+      state: "active" }).first("version");
+  return { platformGrants: [PROPOSE_STORYBOARD],
+    projectGrants: grant ? [PROPOSE_STORYBOARD] : [],
+    runGrants: run.scope === "production-harness-v1" ? [PROPOSE_STORYBOARD] : [],
+    roleGrants: run.role === "productionAgent" ? [PROPOSE_STORYBOARD] : [] };
+}
+
+/** A Video proposal is not the billable generate:track-video authority. */
+export async function resolveProductionVideoProposalGrants(tx: Knex.Transaction, input: {
+  runId: string; projectId: number;
+}) {
+  const run = await tx("o_agentRun").where({ id: input.runId,
+    projectId: input.projectId }).first("id", "role", "scope");
+  const project = await tx("o_project").where({ id: input.projectId }).first("id");
+  if (!run || !project) throw new Error("Production Video proposal is outside Run Project scope");
+  const grant = await tx("o_agentProjectCapabilityGrant")
+    .where({ projectId: input.projectId, capability: PROPOSE_VIDEO,
+      state: "active" }).first("version");
+  return { platformGrants: [PROPOSE_VIDEO],
+    projectGrants: grant ? [PROPOSE_VIDEO] : [],
+    runGrants: run.scope === "production-harness-v1" ? [PROPOSE_VIDEO] : [],
+    roleGrants: run.role === "productionAgent" ? [PROPOSE_VIDEO] : [] };
 }

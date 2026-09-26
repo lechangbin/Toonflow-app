@@ -16,7 +16,7 @@ Built-in Vendor identity, release inclusion, and default-enable policy are owned
 
 | Vendor | Models in this iteration | Capabilities | Audio policy |
 | --- | --- | --- | --- |
-| `agnes` | Agnes Video V2.0 | text, source image, ordered keyframes | native, always enabled |
+| `agnes` | Agnes Video 2.5 Flash, V2.0 | 2.5 Flash: text, source image, first/last frame；V2.0: text, source image, ordered keyframes | native, always enabled |
 | `volcengine` | Seedance 2.0 / Fast | text, one source image | native, optional |
 | `volcengineSd2` | Seedance 2.0 / Fast | text, one source image | native, optional |
 | `minimax` | Hailuo 2.3 / Fast, Hailuo-02 | text, one source image; Hailuo-02 also strict first/last | none |
@@ -28,6 +28,8 @@ participate in the Video Capability registry.
 The canonical capability IDs are `text-to-video`, `image-to-video`, `first-last-frame`, and `keyframe-to-video`. Video Models use `capabilities`; the former Video `mode` field is rejected. Image Model `mode` is a separate contract.
 
 Agnes keyframes use semantic roles. Two images mean `first-frame` to `last-frame`; three mean `first-frame` to `intermediate-keyframe` to `last-frame`. Array position never assigns meaning. Seedance nine-image reference generation is a deferred capability, not an extension of `image-to-video`.
+
+Agnes Video 2.5 Flash uses the modern OpenAI Videos-compatible wire contract: `mode=text/keyframe`, string `seconds` 4–12, `size=720P`, `aspect_ratio`, and task polling by `video_id` plus `model_name`. The public docs illustrate image URLs; the user reports a successful Base64 image-input test, so the adapter sends `data:image/png;base64,...` for source/first/last frames, with fake-network regression coverage. This turn has not independently completed a real image-input Video 2.5 task because the provider queue rejected the video canary. The configured capability omits V2.0's optional intermediate keyframe. The provider-independent output selection remains lower-case `720p`; only the Agnes adapter translates it to the provider's upper-case `720P`. The older V2.0 dimensions/frame-count path remains available.
 
 ## Prompt pipeline
 
@@ -61,6 +63,11 @@ Build validates packaged Vendor sources and Prompt Profiles. Startup additionall
 ## HTTP and future Agent adapters
 
 The current prompt routes call `generateVideoPromptRevision`; current video routes call `startVideoGenerationBatch`. Prompt generation and manual Prompt Revision edits carry the complete Track selection (`vendorId`, `modelId`, `capabilityId`, `inputs`, `output`, and `audio`) and persist it atomically with the active `promptRevisionId`. Single and batch routes share the strict selection schemas in `src/video/productionContract.ts`. Future Project Agent tools must call these shared modules with `requestedBy: "project-agent"`; they should not duplicate orchestration or treat socket messages as state.
+
+T17 compatibility restriction: the existing HTTP workbench single/batch prompt generation, manual Prompt Revision, and single/batch Video generation routes require the authenticated Project Owner and accept only `requestedBy: "user"` (or default to it). Batch Prompt generation verifies ownership for every target Project before any item runs. A browser may not label its own request as `project-agent`; that origin is reserved for a future authorized Agent module. The shared modules still support both values for trusted callers. The Video routes have not been migrated to the Agent Run/VendorRequest ledger: their current async Vendor call treats provider errors as failed, and a timeout can be ambiguous. Do not expose them as a controlled model Tool or automatically replay their requests until that effect contract is implemented and tested.
+
+The compatibility Video image resolver checks Storyboard Project/Script ownership, Asset Project ownership plus Script ownership or explicit Script–Asset linkage, and uploaded-media paths under the exact `/<projectId>/video-inputs/<scriptId>/` namespace before reading image bytes. This prevents cross-Project IDs and path traversal from reaching the Vendor command. It does not turn the manual routes into a controlled Agent generation path or a general authorization layer for arbitrary HTTP callers.
+The upload route also requires the authenticated Project Owner before writing an input file. Read-only and other manual workbench routes are outside this focused authorization slice.
 
 The future infinite-canvas Agent window may compose asset extraction, prompt generation, and video generation, but the backend records remain the source of truth. That UI and Agent-tool expansion is outside Issue #2.
 

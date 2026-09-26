@@ -8,11 +8,15 @@ import {
   hashCheckpointPayload,
   type AgentRunCheckpointPayload,
 } from "@/agentRuntime";
+import { assertAgentRunLease, type AgentRunLease } from "@/agentRuntime/lease";
 import type { DatabaseWork } from "@/database";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
+import { resolveProductionImageProposalGrants } from "@/skillRuntime/grants";
+import { authorizeBoundSkillDefinition } from "@/skillRuntime/permissions";
 
-import { BILLABLE_IMAGE_TOOL_DEFINITION, toolDefinitionContractHash } from "./definitions";
+import { BILLABLE_IMAGE_TOOL_DEFINITION, PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION,
+  toolDefinitionContractHash } from "./definitions";
 import { billableImageScopeHash, billableImageScopeSchema, type BillableImageScope } from "./billableImageLifecycle";
 import { BILLABLE_IMAGE_RUN_ROLE, BILLABLE_IMAGE_RUN_SCOPE, BillableImageLedgerConflictError } from "./billableImageLedger";
 
@@ -64,6 +68,13 @@ export interface ProposeBillableImageInput extends BillableImageTarget {
   operationId: string;
 }
 
+export interface ProposeBillableImageFromAgentInput extends BillableImageTarget {
+  parentRunId: string;
+  skillId: string;
+  lease: AgentRunLease;
+  operationId: string;
+}
+
 export interface DecideBillableImageInput {
   projectId: number;
   actorUserId: number;
@@ -90,6 +101,8 @@ export interface BillableImageApprovalSnapshot {
   vendorRequest: null | { requestId: string; status: string; providerTaskId: string | null;
     artifactHash: string | null; pendingArtifactHash: string | null;
     cancellationRequested: boolean; imageId: number };
+  sourceRunId?: string;
+  sourceOperationId?: string;
 }
 
 export async function expireDueBillableImageApprovals(
@@ -138,6 +151,12 @@ export async function expireDueBillableImageApprovals(
 function conflict(): never { throw new BillableImageLedgerConflictError(); }
 function hash(value: string): string { return createHash("sha256").update(value).digest("hex"); }
 
+/** Stable child lookup for one model Tool operation; no target or price is trusted from the caller. */
+export function billableImageProposalClientRequestId(parentRunId: string, operationId: string): string {
+  if (!IDENTIFIER.test(parentRunId) || !IDENTIFIER.test(operationId)) return conflict();
+  return `billable-model:${hash(JSON.stringify({ parentRunId, operationId })).slice(0, 48)}`;
+}
+
 function targetOf(input: ProposeBillableImageInput): BillableImageTarget {
   return { projectId: input.projectId, assetId: input.assetId, vendorId: input.vendorId,
     modelId: input.modelId, resolution: input.resolution };
@@ -152,8 +171,36 @@ async function snapshot(tx: Knex | Knex.Transaction, projectId: number, runId: s
   const run = await tx("o_agentRun").where({ id: runId, projectId, role: BILLABLE_IMAGE_RUN_ROLE,
     scope: BILLABLE_IMAGE_RUN_SCOPE }).first();
   if (!run) return null;
+  let source: { parentRunId?: unknown; parentOperationId?: unknown;
+    skillId?: unknown; proposalContractHash?: unknown };
+  try { source = JSON.parse(run.input); } catch { return conflict(); }
+  const hasSource = source.parentRunId !== undefined
+    || source.parentOperationId !== undefined || source.skillId !== undefined
+    || source.proposalContractHash !== undefined;
+  if (hasSource) {
+    if (typeof source.parentRunId !== "string"
+      || typeof source.parentOperationId !== "string"
+      || typeof source.skillId !== "string"
+      || source.proposalContractHash !== toolDefinitionContractHash(
+        PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION)) return conflict();
+    const parent = await tx("o_agentRun").where({ id: source.parentRunId,
+      projectId, role: "productionAgent", scope: "production-harness-v1" }).first("id");
+    const binding = parent && await tx("o_agentRunSkillBinding")
+      .where({ runId: parent.id, skillId: source.skillId }).first("revisionId");
+    const permission = parent && await tx("o_agentSkillPermissionDecision")
+      .where({ runId: parent.id, operationId: source.parentOperationId,
+        skillId: source.skillId,
+        toolName: PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION.name }).first();
+    if (!binding || !permission || permission.skillRevisionId !== binding.revisionId
+      || hash(permission.decisionJson) !== permission.decisionHash) return conflict();
+    let permitted: unknown;
+    try { permitted = JSON.parse(permission.decisionJson).allowed; }
+    catch { return conflict(); }
+    if (permitted !== true) return conflict();
+  }
   const approval = await tx("o_agentToolApproval").where({ runId }).first();
   if (!approval) return null;
+  if (hasSource && approval.operationId !== source.parentOperationId) return conflict();
   let preview: BillableImagePreflight["preview"];
   try { preview = JSON.parse(approval.previewJson); } catch { return conflict(); }
   const request = await tx("o_agentVendorRequest").where({ runId, projectId }).first();
@@ -163,6 +210,8 @@ async function snapshot(tx: Knex | Knex.Transaction, projectId: number, runId: s
     status: approval.status, runVersion: run.version, runStatus: run.status,
     allowedActions: JSON.parse(run.allowedActions), expiresAt: approval.expiresAt,
     scopeHash: approval.payloadHash, contractHash: approval.contractHash, preview,
+    ...(hasSource ? { sourceRunId: source.parentRunId as string,
+      sourceOperationId: source.parentOperationId as string } : {}),
     vendorRequest: request ? { requestId: request.requestId, status: request.status,
       providerTaskId: request.providerTaskId ?? null, artifactHash: request.artifactHash ?? null,
       pendingArtifactHash: pendingArtifact?.contentHash ?? null,
@@ -176,9 +225,12 @@ function assertScope(value: unknown): BillableImageScope {
 }
 
 export function createBillableImageApprovalRuntime(dependencies: BillableImageApprovalDependencies) {
-  return {
-    async propose(input: ProposeBillableImageInput): Promise<BillableImageApprovalSnapshot> {
+  async function persistProposal(input: ProposeBillableImageInput,
+    source?: ProposeBillableImageFromAgentInput): Promise<BillableImageApprovalSnapshot | null> {
       if (!IDENTIFIER.test(input.clientRequestId) || !IDENTIFIER.test(input.operationId)) return conflict();
+      if (source && (!IDENTIFIER.test(source.parentRunId)
+        || !IDENTIFIER.test(source.skillId)
+        || source.lease.runId !== source.parentRunId)) return conflict();
       const ttl = dependencies.approvalTtlMs ?? BILLABLE_IMAGE_APPROVAL_TTL_MS;
       if (!Number.isSafeInteger(ttl) || ttl <= 0) return conflict();
       return dependencies.work(async (db) => {
@@ -186,7 +238,7 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
         const prior = await db("o_agentRun").where({ projectId: input.projectId,
           role: BILLABLE_IMAGE_RUN_ROLE, scope: BILLABLE_IMAGE_RUN_SCOPE,
           clientRequestId: input.clientRequestId }).first();
-        if (prior) {
+        if (prior && !source) {
           const stored = await db("o_agentToolApproval").where({ runId: prior.id, operationId: input.operationId }).first();
           let raw: unknown;
           try { raw = JSON.parse(stored?.payloadJson); } catch { return conflict(); }
@@ -203,9 +255,58 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
         const contractHash = toolDefinitionContractHash(BILLABLE_IMAGE_TOOL_DEFINITION);
         const requestFingerprint = hash(JSON.stringify({ role: BILLABLE_IMAGE_RUN_ROLE, scope: BILLABLE_IMAGE_RUN_SCOPE,
           actorUserId: input.actorUserId, operationId: input.operationId, toolRevision: BILLABLE_IMAGE_TOOL_DEFINITION.revision,
-          scopeHash }));
+          scopeHash, ...(source ? { parentRunId: source.parentRunId,
+            skillId: source.skillId } : {}) }));
         await expireDueBillableImageApprovals(db, input.projectId, dependencies.now(), dependencies.createId);
         return db.transaction(async (tx) => {
+        if (source) {
+          const now = dependencies.now();
+          const parent = await tx("o_agentRun").where({ id: source.parentRunId,
+            projectId: input.projectId, role: "productionAgent",
+            scope: "production-harness-v1", status: "running" })
+            .whereNull("cancellationRequestedAt").first("id", "input");
+          if (!parent || source.lease.runId !== parent.id) return conflict();
+          let parentActor: unknown;
+          try { parentActor = JSON.parse(parent.input).actorUserId; }
+          catch { return conflict(); }
+          if (parentActor !== input.actorUserId) return conflict();
+          await assertAgentRunLease(tx, source.lease, now);
+          const proposalTool = PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION;
+          const proposalContractHash = toolDefinitionContractHash(proposalTool);
+          const proposalCatalog = await tx("o_agentToolDefinition")
+            .where({ name: proposalTool.name,
+              revision: proposalTool.revision }).first("contractHash");
+          if (proposalCatalog && proposalCatalog.contractHash !== proposalContractHash) return conflict();
+          if (!proposalCatalog) await tx("o_agentToolDefinition").insert({
+            id: dependencies.createId(), name: proposalTool.name,
+            revision: proposalTool.revision, contractHash: proposalContractHash,
+            policy: JSON.stringify(proposalTool.policy), createdAt: now });
+          const grants = await resolveProductionImageProposalGrants(tx, {
+            runId: parent.id, projectId: input.projectId });
+          const authority = await authorizeBoundSkillDefinition(tx, {
+            runId: parent.id, projectId: input.projectId,
+            skillId: source.skillId, ...grants }, proposalTool);
+          const decisionJson = JSON.stringify(authority.decision);
+          const previous = await tx("o_agentSkillPermissionDecision")
+            .where({ runId: parent.id, operationId: source.operationId }).first();
+          if (previous) {
+            if (previous.skillId !== source.skillId
+              || previous.toolName !== proposalTool.name
+              || previous.skillRevisionId !== authority.skillRevisionId
+              || previous.decisionHash !== hash(previous.decisionJson)) return conflict();
+            let recorded: { allowed?: unknown };
+            try { recorded = JSON.parse(previous.decisionJson); }
+            catch { return conflict(); }
+            if (recorded.allowed !== true || !authority.decision.allowed) return null;
+          } else {
+            await tx("o_agentSkillPermissionDecision").insert({
+              id: dependencies.createId(), runId: parent.id,
+              skillId: source.skillId, skillRevisionId: authority.skillRevisionId,
+              operationId: source.operationId, toolName: proposalTool.name,
+              decisionJson, decisionHash: hash(decisionJson), createdAt: now });
+            if (!authority.decision.allowed) return null;
+          }
+        }
         const existing = await tx("o_agentRun").where({ projectId: input.projectId, role: BILLABLE_IMAGE_RUN_ROLE,
           scope: BILLABLE_IMAGE_RUN_SCOPE, clientRequestId: input.clientRequestId }).first();
         if (existing) {
@@ -232,7 +333,11 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
         const approvalId = dependencies.createId();
         await tx("o_agentRun").insert({ id: runId, projectId: scope.projectId, role: BILLABLE_IMAGE_RUN_ROLE,
           scope: BILLABLE_IMAGE_RUN_SCOPE, clientRequestId: input.clientRequestId, requestFingerprint,
-          input: JSON.stringify({ operationId: input.operationId, scopeHash }), status: "waiting",
+          input: JSON.stringify({ operationId: input.operationId, scopeHash,
+            ...(source ? { parentRunId: source.parentRunId,
+              parentOperationId: source.operationId, skillId: source.skillId,
+              proposalContractHash: toolDefinitionContractHash(
+                PRODUCTION_IMAGE_PROPOSAL_TOOL_DEFINITION) } : {}) }), status: "waiting",
           waitingReason: "tool-approval", attentionReason: "tool-approval-required",
           allowedActions: JSON.stringify(["inspect", "approve", "reject"]), version: 1,
           createdAt: now, updatedAt: now, startedAt: now, fence: 0 });
@@ -258,9 +363,31 @@ export function createBillableImageApprovalRuntime(dependencies: BillableImageAp
           payload: canonicalCheckpointPayload(checkpoint), payloadHash: hashCheckpointPayload(checkpoint), createdAt: now });
         await appendCausalTrace(tx, { id: dependencies.createId(), runId, stepId, attemptId, toolReceiptId: receiptId,
           eventType: "tool.billing-approval.requested", runStatus: "waiting", stepStatus: "waiting", createdAt: now });
+        if (source) await appendCausalTrace(tx, { id: dependencies.createId(),
+          runId: source.parentRunId, eventType: "tool.billing-proposal.created",
+          createdAt: now });
         return (await snapshot(tx, input.projectId, runId)) ?? conflict();
         });
       });
+  }
+  return {
+    async propose(input: ProposeBillableImageInput): Promise<BillableImageApprovalSnapshot> {
+      return await persistProposal(input) ?? conflict();
+    },
+    async proposeFromAgent(source: ProposeBillableImageFromAgentInput): Promise<
+      { status: "denied" } | { status: "pending"; approvalRunId: string; approvalId: string }> {
+      const actorUserId = await dependencies.work(async (db) => {
+        const project = await db("o_project").where({ id: source.projectId }).first("userId");
+        return Number(project?.userId);
+      });
+      const result = await persistProposal({ projectId: source.projectId,
+        actorUserId, clientRequestId: billableImageProposalClientRequestId(
+          source.parentRunId, source.operationId),
+        operationId: source.operationId, assetId: source.assetId,
+        vendorId: source.vendorId, modelId: source.modelId,
+        resolution: source.resolution }, source);
+      return result ? { status: "pending", approvalRunId: result.runId,
+        approvalId: result.id } : { status: "denied" };
     },
 
     async inspect(projectId: number, runId: string, actorUserId: number): Promise<BillableImageApprovalSnapshot | null> {

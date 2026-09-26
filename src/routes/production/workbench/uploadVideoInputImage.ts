@@ -7,10 +7,15 @@ import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
 import { uploadVideoInputImage } from "@/video/inputUpload";
+import { assertWorkbenchProjectOwner, WorkbenchOwnerRejectedError,
+  type WorkbenchOwnerCheck } from "@/video/workbenchOwner";
 
-const router = express.Router();
-
-export default router.post(
+export function createUploadVideoInputImageRouter(
+  authorize: WorkbenchOwnerCheck = assertWorkbenchProjectOwner,
+  upload: typeof uploadVideoInputImage = uploadVideoInputImage,
+) {
+  const router = express.Router();
+  return router.post(
   "/",
   validateFields({
     projectId: z.number().int().positive(),
@@ -19,7 +24,8 @@ export default router.post(
   }),
   async (req, res, next) => {
     try {
-      const result = await uploadVideoInputImage(
+      await authorize(req, req.body.projectId);
+      const result = await upload(
         {
           db: (operation) => getDatabaseRuntime().work(operation),
           createId: uuid,
@@ -30,7 +36,14 @@ export default router.post(
       );
       res.status(200).send(success(result));
     } catch (error) {
+      if (error instanceof WorkbenchOwnerRejectedError) {
+        res.status(403).send({ message: error.message });
+        return;
+      }
       next(error);
     }
   },
 );
+}
+
+export default createUploadVideoInputImageRouter();
