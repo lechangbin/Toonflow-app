@@ -60,4 +60,6 @@ Skill 绑定练习：读 `runtimeCorpusSkillBinding.ts`。为何清单中的 `sk
 
 来源竞态练习：读 `runtimeCorpusGateVerifier.ts` 与 `tests/agentRuntimeCorpus.test.ts` 的 `racedEvaluation`。先让 `evaluation.inspect` 取得旧来源，再把 Output 正文与哈希一起改成另一份安全文本；为什么只检查“正文与当前哈希相符”仍会误判？安全门必须再与冻结 cell 的 Output 哈希比较，漂移时返回 `output-source-drift`。
 
+评审投影练习：同样的 `racedEvaluation` 再调用 `runtimeCorpusEvidenceArtifacts.ts`。如果投影只取当前 Output 而不比对冻结 cell，就可能把已替换的正文作为“来源投影”导出；现在它会直接拒绝。注意 ToolReceipt/Trace 完整正文还未在 EvaluationCase 中冻结整体哈希，不能把这一步夸大为永久不可篡改审计。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。

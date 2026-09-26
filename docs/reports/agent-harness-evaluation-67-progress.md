@@ -75,3 +75,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #105 实际 Skill 绑定切片：`runtimeCorpusSkillBinding.ts` 在读取事务内从两类 Harness 的活动绑定联接已发布 Revision 与生命周期政策，复算内容/manifest 哈希、校验角色和只读意图，生成实际激活集合指纹。比较 baseline/candidate 时要求 Skill ID、请求 Tool 和 Project 能力列表一致；仅提示内容/Revision 可以不同。逐例路由预检还会用真实 Router 对新语料的每条 Script/Production Harness 请求核对所选 Skill，普通 Script 只读格跳过；新增同优先级候选造成歧义即拒绝。定向单测从真实 SkillRuntime 发布/激活两类 Skill，验证候选内容更换导致指纹变化、增加 Tool/能力被拒绝、已发布内容不可改、撤销 Revision 后检查失败，以及逐例路由歧义拒绝。预检尚未接入正式 72-cell runner，也未安装正式两版 Skill，故不能宣称完整执行条件已冻结。
 
 2026-09-27 #104 来源 Output 竞态修正：安全门读取 Run Output 时现在同时取正文、哈希和 schema，重算正文哈希并要求等于冻结 cell 的 `outputHash`；在 `evaluation.inspect` 与后续安全读取之间把 Output 换成另一份哈希自洽的安全文本会得到 `output-source-drift`，不再误判为 `verified-read-and-safety-only`。新语料 AgentRuntime 定向 6/6 与 TypeScript 通过。它只关闭这一个来源读竞态；不能据此解决所有外部变更窗口或自然语言事实评分，#104 仍开放。
+
+2026-09-27 #104 评审投影同步修正：生成受保护 Output/ToolReceipt/Trace 文件前也复算当前 Output schema、正文哈希并与冻结 cell 的 `outputHash` 比较；同样的 inspect→读取竞态不再能导出一份表面上来源正确、实际来自已换正文的评审投影。定向竞态用例和 TypeScript 通过。Trace/ToolReceipt 的完整字节内容尚未在 EvaluationCase 写入时冻结为整体摘要，因此这里仍是当前来源投影的一致性保护，不应描述为永久不可篡改的完整审计链。

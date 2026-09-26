@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { DatabaseWork } from "@/database";
+import { AGENT_RUN_OUTPUT_SCHEMA_VERSION } from "@/agentRuntime";
 import { inspectPersistableText } from "@/diagnostics/traceSafeDiagnostics";
 
 import type { EvaluationAssessment } from "./evaluationAssessment";
@@ -37,6 +38,11 @@ export async function createRuntimeCorpusEvidenceArtifacts(input: {
   })));
   if (rows.outputs.length !== 1 || rows.traces.length === 0) {
     throw new Error("Runtime evidence artifacts require one Output and a causal Trace");
+  }
+  if (rows.outputs[0].schemaVersion !== AGENT_RUN_OUTPUT_SCHEMA_VERSION
+    || hash(JSON.stringify(rows.outputs[0].content)) !== rows.outputs[0].contentHash
+    || rows.outputs[0].contentHash !== cell.outputHash) {
+    throw new Error("Runtime evidence artifact Output differs from the frozen source cell");
   }
   const payloads = [rows.outputs[0], rows.receipts, rows.traces];
   return KINDS.map((kind, index) => {
