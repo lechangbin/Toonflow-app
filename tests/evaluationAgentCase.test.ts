@@ -62,3 +62,57 @@ test("T11 adapter records a case only after the real AgentRuntime terminates", a
     assert.equal(modelCalls, 1);
   } finally { await db.destroy(); }
 });
+
+test("T11 variant runner validates before work and resumes cells serially", async () => {
+  const db = knexFactory({ client: "better-sqlite3",
+    connection: { filename: ":memory:" }, useNullAsDefault: true });
+  const previousLog = console.log;
+  console.log = () => {};
+  try { await initDB(db); } finally { console.log = previousLog; }
+  try {
+    await db("o_project").insert({ id: 7, userId: 1, name: "评测项目" });
+    const queue: Array<() => Promise<void>> = [];
+    let id = 0;
+    let modelCalls = 0;
+    let activeCalls = 0;
+    let maxActiveCalls = 0;
+    const work: DatabaseWork = async (operation) => operation(db);
+    const runtime = createAgentRuntime({ work,
+      now: () => 200, createId: () => `runtime-${++id}`,
+      schedule: (task) => queue.push(task),
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "text-v1",
+        temperature: 2, maxOutputTokens: 256 },
+      invokeText: async () => {
+        modelCalls++;
+        activeCalls++;
+        maxActiveCalls = Math.max(maxActiveCalls, activeCalls);
+        await Promise.resolve();
+        activeCalls--;
+        return { text: "局部受控建议" } as any;
+      } }) });
+    const evaluation = createEvaluationRunRuntime({ work, now: () => 200,
+      createId: () => `evaluation-${++id}` });
+    const created = await evaluation.create(manifest);
+    const adapter = createEvaluationAgentCase({ evaluation, runtime,
+      currentRevisions: async () => revisionSet,
+      awaitScheduledWork: async () => { while (queue.length) await queue.shift()!(); } });
+    const base = { evaluationRunId: created.id, variant: "baseline" as const,
+      contentByCaseId: { "DEV-EXT-001": "给出项目摘要" } };
+    await assert.rejects(adapter.executeVariant({ ...base,
+      contentByCaseId: { "DEV-EXT-001": "已变更正文" } }), /frozen input/u);
+    await assert.rejects(adapter.executeVariant({ ...base,
+      contentByCaseId: { ...base.contentByCaseId, "HOLD-EXT-001": "额外输入" } }), /frozen matrix/u);
+    await assert.rejects(adapter.executeVariant({ ...base, variant: "candidate" }), /revisions do not match/u);
+    await assert.rejects(adapter.executeVariant({ ...base, maxNewCells: 0 }), /positive safe integer/u);
+    assert.equal(modelCalls, 0);
+    assert.deepEqual(await adapter.executeVariant({ ...base, maxNewCells: 1 }),
+      { expected: 2, alreadyRecorded: 0, executed: 1, remaining: 1 });
+    assert.deepEqual(await adapter.executeVariant(base),
+      { expected: 2, alreadyRecorded: 1, executed: 1, remaining: 0 });
+    assert.deepEqual(await adapter.executeVariant(base),
+      { expected: 2, alreadyRecorded: 2, executed: 0, remaining: 0 });
+    assert.equal(modelCalls, 2);
+    assert.equal(maxActiveCalls, 1);
+    assert.equal((await evaluation.inspect(created.id)).recorded, 2);
+  } finally { await db.destroy(); }
+});
