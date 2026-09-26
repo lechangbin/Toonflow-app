@@ -33,6 +33,10 @@ async function main(): Promise<void> {
 
     await db("o_vendorConfig").where({ id: "agnes" }).update({
       inputValues: JSON.stringify({ apiKey, baseUrl: "https://apihub.agnes-ai.com" }),
+      // Fixture-only override, not a statement of Agnes' published capacity.
+      models: JSON.stringify([{ name: "Agnes 3.0 Flash canary budget",
+        modelName: "agnes-3.0-flash", type: "text", think: true,
+        contextWindowTokens: 4096 }]),
       enable: 1,
     });
     await db("o_agentDeploy").where({ key: "productionAgent:decisionAgent" }).update({
@@ -84,10 +88,7 @@ async function main(): Promise<void> {
       openTextCall: async (target) => {
         assert.deepEqual(target, { kind: "logical", key: "productionAgent:decisionAgent" });
         const call = await vendor.openTextCall(target);
-        // Agnes does not currently declare a Context window in the adapter.
-        // This conservative fixture-only budget is not a provider capacity claim.
-        return { ...call, target: { ...call.target, contextWindowTokens: 4096 },
-          invokeText: (input) => {
+        return { ...call, invokeText: (input) => {
           modelCalls++;
           return call.invokeText({ ...input, stopWhen: stepCountIs(2) });
         } };
