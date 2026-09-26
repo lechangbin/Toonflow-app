@@ -85,3 +85,9 @@ T17 加入 Agnes 3.0 Flash、Image 2.5 Flash、Video 2.5 Flash 目录与适配�
 随后修正 Agnes 图片适配器的静默截断：六张参考图原样提交，超过已实测上限的七张在任何网络 POST 前明确拒绝，避免无提示丢失素材。T17 修订 `756a89b5` 已沿依赖分支同步到当前 T21；当前组合的 Agnes/能力目录/Runtime 定向测试仍为 32/32，`yarn lint` 通过。此修正没有改变上述 Provider 探针的覆盖范围，也不触发七类状态更新。
 
 T11 执行口径核对发现，T02 的 18 例是确定性领域场景，不是已经准备好的 18 条生产 Agent 输入。必须先冻结逐例 Runtime fixture、Project 状态与原 hard gate 的证据映射，或明确版本化新的 AgentRuntime corpus；不能用通用提示词填满 72 格后沿用 T02 的 18/18 结论。详见 T11 阶段报告与 Issue #67；evaluation 类别继续 pending。
+
+## 2026-09-27 配置化 Vendor 真实探针（仍非生产链验收）
+
+用户授权后续继续使用 Agnes key，所有真实调用保持单并发，密钥仅来自进程环境。T17 修订 `756a89b5` 的 Agnes 适配器先通过源级 Vendor Runtime 完成一次文生图和一次 Base64 单参考图生成，得到有效 PNG；随后用内存 SQLite 装载同一配置，通过 `createConfiguredVendor` 的真实配置加载与 AI SDK 路径调用 Agnes 3.0 Flash 文本模型，返回精确预期标记；Image 2.5 Flash 经配置化 Vendor 单参考图生成返回 851854 字节 PNG，SHA-256 `c42f5e6eae6e2cdead2f671d9013b12705b2119d53bf7f98b64c0231438b141f`。其它两张图片的大小与哈希见 T17 阶段报告。内存数据库在调用结束后销毁，未持久化密钥或修改用户 Project。
+
+Video 2.5 Flash 的一张 Base64 首帧先经技能 CLI dry-run 检查为 `keyframe`、4 秒、`720P`，实际提交仍明确返回 `video_queue_full` 503，没有任务 ID；队列拒绝不能判定 Base64 首帧是否被服务商接受。应用适配器虽然已有假网络输入映射测试，这次没有视频 Artifact、CDN host 或播放证据。上述文本/图片探针证明配置化 Vendor 层能实际请求当前模型，却没有经过 Project→Asset Brief/Prompt Revision→Owner 审批→持久 VendorRequest→Artifact Revision→工作台读回；输出图片字节未归档成仓库证据，只有脱敏元数据与哈希。因此七类最终验收仍全部 pending，不能据此设置 `paidProviderCanary=passed` 来代表三模型或生产链路均已验收，也不得发布版本。
