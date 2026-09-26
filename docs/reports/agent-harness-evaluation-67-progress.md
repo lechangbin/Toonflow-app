@@ -77,3 +77,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #104 来源 Output 竞态修正：安全门读取 Run Output 时现在同时取正文、哈希和 schema，重算正文哈希并要求等于冻结 cell 的 `outputHash`；在 `evaluation.inspect` 与后续安全读取之间把 Output 换成另一份哈希自洽的安全文本会得到 `output-source-drift`，不再误判为 `verified-read-and-safety-only`。新语料 AgentRuntime 定向 6/6 与 TypeScript 通过。它只关闭这一个来源读竞态；不能据此解决所有外部变更窗口或自然语言事实评分，#104 仍开放。
 
 2026-09-27 #104 评审投影同步修正：生成受保护 Output/ToolReceipt/Trace 文件前也复算当前 Output schema、正文哈希并与冻结 cell 的 `outputHash` 比较；同样的 inspect→读取竞态不再能导出一份表面上来源正确、实际来自已换正文的评审投影。定向竞态用例和 TypeScript 通过。Trace/ToolReceipt 的完整字节内容尚未在 EvaluationCase 写入时冻结为整体摘要，因此这里仍是当前来源投影的一致性保护，不应描述为永久不可篡改的完整审计链。
+
+2026-09-27 #104 脱敏回归：复用 inspect→读取竞态夹具，把 Output 换成含模拟 API key 赋值的文本，独立安全门明确返回 `output-missing-or-unsafe`，而不是只依赖 Run 状态或来源哈希。此测试使用虚构字符串，不含用户真实凭据；定向 6/6 与 TypeScript 通过。规则正则无法证明覆盖所有秘密格式，受保护目录和人工导出复核仍必需。

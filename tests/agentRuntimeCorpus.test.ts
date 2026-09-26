@@ -254,7 +254,7 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       ?.variant, "baseline");
     const originalOutput = await db("o_agentRunOutput")
       .where({ runId: observed.cases[0].agentRunId }).first();
-    const racedContent = "伪造的盲评回复";
+    let racedContent = "伪造的盲评回复";
     const racedEvaluation = { ...evaluation, inspect: async (evaluationRunId: string) => {
       const snapshot = await evaluation.inspect(evaluationRunId);
       await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
@@ -278,6 +278,14 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       evaluation: racedEvaluation, evaluationRunId: frozen.id,
       variant: "baseline", caseId: first.id, seed: 11 }),
     /Output differs from the frozen source cell/u);
+    await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
+      content: originalOutput.content, contentHash: originalOutput.contentHash });
+    racedContent = "apiKey=sk-test-redaction-fake-123456";
+    const unsafeGate = await inspectRuntimeCorpusCellGates({ work,
+      evaluation: racedEvaluation, evaluationRunId: frozen.id,
+      variant: "baseline", caseId: first.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.ok(unsafeGate.violations.includes("output-missing-or-unsafe"));
     await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
       content: originalOutput.content, contentHash: originalOutput.contentHash });
     await assert.rejects(createRuntimeCorpusBlindReviewBatch({ work, evaluation,
