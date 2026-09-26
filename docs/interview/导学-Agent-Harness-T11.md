@@ -56,6 +56,6 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 模型绑定练习：读 `runtimeCorpusModelPolicy.ts` 和 Agnes 单格脚本。区分“清单声明的 Model 修订”和“Vendor 从当前数据库解析出的实际目标”；尝试在定向测试中把 Production 温度改为 1，观察为何在 Model 调用前拒绝。固定两步上限也不等于 72 格总调用次数已持久计量；进程崩溃后仍需先核查外部效果。
 
-Skill 绑定练习：读 `runtimeCorpusSkillBinding.ts`。为何清单中的 `skill` 字符串不能证明两类 Harness 当时真正激活的 Revision？检查它如何复核发布状态、生命周期、内容/manifest 哈希、角色及只读意图，再比较两侧 Tool/能力清单是否相同。实际逐例路由仍须单独校验，不能从存在活动绑定就推出每次 Run 都命中了它。
+Skill 绑定练习：读 `runtimeCorpusSkillBinding.ts`。为何清单中的 `skill` 字符串不能证明两类 Harness 当时真正激活的 Revision？检查它如何复核发布状态、生命周期、内容/manifest 哈希、角色及只读意图，再比较两侧 Tool/能力清单是否相同。然后跟随逐例预检调用真实 Router，新增同优先级 Skill 会让 Harness case 歧义而拒绝；这个预检还须正式 runner 在每次调用前使用。
 
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。

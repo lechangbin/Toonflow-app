@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
 import knexFactory from "knex";
@@ -7,7 +9,7 @@ import initDB from "../src/lib/initDB";
 import { createSkillRuntime } from "../src/skillRuntime";
 import { SKILL_MANIFEST_SCHEMA_VERSION, type SkillManifest } from
   "../src/skillRuntime/manifest";
-import { assertEqualRuntimeCorpusSkillAuthority,
+import { assertEqualRuntimeCorpusSkillAuthority, assertRuntimeCorpusHarnessRouting,
   inspectRuntimeCorpusSkillBinding } from "../src/eval/runtimeCorpusSkillBinding";
 
 test("T11 fingerprints real active Harness Skills and refuses authority drift", async () => {
@@ -27,10 +29,11 @@ test("T11 fingerprints real active Harness Skills and refuses authority drift", 
     const production = await skills.createDefinition({ name: "t11-production",
       description: "read Production" });
     const save = async (skillId: string, role: string, version: string,
-      content: string, tools: string[], capabilities: string[]) => {
+      content: string, tools: string[], capabilities: string[], extraIntent?: string) => {
       const manifest: SkillManifest = { schemaVersion: SKILL_MANIFEST_SCHEMA_VERSION,
         skillId, semanticVersion: version, compatibleRoles: [role],
-        intents: ["read-only-guidance"], dependencies: [], requestedTools: tools,
+        intents: ["read-only-guidance", ...(extraIntent ? [extraIntent] : [])],
+        dependencies: [], requestedTools: tools,
         requestedCapabilities: capabilities, resources: [],
         routing: { priority: 1, keywords: [] }, attribution: "T11 binding test" };
       const draft = await skills.saveDraft({ skillId, semanticVersion: version,
@@ -49,6 +52,9 @@ test("T11 fingerprints real active Harness Skills and refuses authority drift", 
     const input = { work, scriptSkillId: script.id, productionSkillId: production.id };
     const baseline = await inspectRuntimeCorpusSkillBinding(input);
     assert.match(baseline.revision, /^[a-f0-9]{64}$/u);
+    const corpusSource = readFileSync(path.resolve(
+      "data/eval/agent-runtime-corpus-v1/manifest.json"), "utf8");
+    await assertRuntimeCorpusHarnessRouting({ ...input, corpusSource });
     const scriptCandidate = await save(script.id, "scriptAgent", "1.1.0",
       "只读剧本并说明来源", ["get_script_content"], ["read:script"]);
     await skills.activate({ skillId: script.id, revisionId: scriptCandidate.id,
@@ -56,12 +62,27 @@ test("T11 fingerprints real active Harness Skills and refuses authority drift", 
     const candidate = await inspectRuntimeCorpusSkillBinding(input);
     assert.notEqual(candidate.revision, baseline.revision);
     assertEqualRuntimeCorpusSkillAuthority(baseline, candidate);
-    const changedAuthority = await save(script.id, "scriptAgent", "1.2.0",
+    const broaderIntent = await save(script.id, "scriptAgent", "1.2.0",
+      "包含额外意图", ["get_script_content"], ["read:script"], "write-guidance");
+    await skills.activate({ skillId: script.id, revisionId: broaderIntent.id,
+      expectedBindingVersion: 2 });
+    await assert.rejects(inspectRuntimeCorpusSkillBinding(input), /broader role/u);
+    await skills.activate({ skillId: script.id, revisionId: scriptCandidate.id,
+      expectedBindingVersion: 3 });
+    const changedAuthority = await save(script.id, "scriptAgent", "1.3.0",
       "添加章节读取", ["get_script_content", "get_novel_text"], ["read:script", "read:novel"]);
     await skills.activate({ skillId: script.id, revisionId: changedAuthority.id,
-      expectedBindingVersion: 2 });
+      expectedBindingVersion: 4 });
     await assert.rejects(async () => assertEqualRuntimeCorpusSkillAuthority(baseline,
       await inspectRuntimeCorpusSkillBinding(input)), /changed Harness authority/u);
+    const ambiguous = await skills.createDefinition({ name: "t11-script-other",
+      description: "ambiguous Script route" });
+    const ambiguousRevision = await save(ambiguous.id, "scriptAgent", "1.0.0",
+      "另一份只读剧本指导", ["get_script_content"], ["read:script"]);
+    await skills.activate({ skillId: ambiguous.id, revisionId: ambiguousRevision.id,
+      expectedBindingVersion: 0 });
+    await assert.rejects(assertRuntimeCorpusHarnessRouting({ ...input, corpusSource }),
+      /routing is unavailable, ambiguous or changed/u);
     await assert.rejects(db("o_agentSkillRevision").where({ id: changedAuthority.id })
       .update({ content: "tampered" }), /immutable/u);
     await skills.setRevisionLifecycle({ revisionId: changedAuthority.id,

@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 
 import type { DatabaseWork } from "@/database";
+import { validateAgentRuntimeCorpus } from "./agentRuntimeCorpus";
 import { validateSkillManifest } from "@/skillRuntime/manifest";
+import { routeSkillsInTransaction } from "@/skillRuntime/routing";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -32,9 +34,12 @@ export async function inspectRuntimeCorpusSkillBinding(input: { work: DatabaseWo
       }
       const manifest = validateSkillManifest(JSON.parse(row.manifestJson) as unknown,
         expected.skillId, row.semanticVersion);
-      if (!manifest.compatibleRoles.includes(expected.role)
-        || !manifest.intents.includes("read-only-guidance")) {
-        throw new Error("T11 Harness Skill binding has the wrong role or intent");
+      if (manifest.compatibleRoles.length !== 1
+        || manifest.compatibleRoles[0] !== expected.role
+        || manifest.intents.length !== 1 || manifest.intents[0] !== "read-only-guidance"
+        || manifest.dependencies.length !== 0 || manifest.resources.length !== 0
+        || manifest.routing.priority !== 1 || manifest.routing.keywords.length !== 0) {
+        throw new Error("T11 Harness Skill binding has broader role, dependency or routing authority");
       }
       bound.push({ role: expected.role, skillId: expected.skillId,
         revisionId: row.id, contentHash: row.contentHash, manifestHash: row.manifestHash,
@@ -59,4 +64,22 @@ export function assertEqualRuntimeCorpusSkillAuthority(
       throw new TypeError("T11 Skill treatment changed Harness authority");
     }
   }
+}
+
+/** Check every Harness request's actual router decision before opening a Model call. */
+export async function assertRuntimeCorpusHarnessRouting(input: { work: DatabaseWork;
+  corpusSource: string; scriptSkillId: string; productionSkillId: string }): Promise<void> {
+  const corpus = validateAgentRuntimeCorpus(JSON.parse(input.corpusSource) as unknown);
+  await input.work((db) => db.transaction(async (tx) => {
+    for (const entry of corpus.cases) {
+      if (entry.scope === "read-only-project-guidance-v1") continue;
+      const expectedSkillId = entry.role === "productionAgent"
+        ? input.productionSkillId : input.scriptSkillId;
+      const decision = await routeSkillsInTransaction(tx, { role: entry.role,
+        intent: "read-only-guidance", query: entry.content });
+      if (decision.status !== "selected" || decision.selected?.skillId !== expectedSkillId) {
+        throw new Error(`T11 Harness routing is unavailable, ambiguous or changed for ${entry.id}`);
+      }
+    }
+  }));
 }
