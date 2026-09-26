@@ -56,7 +56,7 @@ T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Scrip
 
 发布工作流新增 `validate` 前置 job：Linux/Node 24 安装锁定依赖后依次运行类型检查、全量自动化测试和本地确定性 Golden 硬门，三个平台构建均依赖此 job。它尚未在 GitHub Actions 的目标 tag 上实际运行，也不包含 Web 配对、浏览器、恢复、安全独立核验或 72-cell 生产评测；七类最终验收仍全部 pending。任何 `v*` 标签仍必须在最终索引被独立核验、阶段 Issue 收敛及生成物冻结后才可创建。
 
-用户先选择零费用工程准备，后来授权受限并发真实测试，但服务商/API 地址、模型和费用上限仍待明确；当前尚未调用付费 Provider，T11/T19/T20 的真实质量结论保持未验证，也不代填人工 rubric。当前个人仓库默认分支 `develop` 的 GitHub Actions workflow 列表为 0，新增发布工作流尚只存在于草稿堆叠分支，不能通过 `workflow_dispatch` 在 GitHub 实跑；不得以本机 YAML 解析替代跨平台 Actions 结果。
+用户先选择零费用工程准备，后来明确 Agnes 服务商与三个 Flash 模型，并授权受限并发真实测试；当前已做少量单并发 Provider 探针，详见下节。T11/T19/T20 的真实质量结论仍未验证，也不代填人工 rubric。当前个人仓库默认分支 `develop` 的 GitHub Actions workflow 列表为 0，新增发布工作流尚只存在于草稿堆叠分支，不能通过 `workflow_dispatch` 在 GitHub 实跑；不得以本机 YAML 解析替代跨平台 Actions 结果。
 
 | 最终类别 | 当前可核对的预验收 | 正式 `passed` 之前仍需 |
 | --- | --- | --- |
@@ -73,3 +73,11 @@ T19 仍只有等资源假 adapter 与拒绝契约，T20 仍只有隔离角色执
 同日再次用独立临时数据库、全新浏览器 profile 和本地假文本 Model 复测 Script 模型 Tool 提案链。旧夹具因首次使用引导遮住 Harness 按钮超时；T18 加入条件跳过后，第二份全新环境一次通过模型提案、Owner 审批前不写入、审批后精确字段回读，父 Run `edc87290-febd-48c5-86a6-17e0b99646a0`、审批 Run `863b82df-75f8-4a81-85c4-3d2a33309b6e`。此次只证明 Script 正路径夹具可在干净 profile 重复，不覆盖 Production、其他两条夹具的干净 profile 重跑、断连/恢复或七类最终独立核验；本地服务与浏览器会话均已停止，隔离临时数据库未当作项目数据提交。
 
 T11 新增单变体串行执行入口后已逐级同步至 T21：预检冻结正文/修订、按 case/seed 逐格等待，并可限制单次新增 cell、复核后续跑。T11 与 T21 的 `tests/evaluationAgentCase.test.ts` 均为 2/2 通过，T21 类型检查通过；测试使用 Fake Model，观察到的局部最大并发为 1。该入口不提供跨进程全局限流，亦不证明真实服务商调用、72-cell 完成或质量收益。合入后没有重做完整 App 测试或发布验收，七类状态仍为 pending。
+
+## 2026-09-27 Agnes Flash 单并发探针与 T21 同步
+
+T17 加入 Agnes 3.0 Flash、Image 2.5 Flash、Video 2.5 Flash 目录与适配器请求翻译，已逐级合入 T11→T18→T19→T20→T21。T21 本次合入发生的唯一冲突为 T17 面经：保留原有生产迁移边界的第 9、10 问，追加新模型适配的第 11 问；未改运行时代码。合入后 Agnes 适配器、能力目录及 Vendor Runtime 的定向测试 32/32、`yarn lint` 通过。未在此源码组合上重跑完整 App、Web、Golden 或浏览器矩阵。
+
+真实服务探针仅通过独立 Agnes CLI 执行，未经过 Toonflow Project→Run→VendorRequest→Artifact 链路。短文本返回预期内容；Image 2.5 Flash 文生图及 1、2、6 张参考图分别返回可检查的非空 PNG；7 张参考图收到明确上限为 6 的拒绝。首次文生图的 CLI 保存逻辑误将空 Base64 字段当作图片，得到 0 字节临时文件；修复本机 CLI 的 URL 回退后才得到有效图片，因此首次文件不得计作成功证据。视频 4 秒/720P 文生视频三次提交均收到 `video_queue_full` 503，未创建任务，停止重试；Video 2.5 的真实出片、下载和业务链路仍未验证。用户另报告 Base64 编码图片作为视频输入实测可用，此处按用户提供的兼容性观察记录，尚非本轮独立可复算的供应商回执。探针结果只支持接口边界核对，不支持质量、费用或端到端可恢复性的结论。
+
+最终七类验收仍全部 pending；正式冻结前还需将 App/Web/Model/Vendor/数据库/产物修订固定，在同一来源组合上重跑全量测试、72-cell 与人工 rubric、真实受控生产生成链、恢复/安全/浏览器矩阵及可复算证据。当前不得打发布标签或创建 Release。
