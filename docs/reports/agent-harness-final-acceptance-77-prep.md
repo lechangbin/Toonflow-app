@@ -94,6 +94,6 @@ Video 2.5 Flash 的一张 Base64 首帧先经技能 CLI dry-run 检查为 `keyfr
 
 ## 2026-09-27 隔离生产 AgentRun 真实只读探针
 
-T17 增加可显式运行的 `scripts/agnesProductionReadCanary.ts`，已逐级合入 T11→T18→T19→T20→本分支。它在内存 SQLite 中构造最小 Project/Script/生产工作区、已发布只读 Skill 与 Owner grant，把逻辑决策模型绑定 Agnes 3.0 Flash，限制最多两个模型步骤并只提供 `get_production_workspace_text`。密钥仅从 `AGNES_API_KEY` 环境变量读取。最终一次真实模型调用后，Run `succeeded`，读取回执 1、输出 1（SHA-256 `75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070`）、其他 ToolReceipt 0、生成 VendorRequest 0；定向 Production Run 用例 1/1 和类型检查通过。这比 Vendor-only 文本探针多验证了 Skill→grant→模型→受控读取→Run 输出的局部链路，但仍是内存 Fixture，不是用户 Project/浏览器/付费生成或跨进程验收。
+T17 增加可显式运行的 `scripts/agnesProductionReadCanary.ts`，已逐级合入 T11→T18→T19→T20→本分支。它在内存 SQLite 中构造最小 Project/Script/生产工作区、已发布只读 Skill 与 Owner grant，把逻辑决策模型绑定 Agnes 3.0 Flash，限制最多两个模型步骤并只提供 `get_production_workspace_text`。密钥仅从 `AGNES_API_KEY` 环境变量读取。同一次脚本先验证默认目录 Run 为 `failed/contextMissing` 且零模型调用，再以 fixture 自定义预算运行一次真实模型：Run `succeeded`，读取回执 1、输出 1（本次 SHA-256 `28b77d3d9977cfb1198141d227a039851ae66c624fed71661453b69d6d7347ad`）、其他 ToolReceipt 0、生成 VendorRequest 0；定向 Production Run 用例 1/1 和类型检查通过。这比 Vendor-only 文本探针多验证了 Skill→grant→模型→受控读取→Run 输出的局部链路，但仍是内存 Fixture，不是用户 Project/浏览器/付费生成或跨进程验收。
 
 首次运行在真实模型调用前因 Agnes 文本模型没有声明 `contextWindowTokens` 而以 `contextMissing` 失败。为了验证其余链路，探针只在内存 `customModels` 中给同名模型声明 4096-token fixture 预算；这是实验预算，不是经 Agnes 官方核实的模型容量，也没有修改默认适配器。因此默认生产 Skill Run 仍存在可复现的配置阻断，functional/compatibility 类别不能因为这次隔离成功而转为 `passed`。后续应先取得可信容量或设计显式安全降级并补定向回归，再做真实项目数据、浏览器和完整效果链验收。七类最终状态继续全部 pending，发布门槛不变。
