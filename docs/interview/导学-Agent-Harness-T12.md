@@ -20,6 +20,7 @@
 | 授权先于相关性 | 跨 Project 内容不能先进入排序器 | 多租户隔离、来源筛选 | `src/context/sourceSelection.ts` | 2 |
 | 精确输入与无原文清单分离 | 既支持重试检查，也减少 Trace 扩散 | 可复现性、数据最小化 | `src/context/index.ts` | 3 |
 | Model 意图前冻结 | 防止已发起外部调用却找不到输入证据 | 事务边界、因果顺序 | `src/agentRuntime/index.ts` | 4 |
+| Tool 结果的因果归属 | 成功回执还必须证明属于前置 Step，才可进入下一次 Context | 回执、Trace、幂等身份 | `src/controlledTools/index.ts`、`src/context/toolSources.ts` | 5 |
 
 ## 必备知识点
 
@@ -27,6 +28,7 @@
 - [ ] 能解释普通 45/20/20/15 与高风险 60/25/10/5 是可选来源分配，强制内容先完整保留。
 - [ ] 能区分“同 Project 来源候选”“实际纳入的消息”“manifest 中的来源身份/省略原因”。
 - [ ] 能解释刷新为什么创建 successor Bundle，不修改先前 Attempt 的输入。
+- [ ] 能说明真实受控 Tool 如何写入 Step/Attempt Trace，以及为何跨 Attempt 不能重用同一 operation ID。
 
 ## 推荐阅读（按实际链路）
 
@@ -36,6 +38,7 @@
 | 预算计算 | 必需/可选、溢出 | `src/context/budget.ts`、`tests/contextBudget.test.ts` | 30 分钟 | 为什么超预算在推理前失败 |
 | 来源筛选 | Project/Script/Role/修订 | `src/context/sourceSelection.ts`、`tests/contextSourceSelection.test.ts` | 30 分钟 | 为什么不能先检索再过滤 |
 | 数据装载 | 章节、Tool 回执、历史交互 | `src/context/projectSources.ts`、`src/context/toolSources.ts`、`src/context/recentInteractionSources.ts` | 45 分钟 | 什么证据有资格进入候选 |
+| Tool 因果接线 | 执行身份、Trace、下一 Step 来源 | `src/agentRuntime/index.ts`、`src/controlledTools/index.ts`、`src/context/toolSources.ts`、`tests/agentRunRuntime.test.ts`、`tests/controlledTools.test.ts` | 30 分钟 | 为什么单有成功 Receipt 还不足以进入 Context |
 | 冻结与调用 | Attempt/Bundle/Model 意图 | `src/context/index.ts`、`src/agentRuntime/index.ts`、`tests/contextBundle.test.ts` | 45 分钟 | 如何证明模型实际收到冻结消息 |
 
 自学提醒：若某文件或原理看不懂，请继续追问 AI；本导学给出学习路径与题目，不提供逐行讲解。
@@ -50,6 +53,7 @@
 2. 问题：相关性检索可能接触越权文本。机制：先按 Project、Script、Role、修订和保留状态过滤，再做内容哈希与排序。落点：`selectEligibleContextSources`。
 3. 问题：重试时重新拼上下文会变。机制：一次 Attempt 固定精确消息和无原文来源清单，后续刷新写 successor。落点：`createContextBuilder().build/inspect`。
 4. 问题：Project 文本和历史回答可能注入指令。机制：它们以标记为数据的低权威消息进入，不继承 system 权限。落点：`src/context/index.ts` 与来源加载器。
+5. 问题：真实 Tool 执行虽有成功回执，却无法证明属于哪个 Step。机制：Runtime 将 Step/Attempt 身份传给受控 Tool，Tool 的开始及终态 Trace 记录该身份，重放核对原始身份；来源加载器只接受前置 Step 的成功因果事件。落点：`invokeReadTool`、`createControlledToolRuntime`、`createCommittedToolContextSourceLoader`。当前测试直接验证下一 Step 来源接口，尚未实现同一步多轮 Model 调度。
 
 ## 关键设计决策
 
@@ -59,6 +63,7 @@
 | 必需来源溢出直接失败 | 截断安全文本 | 牺牲可用性以保留约束完整性 | 预算和 Runtime 定向测试 |
 | 精确消息与无原文 manifest 分存 | 全部写进 Trace | 方便复核且减少诊断泄漏；Bundle 本身仍含输入内容，须受 Project 生命周期保护 | Bundle/授权/删除定向测试 |
 | 先授权再排序 | 先检索再过滤 | 限制跨 Project 数据进入检索阶段 | 来源筛选定向测试 |
+| Tool 回执按 Step/Attempt 归属 | 只看回执成功状态 | 增加因果检查和跨 Attempt 幂等约束；旧式无身份回执保留兼容但不能冒充前置 Step 证据 | `controlledTools`、`contextToolSources`、`agentRunRuntime` 定向测试 |
 
 ## 量化与验证（待测）
 
