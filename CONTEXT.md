@@ -77,8 +77,8 @@ The specialist Agent role that turns Scripts into Assets, Storyboards, productio
 _Avoid_: Video Agent
 
 **Agent Memory**:
-Project-isolated retained conversation knowledge used to maintain continuity across Agent sessions.
-_Avoid_: Chat history
+Typed, Project-authorized continuity evidence derived from a committed Agent Step, with source revision and location. Legacy Socket-session `memories` rows remain unverified compatibility data and are not promoted by isolation-key matching alone.
+_Avoid_: Chat history, raw legacy Memory row
 
 **Agent Run**:
 A durable execution of one scoped request by an Agent role, with an authoritative lifecycle that survives transport disconnects and process restarts.
@@ -125,8 +125,16 @@ An expiring, user-issued decision bound to one immutable Tool operation payload,
 _Avoid_: Chat reply, generic confirmation, reusable permission
 
 **Skill**:
-An editable production instruction that guides an Agent role or a specialized execution step.
-_Avoid_: Prompt template
+An identifiable production instruction whose editable drafts and published runtime revisions have separate lifecycles.
+_Avoid_: Prompt template, mutable file path
+
+**SkillRevision**:
+One versioned content and manifest snapshot of a Skill. A published revision is immutable and can be bound to an Agent Run.
+_Avoid_: Current Markdown file, overwritten Skill body
+
+**SkillBinding**:
+The currently activated published SkillRevision for a Skill; changing it affects future Runs, not a Run's frozen resolution.
+_Avoid_: Historical Run binding, SkillRevision
 
 **Vendor**:
 A programmable integration that exposes one or more AI Models to Toonflow.

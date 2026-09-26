@@ -900,6 +900,83 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.index(["runId", "createdAt"]);
       },
     },
+    // Skill Definition：稳定身份；Markdown 文件路径不是运行时身份
+    {
+      name: "o_agentSkillDefinition",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("name").notNullable().unique();
+        table.text("description").notNullable();
+        table.integer("createdAt").notNullable();
+      },
+    },
+    // Skill Revision：可编辑草稿或不可变的已发布内容/manifest 快照
+    {
+      name: "o_agentSkillRevision",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.text("skillId").notNullable().references("id").inTable("o_agentSkillDefinition");
+        table.text("semanticVersion").notNullable();
+        table.text("status").notNullable();
+        table.text("content").notNullable();
+        table.text("contentHash").notNullable();
+        table.text("manifestJson").notNullable();
+        table.text("manifestHash").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("publishedAt");
+        table.unique(["skillId", "semanticVersion"]);
+      },
+    },
+    // Skill Binding：一次激活指向已发布修订；回滚也只改变这里
+    {
+      name: "o_agentSkillBinding",
+      builder: (table) => {
+        table.text("skillId").notNullable().primary().references("id").inTable("o_agentSkillDefinition");
+        table.text("activeRevisionId").notNullable().references("id").inTable("o_agentSkillRevision");
+        table.integer("version").notNullable();
+        table.integer("updatedAt").notNullable();
+      },
+    },
+    // Run Skill Binding：运行开始时冻结已解析修订，与当前激活指针分离
+    {
+      name: "o_agentRunSkillBinding",
+      builder: (table) => {
+        table.text("runId").notNullable().references("id").inTable("o_agentRun");
+        table.text("skillId").notNullable().references("id").inTable("o_agentSkillDefinition");
+        table.text("revisionId").notNullable().references("id").inTable("o_agentSkillRevision");
+        table.text("contentHash").notNullable();
+        table.text("manifestHash").notNullable();
+        table.integer("boundAt").notNullable();
+        table.primary(["runId", "skillId"]);
+      },
+    },
+    // Project Memory：仅从已提交 Agent Step Output 捕获的有来源定位的连续性证据
+    {
+      name: "o_agentProjectMemory",
+      builder: (table) => {
+        table.text("id").notNullable().primary();
+        table.integer("projectId").notNullable();
+        table.integer("scriptId");
+        table.text("role").notNullable();
+        table.text("kind").notNullable();
+        table.text("status").notNullable();
+        table.text("sourceRunId").notNullable().references("id").inTable("o_agentRun");
+        table.text("sourceStepId").notNullable().references("id").inTable("o_agentRunStep");
+        table.text("sourceOutputId").notNullable().references("id").inTable("o_agentRunOutput");
+        table.text("sourceOutputHash").notNullable();
+        table.integer("startCodePoint").notNullable();
+        table.integer("endCodePoint").notNullable();
+        table.text("content").notNullable();
+        table.text("contentHash").notNullable();
+        table.text("revision").notNullable();
+        table.text("confidence").notNullable();
+        table.integer("createdAt").notNullable();
+        table.integer("revokedAt");
+        table.text("revocationCommandId");
+        table.unique(["sourceOutputId", "kind", "startCodePoint", "endCodePoint"]);
+        table.index(["projectId", "status", "createdAt"]);
+      },
+    },
     // Agent Trace：Run 内单调有序的安全生命周期与诊断事件
     {
       name: "o_agentTrace",
@@ -1522,6 +1599,70 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
       BEGIN
         SELECT RAISE(ABORT, 'Agent ContextBundle is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentSkillRevision")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillRevision_prevent_published_update
+      BEFORE UPDATE ON o_agentSkillRevision
+      WHEN OLD.status = 'published'
+      BEGIN
+        SELECT RAISE(ABORT, 'Published SkillRevision is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentSkillRevision_prevent_published_delete
+      BEFORE DELETE ON o_agentSkillRevision
+      WHEN OLD.status = 'published'
+      BEGIN
+        SELECT RAISE(ABORT, 'Published SkillRevision is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentRunSkillBinding")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentRunSkillBinding_prevent_update
+      BEFORE UPDATE ON o_agentRunSkillBinding
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Run Skill binding is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentRunSkillBinding_prevent_delete
+      BEFORE DELETE ON o_agentRunSkillBinding
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.runId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Agent Run Skill binding is durable evidence');
+      END
+    `);
+  }
+  if (await knex.schema.hasTable("o_agentProjectMemory")) {
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentProjectMemory_prevent_source_update
+      BEFORE UPDATE OF projectId, scriptId, role, kind, sourceRunId, sourceStepId,
+        sourceOutputId, sourceOutputHash, startCodePoint, endCodePoint, content,
+        contentHash, revision, confidence, createdAt ON o_agentProjectMemory
+      BEGIN
+        SELECT RAISE(ABORT, 'Project Memory source evidence is immutable');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentProjectMemory_revoke_only
+      BEFORE UPDATE OF status, revokedAt, revocationCommandId ON o_agentProjectMemory
+      WHEN NOT (OLD.status = 'active' AND NEW.status = 'revoked'
+        AND OLD.revokedAt IS NULL AND NEW.revokedAt IS NOT NULL
+        AND OLD.revocationCommandId IS NULL AND NEW.revocationCommandId IS NOT NULL)
+      BEGIN
+        SELECT RAISE(ABORT, 'Project Memory supports only explicit revocation');
+      END
+    `);
+    await knex.raw(`
+      CREATE TRIGGER IF NOT EXISTS o_agentProjectMemory_prevent_delete
+      BEFORE DELETE ON o_agentProjectMemory
+      WHEN NOT EXISTS (SELECT 1 FROM o_agentEvidenceDeletionPermit WHERE runId = OLD.sourceRunId)
+      BEGIN
+        SELECT RAISE(ABORT, 'Project Memory is durable evidence');
       END
     `);
   }

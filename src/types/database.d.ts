@@ -1,4 +1,4 @@
-// @db-hash c7ea22fe2542698e4fca56b45731b5cd
+// @db-hash 2c3798b20584a15fe6b1614ab6056aea
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -63,6 +63,27 @@ export interface o_agentImageQuotePolicy {
   'updatedAt': number;
   'updatedByUserId': number;
   'vendorId': string;
+}
+export interface o_agentProjectMemory {
+  'confidence': string;
+  'content': string;
+  'contentHash': string;
+  'createdAt': number;
+  'endCodePoint': number;
+  'id'?: string;
+  'kind': string;
+  'projectId': number;
+  'revision': string;
+  'revocationCommandId'?: string | null;
+  'revokedAt'?: number | null;
+  'role': string;
+  'scriptId'?: number | null;
+  'sourceOutputHash': string;
+  'sourceOutputId': string;
+  'sourceRunId': string;
+  'sourceStepId': string;
+  'startCodePoint': number;
+  'status': string;
 }
 export interface o_agentRun {
   'allowedActions': string;
@@ -140,6 +161,14 @@ export interface o_agentRunOutput {
   'schemaVersion': string;
   'stepId': string;
 }
+export interface o_agentRunSkillBinding {
+  'boundAt': number;
+  'contentHash': string;
+  'manifestHash': string;
+  'revisionId': string;
+  'runId'?: string;
+  'skillId'?: string;
+}
 export interface o_agentRunStep {
   'completedAt'?: number | null;
   'id'?: string;
@@ -150,6 +179,30 @@ export interface o_agentRunStep {
   'resolvedTarget'?: string | null;
   'runId': string;
   'startedAt'?: number | null;
+  'status': string;
+}
+export interface o_agentSkillBinding {
+  'activeRevisionId': string;
+  'skillId'?: string;
+  'updatedAt': number;
+  'version': number;
+}
+export interface o_agentSkillDefinition {
+  'createdAt': number;
+  'description': string;
+  'id'?: string;
+  'name': string;
+}
+export interface o_agentSkillRevision {
+  'content': string;
+  'contentHash': string;
+  'createdAt': number;
+  'id'?: string;
+  'manifestHash': string;
+  'manifestJson': string;
+  'publishedAt'?: number | null;
+  'semanticVersion': string;
+  'skillId': string;
   'status': string;
 }
 export interface o_agentToolApproval {
@@ -571,12 +624,17 @@ export interface DB {
   "o_agentEvidenceDeletionPermit": o_agentEvidenceDeletionPermit;
   "o_agentImageArtifact": o_agentImageArtifact;
   "o_agentImageQuotePolicy": o_agentImageQuotePolicy;
+  "o_agentProjectMemory": o_agentProjectMemory;
   "o_agentRun": o_agentRun;
   "o_agentRunAttempt": o_agentRunAttempt;
   "o_agentRunCheckpoint": o_agentRunCheckpoint;
   "o_agentRunCommand": o_agentRunCommand;
   "o_agentRunOutput": o_agentRunOutput;
+  "o_agentRunSkillBinding": o_agentRunSkillBinding;
   "o_agentRunStep": o_agentRunStep;
+  "o_agentSkillBinding": o_agentSkillBinding;
+  "o_agentSkillDefinition": o_agentSkillDefinition;
+  "o_agentSkillRevision": o_agentSkillRevision;
   "o_agentToolApproval": o_agentToolApproval;
   "o_agentToolCall": o_agentToolCall;
   "o_agentToolDefinition": o_agentToolDefinition;
