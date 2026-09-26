@@ -75,3 +75,29 @@ test("same source identity with a different evidence locator fails closed", () =
     startCodePoint: 3, endCodePoint: 4, sourceTextHash: "a".repeat(64) } });
   assert.throws(() => selectEligibleContextSources(request, [first, second], budget), /conflicting.*locator/);
 });
+
+test("optional Tool evidence uses a hashed partial projection only when the full result cannot fit", () => {
+  const full = "source data ".repeat(80);
+  const compact = "Partial committed ToolResult get_novel_text: short excerpt";
+  const candidate = source("tool:receipt-1", full, { category: "toolResults", compact: {
+    content: compact, contentHash: digest(compact), transform: { kind: "tool-result-projection.v1",
+      sourceContentHash: digest(full), strategy: "novel-text-prefix-128" },
+  } });
+  const narrow = planContextBudget({ contextWindowTokens: 2_000, policyMaxInputTokens: 700,
+    outputReserveTokens: 200, toolProtocolReserveTokens: 100, mandatoryTokens: 100, risk: "standard",
+    optionalDemandTokens: { authoritative: 0, toolResults: full.length, recentInteraction: 0, memory: 0 } });
+  const selected = selectEligibleContextSources({ ...request, requiredSourceIds: [] }, [candidate], narrow);
+  assert.deepEqual(selected.selectedContent, [compact]);
+  assert.deepEqual(selected.compactionActions, [{ sourceId: candidate.id, action: "tool-projection" }]);
+  assert.equal(selected.selected[0].contentHash, digest(compact));
+  assert.deepEqual(selected.selected[0].transform, candidate.compact?.transform);
+  assert.throws(() => selectEligibleContextSources({ ...request, requiredSourceIds: [candidate.id] },
+    [candidate], narrow), ContextSourceUnavailableError, "required evidence is never silently reduced");
+  assert.throws(() => selectEligibleContextSources({ ...request, requiredSourceIds: [] },
+    [{ ...candidate, compact: { ...candidate.compact!, contentHash: digest("wrong") } }], narrow), /corrupt/);
+  const roomy = planContextBudget({ contextWindowTokens: 4_000, policyMaxInputTokens: 3_000,
+    outputReserveTokens: 200, toolProtocolReserveTokens: 100, mandatoryTokens: 100, risk: "standard",
+    optionalDemandTokens: { authoritative: 0, toolResults: full.length, recentInteraction: 0, memory: 0 } });
+  assert.deepEqual(selectEligibleContextSources({ ...request, requiredSourceIds: [] },
+    [candidate], roomy).selectedContent, [full]);
+});

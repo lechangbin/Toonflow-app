@@ -36,7 +36,7 @@ test("only a committed, schema-valid ToolReceipt in this Project Run enters Cont
     await db("o_agentRunAttempt").insert([{ id: "attempt-before", runId: "run-7", stepId: "step-before" },
       { id: "attempt-current", runId: "run-7", stepId: "step-current" },
       { id: "attempt-foreign", runId: "run-9", stepId: "step-before" }]);
-    const output = JSON.stringify({ novelId: 2, chapterIndex: 1, chapter: "序章", text: "可读原文" });
+    const output = JSON.stringify({ novelId: 2, chapterIndex: 1, chapter: "序章", text: "可读原文".repeat(600) });
     const base = { toolName: "get_novel_text", toolRevision: TOOL_DEFINITIONS.get_novel_text.revision,
       status: "succeeded", outputJson: output, outputHash: hash(output), updatedAt: 10 };
     await db("o_agentToolReceipt").insert([{ id: "valid", runId: "run-7", ...base },
@@ -50,6 +50,10 @@ test("only a committed, schema-valid ToolReceipt in this Project Run enters Cont
       receiptIds: ["foreign", "pending", "valid"] });
     assert.deepEqual(candidates.map((entry) => entry.id), ["tool:valid"]);
     assert.ok(candidates[0].content.includes("可读原文"));
+    assert.ok(candidates[0].compact?.content.includes("full output omitted"));
+    assert.equal(candidates[0].compact?.transform.sourceContentHash, candidates[0].contentHash);
+    assert.equal(candidates[0].compact?.transform.strategy, "novel-text-prefix-128");
+    assert.equal(candidates[0].compact?.content.includes("可读原文".repeat(600)), false);
     await assert.rejects(loader.load({ runId: "run-7", stepId: "step-current", projectId: 9,
       receiptIds: ["valid"] }), /outside Project scope/);
     await assert.rejects(loader.load({ runId: "run-7", stepId: "step-after", projectId: 7,
