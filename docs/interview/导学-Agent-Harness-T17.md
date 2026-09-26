@@ -1,6 +1,6 @@
 # Agent Harness T17 导学：生产 Run 与计费图片提案（阶段版）
 
-> 当前覆盖生产指导 Run、只读工作区 Tool、单资产图片、派生资产与单条分镜提案。图片复用 T09 假 Provider 路径，派生资产复用 T08 审批，分镜限定已有空 Video Track 的本地写入。T17 生成黄金链路未完成；完整测试、浏览器与真实 Provider 验收留到 T21。只写可核验的实现与学习材料，不写简历或线上收益。
+> 当前覆盖生产指导 Run、只读工作区 Tool、单资产图片、派生资产、单条分镜及受控 Video 候选。Video 有独立审批、请求账本和默认关闭的 Owner 执行入口，但真实 Provider、浏览器和跨进程恢复未验收。T17 生成黄金链路未完成；完整测试留到 T21。只写可核验的实现与学习材料，不写简历或线上收益。
 
 ## 学习目标与前置知识
 
@@ -24,7 +24,7 @@
 5. 读 `src/controlledTools/billableImageLedger.ts`：Owner 决策之后才可能形成 Vendor 请求意图，未知外部结果不能简单重发。
 5a. 读 `src/controlledTools/derivedAssetWrite.ts`：派生资产提案复用 T08 的目标状态与等价状态校验，Owner 决策才提交本地 Asset 与 Instruction。
 5b. 读 `src/controlledTools/storyboardWriteContract.ts`、`storyboardWriteApproval.ts` 和 `storyboardWriteEffect.ts`：空 Track 单分镜候选冻结目标，模型只提案；Owner 决策在一个事务中提交分镜、关联及持久证据。
-5c. 读 `src/controlledTools/videoGenerationProposalContract.ts`、`videoGenerationPreparation.ts` 和 `src/video/production.ts`：单轨道 Video 候选冻结目标，复用手动生成的 Vendor/Prompt/Capability 命令校验，但尚无审批或外部提交。
+5c. 读 `src/controlledTools/videoGenerationProposalContract.ts`、`videoGenerationPreparation.ts` 和 `src/video/production.ts`：单轨道 Video 候选先冻结目标并复用手动命令校验；再沿后续条目阅读已新增的审批、请求账本和默认关闭的 Owner 执行入口。准备动作本身仍无外部提交。
 6. 读 `src/agents/productionAgent/harnessEffects.ts`、`src/routes/agentRuns/productionHarness.ts` 与 `src/routes/agentRuns/storyboardWriteApproval.ts`：只读效果投影从三类持久子审批读状态，不从模型回复猜测结果；Owner 审批从认证请求获取身份。
 7. 对照 `tests/productionHarnessRun.test.ts`、`tests/productionHarnessGrants.test.ts`、`tests/billableImageApproval.test.ts` 和阶段报告 `docs/reports/agent-harness-production-migration-73-progress.md`，区分已测与待测。
 
@@ -42,12 +42,12 @@
 | 冻结来源关联 | 仅展示模型回复文本 | 文本不能证明一次请求来自哪个受权操作 | 子 Run 记录父 ID/操作/Skill，检查时复核判定哈希；效果投影由数据库重建，审批绑定不可变 |
 | 派生资产独立审批 | 复用图片授权或让模型直接写表 | 本地资产变更与计费图片属于不同风险；代价是第二种 Owner grant 和审批记录 | 假模型提案时资产数量不变，Owner 批准后只提交一条；撤销授权后新提案拒绝 |
 | 空轨道单分镜审批 | 让模型调用旧批量 Socket 写入 | 旧流程先写分镜再创建轨道，可能部分提交；先限制到已有空轨道和相同时长，代价是暂不支持多分镜分组与新建轨道 | 假模型提案时无分镜写入；Owner 决策单事务提交，关联失败整体回滚；浏览器待验收 |
-| Video 准备与提交分离 | 将旧异步生成函数直接作为模型 Tool | 旧函数在落库后立即请求 Vendor，超时后的失败不等于无外部效果；代价是受控 Video 当前只有无副作用准备 | 假 Vendor 单测证明准备不写 Production Action/Generation Task、不提交 Vendor；异步检查中目标变化被拒 |
+| Video 准备与提交分离 | 将旧异步生成函数直接作为模型 Tool | 旧函数在落库后立即请求 Vendor，超时后的失败不等于无外部效果；受控准备阶段坚持无副作用，后续提交另走 Owner 执行与账本 | 假 Vendor 单测证明单独准备不写 Production Action/Generation Task、不提交 Vendor；异步检查中目标变化被拒 |
 | Video 精确选型本地估算 | 从 Vendor Capability 推导价格或复用其他时长估算 | Capability 不是账单；Owner 只按当前 Project 和完整 output/audio 选型设置版本化费用上限，缺配置拒绝，代价是需要另行维护估算 | `videoQuotePolicy` SQLite 定向测试覆盖 Owner、revision、时长/画幅/音频隔离；Web 有当前无图文生视频选型设置控件和合约单测，浏览器未验收 |
-| Video 批准与 Vendor 提交分离 | 批准时调用旧 `startVideoGenerationBatch` | 旧路径无法证明超时后供应商未接单；当前只持久化 Owner 的精确决策，保持 waiting/pending 且禁用 dispatch，代价是批准后仍需后续账本实现 | 3 个 SQLite 本地审批用例证明批准、拒绝和到期均无 ToolCall/GenerationTask/Video；认证路由无 execute |
-| Video 独立请求意图账本 | 直接复用图片账本或失败时重新调用 Vendor | 图片账本含 Asset/Image 专属字段；视频必须绑定 Track/命令与独立 Provider 回执。落账后结果不明时拒绝重放，代价是暂不能自动恢复生成 | 3 个内部账本定向用例证明单次意图、重复不重发、恢复转 unknown；尚无真实 Vendor 调用 |
+| Video 批准与 Vendor 提交分离 | 批准时调用旧 `startVideoGenerationBatch` | 旧路径无法证明超时后供应商未接单；单靠批准只留下 waiting/pending 决策，不派发。后续已有独立账本及默认关闭的 Owner HTTP 执行入口，仍需显式操作和 T21 验收 | 3 个 SQLite 本地审批用例证明批准、拒绝和到期均无 ToolCall/GenerationTask/Video；执行入口的默认关闭另有定向路由测试 |
+| Video 独立请求意图账本 | 直接复用图片账本或失败时重新调用 Vendor | 图片账本含 Asset/Image 专属字段；视频必须绑定 Track/命令与独立 Provider 回执。落账后结果不明时拒绝重放，代价是不能自动重发未知请求 | 内部账本和假 Provider 组合定向测试证明单次意图、重复不重发、恢复转 unknown；尚无真实 Provider 验收 |
 | Video 媒体观察与项目采纳分离 | 收到 base64 后立即标记生成成功 | 写文件可能失败或崩溃，迟到结果也不能自动覆盖 Project；先落媒体意图、读回验哈希，再等待独立提交 | 3 个 SQLite 媒体单测覆盖待写恢复、重复观察与取消后 late；提交事务另测 |
-| Video 项目采纳单事务 | 文件写完即逐表更新成功状态 | Project Video、任务、修订、回执和 Run 必须同成同败；目标漂移或迟到不能自动采纳 | 3 个 SQLite 提交用例覆盖成功幂等、Prompt 漂移和 Revision 插入失败整体回滚；尚无真实 Vendor 组合 |
+| Video 项目采纳单事务 | 文件写完即逐表更新成功状态 | Project Video、任务、修订、回执和 Run 必须同成同败；目标漂移或迟到不能自动采纳 | SQLite 提交与假 Provider 组合用例覆盖成功幂等、Prompt 漂移和 Revision 插入失败整体回滚；尚无真实 Provider 验收 |
 | Video 取消意图与本地停止分离 | 将取消点击视作供应商已撤销或把超时当作无费用失败 | 网络边界后的作用未知；先记录本地取消意图，再允许停止本地追踪，保留迟到 task/媒体证据且禁用采纳与重放 | 账本/媒体 11 个定向 SQLite 用例覆盖取消前后迟到、停止不重开、同请求不再生成新意图；尚无真实 Provider 取消确认 |
 | Video Owner 状态快照从证据重建 | approved 后沿用纯审批 waiting/pending 假设 | 生成后 Run/Receipt 会进入终态，旧假设会阻断 inspect；按 ToolCall/请求/Artifact 重建，并防止 TTL 抹掉已有请求 | 5 个本地审批/投影 SQLite 用例覆盖请求、停止、成功和过期后查看；尚无 Web 执行入口 |
 | Video Checkpoint 恢复按 scope 核对 | 将所有 Vendor 意图当图片请求校验 | Video 和 Image 共享 Checkpoint kind 但不同账本；按审批 scope 选择请求表，提交后核对 Project 媒体证据，避免重启误判腐坏 | Video 意图/提交定向恢复及相邻图片/通用恢复单测；跨进程和真实 Vendor 待 T21 |
