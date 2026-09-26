@@ -45,6 +45,9 @@ type Evaluation = ReturnType<typeof createEvaluationRunRuntime>;
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const cellKey = (cell: { variant: string; caseId: string; seed: number }) =>
   `${cell.variant}:${cell.caseId}:${cell.seed}`;
+const hasRequiredArtifacts = (assessment: EvaluationAssessment,
+  requiredArtifacts: string[]) => assessment.artifacts.length === requiredArtifacts.length
+  && requiredArtifacts.every((kind) => assessment.artifacts.some((artifact) => artifact.kind === kind));
 
 /** Append-only human/deterministic assessments of production Agent Run evidence. */
 export function createEvaluationAssessmentLedger(dependencies: {
@@ -75,8 +78,10 @@ export function createEvaluationAssessmentLedger(dependencies: {
         || assessment.hardGates.some((gate, index) => gate.id !== definition.hardGates[index].id)
         || assessment.quality.rubricVersion !== golden.qualityRubricVersion
         || new Set(assessment.artifacts.map((artifact) => artifact.kind)).size !== assessment.artifacts.length
+        || (assessment.quality.state === "reviewed"
+          && !hasRequiredArtifacts(assessment, definition.requiredArtifacts))
         || (source.runStatus !== "succeeded" && !assessment.failureClassification)) {
-        throw new TypeError("Assessment differs from frozen gates, rubric or source failure");
+        throw new TypeError("Assessment differs from frozen gates, required artifacts, rubric or source failure");
       }
       const assessmentJson = JSON.stringify(assessment);
       return dependencies.work(async (db) => db.transaction(async (tx) => {
@@ -129,7 +134,10 @@ export function createEvaluationAssessmentLedger(dependencies: {
           || assessment.sourceEvidenceHash !== hash(source)
           || assessment.hardGates.length !== definition.hardGates.length
           || assessment.hardGates.some((gate, index) => gate.id !== definition.hardGates[index].id)
-          || assessment.quality.rubricVersion !== golden.qualityRubricVersion) {
+          || assessment.quality.rubricVersion !== golden.qualityRubricVersion
+          || new Set(assessment.artifacts.map((artifact) => artifact.kind)).size !== assessment.artifacts.length
+          || (assessment.quality.state === "reviewed"
+            && !hasRequiredArtifacts(assessment, definition.requiredArtifacts))) {
           throw new Error("Evaluation assessment differs from frozen source evidence");
         }
         assessments.set(key, assessment);
