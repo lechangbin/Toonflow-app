@@ -8,6 +8,10 @@
 
 Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/goldenEval.ts` 的 18 例清单校验与规范化哈希 → `tests/goldenEvaluationFreeze.test.ts`。刚冻结时 72 个样本全部 missing；不要把 manifest 冻结解释成场景执行。
 
+新语料导学（ADR-0028）：先对照 `data/eval/agent-harness-golden-v1/manifest.json` 与 `data/eval/agent-runtime-corpus-v1/manifest.json`，指出前者是确定性领域场景、后者是 18 条实际 Agent 请求，两者仅数量相同。读 `agentRuntimeCorpus.ts` 的 12/3/3、规范顺序、角色/权限、fixture 和 rubric 校验；读 `agentRuntimeProjectFixture.ts` 如何验证字节哈希、在空数据库物化 Project，并比对当前 Project 投影；再读 `agentRuntimeEvaluationFreeze.ts` 如何创建 v3 账本，及 `evaluationCaseDefinitions.ts` 如何让报告分别读取 v2 T02 与 v3 新语料。运行 `tests/agentRuntimeCorpus.test.ts`：新语料冻结后 72 格仍全部 missing；本地 Fake Model 的单 cell 有 Run 与受控读取 ToolReceipt，但尚无独立 hard-gate 判定。篡改已物化章节后，`evaluationAgentCase` 在第二次 Model 调用前拒绝；反问为何调用期间仍需隔离或快照锁。
+
+逐例观察练习：读 `docs/reports/agent-harness-t11-case-matrix.md`，任选 DEV-RT-001、HOLD-RT-013、INC-RT-018，分别说出允许的 Tool、禁止的效果、预期 Output 与人工判断部分。再检查 v3 的 actor 身份：fixture owner → 冻结 `caseInputs.actorUserId` → `evaluationAgentCase` 启动预检 → Run input → `evaluationRun.record/inspect`。换成另一 actor 时应在 Model 前拒绝；已记录 Run input 中 actor 被改写时整份观察报告应拒绝。
+
 覆盖报告再读 `src/eval/evaluationCoverageReport.ts`：固定 18-case、2-seed、2-variant 的分母；观察一条真实只读 Run 后，仅相应 cell 从 missing 转 observed。解释为何 observed 不是 hard-gate pass，来源 Run 版本被改写时为什么必须整份拒绝，而不能继续显示漂亮的覆盖率。
 
 待评审清单读 `src/eval/evaluationAssessmentQueue.ts`：一个 Run 已成功为何对应 Golden 硬门仍是 `not-evaluated`？为什么必需产物清单、rubric 版本和失败分类可以先列出来，却不能自行填“通过”？

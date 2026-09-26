@@ -1,5 +1,6 @@
 import type { AgentRuntime, StartAgentRunInput } from "@/agentRuntime";
 
+import { validateAgentRuntimeCorpus, type AgentRuntimeCorpus } from "./agentRuntimeCorpus";
 import { createEvaluationRunRuntime, evaluationCaseRequestId,
   hashEvaluationInput, parseEvaluationRevisions,
   type EvaluationRunManifest } from "./evaluationRun";
@@ -7,6 +8,7 @@ import { createEvaluationRunRuntime, evaluationCaseRequestId,
 type Evaluation = ReturnType<typeof createEvaluationRunRuntime>;
 type Variant = "baseline" | "candidate";
 type RevisionSet = EvaluationRunManifest["baseline"];
+type Fixture = AgentRuntimeCorpus["cases"][number]["fixture"];
 
 /** Uses the same AgentRuntime instance as production; scheduling remains an injected boundary. */
 export function createEvaluationAgentCase(dependencies: {
@@ -14,7 +16,19 @@ export function createEvaluationAgentCase(dependencies: {
   runtime: AgentRuntime;
   currentRevisions(): Promise<RevisionSet>;
   awaitScheduledWork(): Promise<void>;
+  verifyProjectFixture?(input: { projectId: number; fixture: Fixture }): Promise<void>;
 }) {
+  async function verifyCaseFixture(manifest: EvaluationRunManifest, caseId: string,
+    projectId: number): Promise<void> {
+    if (manifest.agentRuntimeCorpusJson === undefined) return;
+    if (!dependencies.verifyProjectFixture) {
+      throw new TypeError("AgentRuntime corpus execution requires Project fixture verification");
+    }
+    const corpus = validateAgentRuntimeCorpus(JSON.parse(manifest.agentRuntimeCorpusJson) as unknown);
+    const definition = corpus.cases.find((entry) => entry.id === caseId);
+    if (!definition) throw new TypeError("AgentRuntime corpus case is missing");
+    await dependencies.verifyProjectFixture({ projectId, fixture: definition.fixture });
+  }
   async function execute(input: { evaluationRunId: string; caseId: string; seed: number;
       variant: Variant; projectId: number; actorUserId?: number;
       role: StartAgentRunInput["role"]; scope: StartAgentRunInput["scope"];
@@ -26,6 +40,10 @@ export function createEvaluationAgentCase(dependencies: {
         throw new TypeError("Evaluation case is outside the frozen matrix");
       }
       const frozenInput = frozen.manifest.caseInputs.find((entry) => entry.caseId === input.caseId);
+      if (frozenInput?.actorUserId !== undefined
+        && input.actorUserId !== frozenInput.actorUserId) {
+        throw new TypeError("Evaluation case actor differs from the frozen Project owner");
+      }
       if (!frozenInput || !input.content.trim()
         || input.projectId !== frozenInput.projectId
         || hashEvaluationInput(input.content) !== frozenInput.contentHash
@@ -37,6 +55,7 @@ export function createEvaluationAgentCase(dependencies: {
       if (JSON.stringify(actual) !== JSON.stringify(declared)) {
         throw new TypeError("Evaluation Runtime revisions do not match the frozen manifest");
       }
+      await verifyCaseFixture(frozen.manifest, input.caseId, input.projectId);
       const clientRequestId = evaluationCaseRequestId(input.evaluationRunId,
         input.variant, input.caseId, input.seed);
       const started = await dependencies.runtime.start({
@@ -52,6 +71,7 @@ export function createEvaluationAgentCase(dependencies: {
       if (!completed || !["succeeded", "failed", "cancelled"].includes(completed.status)) {
         throw new Error("Evaluation case has no terminal production Agent Run");
       }
+      await verifyCaseFixture(frozen.manifest, input.caseId, input.projectId);
       return dependencies.evaluation.record({ evaluationRunId: input.evaluationRunId,
         caseId: input.caseId, seed: input.seed, variant: input.variant,
         agentRunId: completed.id });
@@ -82,10 +102,29 @@ export function createEvaluationAgentCase(dependencies: {
           || hashEvaluationInput(content) !== frozenInput.contentHash) {
           throw new TypeError("Evaluation case content differs from the frozen input");
         }
+        if (frozenInput.actorUserId !== undefined
+          && input.actorUserId !== frozenInput.actorUserId) {
+          throw new TypeError("Evaluation case actor differs from the frozen Project owner");
+        }
       }
       const actual = parseEvaluationRevisions(await dependencies.currentRevisions());
       if (JSON.stringify(actual) !== JSON.stringify(manifest[input.variant])) {
         throw new TypeError("Evaluation Runtime revisions do not match the frozen manifest");
+      }
+      if (manifest.agentRuntimeCorpusJson !== undefined) {
+        const corpus = validateAgentRuntimeCorpus(JSON.parse(manifest.agentRuntimeCorpusJson) as unknown);
+        if (!dependencies.verifyProjectFixture) {
+          throw new TypeError("AgentRuntime corpus execution requires Project fixture verification");
+        }
+        const checked = new Set<string>();
+        for (const definition of corpus.cases) {
+          const projectId = manifest.caseInputs.find((entry) => entry.caseId === definition.id)!.projectId;
+          const key = `${projectId}:${definition.fixture.path}:${definition.fixture.sha256}`;
+          if (!checked.has(key)) {
+            await dependencies.verifyProjectFixture({ projectId, fixture: definition.fixture });
+            checked.add(key);
+          }
+        }
       }
       const observed = new Set(frozen.cases.filter((cell) => cell.variant === input.variant)
         .map((cell) => `${cell.caseId}:${cell.seed}`));

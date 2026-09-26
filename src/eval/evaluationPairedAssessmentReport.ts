@@ -42,7 +42,7 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
   const coverage = await createEvaluationCoverageReport(evaluation, evaluationRunId);
   const inspected = await assessment.inspect(evaluationRunId);
   if (inspected.expected !== coverage.expectedPerVariant * 2) {
-    throw new Error("Assessment denominator differs from frozen Golden coverage");
+    throw new Error("Assessment denominator differs from frozen case coverage");
   }
   const byKey = new Map<string, EvaluationAssessment>(inspected.assessments.map((entry) =>
     [key(entry.variant, entry.caseId, entry.seed), entry]));
@@ -99,7 +99,7 @@ export function renderEvaluationPairedAssessmentMarkdown(report: PairedAssessmen
     `| ${cell.caseId} | ${cell.partition} | ${cell.seed} | ${cell.baseline.state} | ${cell.candidate.state} | ${cell.provisionalScoreDelta ?? "—"} |`);
   return ["# Paired assessment ledger (not a verified quality result)", "",
     `Evaluation Run: ${report.evaluationRunId}`,
-    `Golden manifest: ${report.caseManifestHash}`,
+    `Case manifest: ${report.caseManifestHash}`,
     `Pairs: ${report.completePairs}/${report.expectedPairs} provisionally reviewed; ${report.blockedPairs} blocked`,
     `Production Runs: ${report.observedRuns}/${report.expectedPairs * 2} observed; ${report.assessedRuns} assessed`,
     `Evidence reference files: ${report.evidenceFileCheckedRuns}/${report.assessedRuns} independently resolved and hashed.`,

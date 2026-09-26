@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type { DatabaseWork } from "@/database";
 import { z } from "zod";
 
-import { validateGoldenEvalManifest } from "./goldenEval";
+import { resolveEvaluationCaseDefinitions } from "./evaluationCaseDefinitions";
 import { createEvaluationRunRuntime } from "./evaluationRun";
 
 export const EVALUATION_ASSESSMENT_VERSION = "toonflow.evaluation-assessment.v1" as const;
@@ -56,27 +56,24 @@ export function createEvaluationAssessmentLedger(dependencies: {
   async function frozen(input: { evaluationRunId: string; caseId: string;
     seed: number; variant: "baseline" | "candidate" }) {
     const observed = await dependencies.evaluation.inspect(input.evaluationRunId);
-    if (!observed.manifest.goldenManifestJson) {
-      throw new TypeError("Assessment requires a frozen Golden manifest");
-    }
-    const golden = validateGoldenEvalManifest(JSON.parse(observed.manifest.goldenManifestJson));
-    const definition = golden.cases.find((item) => item.id === input.caseId);
+    const definitions = resolveEvaluationCaseDefinitions(observed.manifest);
+    const definition = definitions.cases.find((item) => item.id === input.caseId);
     const source = observed.cases.find((item) => cellKey(item) === cellKey(input));
     if (!definition || !source) throw new TypeError("Assessment requires an observed frozen cell");
-    return { observed, golden, definition, source };
+    return { observed, definitions, definition, source };
   }
 
   return {
     async record(input: Omit<EvaluationAssessment, "schemaVersion" | "sourceEvidenceHash" | "assessedAt"
       | "costMicros">): Promise<EvaluationAssessment> {
-      const { golden, definition, source } = await frozen(input);
+      const { definitions, definition, source } = await frozen(input);
       const assessedAt = dependencies.now();
       const assessment = assessmentSchema.parse({ ...input,
         schemaVersion: EVALUATION_ASSESSMENT_VERSION,
         sourceEvidenceHash: hash(source), costMicros: null, assessedAt });
       if (assessment.hardGates.length !== definition.hardGates.length
         || assessment.hardGates.some((gate, index) => gate.id !== definition.hardGates[index].id)
-        || assessment.quality.rubricVersion !== golden.qualityRubricVersion
+        || assessment.quality.rubricVersion !== definitions.qualityRubricVersion
         || new Set(assessment.artifacts.map((artifact) => artifact.kind)).size !== assessment.artifacts.length
         || (assessment.quality.state === "reviewed"
           && !hasRequiredArtifacts(assessment, definition.requiredArtifacts))
@@ -108,13 +105,10 @@ export function createEvaluationAssessmentLedger(dependencies: {
     async inspect(evaluationRunId: string): Promise<{ expected: number; assessed: number;
       pending: string[]; assessments: EvaluationAssessment[] }> {
       const observed = await dependencies.evaluation.inspect(evaluationRunId);
-      if (!observed.manifest.goldenManifestJson) {
-        throw new TypeError("Assessment requires a frozen Golden manifest");
-      }
-      const golden = validateGoldenEvalManifest(JSON.parse(observed.manifest.goldenManifestJson));
+      const definitions = resolveEvaluationCaseDefinitions(observed.manifest);
       const sourceByKey = new Map(observed.cases.map((source) => [cellKey(source), source]));
       const expectedKeys = observed.manifest.variants.flatMap((variant) =>
-        golden.cases.flatMap((item) => observed.manifest.seeds.map((seed) =>
+        definitions.cases.flatMap((item) => observed.manifest.seeds.map((seed) =>
           cellKey({ variant, caseId: item.id, seed }))));
       const rows = await dependencies.work((db) => db("o_agentEvaluationAssessment")
         .where({ evaluationRunId }));
@@ -126,7 +120,7 @@ export function createEvaluationAssessmentLedger(dependencies: {
         const assessment = assessmentSchema.parse(JSON.parse(row.assessmentJson));
         const key = cellKey(assessment);
         const source = sourceByKey.get(key);
-        const definition = golden.cases.find((item) => item.id === assessment.caseId);
+        const definition = definitions.cases.find((item) => item.id === assessment.caseId);
         if (!expectedKeys.includes(key) || assessments.has(key) || !source || !definition
           || assessment.evaluationRunId !== evaluationRunId
           || row.caseId !== assessment.caseId || row.seed !== assessment.seed
@@ -135,7 +129,7 @@ export function createEvaluationAssessmentLedger(dependencies: {
           || assessment.sourceEvidenceHash !== hash(source)
           || assessment.hardGates.length !== definition.hardGates.length
           || assessment.hardGates.some((gate, index) => gate.id !== definition.hardGates[index].id)
-          || assessment.quality.rubricVersion !== golden.qualityRubricVersion
+          || assessment.quality.rubricVersion !== definitions.qualityRubricVersion
           || new Set(assessment.artifacts.map((artifact) => artifact.kind)).size !== assessment.artifacts.length
           || (assessment.quality.state === "reviewed"
             && !hasRequiredArtifacts(assessment, definition.requiredArtifacts))

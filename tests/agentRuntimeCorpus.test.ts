@@ -1,0 +1,237 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import test from "node:test";
+
+import knexFactory from "knex";
+
+import { createAgentRuntime } from "../src/agentRuntime";
+import { hashAgentRuntimeCorpus, validateAgentRuntimeCorpus } from "../src/eval/agentRuntimeCorpus";
+import { createEvaluationAssessmentLedger } from "../src/eval/evaluationAssessment";
+import { createEvaluationAssessmentQueue } from "../src/eval/evaluationAssessmentQueue";
+import { createEvaluationCoverageReport } from "../src/eval/evaluationCoverageReport";
+import { createEvaluationAgentCase } from "../src/eval/evaluationAgentCase";
+import { createEvaluationPairedAssessmentReport } from "../src/eval/evaluationPairedAssessmentReport";
+import { createEvaluationRunRuntime } from "../src/eval/evaluationRun";
+import { freezeAgentRuntimeEvaluationRun } from "../src/eval/agentRuntimeEvaluationFreeze";
+import { materializeAgentRuntimeProjectFixture,
+  verifyMaterializedAgentRuntimeProjectFixture } from "../src/eval/agentRuntimeProjectFixture";
+import initDB from "../src/lib/initDB";
+
+const fixtureSource = fs.readFileSync(path.resolve("data/eval/fixtures/agent-runtime-project-v1.json"), "utf8");
+const digest = createHash("sha256").update(fixtureSource).digest("hex");
+const caseDefinition = (index: number) => ({
+  id: `${index < 12 ? "DEV" : index < 15 ? "HOLD" : "INC"}-RT-${String(index + 1).padStart(3, "0")}`,
+  partition: index < 12 ? "development" : index < 15 ? "holdout" : "incident-regression",
+  title: `Runtime situation ${index + 1}`,
+  role: "scriptAgent", scope: "read-only-project-guidance-v1",
+  content: `Describe source evidence for situation ${index + 1}.`,
+  fixture: { id: `project-${index + 1}`, path: `data/eval/fixtures/project-${index + 1}.json`, sha256: digest },
+  hardGates: [{ id: "project-scope", statement: "Only the frozen Project may be read" }],
+  requiredArtifacts: ["agent-run-output"],
+  expectedFailureClass: { primary: "None", stage: "agent-run", kind: "none" },
+  rubric: { focus: "Grounded response", anchors: [0, 1, 2].map((score) =>
+    ({ score, description: `Grounding anchor ${score}` })) },
+});
+
+const manifest = () => ({ schemaVersion: "toonflow.agent-runtime-corpus.v1",
+  suiteId: "agent-runtime-corpus-v1", qualityRubricVersion: "runtime-quality@1",
+  cases: Array.from({ length: 18 }, (_, index) => caseDefinition(index)) });
+
+test("T11 checked-in Runtime corpus has 18 concrete requests bound to real fixture bytes", () => {
+  const source = fs.readFileSync(path.resolve("data/eval/agent-runtime-corpus-v1/manifest.json"), "utf8");
+  const corpus = validateAgentRuntimeCorpus(JSON.parse(source) as unknown);
+  assert.equal(corpus.cases.length, 18);
+  assert.equal(new Set(corpus.cases.map((item) => item.content)).size, 18);
+  assert.ok(corpus.cases.every((item) => !item.content.includes(item.id)));
+  for (const item of corpus.cases) {
+    const bytes = fs.readFileSync(path.resolve(item.fixture.path));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), item.fixture.sha256);
+  }
+});
+
+test("T11 Runtime corpus has its own 18-case identity and normalized source hash", () => {
+  const parsed = validateAgentRuntimeCorpus(manifest());
+  assert.equal(parsed.cases.length, 18);
+  assert.equal(parsed.cases[12].partition, "holdout");
+  const source = JSON.stringify(manifest(), null, 2);
+  assert.equal(hashAgentRuntimeCorpus(source), hashAgentRuntimeCorpus(source.replace(/\n/gu, "\r\n")));
+  assert.throws(() => validateAgentRuntimeCorpus({ ...manifest(),
+    schemaVersion: "toonflow.golden-eval-manifest.v1" }), /schemaVersion/u);
+});
+
+test("T11 Runtime corpus rejects incomplete, duplicate and capability-incompatible definitions", () => {
+  assert.throws(() => validateAgentRuntimeCorpus({ ...manifest(),
+    cases: manifest().cases.slice(1) }), /18 cases/u);
+  const duplicate = manifest();
+  duplicate.cases[1].id = duplicate.cases[0].id;
+  assert.throws(() => validateAgentRuntimeCorpus(duplicate), /duplicate|ordered/u);
+  const reordered = manifest();
+  [reordered.cases[0], reordered.cases[1]] = [reordered.cases[1], reordered.cases[0]];
+  assert.throws(() => validateAgentRuntimeCorpus(reordered), /ordered/u);
+  const wrongScope = manifest();
+  wrongScope.cases[0].scope = "production-harness-v1";
+  assert.throws(() => validateAgentRuntimeCorpus(wrongScope), /role.*scope/u);
+  const noFixture = manifest();
+  noFixture.cases[0].fixture.sha256 = "unfrozen";
+  assert.throws(() => validateAgentRuntimeCorpus(noFixture), /fixture|sha256/u);
+});
+
+test("T11 freezes a separate Runtime corpus with 72 missing cells and verified fixture bytes", async () => {
+  const db = knexFactory({ client: "better-sqlite3",
+    connection: { filename: ":memory:" }, useNullAsDefault: true });
+  const previousLog = console.log;
+  console.log = () => {};
+  try { await initDB(db); } finally { console.log = previousLog; }
+  try {
+    const revisions = { app: "app-1", schema: "schema-1", runtime: "runtime-1",
+      tool: "tool-1", context: "context-1", memory: "memory-1",
+      skill: "skill-1", model: "model-1", vendor: "vendor-1" };
+    const evaluation = createEvaluationRunRuntime({ work: async (operation) => operation(db),
+      now: () => 200, createId: () => "runtime-corpus-run" });
+    const source = JSON.stringify(manifest());
+    const input = { manifestSource: source, studyId: "runtime-study-v1", seeds: [11, 29],
+      baseline: revisions, candidate: { ...revisions, app: "app-2" }, frozenAt: 100,
+      projectIds: Object.fromEntries(manifest().cases.map((item) => [item.id, 7])),
+      readFixture: async (_path: string) => fixtureSource };
+    const created = await freezeAgentRuntimeEvaluationRun(evaluation, input);
+    const frozen = await evaluation.inspect(created.id);
+    assert.equal(frozen.manifest.schemaVersion, "toonflow.evaluation-run.v3");
+    assert.equal(frozen.manifest.goldenManifestJson, undefined);
+    assert.equal(frozen.manifest.agentRuntimeCorpusJson, source);
+    assert.ok(frozen.manifest.caseInputs.every((item) => item.actorUserId === 1));
+    assert.equal(frozen.expected, 72);
+    assert.equal(frozen.recorded, 0);
+    const coverage = await createEvaluationCoverageReport(evaluation, created.id);
+    assert.equal(coverage.definedCases, 18);
+    assert.equal(coverage.expectedPerVariant, 36);
+    assert.equal(coverage.caseManifestHash, hashAgentRuntimeCorpus(source));
+    const queue = await createEvaluationAssessmentQueue(evaluation, created.id);
+    assert.equal(queue.expected, 72);
+    assert.equal(queue.pendingAssessment, 72);
+    assert.equal(queue.cells[0].hardGates[0].id, "project-scope");
+    const ledger = createEvaluationAssessmentLedger({ work: async (operation) => operation(db),
+      evaluation, now: () => 300, createId: () => "assessment-1" });
+    assert.equal((await ledger.inspect(created.id)).expected, 72);
+    const paired = await createEvaluationPairedAssessmentReport(evaluation, ledger, created.id);
+    assert.equal(paired.expectedPairs, 36);
+    assert.equal(paired.observedRuns, 0);
+    await assert.rejects(freezeAgentRuntimeEvaluationRun(evaluation, { ...input,
+      readFixture: async () => "changed" }), /fixture.*hash/u);
+  } finally { await db.destroy(); }
+});
+
+test("T11 materializes a hash-bound isolated Project fixture atomically", async () => {
+  const db = knexFactory({ client: "better-sqlite3",
+    connection: { filename: ":memory:" }, useNullAsDefault: true });
+  const previousLog = console.log;
+  console.log = () => {};
+  try { await initDB(db); } finally { console.log = previousLog; }
+  try {
+    const reordered = JSON.parse(fs.readFileSync(path.resolve(
+      "data/eval/fixtures/agent-runtime-project-v1.json"), "utf8")) as {
+        novels: unknown[]; events: unknown[] };
+    reordered.novels.reverse();
+    reordered.events.reverse();
+    const source = JSON.stringify(reordered);
+    const expectedHash = createHash("sha256").update(source).digest("hex");
+    const work = async <T>(operation: (database: typeof db) => Promise<T> | T) => operation(db);
+    await assert.rejects(materializeAgentRuntimeProjectFixture({ work,
+      source, expectedHash: "0".repeat(64), projectId: 7 }), /fixture.*hash/u);
+    assert.equal((await db("o_project").where({ id: 7 })).length, 0);
+    const result = await materializeAgentRuntimeProjectFixture({ work,
+      source, expectedHash, projectId: 7 });
+    assert.equal(result.projectId, 7);
+    assert.equal(result.novelCount, 3);
+    assert.equal((await db("o_novel").where({ projectId: 7 })).length, 3);
+    assert.equal((await db("o_script").where({ projectId: 7 })).length, 1);
+    assert.equal((await db("o_agentWorkData").where({ projectId: 7 })).length, 2);
+    await verifyMaterializedAgentRuntimeProjectFixture({ work,
+      source, expectedHash, projectId: 7 });
+    await assert.rejects(verifyMaterializedAgentRuntimeProjectFixture({ work,
+      source, expectedHash, projectId: 8 }), /Project.*fixture|fixture.*Project/u);
+    await db("o_novel").where({ id: 10 }).update({ chapterData: "tampered" });
+    await assert.rejects(verifyMaterializedAgentRuntimeProjectFixture({ work,
+      source, expectedHash, projectId: 7 }), /Project.*fixture|fixture.*Project/u);
+    await assert.rejects(materializeAgentRuntimeProjectFixture({ work,
+      source, expectedHash, projectId: 7 }), /already exists/u);
+    assert.equal((await db("o_novel").where({ projectId: 7 })).length, 3);
+  } finally { await db.destroy(); }
+});
+
+test("T11 checked-in corpus can execute one real Runtime cell with a local Fake Model", async () => {
+  const db = knexFactory({ client: "better-sqlite3",
+    connection: { filename: ":memory:" }, useNullAsDefault: true });
+  const previousLog = console.log;
+  console.log = () => {};
+  try { await initDB(db); } finally { console.log = previousLog; }
+  try {
+    const manifestSource = fs.readFileSync(path.resolve("data/eval/agent-runtime-corpus-v1/manifest.json"), "utf8");
+    const corpus = validateAgentRuntimeCorpus(JSON.parse(manifestSource) as unknown);
+    const fixtureSource = fs.readFileSync(path.resolve(corpus.cases[0].fixture.path), "utf8");
+    const work = async <T>(operation: (database: typeof db) => Promise<T> | T) => operation(db);
+    await materializeAgentRuntimeProjectFixture({ work, source: fixtureSource,
+      expectedHash: corpus.cases[0].fixture.sha256, projectId: 7 });
+    let serial = 0;
+    const revisions = { app: "app-1", schema: "schema-1", runtime: "runtime-1",
+      tool: "tool-1", context: "context-1", memory: "memory-1",
+      skill: "skill-1", model: "model-1", vendor: "vendor-1" };
+    const evaluation = createEvaluationRunRuntime({ work, now: () => 200,
+      createId: () => `eval-${++serial}` });
+    const frozen = await freezeAgentRuntimeEvaluationRun(evaluation, {
+      manifestSource, studyId: "runtime-corpus-local-v1", seeds: [11, 29],
+      baseline: revisions, candidate: { ...revisions, app: "app-2" }, frozenAt: 100,
+      projectIds: Object.fromEntries(corpus.cases.map((item) => [item.id, 7])),
+      readFixture: async () => fixtureSource,
+    });
+    const scheduled: Array<() => Promise<void>> = [];
+    let modelCalls = 0;
+    const runtime = createAgentRuntime({ work, now: () => 250,
+      createId: () => `run-${++serial}`, schedule: (item) => scheduled.push(item),
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "text-v1",
+        contextWindowTokens: 50_000, maxOutputTokens: 256 },
+      invokeText: async (callInput) => {
+        modelCalls++;
+        const source = await callInput.tools!.get_novel_text.execute!(
+          { novelId: 10 }, { toolCallId: "runtime-corpus-source-read", messages: [] });
+        assert.match((source as { text: string }).text, /暴雨/u);
+        return { text: "暴雨误期迫使戍卒商议" } as any;
+      } }) });
+    const adapter = createEvaluationAgentCase({ evaluation, runtime,
+      currentRevisions: async () => revisions,
+      awaitScheduledWork: async () => { while (scheduled.length) await scheduled.shift()!(); },
+      verifyProjectFixture: async ({ projectId, fixture }) =>
+        verifyMaterializedAgentRuntimeProjectFixture({ work,
+          source: fs.readFileSync(path.resolve(fixture.path)),
+          expectedHash: fixture.sha256, projectId }) });
+    const first = corpus.cases[0];
+    await adapter.execute({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: first.id, seed: 11, projectId: 7, actorUserId: 1,
+      role: first.role, scope: first.scope,
+      content: first.content });
+    const observed = await evaluation.inspect(frozen.id);
+    assert.equal(observed.recorded, 1);
+    assert.equal(observed.missing.length, 71);
+    assert.equal(modelCalls, 1);
+    assert.equal((await db("o_agentRunOutput")).length, 1);
+    assert.equal((await db("o_agentToolReceipt").where({ toolName: "get_novel_text",
+      status: "succeeded" })).length, 1);
+    assert.equal(JSON.parse((await db("o_agentRun").first())!.input).actorUserId, 1);
+    await db("o_agentRun").update({ input: JSON.stringify({ content: first.content,
+      actorUserId: 2 }) });
+    await assert.rejects(evaluation.inspect(frozen.id), /source Agent Run evidence has changed/u);
+    await db("o_agentRun").update({ input: JSON.stringify({ content: first.content,
+      actorUserId: 1 }) });
+    await assert.rejects(adapter.execute({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: first.id, seed: 29, projectId: 7, actorUserId: 2,
+      role: first.role, scope: first.scope, content: first.content }), /actor/u);
+    assert.equal(modelCalls, 1);
+    await db("o_novel").where({ id: 10 }).update({ chapterData: "changed" });
+    await assert.rejects(adapter.execute({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: first.id, seed: 29, projectId: 7, actorUserId: 1,
+      role: first.role, scope: first.scope,
+      content: first.content }), /Project state differs from frozen fixture/u);
+    assert.equal(modelCalls, 1, "mutated Project is rejected before another Model call");
+  } finally { await db.destroy(); }
+});
