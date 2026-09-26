@@ -16,7 +16,7 @@ Built-in Vendor identity, release inclusion, and default-enable policy are owned
 
 | Vendor | Models in this iteration | Capabilities | Audio policy |
 | --- | --- | --- | --- |
-| `agnes` | Agnes Video V2.0 | text, source image, ordered keyframes | native, always enabled |
+| `agnes` | Agnes Video 2.5 Flash, V2.0 | 2.5 Flash: text, source image, first/last frame；V2.0: text, source image, ordered keyframes | native, always enabled |
 | `volcengine` | Seedance 2.0 / Fast | text, one source image | native, optional |
 | `volcengineSd2` | Seedance 2.0 / Fast | text, one source image | native, optional |
 | `minimax` | Hailuo 2.3 / Fast, Hailuo-02 | text, one source image; Hailuo-02 also strict first/last | none |
@@ -28,6 +28,8 @@ participate in the Video Capability registry.
 The canonical capability IDs are `text-to-video`, `image-to-video`, `first-last-frame`, and `keyframe-to-video`. Video Models use `capabilities`; the former Video `mode` field is rejected. Image Model `mode` is a separate contract.
 
 Agnes keyframes use semantic roles. Two images mean `first-frame` to `last-frame`; three mean `first-frame` to `intermediate-keyframe` to `last-frame`. Array position never assigns meaning. Seedance nine-image reference generation is a deferred capability, not an extension of `image-to-video`.
+
+Agnes Video 2.5 Flash uses the modern OpenAI Videos-compatible wire contract: `mode=text/keyframe`, string `seconds` 4–12, `size=720P`, `aspect_ratio`, and task polling by `video_id` plus `model_name`. The public docs illustrate image URLs; the user reports a successful Base64 image-input test, so the adapter sends `data:image/png;base64,...` for source/first/last frames, with fake-network regression coverage. This turn has not independently completed a real image-input Video 2.5 task because the provider queue rejected the video canary. The configured capability omits V2.0's optional intermediate keyframe. The provider-independent output selection remains lower-case `720p`; only the Agnes adapter translates it to the provider's upper-case `720P`. The older V2.0 dimensions/frame-count path remains available.
 
 ## Prompt pipeline
 

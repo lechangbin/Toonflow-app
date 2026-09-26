@@ -74,3 +74,7 @@
 旧批量图片 HTTP 入口补充：请求虽已登录，仍必须在预置图片占位和后台调用 Vendor 前核对 `req.user` 与 Project Owner；仅凭客户端 `projectId` 和 Asset 归属不足以授权计费。现在这条路由复用 Owner 检查，越权定向测试证明没有占位和 Vendor 请求；不代表所有旧图片路由完成授权审计，也不代表异步任务具备受控 ToolReceipt/未知结果恢复。
 
 同一前置 Owner 检查还应用于旧单张和批量图片工作台路由。单测分别证明非 Owner 无法进入领域生成依赖，原单张、批量和队列行为仍可运行；这只是入口授权，不应回答成付费请求恰好一次或整个资产工作台已迁移。
+
+当前 Agnes 模型接入补课：沿 `data/vendor/agnes.ts` 的模型声明 → `src/video/capability.ts` 的 provider-independent 能力校验 → `src/lib/vendorRuntime.ts` 的已配置模型绑定 → `tests/agnesVendorAdapter.test.ts` 与生成的 `src/lib/vendor.json` 阅读。重点解释为什么业务侧仍选 `720p`，而适配器才把 Video 2.5 Flash 变成 `720P`、`seconds` 和 `mode`；为何 V2.0 的帧数规则不能照搬。Image 2.5 的六张 Base64 PNG 参考图成功、七张 HTTP 400 拒绝证明了输入数量上限，但不证明 Toonflow 生产资产链路或视觉质量。视频真实提交两次收到明确队列满，不能写成成功或费用为零的已验事实。
+
+补充区分图片输入证据来源：公开 Video 2.5 示例使用图片 URL，用户反馈 Base64 图片已实测可用；代码据此把单图/首尾帧字节变成 Data URI，单测只验证请求形态。本轮未拿到成功视频任务，面试时应明确说“用户先前实测兼容，本次独立复验待队列恢复”，不要把假网络测试答成真实产物。

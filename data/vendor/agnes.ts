@@ -1,6 +1,6 @@
 /**
  * ToonFlow Agnes AI 供应商适配器
- * @version 2.5
+ * @version 2.6
  * @see https://www.agnes-ai.com/zh-Hans/docs/overview
  */
 
@@ -30,7 +30,7 @@ interface VideoModel {
   type: "video";
   associationSkills?: string;
   capabilities: {
-    id: "text-to-video" | "image-to-video" | "keyframe-to-video";
+    id: "text-to-video" | "image-to-video" | "first-last-frame" | "keyframe-to-video";
     promptProfileId: string;
     inputs: { role: "source-image" | "first-frame" | "intermediate-keyframe" | "last-frame"; mediaType: "image"; required: boolean }[];
     transitions?: { kind: "adjacent-keyframes" };
@@ -103,6 +103,8 @@ interface VideoCommandBase {
 type VideoGenerationCommand =
   | (VideoCommandBase & { capabilityId: "text-to-video" })
   | (VideoCommandBase & { capabilityId: "image-to-video"; sourceImage: ResolvedImage })
+  | (VideoCommandBase & { capabilityId: "first-last-frame";
+      firstFrame: ResolvedImage; lastFrame: ResolvedImage })
   | (VideoCommandBase & {
       capabilityId: "keyframe-to-video";
       firstFrame: ResolvedImage;
@@ -173,11 +175,11 @@ declare const exports: {
 
 const vendor: VendorConfig = {
   id: "agnes",
-  version: "2.5",
+  version: "2.6",
   author: "Agnes AI",
   name: "Agnes AI",
   description:
-    "Agnes AI 官方全模态 API 适配。支持 Agnes 2.0/2.5 Flash、Agnes 2.5 Pro/Pro Alpha 文本与视觉语言模型，Image 2.0/2.1 Flash 图像生成与编辑，以及 Video V2.0 视频生成。",
+    "Agnes AI 官方全模态 API 适配。支持 Agnes 3.0/2.5/2.0 Flash 文本、Image 2.5/2.1/2.0 Flash 图像，以及 Video 2.5 Flash/V2.0 视频生成。",
   inputs: [
     { key: "apiKey", label: "API Key", type: "password", required: true, placeholder: "Agnes AI API Key" },
     {
@@ -193,6 +195,12 @@ const vendor: VendorConfig = {
     baseUrl: "https://apihub.agnes-ai.com",
   },
   models: [
+    {
+      name: "Agnes 3.0 Flash",
+      modelName: "agnes-3.0-flash",
+      type: "text",
+      think: true,
+    },
     {
       name: "Agnes 2.5 Flash",
       modelName: "agnes-2.5-flash",
@@ -218,6 +226,14 @@ const vendor: VendorConfig = {
       think: true,
     },
     {
+      name: "Agnes Image 2.5 Flash",
+      modelName: "agnes-image-2.5-flash",
+      type: "image",
+      mode: ["text", "singleImage", "multiReference"],
+      maxReferenceImages: 6,
+      associationSkills: "文生图、图像编辑和多图合成；六张 Base64 参考图已实测可用，七张被服务商拒绝。",
+    },
+    {
       name: "Agnes Image 2.1 Flash",
       modelName: "agnes-image-2.1-flash",
       type: "image",
@@ -232,6 +248,44 @@ const vendor: VendorConfig = {
       mode: ["text", "singleImage", "multiReference"],
       maxReferenceImages: 6,
       associationSkills: "快速文生图、图像编辑和多图合成。",
+    },
+    {
+      name: "Agnes Video 2.5 Flash",
+      modelName: "agnes-video-2.5-flash",
+      type: "video",
+      associationSkills: "异步文生视频、单图与首尾帧；仅 720P、4–12 秒，原生音频始终开启。图片 Base64 兼容由用户实测，本轮云端任务仍待复验。",
+      capabilities: [
+        {
+          id: "text-to-video",
+          promptProfileId: "agnes/text-v1",
+          inputs: [],
+          audio: { generation: "native", policy: "always" },
+          outputPresets: [{ id: "720p", resolution: "720p",
+            durations: { kind: "integer-range", min: 4, max: 12, step: 1 },
+            aspectRatios: ["16:9", "9:16"] }],
+        },
+        {
+          id: "image-to-video",
+          promptProfileId: "agnes/image-v1",
+          inputs: [{ role: "source-image", mediaType: "image", required: true }],
+          audio: { generation: "native", policy: "always" },
+          outputPresets: [{ id: "720p", resolution: "720p",
+            durations: { kind: "integer-range", min: 4, max: 12, step: 1 },
+            aspectRatios: ["16:9", "9:16"] }],
+        },
+        {
+          id: "first-last-frame",
+          promptProfileId: "agnes/keyframe-v1",
+          inputs: [
+            { role: "first-frame", mediaType: "image", required: true },
+            { role: "last-frame", mediaType: "image", required: true },
+          ],
+          audio: { generation: "native", policy: "always" },
+          outputPresets: [{ id: "720p", resolution: "720p",
+            durations: { kind: "integer-range", min: 4, max: 12, step: 1 },
+            aspectRatios: ["16:9", "9:16"] }],
+        },
+      ],
     },
     {
       name: "Agnes Video V2.0",
@@ -656,18 +710,19 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   const configuredLimit = Number(model.maxReferenceImages);
   const maxReferenceImages = Number.isInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : rawImageRefs.length;
   const imageRefs = rawImageRefs.slice(0, maxReferenceImages);
-  const isImage21 = model.modelName === "agnes-image-2.1-flash";
+  const isModernImage = model.modelName === "agnes-image-2.1-flash"
+    || model.modelName === "agnes-image-2.5-flash";
   const body: any = {
     model: model.modelName,
     prompt: config.prompt || "",
-    size: isImage21 ? config.size || "1K" : getImage20Size(config.size || "1K", ratio),
+    size: isModernImage ? config.size || "1K" : getImage20Size(config.size || "1K", ratio),
     return_base64: true,
     extra_body: {
       response_format: "b64_json",
     },
   };
 
-  if (isImage21) body.ratio = ratio;
+  if (isModernImage) body.ratio = ratio;
   if (imageRefs.length > 0) body.extra_body.image = imageRefs;
 
   const referenceCount = imageRefs.length === rawImageRefs.length ? `${imageRefs.length}` : `${imageRefs.length}/${rawImageRefs.length}`;
@@ -722,17 +777,26 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
 const videoRequest = async (config: VideoGenerationCommand, model: VideoModel): Promise<string> => {
   const headers = getHeaders();
   const baseUrl = getBaseUrl();
+  const isVideo25 = model.modelName === "agnes-video-2.5-flash";
+  if (isVideo25 && config.capabilityId === "keyframe-to-video") {
+    throw new TypeError("Agnes Video 2.5 Flash does not support an intermediate keyframe");
+  }
   const dimensions = getVideoDimensions(config.output.resolution, config.output.aspectRatio);
-  const body: any = {
-    model: model.modelName,
-    prompt: config.prompt,
-    width: dimensions.width,
-    height: dimensions.height,
-    num_frames: getVideoFrames(config.output.duration),
-    frame_rate: 24,
-  };
+  const body: any = isVideo25
+    ? { model: model.modelName, prompt: config.prompt,
+      mode: config.capabilityId === "text-to-video" ? "text" : "keyframe",
+      seconds: String(config.output.duration), size: "720P",
+      aspect_ratio: config.output.aspectRatio, n: 1 }
+    : { model: model.modelName, prompt: config.prompt,
+      width: dimensions.width, height: dimensions.height,
+      num_frames: getVideoFrames(config.output.duration), frame_rate: 24 };
 
-  if (config.capabilityId === "keyframe-to-video") {
+  if (isVideo25 && config.capabilityId === "first-last-frame") {
+    body.first_frame = ensureImageDataUri(config.firstFrame.base64);
+    body.last_frame = ensureImageDataUri(config.lastFrame.base64);
+  } else if (isVideo25 && config.capabilityId === "image-to-video") {
+    body.first_frame = ensureImageDataUri(config.sourceImage.base64);
+  } else if (config.capabilityId === "keyframe-to-video") {
     const keyframes = [config.firstFrame, config.intermediateKeyframe, config.lastFrame]
       .filter((image): image is ResolvedImage => !!image)
       .map((image) => ensureImageDataUri(image.base64));
@@ -785,7 +849,7 @@ const videoRequest = async (config: VideoGenerationCommand, model: VideoModel): 
 
   if (!videoId && !taskId) {
     logger(
-      `[Agnes 视频] 提交 ${config.capabilityId === "keyframe-to-video" ? "关键帧" : config.capabilityId === "image-to-video" ? "图生视频" : "文生视频"}任务，${dimensions.width}x${dimensions.height}，${body.num_frames} 帧`,
+      `[Agnes 视频] 提交 ${config.capabilityId === "keyframe-to-video" || config.capabilityId === "first-last-frame" ? "关键帧" : config.capabilityId === "image-to-video" ? "图生视频" : "文生视频"}任务，${isVideo25 ? `${body.size}/${body.seconds}秒` : `${dimensions.width}x${dimensions.height}/${body.num_frames}帧`}`,
     );
 
     const maxQueueRetries = 4;
@@ -947,7 +1011,7 @@ const checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: s
     hasUpdate: false,
     latestVersion: vendor.version,
     notice:
-      "Agnes AI ToonFlow 供应商适配器 2.5：保留视频提示词路由，新增 Agnes Video 串行队列、503 退避重试、任务恢复、分阶段错误和无代理结果下载。",
+      "Agnes AI ToonFlow 供应商适配器 2.6：新增 Agnes 3.0/Text、Image 2.5 和 Video 2.5 Flash 模型，同时保留 V2.0 兼容路径。",
   };
 };
 
