@@ -8,6 +8,8 @@ import test from "node:test";
 import knexFactory from "knex";
 
 import { createAgentRuntime } from "../src/agentRuntime";
+import { prepareProductionSkillRun } from "../src/agents/productionAgent/harnessPreparation";
+import { prepareScriptSkillRun } from "../src/agents/scriptAgent/harnessPreparation";
 import { hashAgentRuntimeCorpus, validateAgentRuntimeCorpus } from "../src/eval/agentRuntimeCorpus";
 import { createEvaluationAssessmentLedger } from "../src/eval/evaluationAssessment";
 import { createEvaluationAssessmentQueue } from "../src/eval/evaluationAssessmentQueue";
@@ -17,12 +19,19 @@ import { createRuntimeCorpusSafetyReport,
   inspectRuntimeCorpusCellGates } from "../src/eval/runtimeCorpusGateVerifier";
 import { createRuntimeCorpusEvidenceArtifacts,
   verifyRuntimeCorpusEvidenceArtifactProvenance } from "../src/eval/runtimeCorpusEvidenceArtifacts";
+import { createRuntimeCorpusBlindReviewBatch } from "../src/eval/runtimeCorpusBlindReview";
 import { createEvaluationPairedAssessmentReport } from "../src/eval/evaluationPairedAssessmentReport";
 import { createEvaluationRunRuntime, evaluationCaseRequestId } from "../src/eval/evaluationRun";
 import { freezeAgentRuntimeEvaluationRun } from "../src/eval/agentRuntimeEvaluationFreeze";
 import { materializeAgentRuntimeProjectFixture,
   verifyMaterializedAgentRuntimeProjectFixture } from "../src/eval/agentRuntimeProjectFixture";
 import initDB from "../src/lib/initDB";
+import { createSkillRuntime } from "../src/skillRuntime";
+import { createProjectSkillGrantRuntime, resolveProductionSkillGrants,
+  resolveReadOnlyScriptSkillGrants } from
+  "../src/skillRuntime/grants";
+import { SKILL_MANIFEST_SCHEMA_VERSION, type SkillManifest } from
+  "../src/skillRuntime/manifest";
 
 const fixtureSource = fs.readFileSync(path.resolve("data/eval/fixtures/agent-runtime-project-v1.json"), "utf8");
 const digest = createHash("sha256").update(fixtureSource).digest("hex");
@@ -232,6 +241,34 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     assert.equal((await db("o_agentRunOutput")).length, 1);
     assert.equal((await db("o_agentToolReceipt").where({ toolName: "get_novel_text",
       status: "succeeded" })).length, 1);
+    const blind = await createRuntimeCorpusBlindReviewBatch({ work, evaluation,
+      evaluationRunId: frozen.id, blindingKey: Buffer.alloc(32, 7) });
+    assert.deepEqual({ pairs: blind.expectedPairs, sides: blind.expectedSides },
+      { pairs: 36, sides: 72 });
+    assert.equal(blind.packets.filter((entry) => entry.state === "ready").length, 1);
+    assert.equal(blind.packets.filter((entry) => entry.state === "missing-run").length, 71);
+    assert.equal(JSON.stringify(blind.packets).includes("baseline"), false);
+    assert.equal(JSON.stringify(blind.packets).includes("candidate"), false);
+    assert.equal(JSON.stringify(blind.packets).includes(observed.cases[0].agentRunId), false);
+    assert.equal(blind.privateMap.find((entry) => entry.agentRunId === observed.cases[0].agentRunId)
+      ?.variant, "baseline");
+    const originalOutput = await db("o_agentRunOutput")
+      .where({ runId: observed.cases[0].agentRunId }).first();
+    const racedContent = "伪造的盲评回复";
+    const racedEvaluation = { ...evaluation, inspect: async (evaluationRunId: string) => {
+      const snapshot = await evaluation.inspect(evaluationRunId);
+      await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
+        content: racedContent,
+        contentHash: createHash("sha256").update(JSON.stringify(racedContent)).digest("hex") });
+      return snapshot;
+    } };
+    await assert.rejects(createRuntimeCorpusBlindReviewBatch({ work,
+      evaluation: racedEvaluation, evaluationRunId: frozen.id,
+      blindingKey: Buffer.alloc(32, 7) }), /Output is missing, changed or unsafe/u);
+    await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
+      content: originalOutput.content, contentHash: originalOutput.contentHash });
+    await assert.rejects(createRuntimeCorpusBlindReviewBatch({ work, evaluation,
+      evaluationRunId: frozen.id, blindingKey: Buffer.alloc(8) }), /256-bit key/u);
     const gates = await inspectRuntimeCorpusCellGates({ work, evaluation,
       evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
       readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
@@ -397,6 +434,104 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       && cell.seed === 11)!.baseline.state, "run-failed");
     assert.equal(withFailedCell.sourceProvenanceCheckedRuns, 1);
     assert.equal(withFailedCell.expectedPairs, 36);
+    const productionId = () => `production-${++serial}`;
+    const skills = createSkillRuntime({ work, now: () => 340, createId: productionId });
+    const skill = await skills.createDefinition({ name: "production-corpus-test",
+      description: "Read one frozen Production workspace" });
+    const productionManifest: SkillManifest = {
+      schemaVersion: SKILL_MANIFEST_SCHEMA_VERSION, skillId: skill.id,
+      semanticVersion: "1.0.0", compatibleRoles: ["productionAgent"],
+      intents: ["read-only-guidance"], dependencies: [],
+      requestedTools: ["get_production_workspace_text"],
+      requestedCapabilities: ["read:production-workspace"], resources: [],
+      routing: { priority: 1, keywords: [] }, attribution: "T11 fixture" };
+    const draft = await skills.saveDraft({ skillId: skill.id, semanticVersion: "1.0.0",
+      content: "只读 Production 工作区", manifest: productionManifest });
+    await skills.publish({ revisionId: draft.id, expectedContentHash: draft.contentHash });
+    await skills.activate({ skillId: skill.id, revisionId: draft.id,
+      expectedBindingVersion: 0 });
+    await createProjectSkillGrantRuntime({ work, now: () => 340 })
+      .setReadProductionWorkspace({ projectId: 7, actorUserId: 1,
+        expectedVersion: 0, active: true });
+    const scriptSkill = await skills.createDefinition({ name: "script-corpus-test",
+      description: "Read one frozen Script" });
+    const scriptManifest: SkillManifest = {
+      schemaVersion: SKILL_MANIFEST_SCHEMA_VERSION, skillId: scriptSkill.id,
+      semanticVersion: "1.0.0", compatibleRoles: ["scriptAgent"],
+      intents: ["read-only-guidance"], dependencies: [],
+      requestedTools: ["get_script_content"],
+      requestedCapabilities: ["read:script"], resources: [],
+      routing: { priority: 1, keywords: [] }, attribution: "T11 fixture" };
+    const scriptDraft = await skills.saveDraft({ skillId: scriptSkill.id,
+      semanticVersion: "1.0.0", content: "只读当前 Project 剧本", manifest: scriptManifest });
+    await skills.publish({ revisionId: scriptDraft.id,
+      expectedContentHash: scriptDraft.contentHash });
+    await skills.activate({ skillId: scriptSkill.id, revisionId: scriptDraft.id,
+      expectedBindingVersion: 0 });
+    await createProjectSkillGrantRuntime({ work, now: () => 340 })
+      .setReadScript({ projectId: 7, actorUserId: 1,
+        expectedVersion: 0, active: true });
+    let productionModelCalls = 0;
+    const productionRuntime = createAgentRuntime({ work, now: () => 350,
+      createId: productionId, productionMode: true,
+      schedule: (item) => scheduled.push(item),
+      prepareRun: (tx, input) => prepareProductionSkillRun(tx, input, productionId),
+      skillMode: { grants: resolveProductionSkillGrants },
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "production-v1",
+        contextWindowTokens: 50_000, maxOutputTokens: 256 },
+      invokeText: async (callInput) => {
+        productionModelCalls++;
+        const source = await callInput.tools!.get_production_workspace_text.execute!(
+          { scriptId: 11, key: "scriptPlan" },
+          { toolCallId: "production-corpus-source-read", messages: [] });
+        assert.match((source as { content: string }).content, /雨夜/u);
+        return { text: "先拍雨夜困境，再拍营火商议" } as any;
+      } }) });
+    let scriptHarnessModelCalls = 0;
+    const scriptHarnessRuntime = createAgentRuntime({ work, now: () => 350,
+      createId: productionId, schedule: (item) => scheduled.push(item),
+      prepareRun: (tx, input) => prepareScriptSkillRun(tx, input, productionId),
+      skillMode: { grants: resolveReadOnlyScriptSkillGrants },
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "script-v1",
+        contextWindowTokens: 50_000, maxOutputTokens: 256 },
+      invokeText: async (callInput) => {
+        scriptHarnessModelCalls++;
+        const source = await callInput.tools!.get_script_content.execute!(
+          { scriptId: 11 }, { toolCallId: "script-corpus-source-read", messages: [] });
+        assert.match((source as { content: string }).content, /陈胜/u);
+        return { text: "陈胜和吴广各有台词" } as any;
+      } }) });
+    const routedAdapter = createEvaluationAgentCase({ evaluation,
+      runtimeForCase: ({ scope }) => scope === "production-harness-v1" ? productionRuntime
+        : scope === "script-harness-guidance-v1" ? scriptHarnessRuntime : runtime,
+      currentRevisions: async () => revisions,
+      awaitScheduledWork: async () => { while (scheduled.length) await scheduled.shift()!(); },
+      verifyProjectFixture: async ({ projectId, fixture }) =>
+        verifyMaterializedAgentRuntimeProjectFixture({ work,
+          source: fs.readFileSync(path.resolve(fixture.path)),
+          expectedHash: fixture.sha256, projectId }) });
+    const productionCase = corpus.cases[8];
+    await routedAdapter.execute({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: productionCase.id, seed: 11, projectId: 7, actorUserId: 1,
+      role: productionCase.role, scope: productionCase.scope, content: productionCase.content });
+    assert.equal(productionModelCalls, 1);
+    await routedAdapter.execute({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: first.id, seed: 29, projectId: 7, actorUserId: 1,
+      role: first.role, scope: first.scope, content: first.content });
+    assert.equal(modelCalls, 2);
+    const scriptCase = corpus.cases[4];
+    await routedAdapter.execute({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: scriptCase.id, seed: 11, projectId: 7, actorUserId: 1,
+      role: scriptCase.role, scope: scriptCase.scope, content: scriptCase.content });
+    assert.equal(scriptHarnessModelCalls, 1);
+    const scriptGate = await inspectRuntimeCorpusCellGates({ work, evaluation,
+      evaluationRunId: frozen.id, variant: "baseline", caseId: scriptCase.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.equal(scriptGate.state, "verified-read-and-safety-only");
+    const productionGate = await inspectRuntimeCorpusCellGates({ work, evaluation,
+      evaluationRunId: frozen.id, variant: "baseline", caseId: productionCase.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.equal(productionGate.state, "verified-read-and-safety-only");
   } finally {
     if (artifactRoot) fs.rmSync(artifactRoot, { recursive: true, force: true });
     await db.destroy();

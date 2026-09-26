@@ -13,11 +13,15 @@ type Fixture = AgentRuntimeCorpus["cases"][number]["fixture"];
 /** Uses the same AgentRuntime instance as production; scheduling remains an injected boundary. */
 export function createEvaluationAgentCase(dependencies: {
   evaluation: Evaluation;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
+  runtimeForCase?: (caseContract: Pick<StartAgentRunInput, "role" | "scope">) => AgentRuntime;
   currentRevisions(): Promise<RevisionSet>;
   awaitScheduledWork(): Promise<void>;
   verifyProjectFixture?(input: { projectId: number; fixture: Fixture }): Promise<void>;
 }) {
+  if ((dependencies.runtime === undefined) === (dependencies.runtimeForCase === undefined)) {
+    throw new TypeError("Evaluation execution requires exactly one Runtime binding strategy");
+  }
   async function verifyCaseFixture(manifest: EvaluationRunManifest, caseId: string,
     projectId: number): Promise<void> {
     if (manifest.agentRuntimeCorpusJson === undefined) return;
@@ -58,14 +62,17 @@ export function createEvaluationAgentCase(dependencies: {
       await verifyCaseFixture(frozen.manifest, input.caseId, input.projectId);
       const clientRequestId = evaluationCaseRequestId(input.evaluationRunId,
         input.variant, input.caseId, input.seed);
-      const started = await dependencies.runtime.start({
+      const runtime = dependencies.runtimeForCase?.({ role: input.role,
+        scope: input.scope }) ?? dependencies.runtime;
+      if (!runtime) throw new TypeError("Evaluation case role has no production Runtime");
+      const started = await runtime.start({
         schemaVersion: "toonflow.agent-run.start.v1", projectId: input.projectId,
         role: input.role, scope: input.scope, clientRequestId,
         content: input.content,
         ...(input.actorUserId === undefined ? {} : { actorUserId: input.actorUserId }),
       });
       await dependencies.awaitScheduledWork();
-      const completed = await dependencies.runtime.inspect({ runId: started.id,
+      const completed = await runtime.inspect({ runId: started.id,
         projectId: input.projectId,
         ...(input.actorUserId === undefined ? {} : { actorUserId: input.actorUserId }) });
       if (!completed || !["succeeded", "failed", "cancelled"].includes(completed.status)) {

@@ -44,4 +44,8 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 检查点练习：读 `runtimeCorpusCheckpoint.ts`。为什么不能把包含 Agnes 配置的内存数据库直接序列化到磁盘？沿清空 `o_vendorConfig.inputValues` → `VACUUM` → 密钥字节扫描 → 新文件写入 → 恢复内存配置解释边界。加载时为何还要检查 SQLite 完整性、Vendor 配置仍为空？指出它只解决已完成 cell 的本地证据恢复，不能保证在 Provider 调用中途崩溃后安全重试。
 
+盲评练习：读 `runtimeCorpusBlindReview.ts`，观察 36 对为何固定生成 72 个 A/B 槽位，即使仍有 missing。确认给评审人的 `packets` 没有 variant、case ID、seed 和 Run ID，私有 `privateMap` 才能解盲；HMAC 私钥不得进入评审包。追问：盲评包有 rubric 就等于校准过吗？答案是否定的，独立评审人身份、双评一致性与分歧仲裁记录仍未交付。
+
+混合执行练习：读 `evaluationAgentCase.ts` 的 `runtimeForCase`。为什么只按 role 路由仍不够？同是 scriptAgent，普通只读和 Script Harness 的 scope、Skill/Grant 前置条件不同；Production Harness 又是第三套。跟随 `tests/agentRuntimeCorpus.test.ts` 的三个局部 Fake Model 运行，核对每类 Run 的 role/scope、受控 ToolReceipt 与安全核验。它复用生产 Runtime，而不是另造评测专用执行器。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。
