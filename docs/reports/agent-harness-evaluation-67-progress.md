@@ -85,3 +85,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #105 调用前预检边界：单格编排器新增可注入 `preflight`，在写 `inflight` 前检查实际模型/Skill/路由/Project 的静态条件；配置漂移时既不留下“Provider 效果未知”标记，也不调用模型。之后执行适配器仍须在 marker 写入后重复关键检查，以防预检与调用之间的状态变化。定向测试验证预检报错时 Model 回调为 0 且恢复检查仍安全；正式 runner 尚未把全部实际检查接入此钩子。
 
 2026-09-27 #105 矩阵顺序切片：`runtimeCorpusMatrixOrder.ts` 从冻结 v3 清单生成 36 对、72 侧的确定性顺序，每对相邻执行两侧，并在 36 对中平衡 baseline-first/candidate-first 各 18 对；续跑只过滤来源账本已经观察的 cell，重复或矩阵外身份拒绝。定向测试覆盖 72 唯一格、平衡首侧及 3 格后的稳定剩余顺序。它仅提供顺序，不调用模型；正式 driver 仍须在每格前先检查崩溃日志，再接 Skill 激活、预算与生产 Runtime。
+
+2026-09-27 #105 两版 Skill 发布切片：`runtimeCorpusTreatmentSkills.ts` 提供不含逐例答案的普通只读/来源约束两套 Script、Production 文本，用同两个 Skill Definition 发布 baseline/candidate 各一版；两侧 manifest 的角色、只读意图、Tool、能力、依赖、资源与路由政策不变。发布器先激活 baseline，切到 candidate 实测活动指纹并核对权限相等，再切回 baseline；逐格切换操作按当前绑定版本幂等，断在两类 Skill 切换中间可在调用前重新修复。定向单测在真实 SkillRuntime/SQLite 中验证两版指纹不同、Tool 数相同、候选切换/重复/切回以及错误指纹拒绝。尚未把该发布器与 72-cell runner、持久方案文件和真实 Agnes 调用装配，文本也未得到人工评审，不能视为实验已经开始。
