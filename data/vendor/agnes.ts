@@ -13,6 +13,7 @@ interface TextModel {
   modelName: string;
   type: "text";
   think: boolean;
+  contextWindowTokens?: number;
 }
 
 interface ImageModel {
