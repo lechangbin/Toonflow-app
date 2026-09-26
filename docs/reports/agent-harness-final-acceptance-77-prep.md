@@ -45,3 +45,5 @@ T11 随后增加独立的文件级引用/哈希检查器，但尚未接入配对
 T11 把文件检查器接入配对报告 v2：明确给出 `artifactRoot` 时逐条复算引用文件哈希，缺失或不符即整份拒绝；未给时 `evidenceFileCheckedRuns=0`。T11 和 T21 合入后的两项定向测试、TypeScript 检查通过。T21 在此次合入前运行完整 App `yarn test`，输出明确为 714/714 通过；合入后仅复跑相关定向测试，最终全量仍须在源码冻结后执行。文件字节核验不等于来源 Run 关联、硬门语义、评审人身份或质量收益。T12–T20 开放条件、72-cell、跨入口浏览器、真实 Vendor 假适配与七类最终独立核验尚未完成，仍不可打 `v*` 标签或发布 Release。
 
 随后以同一隔离 Project 增加浏览器审批/拒绝用例：由 Owner HTTP 接口建立两条单字段候选，页面查看全文后批准其中一条、拒绝另一条，服务端再读确认仅批准目标字段发生变化。Run ID 和测试来源边界见 T18 报告。该用例没有经过模型 Tool 提案，不能替代 Skill 权限链；也未覆盖 Production、Reconnect、跨入口和完整兼容矩阵。因此浏览器类别仍 pending。
+
+再以全新隔离 Project 补上 Script 模型 Tool 正路径：测试 Skill 声明提案 Tool/Capability，Owner 从页面开启 Project grant；本地假 Model 返回函数调用。父 Run `f3f8d970-0137-4cbe-bfc1-cfd3d3f0fb2b` 的脱敏 Trace 有 `tool.proposal.created`，待审卡关联它；审批前服务端 `storySkeleton` 未变，Owner 查看全文并批准子 Run `155afc33-b552-4b92-bbed-89b61881699d` 后才出现精确候选值。`checkScriptModelProposalBrowser.js` 在临时数据库、假 Model 下复现，未调用付费 Provider。这只扩大 Script 正路径覆盖，不代表权限拒绝、恶意参数、Production Vendor、恢复或全入口兼容已验证，浏览器类别继续 pending。
