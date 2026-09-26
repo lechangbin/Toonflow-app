@@ -33,10 +33,6 @@ async function main(): Promise<void> {
 
     await db("o_vendorConfig").where({ id: "agnes" }).update({
       inputValues: JSON.stringify({ apiKey, baseUrl: "https://apihub.agnes-ai.com" }),
-      // Fixture-only override, not a statement of Agnes' published capacity.
-      models: JSON.stringify([{ name: "Agnes 3.0 Flash canary budget",
-        modelName: "agnes-3.0-flash", type: "text", think: true,
-        contextWindowTokens: 4096 }]),
       enable: 1,
     });
     await db("o_agentDeploy").where({ key: "productionAgent:decisionAgent" }).update({
@@ -94,10 +90,28 @@ async function main(): Promise<void> {
         } };
       },
     });
-    const started = await runtime.start({ schemaVersion: "toonflow.agent-run.start.v1",
+    const request = { schemaVersion: "toonflow.agent-run.start.v1" as const,
       projectId: 7, role: PRODUCTION_HARNESS_ROLE, scope: PRODUCTION_HARNESS_SCOPE,
-      clientRequestId: "agnes-production-read-canary", actorUserId: 1,
-      content: "请使用 get_production_workspace_text 读取第一集（scriptId=11）的 scriptPlan，然后用一句话概述。" });
+      actorUserId: 1,
+      content: "请使用 get_production_workspace_text 读取第一集（scriptId=11）的 scriptPlan，然后用一句话概述。" };
+    const missing = await runtime.start({ ...request,
+      clientRequestId: "agnes-production-read-missing-capacity" });
+    assert.equal(queue.length, 1);
+    await queue.shift()!();
+    const missingRun = await db("o_agentRun").where({ id: missing.id }).first();
+    const missingDiagnostic = JSON.parse(missingRun.failureDiagnostic);
+    assert.equal(missingRun.status, "failed");
+    assert.equal(missingDiagnostic.kind, "contextMissing");
+    assert.equal(modelCalls, 0, "missing capacity must fail before a Provider call");
+
+    // Fixture-only override, not a statement of Agnes' published capacity.
+    await db("o_vendorConfig").where({ id: "agnes" }).update({
+      models: JSON.stringify([{ name: "Agnes 3.0 Flash canary budget",
+        modelName: "agnes-3.0-flash", type: "text", think: true,
+        contextWindowTokens: 4096 }]),
+    });
+    const started = await runtime.start({ ...request,
+      clientRequestId: "agnes-production-read-canary" });
     assert.equal(queue.length, 1, "exactly one Run worker is scheduled");
     await queue.shift()!();
 
@@ -107,6 +121,8 @@ async function main(): Promise<void> {
     const vendorRequests = await db("o_agentVendorRequest");
     const persistedRun = await db("o_agentRun").where({ id: started.id }).first();
     const result = {
+      defaultRunStatus: missingRun.status,
+      defaultFailureKind: missingDiagnostic.kind,
       runStatus: snapshot?.status ?? "missing", modelCalls,
       readReceipts: receipts.filter((row) => row.toolName === "get_production_workspace_text"
         && row.status === "succeeded").length,
