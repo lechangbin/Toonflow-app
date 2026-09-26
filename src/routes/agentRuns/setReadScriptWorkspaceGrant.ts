@@ -12,8 +12,8 @@ import {
 
 type GrantRuntime = ReturnType<typeof createProjectSkillGrantRuntime>;
 
-/** Global JWT middleware supplies the actor; the request body cannot choose an owner. */
-export function createSetReadNovelGrantRouter(grants: Pick<GrantRuntime, "setReadNovel">) {
+/** Explicit Owner grant for the Script workspace; independent of novel access. */
+export function createSetReadScriptWorkspaceGrantRouter(grants: Pick<GrantRuntime, "setReadScriptWorkspace">) {
   const router = express.Router();
   return router.post("/", validateFields({ projectId: z.number().int().positive(),
     expectedVersion: z.number().int().nonnegative(), active: z.boolean() }),
@@ -23,7 +23,7 @@ export function createSetReadNovelGrantRouter(grants: Pick<GrantRuntime, "setRea
       res.status(403).send({ message: "操作人身份无效" }); return;
     }
     try {
-      const grant = await grants.setReadNovel({ ...req.body, actorUserId });
+      const grant = await grants.setReadScriptWorkspace({ ...req.body, actorUserId });
       res.status(200).send(success(grant));
     } catch (error) {
       if (error instanceof ProjectSkillGrantOwnershipError) {
@@ -37,6 +37,6 @@ export function createSetReadNovelGrantRouter(grants: Pick<GrantRuntime, "setRea
   });
 }
 
-export default createSetReadNovelGrantRouter(createProjectSkillGrantRuntime({
+export default createSetReadScriptWorkspaceGrantRouter(createProjectSkillGrantRuntime({
   work: (operation) => getDatabaseRuntime().work(operation), now: () => Date.now(),
 }));

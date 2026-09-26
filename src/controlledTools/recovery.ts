@@ -4,9 +4,12 @@ import type { Knex } from "knex";
 import { appendCausalTrace } from "@/agentRuntime/causalTrace";
 import { projectTraceSafeDiagnostic } from "@/diagnostics/traceSafeDiagnostics";
 
-import { TOOL_DEFINITIONS } from "./definitions";
+import { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS } from "./definitions";
 
-const recoverableReadNames = Object.keys(TOOL_DEFINITIONS);
+const recoverableReadNames = [...new Set([
+  ...Object.values(TOOL_DEFINITIONS), ...Object.values(HARNESS_TOOL_DEFINITIONS),
+].filter((definition) => definition.policy.risk.mutation === "none")
+  .map((definition) => definition.name))];
 
 function interruptionDiagnostic(audience: "toolReceipt" | "trace") {
   const result = projectTraceSafeDiagnostic({

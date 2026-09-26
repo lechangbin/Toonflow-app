@@ -4,33 +4,46 @@ import { Namespace, Socket } from "socket.io";
 import * as agent from "@/agents/scriptAgent/index";
 import ResTool from "@/socket/resTool";
 
-async function verifyToken(rawToken: string): Promise<Boolean> {
+async function verifyToken(rawToken: string): Promise<number | null> {
   const setting = await getDatabaseRuntime().work((db) =>
     db("o_setting").where("key", "tokenKey").select("value").first(),
   );
-  if (!setting) return false;
+  if (!setting) return null;
   const { value: tokenKey } = setting;
-  if (!rawToken) return false;
+  if (!rawToken) return null;
   const token = rawToken.replace("Bearer ", "");
   try {
-    jwt.verify(token, tokenKey as string);
-    return true;
+    const payload = jwt.verify(token, tokenKey as string);
+    if (typeof payload === "string" || !Number.isSafeInteger(payload.id) || payload.id <= 0) return null;
+    return payload.id;
   } catch (err) {
-    return false;
+    return null;
   }
+}
+
+/** Legacy compatibility boundary: the client-provided key cannot select another Project's Memory. */
+export async function authorizeLegacyScriptSocket(input: {
+  actorUserId: number | null; projectId: unknown; isolationKey: unknown;
+}, projectOwned: (projectId: number, actorUserId: number) => Promise<boolean>): Promise<boolean> {
+  const { actorUserId, projectId, isolationKey } = input;
+  const normalizedProjectId = typeof projectId === "string" && /^[1-9]\d*$/u.test(projectId)
+    ? Number(projectId) : projectId;
+  if (!Number.isSafeInteger(actorUserId) || actorUserId! <= 0
+    || !Number.isSafeInteger(normalizedProjectId) || (normalizedProjectId as number) <= 0
+    || isolationKey !== `${normalizedProjectId}:scriptAgent`) return false;
+  return projectOwned(normalizedProjectId as number, actorUserId!);
 }
 
 export default (nsp: Namespace) => {
   nsp.on("connection", async (socket: Socket) => {
     const token = socket.handshake.auth.token;
-    if (!token || !(await verifyToken(token))) {
-      console.log("[scriptAgent] 连接失败，token无效");
-      socket.disconnect();
-      return;
-    }
+    const actorUserId = typeof token === "string" ? await verifyToken(token) : null;
+    const projectId = socket.handshake.auth.projectId;
     const isolationKey = socket.handshake.auth.isolationKey;
-    if (!isolationKey) {
-      console.log("[scriptAgent] 连接失败，缺少 isolationKey");
+    if (!await authorizeLegacyScriptSocket({ actorUserId, projectId, isolationKey },
+      (id, ownerId) => getDatabaseRuntime().work(async (db) => Boolean(await db("o_project")
+        .where({ id, userId: ownerId }).first("id"))))) {
+      console.log("[scriptAgent] 连接失败，身份或项目上下文无效");
       socket.disconnect();
       return;
     }
@@ -38,7 +51,7 @@ export default (nsp: Namespace) => {
     console.log("[scriptAgent] 已连接:", socket.id);
 
     const resTool = new ResTool(socket, {
-      projectId: socket.handshake.auth.projectId,
+      projectId,
     });
     let abortController: AbortController | null = null;
 

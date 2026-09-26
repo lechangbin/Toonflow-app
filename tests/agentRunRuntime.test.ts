@@ -255,6 +255,38 @@ test("identical starts return one durable Agent Run and execute one Model Step",
   }
 });
 
+test("Run preparation is atomic before scheduling and skipped for an idempotent restart", async () => {
+  const db = await createDatabase();
+  try {
+    let prepareCalls = 0;
+    let failPreparation = true;
+    const harness = makeHarness(db, async () => "准备后执行", "prepare", {
+      prepareRun: async (tx, input) => {
+        prepareCalls++;
+        assert.equal(input.projectId, 7);
+        assert.equal(input.role, "scriptAgent");
+        assert.equal((await tx("o_agentRun").where({ id: input.runId }).first())?.status, "queued");
+        if (failPreparation) throw new Error("Skill preparation failed");
+      },
+    });
+    await assert.rejects(harness.runtime.start({ ...startInput,
+      clientRequestId: "prepare-atomic" }), /Skill preparation failed/);
+    assert.equal((await db("o_agentRun").where({ clientRequestId: "prepare-atomic" })).length, 0);
+    await harness.flush();
+    assert.equal(harness.calls(), 0, "a rolled-back Run must never schedule a Model call");
+    failPreparation = false;
+    const started = await harness.runtime.start({ ...startInput,
+      clientRequestId: "prepare-atomic" });
+    assert.equal(started.status, "queued");
+    assert.equal(prepareCalls, 2);
+    assert.equal((await harness.runtime.start({ ...startInput,
+      clientRequestId: "prepare-atomic" })).id, started.id);
+    assert.equal(prepareCalls, 2, "an idempotent request must not reprepare a frozen Run");
+    await harness.flush();
+    assert.equal(harness.calls(), 1);
+  } finally { await db.destroy(); }
+});
+
 test("inspection quarantines a broken Trace predecessor instead of presenting a false timeline", async () => {
   const db = await createDatabase();
   try {

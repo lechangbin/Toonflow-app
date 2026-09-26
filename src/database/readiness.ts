@@ -119,6 +119,8 @@ export async function recoverInterruptedWork(context: ReadinessContext): Promise
   await expireDueBillableImageApprovals(context.knex, null, Date.now(), uuid);
   const { expireDueDerivedAssetApprovals } = await import("@/controlledTools/derivedAssetWrite");
   await expireDueDerivedAssetApprovals(context.knex, null, Date.now(), uuid);
+  const { expireDueScriptWriteApprovals } = await import("@/controlledTools/scriptWriteApproval");
+  await expireDueScriptWriteApprovals(context.knex, null, Date.now(), uuid);
 }
 
 /** Phase 6: validate the database and the required runtime invariants. */

@@ -16,9 +16,11 @@ import {
   type TraceSafeDiagnostic,
 } from "@/diagnostics/traceSafeDiagnostics";
 
-import { TOOL_DEFINITIONS, toolDefinitionContractHash, type ControlledToolName } from "./definitions";
+import { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, getControlledToolDefinition, toolDefinitionContractHash,
+  type ControlledToolName } from "./definitions";
 
-export { TOOL_DEFINITIONS, toolDefinitionContractHash } from "./definitions";
+export { TOOL_DEFINITIONS, HARNESS_TOOL_DEFINITIONS, SCRIPT_PROPOSAL_TOOL_DEFINITIONS, getControlledToolDefinition,
+  toolDefinitionContractHash } from "./definitions";
 export type { ControlledToolName } from "./definitions";
 
 export interface ExecuteControlledToolInput {
@@ -58,7 +60,7 @@ export interface ToolAdapterContext {
   readonly projectId: number;
 }
 
-export type ToolAdapter = (context: Readonly<ToolAdapterContext>, input: { novelId: number }) => Promise<unknown>;
+export type ToolAdapter = (context: Readonly<ToolAdapterContext>, input: unknown) => Promise<unknown>;
 
 export interface ControlledToolDependencies {
   work: DatabaseWork;
@@ -114,8 +116,8 @@ async function insertTrace(
 }
 
 function readReceipt(row: any): ToolReceiptSnapshot {
-  const definition = TOOL_DEFINITIONS[row.toolName as ControlledToolName];
-  if (!definition || row.toolRevision !== definition.revision || !["pending", "succeeded", "failed"].includes(row.status)) {
+  const definition = getControlledToolDefinition(row.toolName as ControlledToolName, row.toolRevision);
+  if (!definition || !["pending", "succeeded", "failed"].includes(row.status)) {
     throw new ToolEvidenceCorruptError();
   }
   let output: unknown;
@@ -146,20 +148,41 @@ function readReceipt(row: any): ToolReceiptSnapshot {
 function defaultAdapters(work: DatabaseWork): Record<ControlledToolName, ToolAdapter> {
   return {
     get_novel_text: async (context, input) => work(async (db) => {
-      const row = await db("o_novel").where({ id: input.novelId, projectId: context.projectId })
+      const { novelId } = TOOL_DEFINITIONS.get_novel_text.inputSchema.parse(input);
+      const row = await db("o_novel").where({ id: novelId, projectId: context.projectId })
         .first("id", "chapterIndex", "chapter", "chapterData");
       if (!row) throw new Error("Authorized novel disappeared");
       return { novelId: row.id, chapterIndex: row.chapterIndex, chapter: row.chapter ?? "", text: row.chapterData ?? "" };
     }),
     get_novel_events: async (context, input) => work(async (db) => {
+      const { novelId } = TOOL_DEFINITIONS.get_novel_events.inputSchema.parse(input);
       const rows = await db("o_eventChapter as ec")
         .join("o_event as e", "e.id", "ec.eventId")
         .join("o_novel as n", "n.id", "ec.novelId")
-        .where({ "n.id": input.novelId, "n.projectId": context.projectId })
+        .where({ "n.id": novelId, "n.projectId": context.projectId })
         .distinct("e.id", "e.name", "e.detail")
         .orderBy("e.id", "asc").limit(21);
-      return { novelId: input.novelId, truncated: rows.length > 20,
+      return { novelId, truncated: rows.length > 20,
         events: rows.slice(0, 20).map((row) => ({ id: row.id, name: row.name ?? "", detail: row.detail ?? "" })) };
+    }),
+    get_script_workspace: async (context, input) => work(async (db) => {
+      const { key } = HARNESS_TOOL_DEFINITIONS.get_script_workspace.inputSchema.parse(input);
+      const row = await db("o_agentWorkData")
+        .where({ projectId: context.projectId, key: "scriptAgent" }).first("data");
+      const data: unknown = row ? JSON.parse(row.data ?? "{}") : {};
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("Script workspace data is invalid");
+      }
+      const content = (data as Record<string, unknown>)[key] ?? "";
+      if (typeof content !== "string") throw new Error("Script workspace field is invalid");
+      return { key, content };
+    }),
+    get_script_content: async (context, input) => work(async (db) => {
+      const { scriptId } = HARNESS_TOOL_DEFINITIONS.get_script_content.inputSchema.parse(input);
+      const row = await db("o_script").where({ id: scriptId,
+        projectId: context.projectId }).first("id", "name", "content");
+      if (!row) throw new Error("Authorized script disappeared");
+      return { scriptId: row.id, name: row.name ?? "", content: row.content ?? "" };
     }),
   };
 }
@@ -169,9 +192,11 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
   const adapters = { ...defaultAdapters(dependencies.work), ...dependencies.adapters };
   return {
     async execute(request: ExecuteControlledToolInput): Promise<ControlledToolResult> {
-      const definition = TOOL_DEFINITIONS[request.toolName];
+      const definition = getControlledToolDefinition(request.toolName, request.revision);
       const parsed = definition?.inputSchema.safeParse(request.input);
       if (!definition || request.revision !== definition.revision || !parsed?.success
+        || (HARNESS_TOOL_DEFINITIONS[request.toolName]?.revision === request.revision
+          && !dependencies.skillGrants)
         || !request.runId || !Number.isSafeInteger(request.projectId) || request.projectId <= 0
         || (request.stepId === undefined) !== (request.attemptId === undefined)
         || (request.stepId !== undefined && !/^[A-Za-z0-9._:@-]{1,128}$/u.test(request.stepId))
@@ -197,7 +222,7 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
           try {
             const authority = await authorizeBoundSkillTool(trx, { runId: run.id,
               projectId: run.projectId, skillId: request.skillId,
-              toolName: request.toolName, ...grants });
+              toolName: request.toolName, toolRevision: request.revision, ...grants });
             const decisionJson = JSON.stringify(authority.decision);
             const previous = await trx("o_agentSkillPermissionDecision")
               .where({ runId: run.id, operationId: request.operationId }).first();
@@ -257,10 +282,16 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
           }
           return { kind: "existing" as const, receipt: readReceipt(existing) };
         }
-        const authorizedNovel = await trx("o_novel").where({ id: normalized.novelId, projectId: run.projectId }).first("id");
+        const authorizedResource = "novelId" in normalized
+          ? await trx("o_novel").where({ id: normalized.novelId,
+            projectId: run.projectId }).first("id")
+          : "scriptId" in normalized
+            ? await trx("o_script").where({ id: normalized.scriptId,
+              projectId: run.projectId }).first("id")
+            : await trx("o_project").where({ id: run.projectId }).first("id");
         const receiptId = dependencies.createId();
-        const status = authorizedNovel ? "pending" : "failed";
-        const diagnostic = authorizedNovel ? undefined : safeDiagnostic("authorizationFailed", "toolReceipt");
+        const status = authorizedResource ? "pending" : "failed";
+        const diagnostic = authorizedResource ? undefined : safeDiagnostic("authorizationFailed", "toolReceipt");
         await trx("o_agentToolReceipt").insert({
           id: receiptId, runId: run.id, operationId: request.operationId,
           toolName: definition.name, toolRevision: definition.revision, inputHash,
@@ -268,12 +299,12 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
           createdAt: now, updatedAt: now,
         });
         await insertTrace(trx, {
-          runId: run.id, receiptId, eventType: authorizedNovel ? "tool.started" : "tool.denied",
+          runId: run.id, receiptId, eventType: authorizedResource ? "tool.started" : "tool.denied",
           ...(request.stepId ? { stepId: request.stepId, attemptId: request.attemptId } : {}),
           now, createId: dependencies.createId,
-          ...(!authorizedNovel ? { diagnosticKind: "authorizationFailed" as const } : {}),
+          ...(!authorizedResource ? { diagnosticKind: "authorizationFailed" as const } : {}),
         });
-        return { kind: authorizedNovel ? "execute" as const : "existing" as const,
+        return { kind: authorizedResource ? "execute" as const : "existing" as const,
           receipt: readReceipt(await trx("o_agentToolReceipt").where("id", receiptId).first()) };
       })).catch((error: unknown) => {
         if (error instanceof AgentRunLeaseLostError) return { kind: "rejected" as const };
