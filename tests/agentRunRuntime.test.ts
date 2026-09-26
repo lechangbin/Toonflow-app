@@ -22,6 +22,7 @@ import {
   type AgentRunDependencies,
 } from "../src/agentRuntime";
 import { recoverInterruptedAgentRuns } from "../src/database/agentRunRecovery";
+import { createCommittedToolContextSourceLoader } from "../src/context/toolSources";
 
 async function createDatabase(filename = ":memory:"): Promise<Knex> {
   const db = knexFactory({ client: "better-sqlite3", connection: { filename }, useNullAsDefault: true });
@@ -298,6 +299,18 @@ test("the read-only Agent Run invokes novel Tools only through controlled receip
       "run.created", "run.started", "tool.started", "tool.succeeded", "run.succeeded",
     ]);
     assert.equal(snapshot?.traces.find((trace) => trace.eventType === "tool.succeeded")?.toolReceiptId, receipt.id);
+    const successTrace = await db("o_agentTrace").where({ runId: started.id,
+      toolReceiptId: receipt.id, eventType: "tool.succeeded" }).first();
+    assert.equal(successTrace.stepId, started.steps[0].id);
+    assert.equal(successTrace.attemptId, started.attempts[0].id,
+      "the real AgentRuntime path records Tool provenance for a later ContextBundle");
+    // T12 does not yet schedule a second Model Step; exercise the later-Step source seam directly.
+    await db("o_agentRunStep").insert({ id: "later-context-step", runId: started.id,
+      ordinal: 2, kind: "model", logicalTarget: "fake", promptFingerprint: "later", status: "pending" });
+    const laterSources = await createCommittedToolContextSourceLoader(
+      async (operation) => operation(db)).load({ runId: started.id,
+      stepId: "later-context-step", projectId: 7, receiptIds: [receipt.id] });
+    assert.deepEqual(laterSources.map((entry) => entry.id), [`tool:${receipt.id}`]);
     assert.equal(JSON.stringify(snapshot?.traces).includes("小说正文"), false);
   } finally { await db.destroy(); }
 });
