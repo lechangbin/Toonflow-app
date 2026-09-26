@@ -62,4 +62,6 @@ Skill 绑定练习：读 `runtimeCorpusSkillBinding.ts`。为何清单中的 `sk
 
 评审投影练习：同样的 `racedEvaluation` 再调用 `runtimeCorpusEvidenceArtifacts.ts`。如果投影只取当前 Output 而不比对冻结 cell，就可能把已替换的正文作为“来源投影”导出；现在它会直接拒绝。注意 ToolReceipt/Trace 完整正文还未在 EvaluationCase 中冻结整体哈希，不能把这一步夸大为永久不可篡改审计。
 
+Holdout 练习：读公开的 v3 corpus 与 `evaluationPairedAssessmentReport.ts` 的 `holdoutIntegrity`。为什么 12/3/3 分区和哈希并不能证明三条 holdout 未被候选作者看到？当前报告固定标 `unverified-public-corpus`，即使未来 72 格都跑完也不能自动升级为封存盲测结论。
+
 串行执行练习：读 `evaluationAgentCase.executeVariant` 与 `tests/evaluationAgentCase.test.ts`。先提交错误正文或多余 case，确认没有启动 Model；以 `maxNewCells: 1` 跑一格，再不设上限续跑剩余 seed，最后重复调用确认不重发。注意输入集合与修订先整体预检，已记录 cell 来自 `evaluation.inspect` 的来源复核，循环逐格 `await`，但多个调用方或进程同时发起时没有全局互斥。这是为受限并发准备的局部编排，不等于已经跑了 72-cell 生产评测。

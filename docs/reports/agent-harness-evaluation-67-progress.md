@@ -79,3 +79,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #104 评审投影同步修正：生成受保护 Output/ToolReceipt/Trace 文件前也复算当前 Output schema、正文哈希并与冻结 cell 的 `outputHash` 比较；同样的 inspect→读取竞态不再能导出一份表面上来源正确、实际来自已换正文的评审投影。定向竞态用例和 TypeScript 通过。Trace/ToolReceipt 的完整字节内容尚未在 EvaluationCase 写入时冻结为整体摘要，因此这里仍是当前来源投影的一致性保护，不应描述为永久不可篡改的完整审计链。
 
 2026-09-27 #104 脱敏回归：复用 inspect→读取竞态夹具，把 Output 换成含模拟 API key 赋值的文本，独立安全门明确返回 `output-missing-or-unsafe`，而不是只依赖 Run 状态或来源哈希。此测试使用虚构字符串，不含用户真实凭据；定向 6/6 与 TypeScript 通过。规则正则无法证明覆盖所有秘密格式，受保护目录和人工导出复核仍必需。
+
+2026-09-27 #104 holdout 状态显式化：当前 AgentRuntime holdout 三例在公开仓库中，开发过程已可读取；文件哈希与冻结清单不等于未接触盲测集。v3 配对报告现在固定写出 `holdoutIntegrity: unverified-public-corpus`，Markdown 同样说明不具封存盲测证明；v2 Golden 报告则标 `not-assessed`。定向新语料/Golden 报告测试和 TypeScript 通过。若最终要作独立 holdout 质量结论，需要新的封存流程及证明；当前不得把公开集结果称为未污染泛化证据。

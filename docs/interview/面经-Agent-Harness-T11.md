@@ -41,5 +41,6 @@
 36. 问：为什么通过来源账本 `inspect` 后安全门还要重算 Output？答：两次读取之间可能发生状态变化。一份替换后的正文即使和新哈希自洽、没有敏感文本，也未必是被冻结 cell 所引用的原始 Output。安全门现在复算 schema/正文哈希并与 cell 的 `outputHash` 交叉比对；定向竞态测试验证替换会标 `output-source-drift`。这仍是来源一致性，不是自然语言事实正确性评分。
 37. 问：评审投影已经绑定 Run ID 和 SHA-256，为什么还会关心来源读取竞态？答：文件 SHA-256只能证明导出文件字节没变，Run ID 也不能证明导出时读到的 Output 仍是该 cell 冻结的正文。投影器现在在生成文件前复算 Output schema/正文哈希并与 cell `outputHash` 对照，替换正文会拒绝。但当前 EvaluationCase 尚未冻结完整 Trace/ToolReceipt 内容摘要，不能称整条审计链永久不可篡改。
 38. 问：正则脱敏门能证明没有任何秘密泄漏吗？答：不能。定向测试至少证明模拟 API key 赋值在 inspect 后进入 Output 时会被独立安全门标为 `output-missing-or-unsafe`；它覆盖已定义格式，不可能穷举未知凭据表示。评审投影仍需受保护目录和人工导出核查，检测不到的泄漏不能被描述为通过。
+39. 问：已经把 holdout 划为 3 例，为什么报告仍标 `unverified-public-corpus`？答：分区名称和 manifest 哈希只能证明用例身份没被静默换掉，不能证明候选 Skill 作者未见过这些公开用例。当前三例已在仓库内可读，因此不应称为封存盲测。配对报告显式写出未验证状态；若需要独立泛化结论，需另建受控封存集并保留访问与冻结证据，否则仅能把现有结果当公开压力分层。
 
 源码证据索引：`src/eval/evaluationRun.ts`（v2/v3 清单、写入、读取）、`src/eval/goldenEvaluationFreeze.ts`（T02 清单冻结）、`src/eval/agentRuntimeCorpus.ts`、`src/eval/agentRuntimeProjectFixture.ts`、`src/eval/agentRuntimeEvaluationFreeze.ts`（新语料与 fixture）、`src/eval/evaluationCaseDefinitions.ts`（两种来源的消费接口）、`src/eval/evaluationCoverageReport.ts`（覆盖非质量报告）、`src/eval/evaluationAssessmentQueue.ts`（未判定硬门/rubric 队列）、`src/eval/evaluationAgentCase.ts`（真实 Runtime 接线）、`tests/agentRuntimeCorpus.test.ts` 与原 T11 定向测试、`docs/reports/agent-harness-evaluation-67-progress.md`（未完成边界）。

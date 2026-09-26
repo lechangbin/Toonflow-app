@@ -337,6 +337,7 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       evaluation, assessment, frozen.id, { artifactRoot, runtimeSafety: { work,
         readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
     assert.equal(pairedWithProvenance.sourceProvenanceCheckedRuns, 1);
+    assert.equal(pairedWithProvenance.holdoutIntegrity, "unverified-public-corpus");
     assert.equal(pairedWithProvenance.evidenceFileCheckedRuns, 1);
     assert.equal(pairedWithProvenance.cells[0].baseline.state, "pending-semantic-verification");
     fs.writeFileSync(path.join(artifactRoot, "artifacts", "agent-run-output.json"), "tampered");

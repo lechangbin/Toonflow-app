@@ -26,6 +26,7 @@ export interface PairedAssessmentReport {
   manifestHash: string;
   caseManifestHash: string;
   disclaimer: "self-reported-assessments-not-independent-verification";
+  holdoutIntegrity: "unverified-public-corpus" | "not-assessed";
   expectedPairs: number;
   completePairs: number;
   blockedPairs: number;
@@ -124,6 +125,7 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
     evaluationRunId, manifestHash: coverage.manifestHash,
     caseManifestHash: coverage.caseManifestHash,
     disclaimer: "self-reported-assessments-not-independent-verification",
+    holdoutIntegrity: isRuntimeCorpus ? "unverified-public-corpus" : "not-assessed",
     expectedPairs: cells.length,
     completePairs: cells.filter((cell) => cell.provisionalScoreDelta !== null).length,
     blockedPairs: cells.filter((cell) => cell.provisionalScoreDelta === null).length,
@@ -142,6 +144,9 @@ export function renderEvaluationPairedAssessmentMarkdown(report: PairedAssessmen
     `Production Runs: ${report.observedRuns}/${report.expectedPairs * 2} observed; ${report.assessedRuns} assessed`,
     `Evidence reference files: ${report.evidenceFileCheckedRuns}/${report.assessedRuns} independently resolved and hashed.`,
     `Source-Run artifact provenance: ${report.sourceProvenanceCheckedRuns}/${report.assessedRuns} independently matched to production evidence projections.`,
+    report.holdoutIntegrity === "unverified-public-corpus"
+      ? "Holdout integrity: unverified-public-corpus; these public AgentRuntime cases are not a sealed blind set."
+      : "Holdout integrity: not assessed by this report.",
     "Gate decisions, scores and assessor identity are submitted assessments, not independently verified; file hashing alone does not validate their semantics or source-Run linkage.",
     "For AgentRuntime corpus cells, machine checks establish fixture-consistent permitted reads and no recorded effects only; semantic output quality remains unverified.",
     "A score delta is shown only when both sides have submitted passing gates and reviewed quality. It is not a causal improvement claim.",
