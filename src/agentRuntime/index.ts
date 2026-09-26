@@ -1000,7 +1000,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             : TOOL_DEFINITIONS[toolName as keyof typeof TOOL_DEFINITIONS]?.revision;
           if (!revision) return { status: "unavailable", kind: "contractRejected" };
           const result = await controlledTools.execute({
-            runId, projectId: toolProjectId, operationId, toolName,
+            runId, projectId: toolProjectId, stepId, attemptId, operationId, toolName,
             revision, input, lease: toolLease,
             ...(preparedSkillId ? { skillId: preparedSkillId } : {}),
           });
