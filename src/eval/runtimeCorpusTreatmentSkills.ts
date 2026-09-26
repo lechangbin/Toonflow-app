@@ -71,8 +71,8 @@ export async function publishT11TreatmentSkills(input: { skills: Skills; work: D
     productionSkillId: ids.production,
     revisions: { baseline: { ...revisions.baseline, fingerprint: baseline.revision },
       candidate: { ...revisions.candidate, fingerprint: "" } } };
-  const candidate = await activateT11TreatmentSkillVariant({ ...input,
-    plan: provisional, variant: "candidate", skipFingerprintCheck: true });
+  const candidate = await switchT11TreatmentSkillVariant({ ...input,
+    plan: provisional, variant: "candidate" }, true);
   assertEqualRuntimeCorpusSkillAuthority(baseline, candidate);
   provisional.revisions.candidate.fingerprint = candidate.revision;
   await activateT11TreatmentSkillVariant({ ...input, plan: provisional,
@@ -84,9 +84,9 @@ export async function publishT11TreatmentSkills(input: { skills: Skills; work: D
 }
 
 /** Idempotent switch before a cell; a mixed partial switch is repaired before Model use. */
-export async function activateT11TreatmentSkillVariant(input: { skills: Skills; work: DatabaseWork;
-  corpusSource: string; plan: T11TreatmentSkillPlan; variant: Variant;
-  skipFingerprintCheck?: boolean }) {
+async function switchT11TreatmentSkillVariant(input: { skills: Skills; work: DatabaseWork;
+  corpusSource: string; plan: T11TreatmentSkillPlan; variant: Variant },
+  provisioning: boolean) {
   const administration = await input.skills.listForAdministration();
   for (const contract of contracts) {
     const skillId = contract.key === "script" ? input.plan.scriptSkillId
@@ -103,9 +103,14 @@ export async function activateT11TreatmentSkillVariant(input: { skills: Skills; 
     productionSkillId: input.plan.productionSkillId };
   const active = await inspectRuntimeCorpusSkillBinding(identity);
   await assertRuntimeCorpusHarnessRouting({ ...identity, corpusSource: input.corpusSource });
-  if (!input.skipFingerprintCheck
+  if (!provisioning
     && active.revision !== input.plan.revisions[input.variant].fingerprint) {
     throw new Error("T11 actual active Skill fingerprint differs from frozen treatment");
   }
   return active;
+}
+
+export async function activateT11TreatmentSkillVariant(input: { skills: Skills; work: DatabaseWork;
+  corpusSource: string; plan: T11TreatmentSkillPlan; variant: Variant }) {
+  return switchT11TreatmentSkillVariant(input, false);
 }
