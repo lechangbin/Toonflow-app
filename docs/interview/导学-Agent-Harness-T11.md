@@ -12,6 +12,8 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 逐例观察练习：读 `docs/reports/agent-harness-t11-case-matrix.md`，任选 DEV-RT-001、HOLD-RT-013、INC-RT-018，分别说出允许的 Tool、禁止的效果、预期 Output 与人工判断部分。再检查 v3 的 actor 身份：fixture owner → 冻结 `caseInputs.actorUserId` → `evaluationAgentCase` 启动预检 → Run input → `evaluationRun.record/inspect`。换成另一 actor 时应在 Model 前拒绝；已记录 Run input 中 actor 被改写时整份观察报告应拒绝。
 
+#104 安全核验练习：读语料里的 `expectedToolCalls` 与 `runtimeCorpusGateVerifier.ts`，对同一 Fake Model cell 依次修改 ToolReceipt `inputHash`、再用自洽哈希伪造 `outputJson`，确认来源读取验真失败；损坏 JSON 时报告仍应保留 72 格并标这一格 failed，父 Run 出现审批提案 Trace 时也必须失败。恢复后安全报告应是 1 verified/71 missing。`expectedToolCalls` 既要求这些来源被读取，也禁止本例额外读取其他章节。再读 `evaluationPairedAssessmentReport.ts`：没传安全验证器时，v3 的人工已评审 cell 只能是 `unverified-safety`；传入且机器安全通过后也只是 `pending-semantic-verification`，分差保持 null。解释为什么自然语言事实、rubric 和评审身份仍需另外核验。
+
 覆盖报告再读 `src/eval/evaluationCoverageReport.ts`：固定 18-case、2-seed、2-variant 的分母；观察一条真实只读 Run 后，仅相应 cell 从 missing 转 observed。解释为何 observed 不是 hard-gate pass，来源 Run 版本被改写时为什么必须整份拒绝，而不能继续显示漂亮的覆盖率。
 
 待评审清单读 `src/eval/evaluationAssessmentQueue.ts`：一个 Run 已成功为何对应 Golden 硬门仍是 `not-evaluated`？为什么必需产物清单、rubric 版本和失败分类可以先列出来，却不能自行填“通过”？

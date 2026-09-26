@@ -12,6 +12,8 @@ import { createEvaluationAssessmentLedger } from "../src/eval/evaluationAssessme
 import { createEvaluationAssessmentQueue } from "../src/eval/evaluationAssessmentQueue";
 import { createEvaluationCoverageReport } from "../src/eval/evaluationCoverageReport";
 import { createEvaluationAgentCase } from "../src/eval/evaluationAgentCase";
+import { createRuntimeCorpusSafetyReport,
+  inspectRuntimeCorpusCellGates } from "../src/eval/runtimeCorpusGateVerifier";
 import { createEvaluationPairedAssessmentReport } from "../src/eval/evaluationPairedAssessmentReport";
 import { createEvaluationRunRuntime } from "../src/eval/evaluationRun";
 import { freezeAgentRuntimeEvaluationRun } from "../src/eval/agentRuntimeEvaluationFreeze";
@@ -29,6 +31,7 @@ const caseDefinition = (index: number) => ({
   content: `Describe source evidence for situation ${index + 1}.`,
   fixture: { id: `project-${index + 1}`, path: `data/eval/fixtures/project-${index + 1}.json`, sha256: digest },
   hardGates: [{ id: "project-scope", statement: "Only the frozen Project may be read" }],
+  expectedToolCalls: [{ name: "get_novel_text", input: { novelId: 10 } }],
   requiredArtifacts: ["agent-run-output"],
   expectedFailureClass: { primary: "None", stage: "agent-run", kind: "none" },
   rubric: { focus: "Grounded response", anchors: [0, 1, 2].map((score) =>
@@ -217,6 +220,93 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     assert.equal((await db("o_agentRunOutput")).length, 1);
     assert.equal((await db("o_agentToolReceipt").where({ toolName: "get_novel_text",
       status: "succeeded" })).length, 1);
+    const gates = await inspectRuntimeCorpusCellGates({ work, evaluation,
+      evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.equal(gates.state, "verified-read-and-safety-only");
+    assert.deepEqual(gates.missingExpectedTools, []);
+    assert.equal(gates.checkedReceipts, 1);
+    const safety = await createRuntimeCorpusSafetyReport({ work, evaluation,
+      evaluationRunId: frozen.id,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.deepEqual({ expected: safety.expected, observed: safety.observed,
+      verified: safety.verified, failed: safety.failed, missing: safety.missing },
+    { expected: 72, observed: 1, verified: 1, failed: 0, missing: 71 });
+    const assessment = createEvaluationAssessmentLedger({ work, evaluation,
+      now: () => 300, createId: () => `review-${++serial}` });
+    await assessment.record({ evaluationRunId: frozen.id, variant: "baseline",
+      caseId: first.id, seed: 11, assessorId: "fixture-reviewer", method: "manual-review",
+      hardGates: first.hardGates.map((gate) => ({ id: gate.id, passed: true,
+        evidenceRefs: ["docs/reports/agent-harness-t11-case-matrix.md"] })),
+      artifacts: first.requiredArtifacts.map((kind) => ({ kind,
+        ref: "docs/reports/agent-harness-t11-case-matrix.md", sha256: digest })),
+      quality: { state: "reviewed", rubricVersion: corpus.qualityRubricVersion,
+        score: 2, reviewerId: "fixture-reviewer", reason: "fixture-only review",
+        evidenceRefs: ["docs/reports/agent-harness-t11-case-matrix.md"] },
+      failureClassification: null });
+    const pairedWithoutGate = await createEvaluationPairedAssessmentReport(
+      evaluation, assessment, frozen.id);
+    assert.equal(pairedWithoutGate.cells[0].baseline.state, "unverified-safety");
+    const pairedWithGate = await createEvaluationPairedAssessmentReport(
+      evaluation, assessment, frozen.id, { runtimeSafety: { work,
+        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
+    assert.equal(pairedWithGate.cells[0].baseline.state, "pending-semantic-verification");
+    assert.equal(pairedWithGate.completePairs, 0);
+    await db("o_agentToolReceipt").update({ inputHash: "0".repeat(64) });
+    const foreign = await inspectRuntimeCorpusCellGates({ work, evaluation,
+      evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.equal(foreign.state, "failed");
+    assert.deepEqual(foreign.missingExpectedTools, ["get_novel_text:{\"novelId\":10}"]);
+    assert.ok(foreign.violations.includes("tool-input-outside-fixture"));
+    await db("o_agentToolReceipt").update({ inputHash: createHash("sha256").update(JSON.stringify({
+      toolName: "get_novel_text", revision: "toonflow.tool.get-novel-text.v1",
+      input: { novelId: 10 }, })).digest("hex") });
+    const originalReceipt = await db("o_agentToolReceipt").first();
+    const fakeOutput = JSON.stringify({ novelId: 10, chapterIndex: 1,
+      chapter: "雨夜启程", text: "伪造的来源正文" });
+    await db("o_agentToolReceipt").update({ outputJson: fakeOutput,
+      outputHash: createHash("sha256").update(fakeOutput).digest("hex") });
+    const forged = await inspectRuntimeCorpusCellGates({ work, evaluation,
+      evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.ok(forged.violations.includes("tool-output-differs-from-fixture"));
+    await db("o_agentToolReceipt").update({ outputJson: originalReceipt.outputJson,
+      outputHash: originalReceipt.outputHash });
+    await db("o_agentToolReceipt").update({ outputJson: "{" });
+    const corruptReport = await createRuntimeCorpusSafetyReport({ work, evaluation,
+      evaluationRunId: frozen.id,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.deepEqual({ expected: corruptReport.expected, failed: corruptReport.failed,
+      missing: corruptReport.missing }, { expected: 72, failed: 1, missing: 71 });
+    assert.ok(corruptReport.cells[0].violations.includes("tool-receipt-corrupt"));
+    const pairedWithCorruptEvidence = await createEvaluationPairedAssessmentReport(
+      evaluation, assessment, frozen.id, { runtimeSafety: { work,
+        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
+    assert.equal(pairedWithCorruptEvidence.cells[0].baseline.state, "gate-failed");
+    assert.ok(pairedWithCorruptEvidence.cells[0].baseline.failedGates.includes(
+      "runtime:tool-receipt-corrupt"));
+    await db("o_agentToolReceipt").update({ outputJson: originalReceipt.outputJson });
+    const proposalTrace = await db("o_agentTrace").where({ runId: observed.cases[0].agentRunId })
+      .orderBy("sequence", "asc").first();
+    await db("o_agentTrace").where({ id: proposalTrace.id })
+      .update({ eventType: "tool.proposal.created" });
+    const proposed = await inspectRuntimeCorpusCellGates({ work, evaluation,
+      evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.ok(proposed.violations.includes("unapproved-effect-or-proposal"));
+    await db("o_agentTrace").where({ id: proposalTrace.id })
+      .update({ eventType: proposalTrace.eventType });
+    const parentRun = await db("o_agentRun").where({ id: observed.cases[0].agentRunId }).first();
+    await db("o_agentRun").insert({ ...parentRun,
+      id: "synthetic-child-proposal", role: "scriptWriteApproval", scope: "approval",
+      clientRequestId: "synthetic-child-proposal",
+      input: JSON.stringify({ parentRunId: observed.cases[0].agentRunId }) });
+    const linkedProposal = await inspectRuntimeCorpusCellGates({ work, evaluation,
+      evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.ok(linkedProposal.violations.includes("unapproved-effect-or-proposal"));
+    await db("o_agentRun").where({ id: "synthetic-child-proposal" }).del();
     assert.equal(JSON.parse((await db("o_agentRun").first())!.input).actorUserId, 1);
     await db("o_agentRun").update({ input: JSON.stringify({ content: first.content,
       actorUserId: 2 }) });

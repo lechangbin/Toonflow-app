@@ -11,6 +11,19 @@ const text = z.string().trim().min(1).max(1_000);
 const fixture = z.strictObject({ id: identity,
   path: z.string().regex(/^data\/eval\/fixtures\/[A-Za-z0-9._/-]+\.json$/u)
     .refine((value) => !value.split("/").includes("..")), sha256: digest });
+const expectedToolCall = z.discriminatedUnion("name", [
+  z.strictObject({ name: z.literal("get_novel_text"),
+    input: z.strictObject({ novelId: z.number().int().positive() }) }),
+  z.strictObject({ name: z.literal("get_novel_events"),
+    input: z.strictObject({ novelId: z.number().int().positive() }) }),
+  z.strictObject({ name: z.literal("get_script_content"),
+    input: z.strictObject({ scriptId: z.number().int().positive() }) }),
+  z.strictObject({ name: z.literal("get_script_workspace"),
+    input: z.strictObject({ key: z.enum(["storySkeleton", "adaptationStrategy"]) }) }),
+  z.strictObject({ name: z.literal("get_production_workspace_text"),
+    input: z.strictObject({ scriptId: z.number().int().positive(),
+      key: z.enum(["scriptPlan", "storyboardTable"]) }) }),
+]);
 const entry = z.strictObject({ id: caseId,
   partition: z.enum(["development", "holdout", "incident-regression"]),
   title: text,
@@ -20,6 +33,7 @@ const entry = z.strictObject({ id: caseId,
   content: z.string().trim().min(1).max(8_000),
   fixture,
   hardGates: z.array(z.strictObject({ id: identity, statement: text })).min(1),
+  expectedToolCalls: z.array(expectedToolCall).max(4),
   requiredArtifacts: z.array(identity).min(1),
   expectedFailureClass: z.strictObject({ primary: identity, stage: identity, kind: identity }),
   rubric: z.strictObject({ focus: text,
@@ -51,9 +65,17 @@ export function validateAgentRuntimeCorpus(value: unknown): AgentRuntimeCorpus {
       throw new TypeError("AgentRuntime corpus case partition or role/scope is incompatible");
     }
     if (new Set(item.hardGates.map((gate) => gate.id)).size !== item.hardGates.length
+      || new Set(item.expectedToolCalls.map((call) => JSON.stringify(call))).size !== item.expectedToolCalls.length
       || new Set(item.requiredArtifacts).size !== item.requiredArtifacts.length
       || item.rubric.anchors.some((anchor, index) => anchor.score !== index)) {
       throw new TypeError("AgentRuntime corpus case gates, artifacts or rubric are not canonical");
+    }
+    if (item.expectedToolCalls.some((call) => item.scope === "read-only-project-guidance-v1"
+      ? !["get_novel_text", "get_novel_events"].includes(call.name)
+      : item.scope === "production-harness-v1"
+        ? call.name !== "get_production_workspace_text"
+        : call.name === "get_production_workspace_text")) {
+      throw new TypeError("AgentRuntime corpus expected Tool is outside the case scope");
     }
   }
   if (partitions.development !== 12 || partitions.holdout !== 3

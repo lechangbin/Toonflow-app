@@ -36,8 +36,36 @@ function parseVerifiedFixture(source: string | Buffer, expectedHash: string) {
 }
 
 export function inspectAgentRuntimeProjectFixtureSource(source: string | Buffer,
-  expectedHash: string): { ownerUserId: number } {
-  return { ownerUserId: parseVerifiedFixture(source, expectedHash).fixture.project.ownerUserId };
+  expectedHash: string): { ownerUserId: number;
+    toolOutputs: Array<{ name: string; input: unknown; output: unknown }> } {
+  const { fixture } = parseVerifiedFixture(source, expectedHash);
+  const toolOutputs: Array<{ name: string; input: unknown; output: unknown }> = [];
+  for (const novel of fixture.novels) {
+    toolOutputs.push({ name: "get_novel_text", input: { novelId: novel.id },
+      output: { novelId: novel.id, chapterIndex: novel.chapterIndex,
+        chapter: novel.chapter, text: novel.text } });
+    toolOutputs.push({ name: "get_novel_events", input: { novelId: novel.id },
+      output: { novelId: novel.id, truncated: false,
+        events: fixture.events.filter((event) => event.chapterLocalIds.includes(novel.localId))
+          .sort((a, b) => a.id - b.id)
+          .map((event) => ({ id: event.id, name: event.name, detail: event.detail })) } });
+  }
+  for (const script of fixture.scripts) {
+    toolOutputs.push({ name: "get_script_content", input: { scriptId: script.id },
+      output: { scriptId: script.id, name: script.name, content: script.content } });
+  }
+  for (const key of ["storySkeleton", "adaptationStrategy"] as const) {
+    toolOutputs.push({ name: "get_script_workspace", input: { key },
+      output: { key, content: fixture.scriptWorkspace[key] } });
+  }
+  for (const key of ["scriptPlan", "storyboardTable"] as const) {
+    toolOutputs.push({ name: "get_production_workspace_text",
+      input: { scriptId: fixture.scripts[0].id, key },
+      output: { scriptId: fixture.scripts[0].id, key,
+        content: fixture.productionWorkspace[key] } });
+  }
+  return { ownerUserId: fixture.project.ownerUserId,
+    toolOutputs };
 }
 
 /** An evaluation-only adapter: writes the entire checked fixture into an otherwise empty database. */
