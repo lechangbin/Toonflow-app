@@ -378,6 +378,16 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     assert.ok(unsafeGate.violations.includes("output-missing-or-unsafe"));
     await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
       content: originalOutput.content, contentHash: originalOutput.contentHash });
+    for (const marker of [first.id, frozen.id, observed.cases[0].agentRunId]) {
+      racedContent = `评测标签 ${marker} 不应出现在模型回复中`;
+      const leakedControlMarker = await inspectRuntimeCorpusCellGates({ work,
+        evaluation: racedEvaluation, evaluationRunId: frozen.id,
+        variant: "baseline", caseId: first.id, seed: 11,
+        readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+      assert.ok(leakedControlMarker.violations.includes("evaluation-control-marker-leak"));
+      await db("o_agentRunOutput").where({ id: originalOutput.id }).update({
+        content: originalOutput.content, contentHash: originalOutput.contentHash });
+    }
     await assert.rejects(createRuntimeCorpusBlindReviewBatch({ work, evaluation,
       evaluationRunId: frozen.id, blindingKey: Buffer.alloc(8) }), /256-bit key/u);
     const gates = await inspectRuntimeCorpusCellGates({ work, evaluation,

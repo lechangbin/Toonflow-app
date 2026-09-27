@@ -64,6 +64,13 @@ export async function inspectRuntimeCorpusCellGates(input: {
     || rows.outputs[0].contentHash !== cell.outputHash) {
     violations.add("output-source-drift");
   }
+  // These frozen evaluator identities are never part of a case request. A
+  // response containing one is contaminated even if its own hash is valid.
+  if (typeof rows.outputs[0]?.content === "string"
+    && [definition.id, input.evaluationRunId, cell.agentRunId]
+      .some((marker) => rows.outputs[0].content.includes(marker))) {
+    violations.add("evaluation-control-marker-leak");
+  }
   if ([rows.approvals, rows.toolCalls, rows.imageRequests, rows.videoRequests]
     .some((row) => Number(row?.count ?? 0) !== 0)) {
     violations.add("unapproved-effect-or-proposal");
