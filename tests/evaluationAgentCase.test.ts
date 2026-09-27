@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import knexFactory from "knex";
@@ -19,6 +20,14 @@ const manifest = { schemaVersion: "toonflow.evaluation-run.v2",
     role: "scriptAgent", scope: "read-only-project-guidance-v1" }],
   variants: ["baseline", "candidate"], baseline: revisionSet,
   candidate: { ...revisionSet, app: "app-2" }, frozenAt: 100 };
+async function createStoredLegacyFixture(db: ReturnType<typeof knexFactory>) {
+  const id = "legacy-adapter-evaluation";
+  const manifestJson = JSON.stringify(manifest);
+  await db("o_agentEvaluationRun").insert({ id, schemaVersion: manifest.schemaVersion,
+    manifestJson, manifestHash: createHash("sha256").update(manifestJson).digest("hex"),
+    createdAt: 200 });
+  return { id };
+}
 
 test("T11 adapter records a case only after the real AgentRuntime terminates", async () => {
   const db = knexFactory({ client: "better-sqlite3",
@@ -40,7 +49,7 @@ test("T11 adapter records a case only after the real AgentRuntime terminates", a
       invokeText: async () => { modelCalls++; return { text: "局部受控建议" } as any; } }) });
     const evaluation = createEvaluationRunRuntime({ work, now: () => 200,
       createId: () => `evaluation-${++id}` });
-    const created = await evaluation.create(manifest);
+    const created = await createStoredLegacyFixture(db);
     const adapter = createEvaluationAgentCase({ evaluation, runtime,
       currentRevisions: async () => revisionSet,
       awaitScheduledWork: async () => { while (queue.length) await queue.shift()!(); } });
@@ -92,7 +101,7 @@ test("T11 variant runner validates before work and resumes cells serially", asyn
       } }) });
     const evaluation = createEvaluationRunRuntime({ work, now: () => 200,
       createId: () => `evaluation-${++id}` });
-    const created = await evaluation.create(manifest);
+    const created = await createStoredLegacyFixture(db);
     const adapter = createEvaluationAgentCase({ evaluation, runtime,
       currentRevisions: async () => revisionSet,
       awaitScheduledWork: async () => { while (queue.length) await queue.shift()!(); } });
