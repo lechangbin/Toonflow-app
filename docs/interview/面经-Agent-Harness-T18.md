@@ -33,6 +33,8 @@
 
 20. 问：撤销 Production 工作区授权后，为什么 Run 仍显示 succeeded？答：【S】我在全新隔离数据库中发布了只读生产 Skill，并先给测试 Project 授权，再从 Owner 页面把读取能力撤销。假模型仍主动请求读取工作区；如果只看 Run 终态，容易把“模型完成回复”误说成“Tool 已读到正文”。【T】我要分别核实权限判定、Tool 效果和前端显示。【A】浏览器确认 grant 版本由 1 变 2 且关闭，模型得到拒绝结果后回复“读取被拒绝”；只读数据库检查找到一条 `allowed=false`、缺失 Project capability 的决策，ToolReceipt 为零。首次试验发现抽屉缺少拒绝事件，我随后让权限决策和安全 `tool.denied` Trace 在同一事务写入；另一份全新环境的抽屉和数据库均看到恰好一条拒绝事件，没有成功读取。【R】本地受控读取被阻断且拒绝可在 Run 级看到；Run succeeded 只说明模型正常终结，不能推广为跨项目或真实 Provider 的完整安全验收。追问：为什么拒绝 Trace 没有 ToolReceipt？答：权限在 Tool 执行前被拒绝，若伪造 Receipt 会误导为操作已启动。当前 Trace 不含具体决策行或操作 ID，逐操作追溯仍要核对权限决策账本。
 
+21. 问：为什么旧 Production Socket 重连不能直接把聊天设为 idle？答：【S】旧页面在 `connected=true` 时会本地改写状态，传输恢复却不能证明消息已完成。【T】避免断线重连伪造终态，同时保留旧路径明确边界。【A】删除 watcher 的 idle 写入，让它只刷新审批；消息结束仍由服务端 `message:update` 驱动。Web 的边界/stop 定向 5/5、Vue 类型检查与阶段构建通过，bundle 已和 App 配对。【R】重连本身不再伪造完成，但若终态事件在断线期间丢失，旧 UI 仍可能停留生成中；真实重连浏览器矩阵及 HTTP 权威迁移尚未完成。追问：为什么不能立即显示可发送？答：没有持久消息终态证据，猜 idle 可能允许重复意图。
+
 ## 源码证据索引
 
 | 主题 | 关键路径与内部符号 | 对应问题 |
@@ -44,7 +46,8 @@
 | 停止竞态与模型提案审批 | Web `src/utils/scriptHarnessContract.ts`、App `tests/fixtures/checkScriptHarnessBrowser.js`、`checkScriptWriteApprovalBrowser.js`、`checkScriptModelProposalBrowser.js` | 17–19 |
 | Production 授权拒绝 | `tests/fixtures/checkProductionReadDeniedBrowser.js`、`inspectProductionReadDenied.ts`、`src/controlledTools/index.ts` | 20 |
 | Production 浏览器与中断恢复 | `tests/fixtures/checkProductionHarnessBrowser.js`、`checkInterruptedProductionBrowser.js`、`src/database/agentRunRecovery.ts` | 15、16 |
+| 旧 Production 重连状态 | Web `src/views/production/components/rightChatBox/index.vue`、`tests/productionLegacyReconnectBoundary.test.ts`、App T18 报告 | 21 |
 
 ## 高风险 Claim
 
-不可说“stop = Vendor 撤销”“旧 Socket 全部迁移”“所有入口都安全”“App/Web 完整浏览器矩阵已验收”。本阶段 20 道主问仍是事实型阶段稿，既有题目的口播长度和逐题追问尚未达到 ASu 最终成稿门槛；T21 证据冻结后需统一质检。
+不可说“stop = Vendor 撤销”“旧 Socket 全部迁移”“所有入口都安全”“App/Web 完整浏览器矩阵已验收”。本阶段 21 道主问仍是事实型阶段稿，既有题目的口播长度和逐题追问尚未达到 ASu 最终成稿门槛；T21 证据冻结后需统一质检。
