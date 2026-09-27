@@ -17,6 +17,7 @@ import { validateAgentRuntimeCorpus } from "../src/eval/agentRuntimeCorpus";
 import { materializeAgentRuntimeProjectFixture,
   verifyMaterializedAgentRuntimeProjectFixture } from "../src/eval/agentRuntimeProjectFixture";
 import { createEvaluationRunRuntime, parseEvaluationRevisions } from "../src/eval/evaluationRun";
+import { classifyRuntimeCorpusFailure } from "../src/eval/runtimeCorpusFailureDiagnostic";
 import { assertRuntimeCorpusSafetyReadyForResume,
   createRuntimeCorpusSafetyReport, inspectRuntimeCorpusCellGates } from
   "../src/eval/runtimeCorpusGateVerifier";
@@ -289,6 +290,6 @@ async function main() {
 
 main().catch((error: unknown) => {
   console.error("Agnes T11 study failed:", JSON.stringify({ stage: observedStage,
-    cellId: observedCellId, errorName: error instanceof Error ? error.name : "UnknownError" }));
+    cellId: observedCellId, ...classifyRuntimeCorpusFailure(error) }));
   process.exitCode = 1;
 });
