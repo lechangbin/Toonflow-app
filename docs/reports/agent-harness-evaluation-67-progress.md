@@ -101,3 +101,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #105 第二份独立 v3 Agnes 工程试跑：从当前来源闭包新建 0/72 账本，单并发执行后留有 5/72 个成功且机器门通过的格子；下一格 `candidate:DEV-RT-002:11` 在 execute 阶段失败，未产生 checkpoint 6，外部请求状态未知。in-flight 标记阻断自动续跑和重试。该结果没有人工语义评审，不能代替 72-cell 质量结论；细节见 `agent-harness-t11-agnes-matrix-pilot.md`。
 
 2026-09-27 #67 v2 来源身份收敛：默认 `validateEvaluationRunManifest` 和新增 `evaluation.create` 现在拒绝没有 `goldenManifestJson` 的 v2；正式 T02 Golden 冻结必须走带 18 例原文、哈希和输入合同的路径。此前测试/历史产生的单例、无来源 v2 记录可在显式 `allowSourceLessLegacyV2` 兼容读取下继续 `inspect`/`record`，但定义依赖的报告仍拒绝它们，不能当作 T02 证据。定向 v2 创建拒绝、旧记录读写兼容和正式 18 例冻结 8/8，TypeScript 通过；这没有把 T02 确定性用例变成 AgentRuntime 生产输入，也没有执行 Golden 72 格。
+
+2026-09-27 #104 输出评测控制标记增量：独立机器门在已观察 Run 的 Output 中检查冻结 case ID、Evaluation Run ID 和源 Agent Run ID，任何一个原样出现均增加 `evaluation-control-marker-leak`，即使正文自身哈希格式正确也不能视为干净回答。Fake Runtime 测试先红后绿，逐一注入三种标记并保持来源漂移检查；整份 T11 AgentRuntime 定向文件 7/7、TypeScript 检查通过。这个规则只检测精确内部标识泄漏，不等于语义上的 holdout 未污染，也不能识别所有改写/变形泄漏；现有公开 holdout 仍为 `unverified-public-corpus`，#104/#105 和质量结论继续开放。
