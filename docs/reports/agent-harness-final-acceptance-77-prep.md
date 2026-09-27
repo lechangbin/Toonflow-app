@@ -125,3 +125,5 @@ T11 #104 源码新增 Output 评测控制标记机器门，若冻结 case ID、E
 T11 #104 后续又把成功 Harness ToolReceipt 与同 Run、同 operation/tool 的 Skill 权限决策逐一核对；缺失、错配、哈希损坏、重复或 `allowed=false` 却成功都使机器门失败，孤立损坏决策也不能忽略。普通无 Skill 的 Script 负对照不强制决策。T11 的纯决策测试先红后绿，Script/Production Fake Runtime 正路径各有决策；相关 9/9 定向及 TypeScript 检查通过。当前只对读取时存留的决策/Receipt 做一致性检查，没有重放历史动态 grant，也没有把决策行冻结进 `sourceAuditHash`，evaluation 安全结论仍非完整验收。七类全部 pending。
 
 后续已对“未冻结决策行”缺口做版本化修正：新 v3 EvaluationCase 写 `sourceAuditVersion=2`，在原 Run 行摘要外纳入 Skill 权限决策及资源访问；旧 case 缺此版本仍按历史 v1 复算，不追认两份 Agnes pilot。Fake Runtime 新 Script cell 冻结后额外插入权限决策，`evaluation.inspect` 检出 source audit drift；重复 `record` 保持幂等。T11 相关 14/14 定向、TypeScript 检查通过；T21 组合尚待定向复跑，完整七类验收继续 pending。摘要不是外部签名，也不核实历史 grant 的业务正确性、真实费用或人审语义。
+
+该 T21 合并组合随后只跑 T11 AgentRuntime/来源/权限及 T21 索引/文件摘要的相关定向测试：19 passed、1 skipped（本 Windows 主机不可创建外链 symlink），`yarn lint` 通过。它是阶段单测复核，不是全量套件、外链 symlink 实测或七类正式验收；前段“尚待定向复跑”是合并时快照，现已完成这一局部复核。
