@@ -29,7 +29,7 @@ async function main() {
   }
   try {
     const projectId = Date.now();
-    const scriptId = projectId + 1;
+    const scriptId = 11;
     await runtime.work(async (db) => {
       await db("o_project").insert({ id: projectId, userId: 1,
         projectType: "novel", name: "Harness browser fixture", intro: "isolated fake Model",
@@ -38,6 +38,8 @@ async function main() {
         videoOutputPresetId: "", videoRatio: "16:9", createTime: projectId });
       await db("o_script").insert({ id: scriptId, projectId,
         name: "浏览器测试第一集", content: "隔离测试剧本，不用于真实生成" });
+      await db("o_agentWorkData").insert({ projectId, episodesId: scriptId,
+        key: "productionAgent", data: JSON.stringify({ scriptPlan: "本地测试的三段拍摄计划" }) });
       await db("o_vendorConfig").where({ id: "deepseek" }).update({ enable: 1,
         inputValues: JSON.stringify({ apiKey: "fixture-only-no-provider",
           baseUrl: "http://127.0.0.1:10689/v1" }),
