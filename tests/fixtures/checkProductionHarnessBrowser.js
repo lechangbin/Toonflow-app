@@ -4,9 +4,10 @@ async page => {
   await page.getByRole("textbox", { name: "用户名" }).fill("admin");
   await page.getByRole("textbox", { name: "密码" }).fill("admin123");
   await page.getByRole("button", { name: "登录" }).click();
-  await page.getByText("Harness browser fixture").first().waitFor();
   const welcomeGuide = page.getByRole("button", { name: "跳过引导" });
+  await welcomeGuide.waitFor({ state: "visible", timeout: 3_000 }).catch(() => {});
   if (await welcomeGuide.isVisible()) await welcomeGuide.click();
+  await page.getByText("Harness browser fixture").first().waitFor();
   await page.goto(`${base}/#/production`);
   await page.evaluate(() => {
     const stored = JSON.parse(localStorage.getItem("project") || "null");
