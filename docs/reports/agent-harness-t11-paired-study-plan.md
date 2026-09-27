@@ -25,3 +25,5 @@ Status: engineering contract, **not an executed study or quality result**. The c
 - Publish source-linked machine and human reports only after all 72 cells have a reconciled state and independent review is complete. Show per-stratum paired differences and uncertainty descriptively; do not claim causal quality improvement or cost savings from the canary, Fake Model tests, pending review, or unverified holdout integrity.
 
 Remaining decisions before real matrix execution: confirm the exact treatment wording and human reviewer(s), then freeze actual Skill/Model policy hashes and the execution manifest. Until then, stage-level focused tests are allowed; final full-suite/build/browser verification remains T21.
+
+Engineering pilot update (2026-09-27): an isolated Agnes run used the proposed treatment and real frozen hashes, but stopped at 22/72 checkpointed cells when the next cell left an unresolved `inflight` marker. It is not the completed/preregistered human quality study. Do not automatically resume or score it; see `agent-harness-t11-agnes-matrix-pilot.md`.

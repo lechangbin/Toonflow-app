@@ -91,3 +91,5 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 2026-09-27 #105 非秘密续跑方案：`runtimeCorpusStudyPlan.ts` 将 Evaluation Run ID/清单哈希、模型政策哈希及两版 Skill 的 ID/活动指纹以独占新文件保存，并对规范对象计算校验哈希；重开时要求与预期冻结身份完全一致，拒绝符号链接、重复写入、不同模型政策或字节篡改。测试确认不包含 API key 字段。该文件只是可恢复元数据，不是凭据库或防恶意篡改签名；Windows 目录持久性限制仍在，尚未接入 72-cell driver。
 
 2026-09-27 #105 串行矩阵驱动切片：`runtimeCorpusMatrixDriver.ts` 把已冻结的 36 对顺序、来源账本、进程崩溃日志和单格编排串起来，只按预定前缀逐格 `await` 执行，支持 `maxNewCells` 分批。开始前重开指定的去密钥检查点，核对文件哈希、清单与已记录来源证据均等于当前内存账本；传旧检查点不会触发预检或模型回调。局部 Fake 来源测试从第 1 格续跑第 2 格，报告 72 预期、1 新增、70 缺失，并验证错误检查点先拒绝；TypeScript 检查通过。驱动器的实际 Runtime/Skill/Model 预检与执行仍由调用方注入，尚无正式 Agnes 72 格入口，不能据此声称跑过完整矩阵、得到质量结论或完成 T21 全量验收。
+
+2026-09-27 #105 Agnes 矩阵工程探针：`scripts/agnesRuntimeCorpusStudy.ts` 已把普通 Script、Script Harness、Production Harness 三类生产 Runtime，两版同权限 Skill、实际模型政策/路由/fixture 前置检查、来源账本和串行矩阵驱动接到同一隔离内存数据库；`scripts/agnesRuntimeCorpusInspect.ts` 从去密钥快照只读列出覆盖、安全状态和未完成调用标记。私有目录中的一次真实单并发试跑到 22/72 格，22 格均为成功 Run、独立机器门为 `verified-read-and-safety-only`，随后 `candidate:DEV-RT-006:29` 留下未完成 `inflight` 而无第 23 份快照。外部调用效果未知，日志强制停机且不自动重试；细节与局限见 `agent-harness-t11-agnes-matrix-pilot.md`。这不是完整 72 格、人工评分、费用测量或质量收益证明，T11/#105 继续开放。

@@ -20,6 +20,7 @@ export async function runRuntimeCorpusMatrix(input: { evaluation: Evaluation;
   secretValues: string[]; maxNewCells?: number;
   preflight(cell: Cell): Promise<void>;
   execute(cell: Cell): Promise<unknown>;
+  afterCell?(cell: Cell, checkpoint: { sha256: string; sequence: number }): Promise<void>;
 }) {
   if (input.maxNewCells !== undefined
     && (!Number.isSafeInteger(input.maxNewCells) || input.maxNewCells < 1)) {
@@ -66,6 +67,7 @@ export async function runRuntimeCorpusMatrix(input: { evaluation: Evaluation;
     sha256 = saved.sha256;
     sequence++;
     executed++;
+    await input.afterCell?.(cell, { sha256, sequence });
   }
   const current = await input.evaluation.inspect(input.evaluationRunId);
   if (current.recorded !== sequence) {

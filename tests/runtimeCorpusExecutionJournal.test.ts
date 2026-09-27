@@ -102,7 +102,12 @@ test("T11 journal binds completion to a new source-verified v3 cell and predeces
       secretValues: [secret], maxNewCells: 1,
       preflight: async (cell) => { assert.equal(cell.cellId, candidate); },
       execute: async (cell) => { assert.equal(cell.cellId, candidate);
-        await addCell("candidate", "run-candidate"); } });
+        await addCell("candidate", "run-candidate"); },
+      afterCell: async (cell, checkpointHead) => {
+        assert.equal(cell.cellId, candidate);
+        assert.equal(checkpointHead.sequence, 2);
+        await journal!.assertResumeSafe();
+      } });
     assert.deepEqual({ expected: batch.expected, executed: batch.executed,
       remaining: batch.remaining }, { expected: 72, executed: 1, remaining: 70 });
     const second = batch.checkpoint;
