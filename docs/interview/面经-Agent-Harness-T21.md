@@ -24,6 +24,7 @@ T01–T20 产生了跨 App/Web、数据库、Agent Runtime、受控 Tool、评�
 14. 问：兼容与回滚风险最终怎么交代？答：新 Script/Production Harness 与旧 Socket/工作台路径并存，不能只证明新入口成功就忽略旧入口授权、数据迁移、状态投影和失败回退。Issue #77 要求文档列出兼容、迁移、回滚、保留和运营风险；最终报告应指出哪些旧路径仍开放、何时可切流或回滚、旧持久记录怎样解释。当前阶段报告只提供局部边界，没有完成这些跨版本验证。追问：错误时自动退回旧 Socket 合适吗？答：不合适，会隐藏不同的权限与证据链。
 15. 问：什么时候才可以关闭 T21 Issue？答：应先收敛其依赖的 T11、T18、T20 等开放工作，再冻结十三类修订，执行七类完整套件，生成逐项命令/结果/产物证据，独立核验引用和组合，发布 baseline/candidate 分母及所有失败，并披露 paid canary 缺口与残余风险。当前虽有局部预验收和文件摘要单测，但七类都未达到正式门槛。追问：若最终仍有失败？答：保留 failed 和可复现路径，不以缺失项填绿。
 16. 问：证据文件 SHA-256 匹配就能宣布测试通过吗？答：【S】索引可手填一个结果哈希，文件也可能被替换或指向根目录外。【T】先建立可复算的文件完整性基础，不把完整性混成事实验真。【A】模块约束规范相对路径，按真实路径检查越根，逐文件流式 SHA-256，并按路径排序生成整体摘要；单测覆盖篡改、缺失、重复和目录，外链 symlink 用例在本 Windows 主机因创建权限跳过。【R】文件字节可被重算，但命令执行、Git 来源、测试语义和人工评分仍未核验，七类不变。追问：为何不自动运行索引里的命令？答：字符串是证据声明，直接执行会变成任意命令入口。
+17. 问：七项证据文件哈希都匹配，为什么新观察器仍不返回 `ready`？答：【S】哈希只能证明声明的文件集合目前是这些字节，不能证明测试命令曾成功、文件来自冻结 App/Web 组合或 rubric 由独立评审完成。【T】要让检查器报告可复核的事实，同时阻止一层字节检查被误当最终门禁。【A】`inspectFinalAcceptanceEvidenceFiles` 逐项返回匹配、漂移、不可读或未声明四种状态；即使七项都匹配也只给 `allClaimedHashesMatch`，没有 `ready` 字段。定向测试覆盖部分声明、全部匹配、文件改写与缺失。【R】目前只完成文件完整性这一层，七类仍 pending；完整独立检查器需继续核命令退出码、来源修订、业务断言、人工 rubric 和 Provider 证据。追问：为什么不直接调用 `verifyFinalAcceptance` 并返回真？答：那会把未验证语义的字节检查升级成整体通过，造成假阳性。
 
 ## 源码证据索引
 
@@ -31,6 +32,7 @@ T01–T20 产生了跨 App/Web、数据库、Agent Runtime、受控 Tool、评�
 | --- | --- | --- |
 | 索引与验证 | `src/eval/finalAcceptanceIndex.ts`、`validateFinalAcceptanceIndex`、`assessFinalAcceptance`、`verifyFinalAcceptance` | 1、4–9、15 |
 | 文件字节复核 | `src/eval/finalAcceptanceEvidenceFiles.ts`、`tests/finalAcceptanceEvidenceFiles.test.ts` | 8、16 |
+| 逐项摘要观察 | `src/eval/finalAcceptanceEvidenceInspection.ts`、`tests/finalAcceptanceEvidenceInspection.test.ts` | 17 |
 | 反例契约 | `tests/finalAcceptanceIndex.test.ts` | 5–8、15 |
 | 验收范围与缺口 | `docs/reports/agent-harness-final-acceptance-77-prep.md`、Issue #77 | 1–3、9–15 |
 | 上游阶段 | `docs/reports/agent-harness-open-stage-sequence.md`、T02/T11/T17/T20 阶段报告 | 10–14 |

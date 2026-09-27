@@ -30,6 +30,7 @@
 - [ ] 区分索引格式校验、`assess` 的未核验判定，以及外部检查器参与的 `verify`。
 - [ ] 解释为何 `verify` 函数允许注入假 `true` 只是接口测试，不能证明真实证据已读过。
 - [ ] 复述文件摘要的规范排序、逐文件 SHA-256 和整体哈希，并说明它不执行命令或验证语义。
+- [ ] 说明逐项摘要观察器的 `hash-match`、`hash-mismatch`、`unreadable`、`not-claimed` 为什么不返回验收 `ready`。
 - [ ] 说明单项来源修订匹配仍不足以核实 App/Web/bundle/Schema 联合组合。
 - [ ] 讲清结构性验收与付费 canary 是不同结论；`ready` 与 `paidProviderCanaryGap` 应分别报告。
 - [ ] 指出当前七类 pending、无真实最终结果文件、无全量命令记录，不把准备文档说成完成报告。
@@ -42,6 +43,7 @@
 | 索引 schema | 七项、十三类修订、路径约束 | `src/eval/finalAcceptanceIndex.ts` | 35 分钟 | 自述证据如何被约束 |
 | 反例测试 | 缺证据、错组件、假通过 | `tests/finalAcceptanceIndex.test.ts` | 25 分钟 | 当前单测到底证明什么 |
 | 文件字节复核 | 缺失、重复、目录、越界和篡改 | `src/eval/finalAcceptanceEvidenceFiles.ts`、对应定向测试 | 20 分钟 | 哈希能与不能证明什么 |
+| 逐项摘要观察 | 已声明通过的七类证据如何逐项读字节 | `src/eval/finalAcceptanceEvidenceInspection.ts`、对应定向测试 | 15 分钟 | 为何全匹配也不是最终验收 |
 | 上游分母 | 18-case/72-cell 与结果层缺口 | `docs/interview/导学-Agent-Harness-T11.md`、Issue #67 | 30 分钟 | 为什么评测不能只看覆盖 |
 | 最终执行序列 | 先收敛 T12–T20 再统一验收 | `docs/reports/agent-harness-open-stage-sequence.md` | 20 分钟 | 为什么当前不运行全量套件 |
 
@@ -59,6 +61,7 @@ T21 是 Agent Harness 的最终系统证据与运营风险交接门，不是又�
 4. 问题：索引中的相对路径可能缺失、被篡改或经 symlink 指向根外。机制：只读模块对真实文件路径与字节进行复核，按规范路径排序计算聚合 SHA-256；这不是命令或内容真实性验收。
 5. 问题：付费 Vendor 的费用、CDN 与迟到回调无法从 fake 推断。机制：paid canary 单独标记 not-run/passed/failed；未跑时结构性结论仍可单独陈述，但真实 Provider 行为保持未知。
 6. 问题：评测有覆盖但无质量结论。机制：最终报告需引入 T11 的真实成对 case/seed 分母、硬门、人工 rubric、失败和费用来源，不允许拿 T02 deterministic fake 的 18/18 冒充候选收益。
+7. 问题：即使逐项文件摘要都与索引相符，也可能把“字节一致”误报成最终验收。机制：`inspectFinalAcceptanceEvidenceFiles` 只返回 `hash-match`、`hash-mismatch`、`unreadable` 或 `not-claimed`，不返回 `ready`；七项全匹配仍须另核命令、来源修订、业务断言和人工评价。
 
 ## 关键设计决策
 
@@ -68,8 +71,9 @@ T21 是 Agent Harness 的最终系统证据与运营风险交接门，不是又�
 | 自述与核验分层 | 填了字段立即 ready | 多一层检查器实现成本，但避免假阳性 | `assessFinalAcceptance`、`verifyFinalAcceptance` |
 | 组件定向修订匹配 | 清单里有这个值就算匹配 | 防止跨组件冒名，尚需组合核验 | 错组件定向测试 |
 | 只读文件摘要 | 根据路径存在就相信结果 | 能发现字节变化，但不验证命令执行、Git 来源与语义 | `finalAcceptanceEvidenceFiles` 定向测试 |
+| 逐项摘要观察，不自动判 ready | 把文件哈希匹配直接接到通过回调 | 避免只读字节检查冒充独立验收；完整检查器仍待实现 | `finalAcceptanceEvidenceInspection` 定向测试 |
 | canary 独立状态 | 用假 Provider 代替真实 | 保留零付费阶段测试，同时不伪称外部行为 | `paidProviderCanary` schema |
 
 ## 量化与验证（待执行）
 
-当前索引与文件摘要两份测试合计 5 passed、1 skipped（本机不可创建外链 symlink），TypeScript 检查通过；另有局部预验收，均不等于最终七类通过。最终应在所有实现阶段收敛后冻结 App/Web/Schema/Bundle 与运行组件，执行 Issue #77 完整套件及独立证据读取；失败、缺失、未运行 canary 和残余风险都要公开。不能先填“已通过”再寻找证据。
+当前索引、文件摘要和逐项观察三份定向测试合计 7 passed、1 skipped（本机不可创建外链 symlink），TypeScript 检查通过；另有局部预验收，均不等于最终七类通过。最终应在所有实现阶段收敛后冻结 App/Web/Schema/Bundle 与运行组件，执行 Issue #77 完整套件及独立证据读取；失败、缺失、未运行 canary 和残余风险都要公开。不能先填“已通过”再寻找证据。

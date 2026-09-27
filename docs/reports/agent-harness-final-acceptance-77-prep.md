@@ -131,3 +131,5 @@ T11 #104 后续又把成功 Harness ToolReceipt 与同 Run、同 operation/tool 
 T11 第三份独立 Agnes Pilot 冻结新 v2 来源摘要后，串行完成 6/72 条 Run；六条来源记录均为 `sourceAuditVersion=2`，机器读源/安全门通过。第七条 `candidate:DEV-RT-002:29` 留下未决 `inflight`，外部效果未知，不能续跑或与此前 22/72、5/72 拼接。适配器仅报源 Run 非终态，无法从旧进程输出确定底层失败类别；新增的白名单非终态诊断及合成密钥防泄漏测试只对未来运行有效，不追认本 Pilot。三份 Pilot 均非完整配对质量研究，仍缺 72-cell、独立人工 rubric、holdout 隔离与可信费用证据；七类状态维持 pending。详情见 T11 工程 Pilot 报告。
 
 此轮合并后 T21 组合只复跑 T11 非终态诊断/适配器与 T21 证据文件/索引定向用例：10 passed、1 skipped（外链 symlink 创建受当前 Windows 主机限制），TypeScript 检查通过。未运行全量套件，也未改变任何最终类别或发布状态。
+
+T21 另补只读逐项摘要观察器：针对索引中自述 `passed` 的项复算 `evidenceRefs` 文件集合哈希，逐项给出 `hash-match`、`hash-mismatch` 或 `unreadable`，未声明通过的项为 `not-claimed`；七项字节全匹配也只返回 `allClaimedHashesMatch`，不输出 `ready`。三份 T21 定向测试合计 7 passed、1 skipped，TypeScript 检查通过。它尚未核实文件在 Git 的冻结修订、`testCommand` 是否实际执行及其退出码、日志语义、人工评审或真实 Provider 结果；不能作为 `verifyFinalAcceptance` 的整体通过回调，七类继续 pending。
