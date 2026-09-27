@@ -78,6 +78,8 @@ Skill 绑定练习：读 `runtimeCorpusSkillBinding.ts`。为何清单中的 `sk
 
 来源竞态练习：读 `runtimeCorpusGateVerifier.ts` 与 `tests/agentRuntimeCorpus.test.ts` 的 `racedEvaluation`。先让 `evaluation.inspect` 取得旧来源，再把 Output 正文与哈希一起改成另一份安全文本；为什么只检查“正文与当前哈希相符”仍会误判？安全门必须再与冻结 cell 的 Output 哈希比较，漂移时返回 `output-source-drift`。
 
+评测控制标记练习：沿同一个 `racedEvaluation` 将 Output 改成包含冻结 case ID、Evaluation Run ID 或源 Agent Run ID 的安全格式文本。解释为何即使 `inspectPersistableText` 不报密钥，机器门仍应记录 `evaluation-control-marker-leak`；再说明精确标识检查不能证明自然语言无污染，公开 holdout 的 `unverified-public-corpus` 也不会因此升级。
+
 评审投影练习：同样的 `racedEvaluation` 再调用 `runtimeCorpusEvidenceArtifacts.ts`。如果投影只取当前 Output 而不比对冻结 cell，就可能把已替换的正文作为“来源投影”导出；现在它会直接拒绝。注意 ToolReceipt/Trace 完整正文还未在 EvaluationCase 中冻结整体哈希，不能把这一步夸大为永久不可篡改审计。
 
 Holdout 练习：读公开的 v3 corpus 与 `evaluationPairedAssessmentReport.ts` 的 `holdoutIntegrity`。为什么 12/3/3 分区和哈希并不能证明三条 holdout 未被候选作者看到？当前报告固定标 `unverified-public-corpus`，即使未来 72 格都跑完也不能自动升级为封存盲测结论。
