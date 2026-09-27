@@ -49,7 +49,7 @@ async function main() {
         modelName: "deepseek:fixture-text" });
       await db("o_setting").where({ key: "agentUseMode" }).update({ value: "1" });
       await db("o_agentDeploy").whereIn("key", ["scriptAgent:decisionAgent",
-        "productionAgent:decisionAgent"]).update({
+        "productionAgent", "productionAgent:decisionAgent"]).update({
         vendorId: "deepseek", model: "fixture-text", modelName: "deepseek:fixture-text",
         temperature: 0, maxOutputTokens: 256 });
     });
