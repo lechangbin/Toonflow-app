@@ -297,6 +297,10 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     const observed = await evaluation.inspect(frozen.id);
     assert.equal(observed.recorded, 1);
     assert.match(observed.cases[0].sourceAuditHash!, /^[a-f0-9]{64}$/u);
+    assert.equal(observed.cases[0].sourceAuditVersion, 2);
+    assert.equal((await evaluation.record({ evaluationRunId: frozen.id,
+      variant: "baseline", caseId: first.id, seed: 11,
+      agentRunId: observed.cases[0].agentRunId })).sourceAuditVersion, 2);
     assert.equal(observed.missing.length, 71);
     assert.equal(modelCalls, 1);
     assert.equal((await db("o_agentRunOutput")).length, 1);
@@ -662,6 +666,11 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     const productionRunId = routedCells.find((cell) => cell.caseId === productionCase.id)!.agentRunId;
     assert.equal((await db("o_agentSkillPermissionDecision")
       .where({ runId: productionRunId })).length, 1);
+    const permission = await db("o_agentSkillPermissionDecision")
+      .where({ runId: scriptRunId }).first();
+    await db("o_agentSkillPermissionDecision").insert({ ...permission,
+      id: "synthetic-extra-decision", operationId: "synthetic-extra-operation" });
+    await assert.rejects(evaluation.inspect(frozen.id), /source audit rows/u);
   } finally {
     if (artifactRoot) fs.rmSync(artifactRoot, { recursive: true, force: true });
     await db.destroy();
