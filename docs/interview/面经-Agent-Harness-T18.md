@@ -35,6 +35,8 @@
 
 21. 问：为什么旧 Production Socket 重连不能直接把聊天设为 idle？答：【S】旧页面在 `connected=true` 时会本地改写状态，传输恢复却不能证明消息已完成。【T】避免断线重连伪造终态，同时保留旧路径明确边界。【A】删除 watcher 的 idle 写入，让它只刷新审批；消息结束仍由服务端 `message:update` 驱动。Web 的边界/stop 定向 5/5、Vue 类型检查与阶段构建通过，bundle 已和 App 配对。【R】重连本身不再伪造完成，但若终态事件在断线期间丢失，旧 UI 仍可能停留生成中；真实重连浏览器矩阵及 HTTP 权威迁移尚未完成。追问：为什么不能立即显示可发送？答：没有持久消息终态证据，猜 idle 可能允许重复意图。
 
+22. 问：Socket 断线发送为什么会留下假用户气泡并丢草稿？答：【S】旧 `chat()` 先追加消息后尝试 `emit`，两个旧入口又无条件清空输入。【T】让明确失败的客户端发送不冒充已提交。【A】先测试断线时返回 false 却出现气泡，再把本地回显移到成功 `emit` 之后，并只在发送动作成功时清空 Script/Production 草稿；连接正路径仍保持即时回显。【R】Web 8/8 相关定向测试、独立类型检查和阶段构建通过，App bundle 已配对。`emit=true` 仍不是服务端 ACK，断线后权威恢复尚未完成。追问：为何不据此宣称消息可靠投递？答：Socket 客户端接受发送动作和后端持久接收是不同边界。
+
 ## 源码证据索引
 
 | 主题 | 关键路径与内部符号 | 对应问题 |
@@ -47,7 +49,8 @@
 | Production 授权拒绝 | `tests/fixtures/checkProductionReadDeniedBrowser.js`、`inspectProductionReadDenied.ts`、`src/controlledTools/index.ts` | 20 |
 | Production 浏览器与中断恢复 | `tests/fixtures/checkProductionHarnessBrowser.js`、`checkInterruptedProductionBrowser.js`、`src/database/agentRunRecovery.ts` | 15、16 |
 | 旧 Production 重连状态 | Web `src/views/production/components/rightChatBox/index.vue`、`tests/productionLegacyReconnectBoundary.test.ts`、App T18 报告 | 21 |
+| 旧 Socket 断线发送 | Web `src/utils/useChat.ts`、两个旧入口的 `handleSend`、`tests/useChatStopBoundary.test.ts` | 22 |
 
 ## 高风险 Claim
 
-不可说“stop = Vendor 撤销”“旧 Socket 全部迁移”“所有入口都安全”“App/Web 完整浏览器矩阵已验收”。本阶段 21 道主问仍是事实型阶段稿，既有题目的口播长度和逐题追问尚未达到 ASu 最终成稿门槛；T21 证据冻结后需统一质检。
+不可说“stop = Vendor 撤销”“旧 Socket 全部迁移”“所有入口都安全”“App/Web 完整浏览器矩阵已验收”。本阶段 22 道主问仍是事实型阶段稿，既有题目的口播长度和逐题追问尚未达到 ASu 最终成稿门槛；T21 证据冻结后需统一质检。

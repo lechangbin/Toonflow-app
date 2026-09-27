@@ -113,3 +113,5 @@ T18 后续负路径增量已沿堆叠分支同步：在全新临时 Project 的 
 后续已修正上一段的可观察性缺口：新发生的权限拒绝把 `allowed=false` 决策和安全诊断 `tool.denied` Trace 放在同一事务，仍不伪造 ToolReceipt；重复操作不会追加第二条拒绝 Trace。全新隔离浏览器 Run `e922a8f8-41c0-4950-a398-8d4d98255f79` 的因果抽屉出现拒绝事件，SQLite 为拒绝决策 1、Trace 1、ToolReceipt 0，控制台 0 error。T18 相关 6 个定向测试和类型检查通过；T21 新合并组合尚未做全量验收。Trace 目前只给 Run 级拒绝事实，不包含权限决策行 ID 或操作 ID；逐操作追溯仍需专门决策账本。安全与浏览器最终类别仍 pending。
 
 Web T18 修订 `667df45` 去掉旧 Production 聊天的 Socket 重连乐观 idle 重置，保留服务端 `message:update` 对旧消息终态的所有权；5 个相关定向测试、Vue 类型检查和 Vite 构建通过。更新后的 Web `dist` 六文件已逐项与 App T18 `data/web` 比对，仅 `index.html` 变化并已同步，SHA-256 为 `1EDE4EDE15E2F2DE68E0BDE39008B1F609C0EA3C71A178A88D8DCDC3CD2AA6DD`，沿 T19/T20 合入本 T21 分支。这是阶段配对，不是冻结版本；尚无真实 Socket 断线期间终态丢失的浏览器恢复证据，旧 UI 仍可能保持生成中。兼容与浏览器类别继续 pending。
+
+Web T18 又以 `6c765ba`/`91a13d4` 修复明确断线时的假用户气泡与 Script/Production 草稿丢失：`useChat.chat()` 只有客户端 `emit` 可发送后才回显，两个旧入口仅在发送返回成功时清空输入。相关 8/8 定向测试、独立 Vue 类型检查与 Vite 构建通过；并行构建时一次类型检查在无关项目弹窗出现两处隐式 any，独立复跑未复现，原因未确认。当前 Web/App 配对 `index.html` SHA-256 为 `0B109653898943F72919E4EED0FB32CFF2A6A0922311BC4CE7998EBC873FB4EA`，此前哈希是历史阶段值。`emit=true` 不是服务端 ACK，旧 Socket 仍缺权威重读、完整回退与真实断线时序验收；兼容、浏览器继续 pending。
