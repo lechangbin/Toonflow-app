@@ -924,7 +924,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
             systemContract, stepIntent: prepared.input.content,
             toolAndPermissionContract, modelRevision: `${call.target.vendorId}:${call.target.modelId}`,
             budget: { contextWindowTokens: call.target.contextWindowTokens,
-              policyMaxInputTokens: 8_192,
+              // Production exposes more typed Tool/permission contracts than Script.
+              // Keep mandatory contracts intact; cap optional material separately.
+              policyMaxInputTokens: dependencies.productionMode ? 32_768 : 8_192,
               outputReserveTokens: call.target.maxOutputTokens && call.target.maxOutputTokens > 0
                 ? call.target.maxOutputTokens : 2_048,
               toolProtocolReserveTokens: estimateContextTokens(toolAndPermissionContract), risk: "standard" },

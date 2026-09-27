@@ -3,6 +3,7 @@ import { getDatabaseRuntime } from "@/database";
 import { Namespace, Socket } from "socket.io";
 import * as agent from "@/agents/scriptAgent/index";
 import ResTool from "@/socket/resTool";
+import { createLegacyStopLifecycle } from "@/socket/legacyStopLifecycle";
 
 async function verifyToken(rawToken: string): Promise<number | null> {
   const setting = await getDatabaseRuntime().work((db) =>
@@ -53,7 +54,7 @@ export default (nsp: Namespace) => {
     const resTool = new ResTool(socket, {
       projectId,
     });
-    let abortController: AbortController | null = null;
+    const lifecycle = createLegacyStopLifecycle();
 
     const thinkConfig: agent.AgentContext["thinkConfig"] = {
       think: false,
@@ -62,11 +63,10 @@ export default (nsp: Namespace) => {
 
     socket.on("chat", async (data: { content: string }) => {
       const { content } = data;
-      abortController?.abort();
-      abortController = new AbortController();
-      const currentController = abortController;
+      const currentController = new AbortController();
 
       const msg = resTool.newMessage("assistant", "统筹");
+      lifecycle.start(currentController, msg);
       const ctx: agent.AgentContext = {
         socket,
         isolationKey,
@@ -86,9 +86,7 @@ export default (nsp: Namespace) => {
           msg.error("Agent 执行失败");
         }
       } finally {
-        if (abortController === currentController) {
-          abortController = null;
-        }
+        lifecycle.finish(currentController);
       }
     });
 
@@ -99,8 +97,7 @@ export default (nsp: Namespace) => {
     });
 
     socket.on("stop", () => {
-      abortController?.abort();
-      abortController = null;
+      lifecycle.stop();
     });
   });
   nsp.on("disconnect", (socket: Socket) => {

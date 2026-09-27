@@ -3,7 +3,7 @@ import test from "node:test";
 
 import knexFactory from "knex";
 
-import { createAgentRuntime } from "../src/agentRuntime";
+import { AgentRunProjectNotFoundError, createAgentRuntime } from "../src/agentRuntime";
 import { prepareScriptSkillRun } from "../src/agents/scriptAgent/harnessPreparation";
 import { createContextBuilder } from "../src/context";
 import { createBoundSkillContextSourceLoader } from "../src/context/skillSources";
@@ -107,7 +107,7 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
       scope: "script-harness-guidance-v1", clientRequestId: "guarded-script-run" });
     await assert.rejects(guardedRuntime.start({ ...input,
       scope: "script-harness-guidance-v1", actorUserId: 2,
-      clientRequestId: "wrong-owner-script-run" }), /Project owner/);
+      clientRequestId: "wrong-owner-script-run" }), AgentRunProjectNotFoundError);
     assert.equal((await db("o_agentRun").where({ clientRequestId: "wrong-owner-script-run" })).length, 0);
     assert.equal(await guardedRuntime.inspect({ runId: guarded.id, projectId: 7,
       actorUserId: 2 }), null);
@@ -148,6 +148,12 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
       .where({ runId: guarded.id, operationId: "guarded-tool-call" }).first();
     assert.equal(JSON.parse(permission.decisionJson).allowed, false);
     assert.equal((await db("o_agentToolReceipt").where({ runId: guarded.id })).length, 0);
+    const guardedDenial = await db("o_agentTrace").where({ runId: guarded.id,
+      eventType: "tool.denied" }).first();
+    assert.ok(guardedDenial, "permission rejection must be visible in the causal Trace");
+    assert.equal(JSON.parse(guardedDenial.diagnostic).kind, "authorizationFailed");
+    assert.equal(guardedDenial.toolReceiptId, null,
+      "a permission rejection must not invent a ToolReceipt");
     const noCapacityQueue: Array<() => Promise<void>> = [];
     let noCapacityCalls = 0;
     const noCapacityRuntime = createAgentRuntime({ work, now: () => 350,
@@ -241,6 +247,8 @@ test("opt-in Script preparation freezes one routed Skill before Model scheduling
     assert.equal(JSON.parse((await db("o_agentSkillPermissionDecision")
       .where({ runId: deniedWorkspaceRun.id, operationId: "workspace-denied-1" }).first())
       .decisionJson).allowed, false);
+    assert.equal((await db("o_agentTrace").where({ runId: deniedWorkspaceRun.id,
+      eventType: "tool.denied" })).length, 1);
     const workspaceGrants = createProjectSkillGrantRuntime({ work, now: () => 460 });
     await workspaceGrants.setReadScriptWorkspace({ projectId: 7, actorUserId: 1,
       expectedVersion: 0, active: true });
