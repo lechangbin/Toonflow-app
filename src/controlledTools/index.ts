@@ -254,7 +254,12 @@ export function createControlledToolRuntime(dependencies: ControlledToolDependen
                 toolName: request.toolName, decisionJson, decisionHash: sha256(decisionJson),
                 createdAt: now,
               });
-              if (!authority.decision.allowed) return { kind: "rejected" as const };
+              if (!authority.decision.allowed) {
+                await appendCausalTrace(trx, { id: dependencies.createId(), runId: run.id,
+                  eventType: "tool.denied", createdAt: now,
+                  diagnostic: safeDiagnostic("authorizationFailed", "trace") });
+                return { kind: "rejected" as const };
+              }
             }
           } catch (error) {
             if (error instanceof Error && (error.message.includes("outside authorized Run binding")
