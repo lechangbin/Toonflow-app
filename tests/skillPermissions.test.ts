@@ -88,9 +88,16 @@ test("guarded Tool execution requires a frozen Skill request and every external 
       .where({ runId: run.id, operationId: "no-project-grant" }).first();
     assert.equal(JSON.parse(deniedDecision.decisionJson).allowed, false);
     assert.equal(deniedDecision.decisionJson.includes("只读正文"), false);
+    const denialTrace = await db("o_agentTrace").where({ runId: run.id,
+      eventType: "tool.denied" });
+    assert.equal(denialTrace.length, 1);
+    assert.equal(denialTrace[0].toolReceiptId, null);
+    assert.equal(JSON.parse(denialTrace[0].diagnostic).kind, "authorizationFailed");
     assert.equal((await makeTools(grants.projectGrants)
       .execute(request("no-project-grant", definition.id))).status, "rejected",
     "a denied operation must not become authorized under the same identity");
+    assert.equal((await db("o_agentTrace").where({ runId: run.id,
+      eventType: "tool.denied" })).length, 1, "duplicate denial must not append a second Trace");
     assert.equal(adapterCalls, 0);
     assert.equal((await makeTools(grants.projectGrants).execute(request("authorized", definition.id))).status,
       "recorded");
