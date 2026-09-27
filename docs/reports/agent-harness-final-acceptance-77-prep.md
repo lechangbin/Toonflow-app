@@ -63,7 +63,7 @@ T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Scrip
 | functional | App 当前组合 715/715 Node 测试、类型检查通过 | 冻结源码和数据后复跑完整相关契约，并归档可复算输出 |
 | compatibility | 旧 Socket 止损测试及 Script 正路径局部浏览器用例 | 旧入口退场/迁移、App/Web 共同 Run 行为及回滚矩阵 |
 | recovery | Script Run 进程中断与 Production post-intent 假模型中断各有隔离试验，已同步源码但未在冻结组合复测完整矩阵 | 多入口、审批、真实 Provider 未知效果与跨进程恢复矩阵 |
-| security | Project/Tool/Skill 权限的定向拒绝测试 | 跨入口越权、恶意 Tool 参数、导出脱敏与浏览器网络响应核验 |
+| security | Project/Tool/Skill 权限的定向拒绝测试；T18 Production 本地假模型 grant 撤销负路径已在隔离浏览器复现 | 跨入口越权、恶意 Tool 参数、导出脱敏、拒绝决策的 UI 投影与浏览器网络响应核验 |
 | evaluation | T02 本地假适配 18/18 硬门；T11 账本、串行续跑与配对报告契约；两次相互独立的 Agnes 工程试跑已记入阶段报告，源码已同步但试跑来源不同于本组合 | 全新冻结来源的 72-cell 生产 Runtime 执行、未知效果对账、独立 hard-gate/人工评审和来源核对；不得给质量结论 |
 | build | 当前 App `yarn build`；先前 Web 六文件阶段配对 | 最终 App/Web 修订、全部 bundle 哈希冻结，目标 tag 的 Actions 平台构建 |
 | browser | Script 启动、停止、刷新、审批/拒绝、模型提案局部成功；Production 正路径及恢复的假模型夹具已同步源码，尚未在冻结组合重跑 | 冻结组合上的 Production、跨入口、Reconnect、恢复、旧 Socket 全路径可重复自动化 |
@@ -107,3 +107,5 @@ T11 PR #101 的独立 AgentRuntime 18 例语料与 T02 确定性 Golden 18 例�
 T18 App PR #100 在独立临时 SQLite、全新浏览器 profile 和本地假文本 Model 下，新增 Production 普通 Run、生产工作区 Tool 读源及运行中刷新恢复三条成功路径；浏览器控制台 0 error/0 warning。Production 的完整强制 Tool/权限合同约 9442 估算 token，原 8192 上限不足，因此仅 Production 的策略输入上限调到 32768；模型窗口、输出/Tool 预留与安全余量仍生效，不截断强制合同。共用假 Model 修改后，三条 Script 浏览器夹具（启动/停止、模型提案审批、Owner 直接审批/拒绝）在另一份全新环境重跑通过。另一次受控试验在 Production Run `179d2675-4ab7-4fb4-b94d-9a097bd809b6` 持久化 `model-call-intent` 后终止专用 App 进程，只在临时数据库将该 Run 租约设为过期，再启动 App；同一 Run 呈 `waiting / interrupted-model-call`、Output 0 条、未观察到假模型自动重发，浏览器重载可见待关注状态。它证明本地 post-intent 未知效果分类，但不证明真实 60 秒租约、Provider 侧效果、人工对账或所有恢复分支。详情见 `docs/reports/agent-harness-compatibility-74-progress.md`。这些源码提交已沿 T19→T21 同步，但尚未在最终冻结组合做完整浏览器与恢复矩阵，三类状态仍为 pending。
 
 同步后在 T21 组合上运行 T11/T18 相关 11 个定向测试及类型检查，均通过；没有执行全量验收。正式发布仍需先处理两份未对账的真实请求，冻结共同修订与 App/Web bundle，再在冻结组合上重跑七类证据并独立核验；当前不创建 tag 或 Release。
+
+T18 后续负路径增量已沿堆叠分支同步：在全新临时 Project 的 Production 页面撤销工作区读 grant，浏览器确认版本 1→2 且关闭，再令本地假模型提出同一 Tool 调用。Run `b8e5fe7b-adc2-4d92-917f-6a4d8568da3f` 为 succeeded，模型回复“读取被拒绝”；只读 SQLite 复核 1 条 `allowed=false`、缺失 Project capability 的权限决策，ToolReceipt 0，因果抽屉无成功读取事件。另用独立新环境重跑 Production 普通、授权读源及运行中刷新三条正路径，均成功，控制台 0 error。此处 succeeded 只是模型正确结束，不是 Tool 读取成功；权限拒绝尚未投影为 `tool.denied` Trace/Receipt，浏览器抽屉不能独立展示决策。该切片只跑 Production/context 的 4 个定向测试与类型检查，未做最终安全/浏览器矩阵或真实 Provider 验收，七类状态仍 pending。

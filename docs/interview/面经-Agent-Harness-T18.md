@@ -31,6 +31,8 @@
 18. 问：Owner 接口提案的批准/拒绝 UI 能证明模型授权吗？答：【S】待审面板既可显示 Owner 直接建的候选，也可显示来自父 Agent Run 的候选。【T】要避免把 UI 决策用例误称模型链路。【A】先用 Owner 接口在临时 Project 建两条单字段候选，页面看全文并批准其一、拒绝其二，再从服务端核对仅获批字段改变。【R】这证明审批/拒绝的局部 UI 与持久效果，未经过模型 Tool 或 Skill grant；两者另有测试。证据：`checkScriptWriteApprovalBrowser.js`。
 19. 问：怎样证明模型 Tool 提案没有绕过 Owner 审批？答：【S】仅凭父 Run succeeded 无法判断 Tool 是否直接写了项目。【T】要把 Skill/Project 授权、提案、审批、效果逐段分开。【A】隔离夹具发布请求 `propose_script_workspace_write` 与相应 Capability 的 Skill，Owner 开启 Project grant，假模型发 Tool call；父 Run Trace 有 `tool.proposal.created`，审批卡指向父 Run。批准前服务端 `storySkeleton` 未变，Owner 看全文并批准后才出现候选内容。【R】Script 本地假 Model 正路径通过；未覆盖权限拒绝、恶意参数、Production 或真实 Provider。证据：`checkScriptModelProposalBrowser.js`、T18 报告。
 
+20. 问：撤销 Production 工作区授权后，为什么 Run 仍显示 succeeded？答：【S】我在全新隔离数据库中发布了只读生产 Skill，并先给测试 Project 授权，再从 Owner 页面把读取能力撤销。假模型仍主动请求读取工作区；如果只看 Run 终态，容易把“模型完成回复”误说成“Tool 已读到正文”。【T】我要分别核实权限判定、Tool 效果和前端显示。【A】浏览器确认 grant 版本由 1 变 2 且关闭，模型得到拒绝结果后回复“读取被拒绝”；只读数据库检查找到一条 `allowed=false`、缺失 Project capability 的决策，ToolReceipt 为零，浏览器因果抽屉也没有成功读取事件。【R】受控读取在这个本地假模型场景被阻断，但 Run succeeded 只说明模型正常终结，不能推广为跨项目或真实 Provider 的完整安全验收。追问：抽屉为何没有 `tool.denied`？答：权限在产生 ToolReceipt/Trace 之前由 Skill/Project gate 拒绝，只留下专门的决策行；这是当前证据投影缺口，需要在后续兼容验收中补齐，不能把抽屉当全量审计视图。
+
 ## 源码证据索引
 
 | 主题 | 关键路径与内部符号 | 对应问题 |
@@ -40,8 +42,9 @@
 | 双路径与待验收 | `docs/reports/agent-harness-compatibility-74-progress.md`、Web T18 Draft PR #9、Issue #74 | 11–15 |
 | 本地浏览器与恢复子集 | `docs/reports/agent-harness-final-acceptance-77-prep.md`、`src/agentRuntime/lease.ts`、`src/database/agentRunRecovery.ts`、Web `src/views/scriptAgent/index.vue` | 13–16 |
 | 停止竞态与模型提案审批 | Web `src/utils/scriptHarnessContract.ts`、App `tests/fixtures/checkScriptHarnessBrowser.js`、`checkScriptWriteApprovalBrowser.js`、`checkScriptModelProposalBrowser.js` | 17–19 |
+| Production 授权拒绝 | `tests/fixtures/checkProductionReadDeniedBrowser.js`、`inspectProductionReadDenied.ts`、`src/controlledTools/index.ts` | 20 |
 | Production 浏览器与中断恢复 | `tests/fixtures/checkProductionHarnessBrowser.js`、`checkInterruptedProductionBrowser.js`、`src/database/agentRunRecovery.ts` | 15、16 |
 
 ## 高风险 Claim
 
-不可说“stop = Vendor 撤销”“旧 Socket 全部迁移”“所有入口都安全”“App/Web 完整浏览器矩阵已验收”。本阶段 19 道主问仍是事实型阶段稿，既有题目的口播长度和逐题追问尚未达到 ASu 最终成稿门槛；T21 证据冻结后需统一质检。
+不可说“stop = Vendor 撤销”“旧 Socket 全部迁移”“所有入口都安全”“App/Web 完整浏览器矩阵已验收”。本阶段 20 道主问仍是事实型阶段稿，既有题目的口播长度和逐题追问尚未达到 ASu 最终成稿门槛；T21 证据冻结后需统一质检。

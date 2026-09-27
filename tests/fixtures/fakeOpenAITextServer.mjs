@@ -32,6 +32,8 @@ const server = http.createServer(async (request, response) => {
   const proposal = userText.includes("[propose-fixture]");
   const productionRead = userText.includes("[production-read-fixture]");
   const toolReturned = parsed.messages?.some((entry) => entry.role === "tool");
+  const productionReadDenied = productionRead && parsed.messages?.some((entry) =>
+    entry.role === "tool" && JSON.stringify(entry.content).includes("authorizationFailed"));
   const delayMs = userText.includes("[slow-fixture]") ? 8_000 : 0;
   calls += 1;
   console.log(JSON.stringify({ event: "fake-model-call", ordinal: calls, delayMs }));
@@ -50,8 +52,9 @@ const server = http.createServer(async (request, response) => {
           function: { name: "propose_script_workspace_write",
             arguments: JSON.stringify({ key: "storySkeleton",
               content: "本地假模型提出的待审批骨架" }) } }] }
-      : { role: "assistant", content: productionRead
-        ? "本地假模型：已读取生产工作区。"
+      : { role: "assistant", content: productionReadDenied
+        ? "本地假模型：生产工作区读取被拒绝。"
+        : productionRead ? "本地假模型：已读取生产工作区。"
         : proposal ? "本地假模型：已提出待审批候选。" : "本地假模型：只读建议已完成。" },
       finish_reason: (productionRead || proposal) && !toolReturned ? "tool_calls" : "stop" }],
     usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } }));
