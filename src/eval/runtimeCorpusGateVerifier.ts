@@ -16,6 +16,51 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 const callKey = (call: { name: string; input: unknown }) =>
   `${call.name}:${JSON.stringify(call.input)}`;
 
+/** Cross-check persisted read effects against the decision made for that operation. */
+export function inspectRuntimeReceiptPermissionDecisions(scope: string,
+  receipts: ReadonlyArray<{ operationId: string; toolName: string; status: string }>,
+  decisions: ReadonlyArray<{ operationId: string; toolName: string;
+    decisionJson: string; decisionHash: string }>): string[] {
+  const violations = new Set<string>();
+  const byOperation = new Map<string, typeof decisions[number]>();
+  const duplicates = new Set<string>();
+  const corrupt = new Set<string>();
+  const allowedByOperation = new Map<string, boolean>();
+  for (const decision of decisions) {
+    let allowed: unknown;
+    try { allowed = (JSON.parse(decision.decisionJson) as { allowed?: unknown }).allowed; }
+    catch { allowed = undefined; }
+    if (sha256(decision.decisionJson) !== decision.decisionHash
+      || typeof allowed !== "boolean") {
+      corrupt.add(decision.operationId);
+      violations.add("permission-decision-corrupt");
+    } else allowedByOperation.set(decision.operationId, allowed);
+    if (byOperation.has(decision.operationId)) {
+      duplicates.add(decision.operationId);
+      violations.add("permission-decision-duplicate");
+    } else byOperation.set(decision.operationId, decision);
+  }
+  for (const receipt of receipts) {
+    if (receipt.status !== "succeeded" || duplicates.has(receipt.operationId)
+      || corrupt.has(receipt.operationId)) continue;
+    const decision = byOperation.get(receipt.operationId);
+    if (!decision) {
+      if (scope !== "read-only-project-guidance-v1") {
+        violations.add("tool-permission-decision-missing");
+      }
+      continue;
+    }
+    if (decision.toolName !== receipt.toolName) {
+      violations.add("tool-permission-decision-mismatch");
+      continue;
+    }
+    if (!allowedByOperation.get(receipt.operationId)) {
+      violations.add("tool-with-denied-permission");
+    }
+  }
+  return [...violations].sort();
+}
+
 /** Independently checks source reads and no-effect safety, not semantic output quality. */
 export async function inspectRuntimeCorpusCellGates(input: {
   work: DatabaseWork; evaluation: Evaluation; evaluationRunId: string;
@@ -44,6 +89,9 @@ export async function inspectRuntimeCorpusCellGates(input: {
   const sourceEvidenceHash = sha256(JSON.stringify(cell));
   const rows = await input.work((db) => db.transaction(async (tx) => ({
     receipts: await tx("o_agentToolReceipt").where({ runId: cell.agentRunId }).orderBy("createdAt", "asc"),
+    permissionDecisions: await tx("o_agentSkillPermissionDecision")
+      .where({ runId: cell.agentRunId })
+      .select("operationId", "toolName", "decisionJson", "decisionHash"),
     traces: await tx("o_agentTrace").where({ runId: cell.agentRunId }).select("toolReceiptId", "eventType"),
     outputs: await tx("o_agentRunOutput").where({ runId: cell.agentRunId })
       .select("content", "contentHash", "schemaVersion"),
@@ -55,6 +103,8 @@ export async function inspectRuntimeCorpusCellGates(input: {
       .whereNot({ id: cell.agentRunId }).select("id", "input"),
   })));
   const violations = new Set<string>();
+  for (const violation of inspectRuntimeReceiptPermissionDecisions(definition.scope,
+    rows.receipts, rows.permissionDecisions)) violations.add(violation);
   if (cell.runStatus !== "succeeded") violations.add("run-not-succeeded");
   if (rows.outputs.length !== 1 || typeof rows.outputs[0]?.content !== "string"
     || !inspectPersistableText(rows.outputs[0].content).ok) {
