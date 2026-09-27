@@ -22,4 +22,6 @@ Production 继续读 `src/agentRuntime/index.ts` 的 Context 预算参数和 ADR
 
 再看脚本的第三条延迟 Run：在 queued/running 阶段刷新页面，之后仍从 HTTP 恢复同一 ID 并看到终态。假模型只根据最后一条 user 指令识别测试触发词；如果扫描所有历史消息，上条读源标记会污染慢调用，让它错误地产生 Tool 调用。把“刷新期间服务端仍在运行”与“进程崩溃后的恢复”分开回答。
 
+旧 Production 前端另读 `rightChatBox/index.vue` 的 `watch(connected)` 与 `useChat.ts` 的 `message:update`：传输层重连不是消息完成证据，不能因此本地写入 idle。现在 watcher 仅刷新审批；消息终态由服务端更新驱动。用 `productionLegacyReconnectBoundary.test.ts` 解释这个静态回归门，并说明仍缺真实 Socket 断线期间终态丢失的浏览器恢复矩阵；旧聊天可能保持生成中，受控 Harness 的 HTTP Run 才是可查询的权威状态。
+
 进程恢复再读 ADR-0012/0013 与 `src/database/agentRunRecovery.ts`：本地假 Model 延迟时必须确认最新 checkpoint 是 `model-call-intent`、Run 仍 running，才终止专用临时服务。测试为快速走到租约接管分支，仅把临时 Run 的 lease 设为过期；重启后检查 waiting、`interrupted-model-call`、无 Output、无新增假模型调用及浏览器 HTTP 投影。别把这个加速测试描述成真实 60 秒时间测试，也别把无重发等同于供应商端无效果。
