@@ -10,6 +10,30 @@ type Variant = "baseline" | "candidate";
 type RevisionSet = EvaluationRunManifest["baseline"];
 type Fixture = AgentRuntimeCorpus["cases"][number]["fixture"];
 
+/** Carries only Runtime's validated status and trace-safe diagnostic, never Model output. */
+export class EvaluationCaseNonterminalRunError extends Error {
+  readonly runStatus: string;
+  readonly attentionReason: string | null;
+  readonly diagnostic: {
+    failureClass: string; stage: string; kind: string;
+    certainty: string; retryDisposition: string;
+  } | null;
+
+  constructor(snapshot: Awaited<ReturnType<AgentRuntime["inspect"]>>) {
+    super("Evaluation case has no terminal production Agent Run");
+    this.name = "EvaluationCaseNonterminalRunError";
+    this.runStatus = snapshot?.status ?? "missing";
+    this.attentionReason = snapshot?.attentionReason ?? null;
+    const trace = snapshot?.traces.findLast((entry) => entry.eventType === "run.needs-attention"
+      || entry.eventType === "run.failed");
+    const diagnostic = trace?.diagnostic;
+    this.diagnostic = diagnostic ? {
+      failureClass: diagnostic.failureClass, stage: diagnostic.stage, kind: diagnostic.kind,
+      certainty: diagnostic.certainty, retryDisposition: diagnostic.retryDisposition,
+    } : null;
+  }
+}
+
 /** Uses the same AgentRuntime instance as production; scheduling remains an injected boundary. */
 export function createEvaluationAgentCase(dependencies: {
   evaluation: Evaluation;
@@ -76,7 +100,7 @@ export function createEvaluationAgentCase(dependencies: {
         projectId: input.projectId,
         ...(input.actorUserId === undefined ? {} : { actorUserId: input.actorUserId }) });
       if (!completed || !["succeeded", "failed", "cancelled"].includes(completed.status)) {
-        throw new Error("Evaluation case has no terminal production Agent Run");
+        throw new EvaluationCaseNonterminalRunError(completed);
       }
       await verifyCaseFixture(frozen.manifest, input.caseId, input.projectId);
       return dependencies.evaluation.record({ evaluationRunId: input.evaluationRunId,
