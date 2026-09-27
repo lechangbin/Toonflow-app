@@ -4,10 +4,13 @@ import { AGENT_RUN_OUTPUT_SCHEMA_VERSION } from "@/agentRuntime";
 import type { DatabaseWork } from "@/database";
 import { auditCausalTraceTimeline } from "@/agentRuntime/causalTrace";
 import { z } from "zod";
+import type { Knex } from "knex";
 
 import { hashGoldenEvalManifest, validateGoldenEvalManifest } from "./goldenEval";
+import { hashAgentRuntimeCorpus, validateAgentRuntimeCorpus } from "./agentRuntimeCorpus";
 
 export const EVALUATION_RUN_VERSION = "toonflow.evaluation-run.v2" as const;
+export const RUNTIME_CORPUS_EVALUATION_RUN_VERSION = "toonflow.evaluation-run.v3" as const;
 const digest = z.string().regex(/^[a-f0-9]{64}$/u);
 const identity = z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u);
 const revision = z.string().trim().min(1).max(128);
@@ -18,12 +21,14 @@ const revisions = z.strictObject({ app: revision, schema: revision,
 const COMMON_REVISIONS = ["schema", "model", "vendor"] as const;
 
 export const evaluationRunManifestSchema = z.strictObject({
-  schemaVersion: z.literal(EVALUATION_RUN_VERSION),
+  schemaVersion: z.enum([EVALUATION_RUN_VERSION, RUNTIME_CORPUS_EVALUATION_RUN_VERSION]),
   studyId: identity,
   caseManifestHash: digest,
   goldenManifestJson: z.string().max(1024 * 1024).optional(),
+  agentRuntimeCorpusJson: z.string().max(1024 * 1024).optional(),
   caseIds: z.array(caseId).min(1),
   caseInputs: z.array(z.strictObject({ caseId, projectId: z.number().int().positive(), contentHash: digest,
+    actorUserId: z.number().int().positive().optional(),
     role: z.enum(["scriptAgent", "productionAgent"]),
     scope: z.enum(["read-only-project-guidance-v1", "script-harness-guidance-v1",
       "production-harness-v1"]) })).min(1),
@@ -37,7 +42,27 @@ export type EvaluationRunManifest = z.infer<typeof evaluationRunManifestSchema>;
 export const parseEvaluationRevisions = (input: unknown) => revisions.parse(input);
 
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
+const canonical = (value: unknown): unknown => Array.isArray(value)
+  ? value.map(canonical)
+  : value && typeof value === "object"
+    ? Object.fromEntries(Object.entries(value).sort(([left], [right]) =>
+      left.localeCompare(right)).map(([key, item]) => [key, canonical(item)]))
+    : value;
+const sourceAuditTables = ["o_agentRunOutput", "o_agentTrace", "o_agentToolReceipt", "o_agentToolApproval",
+  "o_agentToolCall", "o_agentVendorRequest", "o_agentVideoVendorRequest"] as const;
+async function sourceAuditHash(tx: Knex.Transaction, runId: string): Promise<string> {
+  const material = [];
+  for (const table of sourceAuditTables) {
+    const rows = await tx(table).where({ runId }).select("*");
+    material.push([table, rows.map(canonical).sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)))]);
+  }
+  return hash(JSON.stringify(material));
+}
 export const hashEvaluationInput = (content: string) => hash(content.trim());
+const actorMatches = (storedInput: unknown, expectedActorUserId?: number) =>
+  expectedActorUserId === undefined || (typeof storedInput === "object" && storedInput !== null
+    && "actorUserId" in storedInput && storedInput.actorUserId === expectedActorUserId);
 const validRunOutput = (output: { content: unknown; contentHash: unknown;
   schemaVersion: unknown } | undefined): boolean => !output || (
   typeof output.content === "string"
@@ -49,8 +74,19 @@ export function evaluationCaseRequestId(evaluationRunId: string,
   return `eval-${hash(JSON.stringify([evaluationRunId, variant, caseId, seed])).slice(0, 32)}`;
 }
 
-export function validateEvaluationRunManifest(input: unknown): EvaluationRunManifest {
+export function validateEvaluationRunManifest(input: unknown,
+  options: { allowSourceLessLegacyV2?: boolean } = {}): EvaluationRunManifest {
   const manifest = evaluationRunManifestSchema.parse(input);
+  if (manifest.schemaVersion === RUNTIME_CORPUS_EVALUATION_RUN_VERSION
+    ? manifest.agentRuntimeCorpusJson === undefined || manifest.goldenManifestJson !== undefined
+    : manifest.agentRuntimeCorpusJson !== undefined
+      || (!options.allowSourceLessLegacyV2 && manifest.goldenManifestJson === undefined)) {
+    throw new TypeError("Evaluation Run corpus identity does not match its schema version");
+  }
+  if (manifest.schemaVersion === RUNTIME_CORPUS_EVALUATION_RUN_VERSION
+    && manifest.caseInputs.some((entry) => entry.actorUserId === undefined)) {
+    throw new TypeError("AgentRuntime corpus requires frozen actor identities");
+  }
   if (new Set(manifest.caseIds).size !== manifest.caseIds.length
     || manifest.caseInputs.length !== manifest.caseIds.length
     || manifest.caseInputs.some((entry, index) => entry.caseId !== manifest.caseIds[index])
@@ -69,6 +105,17 @@ export function validateEvaluationRunManifest(input: unknown): EvaluationRunMani
       throw new TypeError("Evaluation Run differs from the frozen Golden manifest");
     }
   }
+  if (manifest.agentRuntimeCorpusJson !== undefined) {
+    const corpus = validateAgentRuntimeCorpus(JSON.parse(manifest.agentRuntimeCorpusJson) as unknown);
+    if (hashAgentRuntimeCorpus(manifest.agentRuntimeCorpusJson) !== manifest.caseManifestHash
+      || corpus.cases.length !== manifest.caseIds.length
+      || corpus.cases.some((entry, index) => entry.id !== manifest.caseIds[index]
+        || entry.role !== manifest.caseInputs[index]?.role
+        || entry.scope !== manifest.caseInputs[index]?.scope
+        || hashEvaluationInput(entry.content) !== manifest.caseInputs[index]?.contentHash)) {
+      throw new TypeError("Evaluation Run differs from the frozen AgentRuntime corpus");
+    }
+  }
   return manifest;
 }
 
@@ -84,6 +131,7 @@ const caseEvidenceSchema = z.strictObject({
   costMicros: z.null(),
   outputHash: digest.nullable(), lastTraceId: identity,
   lastTraceSequence: z.number().int().positive(),
+  sourceAuditHash: digest.optional(),
 });
 type CaseEvidence = z.infer<typeof caseEvidenceSchema>;
 
@@ -101,7 +149,7 @@ export function createEvaluationRunRuntime(dependencies: {
       const manifestJson = JSON.stringify(manifest);
       const manifestHash = hash(manifestJson);
       await dependencies.work(async (db) => {
-        await db("o_agentEvaluationRun").insert({ id, schemaVersion: EVALUATION_RUN_VERSION,
+        await db("o_agentEvaluationRun").insert({ id, schemaVersion: manifest.schemaVersion,
           manifestJson, manifestHash, createdAt });
       });
       return { id, manifestHash };
@@ -113,11 +161,14 @@ export function createEvaluationRunRuntime(dependencies: {
       return dependencies.work((db) => db.transaction(async (tx) => {
         const evaluation = await tx("o_agentEvaluationRun")
           .where({ id: input.evaluationRunId }).first();
-        if (!evaluation || evaluation.schemaVersion !== EVALUATION_RUN_VERSION
-          || hash(evaluation.manifestJson) !== evaluation.manifestHash) {
+        if (!evaluation || hash(evaluation.manifestJson) !== evaluation.manifestHash) {
           throw new Error("Evaluation Run manifest is missing or corrupt");
         }
-        const manifest = validateEvaluationRunManifest(JSON.parse(evaluation.manifestJson));
+        const manifest = validateEvaluationRunManifest(JSON.parse(evaluation.manifestJson),
+          { allowSourceLessLegacyV2: true });
+        if (evaluation.schemaVersion !== manifest.schemaVersion) {
+          throw new Error("Evaluation Run schema version differs from frozen manifest");
+        }
         if (!manifest.caseIds.includes(input.caseId) || !manifest.seeds.includes(input.seed)
           || !manifest.variants.includes(input.variant)) {
           throw new TypeError("Evaluation case is outside the frozen matrix");
@@ -142,6 +193,7 @@ export function createEvaluationRunRuntime(dependencies: {
           || !("content" in storedInput) || typeof storedInput.content !== "string"
           || run.projectId !== frozenInput.projectId
           || run.role !== frozenInput.role || run.scope !== frozenInput.scope
+          || !actorMatches(storedInput, frozenInput.actorUserId)
           || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash) {
           throw new Error("Evaluation source Agent Run input differs from the frozen case");
         }
@@ -163,7 +215,9 @@ export function createEvaluationRunRuntime(dependencies: {
           runCreatedAt: run.createdAt, runCompletedAt: run.completedAt,
           elapsedMs: run.completedAt - run.createdAt, costMicros: null,
           outputHash: output?.contentHash ?? null,
-          lastTraceId: trace.id, lastTraceSequence: trace.sequence });
+          lastTraceId: trace.id, lastTraceSequence: trace.sequence,
+          ...(manifest.schemaVersion === RUNTIME_CORPUS_EVALUATION_RUN_VERSION
+            ? { sourceAuditHash: await sourceAuditHash(tx, run.id) } : {}) });
         const evidenceJson = JSON.stringify(evidence);
         const existing = await tx("o_agentEvaluationCase").where({
           evaluationRunId: input.evaluationRunId, caseId: input.caseId,
@@ -192,11 +246,14 @@ export function createEvaluationRunRuntime(dependencies: {
       if (!identity.safeParse(id).success) throw new TypeError("Evaluation Run identity is invalid");
       return dependencies.work((db) => db.transaction(async (tx) => {
         const row = await tx("o_agentEvaluationRun").where({ id }).first();
-        if (!row || row.schemaVersion !== EVALUATION_RUN_VERSION
-          || hash(row.manifestJson) !== row.manifestHash) {
+        if (!row || hash(row.manifestJson) !== row.manifestHash) {
           throw new Error("Evaluation Run manifest is missing or corrupt");
         }
-        const manifest = validateEvaluationRunManifest(JSON.parse(row.manifestJson));
+        const manifest = validateEvaluationRunManifest(JSON.parse(row.manifestJson),
+          { allowSourceLessLegacyV2: true });
+        if (row.schemaVersion !== manifest.schemaVersion) {
+          throw new Error("Evaluation Run schema version differs from frozen manifest");
+        }
         const expectedKeys = manifest.variants.flatMap((variant) =>
           manifest.caseIds.flatMap((caseId) => manifest.seeds.map((seed) =>
             `${variant}:${caseId}:${seed}`)));
@@ -225,11 +282,16 @@ export function createEvaluationRunRuntime(dependencies: {
           const outputs = await tx("o_agentRunOutput").where({ runId: evidence.agentRunId })
             .select("content", "contentHash", "schemaVersion");
           const output = outputs[0];
+          if (evidence.sourceAuditHash !== undefined
+            && await sourceAuditHash(tx, evidence.agentRunId) !== evidence.sourceAuditHash) {
+            throw new Error("Evaluation source Agent Run evidence has changed: source audit rows");
+          }
           if (!run || run.projectId !== evidence.projectId
             || run.clientRequestId !== evaluationCaseRequestId(id,
               evidence.variant, evidence.caseId, evidence.seed)
             || !frozenInput || run.projectId !== frozenInput.projectId
             || run.role !== frozenInput.role || run.scope !== frozenInput.scope
+            || !actorMatches(storedInput, frozenInput.actorUserId)
             || !storedInput || typeof storedInput !== "object"
             || !("content" in storedInput) || typeof storedInput.content !== "string"
             || hashEvaluationInput(storedInput.content) !== frozenInput.contentHash

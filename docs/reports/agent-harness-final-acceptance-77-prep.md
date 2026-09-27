@@ -62,11 +62,11 @@ T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Scrip
 | --- | --- | --- |
 | functional | App 当前组合 715/715 Node 测试、类型检查通过 | 冻结源码和数据后复跑完整相关契约，并归档可复算输出 |
 | compatibility | 旧 Socket 止损测试及 Script 正路径局部浏览器用例 | 旧入口退场/迁移、App/Web 共同 Run 行为及回滚矩阵 |
-| recovery | 单个隔离 Script Run 的进程中断被分为 `interrupted-model-call`；T18 App 分支另有 Production post-intent 假模型中断试验，尚未合入本快照 | 多入口、审批、真实 Provider 未知效果与跨进程恢复矩阵 |
+| recovery | Script Run 进程中断与 Production post-intent 假模型中断各有隔离试验，已同步源码但未在冻结组合复测完整矩阵 | 多入口、审批、真实 Provider 未知效果与跨进程恢复矩阵 |
 | security | Project/Tool/Skill 权限的定向拒绝测试 | 跨入口越权、恶意 Tool 参数、导出脱敏与浏览器网络响应核验 |
-| evaluation | T02 本地假适配 18/18 硬门；T11 账本、串行续跑与配对报告契约；T11 分支另有两次相互独立的 Agnes 工程试跑，尚未合入本快照 | 全新冻结来源的 72-cell 生产 Runtime 执行、未知效果对账、独立 hard-gate/人工评审和来源核对；不得给质量结论 |
+| evaluation | T02 本地假适配 18/18 硬门；T11 账本、串行续跑与配对报告契约；两次相互独立的 Agnes 工程试跑已记入阶段报告，源码已同步但试跑来源不同于本组合 | 全新冻结来源的 72-cell 生产 Runtime 执行、未知效果对账、独立 hard-gate/人工评审和来源核对；不得给质量结论 |
 | build | 当前 App `yarn build`；先前 Web 六文件阶段配对 | 最终 App/Web 修订、全部 bundle 哈希冻结，目标 tag 的 Actions 平台构建 |
-| browser | Script 启动、停止、刷新、审批/拒绝、模型提案局部成功；T18 App 分支另有 Production 正路径及恢复的假模型夹具，尚未合入本快照 | 冻结组合上的 Production、跨入口、Reconnect、恢复、旧 Socket 全路径可重复自动化 |
+| browser | Script 启动、停止、刷新、审批/拒绝、模型提案局部成功；Production 正路径及恢复的假模型夹具已同步源码，尚未在冻结组合重跑 | 冻结组合上的 Production、跨入口、Reconnect、恢复、旧 Socket 全路径可重复自动化 |
 
 T19 仍只有等资源假 adapter 与拒绝契约，T20 仍只有隔离角色执行壳和未核验阈值候选；两者没有真实候选效果，更无生产拓扑采用决定。这些是发布门槛，不应被 App 单测通过或 18 例本地 Golden 掩盖。
 
@@ -100,10 +100,10 @@ T17 增加可显式运行的 `scripts/agnesProductionReadCanary.ts`，已逐级�
 
 后续容量修正：用户明确当前使用的 Agnes 3.0 Flash 文本模型上下文为 512K；T17 仅为该模型在目录声明 524288 tokens，并同步生成 Vendor manifest，未推断其他 Agnes 文本模型。配置化 Vendor 公共接口定向测试先红后绿，Agnes/配置化 Vendor 测试 38/38 通过。更新后的隔离生产 Run 探针移除了 4096-token 自定义模型及预期失败步骤，直接用内置目录、逻辑模型绑定和真实 Provider 调用：Run `succeeded`、模型调用 1、读取回执 1、输出 1（本次 SHA-256 `1e0ca50f2815c45d57dfe44b91d41ae12569bb95338b54977a2eaa0457ea8a36`）、其他 ToolReceipt 0、生成 VendorRequest 0。先前的默认配置阻断已在这个最小只读场景解除；512K 数值来自用户确认，未做极限长上下文验证，七类最终验收仍全部 pending。
 
-## 2026-09-27 T11/T18 后续分支证据登记（尚非本 T21 冻结组合）
+## 2026-09-27 T11/T18 后续分支证据登记（源码已同步，仍非 T21 冻结验收）
 
-T11 PR #101 的独立 AgentRuntime 18 例语料与 T02 确定性 Golden 18 例分开记账。第一份 Agnes 单并发工程 Evaluation Run `b6819a88-3874-4e45-b267-4c2abd8680bb` 只形成 22/72 个成功 checkpoint，下一格 `candidate:DEV-RT-006:29` 留下未对账的 in-flight 标记；第二份在 source-closure 和完整 Output 行审计修正后重新冻结的 v3 Run `6fd8466e-d645-48df-b39e-f3a43edbe5c1` 只形成 5/72 个成功 checkpoint，下一格 `candidate:DEV-RT-002:11` 同样未形成 checkpoint，Provider 效果未知。两份运行的分母各自是 72，不能相加为 27/72，更不能用成功格推断候选质量、费用、holdout 泛化或人工 rubric。两份 Run 均已停止，不能自动重试未知效果的格，也不能用后续 runner 修订续跑历史冻结来源。新 runner 增加的脱敏失败分类有合成秘密泄漏单测；它不能追溯诊断旧失败。详情见 T11 分支的 `docs/reports/agent-harness-t11-agnes-matrix-pilot.md`。本 T21 工作树尚未合入这些提交，不能把它们算作当前来源修订的正式评测证据。
+T11 PR #101 的独立 AgentRuntime 18 例语料与 T02 确定性 Golden 18 例分开记账。第一份 Agnes 单并发工程 Evaluation Run `b6819a88-3874-4e45-b267-4c2abd8680bb` 只形成 22/72 个成功 checkpoint，下一格 `candidate:DEV-RT-006:29` 留下未对账的 in-flight 标记；第二份在 source-closure 和完整 Output 行审计修正后重新冻结的 v3 Run `6fd8466e-d645-48df-b39e-f3a43edbe5c1` 只形成 5/72 个成功 checkpoint，下一格 `candidate:DEV-RT-002:11` 同样未形成 checkpoint，Provider 效果未知。两份运行的分母各自是 72，不能相加为 27/72，更不能用成功格推断候选质量、费用、holdout 泛化或人工 rubric。两份 Run 均已停止，不能自动重试未知效果的格，也不能用后续 runner 修订续跑历史冻结来源。新 runner 增加的脱敏失败分类有合成秘密泄漏单测；它不能追溯诊断旧失败。详情见 `docs/reports/agent-harness-t11-agnes-matrix-pilot.md`。T11 代码已沿 T18→T21 同步，但历史试跑冻结来源不是当前整体组合，不能算本组合的正式评测证据。
 
-T18 App PR #100 在独立临时 SQLite、全新浏览器 profile 和本地假文本 Model 下，新增 Production 普通 Run、生产工作区 Tool 读源及运行中刷新恢复三条成功路径；浏览器控制台 0 error/0 warning。Production 的完整强制 Tool/权限合同约 9442 估算 token，原 8192 上限不足，因此仅 Production 的策略输入上限调到 32768；模型窗口、输出/Tool 预留与安全余量仍生效，不截断强制合同。共用假 Model 修改后，三条 Script 浏览器夹具（启动/停止、模型提案审批、Owner 直接审批/拒绝）在另一份全新环境重跑通过。另一次受控试验在 Production Run `179d2675-4ab7-4fb4-b94d-9a097bd809b6` 持久化 `model-call-intent` 后终止专用 App 进程，只在临时数据库将该 Run 租约设为过期，再启动 App；同一 Run 呈 `waiting / interrupted-model-call`、Output 0 条、未观察到假模型自动重发，浏览器重载可见待关注状态。它证明本地 post-intent 未知效果分类，但不证明真实 60 秒租约、Provider 侧效果、人工对账或所有恢复分支。详情见 T18 分支的 `docs/reports/agent-harness-compatibility-74-progress.md`。这些提交尚未合入当前 T21 快照，最终浏览器、恢复、兼容三类都维持 pending。
+T18 App PR #100 在独立临时 SQLite、全新浏览器 profile 和本地假文本 Model 下，新增 Production 普通 Run、生产工作区 Tool 读源及运行中刷新恢复三条成功路径；浏览器控制台 0 error/0 warning。Production 的完整强制 Tool/权限合同约 9442 估算 token，原 8192 上限不足，因此仅 Production 的策略输入上限调到 32768；模型窗口、输出/Tool 预留与安全余量仍生效，不截断强制合同。共用假 Model 修改后，三条 Script 浏览器夹具（启动/停止、模型提案审批、Owner 直接审批/拒绝）在另一份全新环境重跑通过。另一次受控试验在 Production Run `179d2675-4ab7-4fb4-b94d-9a097bd809b6` 持久化 `model-call-intent` 后终止专用 App 进程，只在临时数据库将该 Run 租约设为过期，再启动 App；同一 Run 呈 `waiting / interrupted-model-call`、Output 0 条、未观察到假模型自动重发，浏览器重载可见待关注状态。它证明本地 post-intent 未知效果分类，但不证明真实 60 秒租约、Provider 侧效果、人工对账或所有恢复分支。详情见 `docs/reports/agent-harness-compatibility-74-progress.md`。这些源码提交已沿 T19→T21 同步，但尚未在最终冻结组合做完整浏览器与恢复矩阵，三类状态仍为 pending。
 
-这批增量分别只跑了相关单测、类型检查和浏览器夹具；没有在新的 T11→T18→T19→T20→T21 整体组合上执行全量验收。正式发布仍需先处理两份未对账的真实请求，冻结各分支共同修订与 App/Web bundle，再在冻结组合上重跑七类证据并独立核验；当前不创建 tag 或 Release。
+同步后在 T21 组合上运行 T11/T18 相关 11 个定向测试及类型检查，均通过；没有执行全量验收。正式发布仍需先处理两份未对账的真实请求，冻结共同修订与 App/Web bundle，再在冻结组合上重跑七类证据并独立核验；当前不创建 tag 或 Release。

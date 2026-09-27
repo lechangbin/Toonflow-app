@@ -22,6 +22,16 @@ const manifest = { schemaVersion: "toonflow.evaluation-run.v2",
   candidate: { app: "app-2", schema: "schema-1", runtime: "runtime-2",
     tool: "tool-2", context: "context-2", memory: "memory-1",
     skill: "skill-2", model: "model-1", vendor: "vendor-1" }, frozenAt: 100 };
+const validateLegacy = (input: unknown) => validateEvaluationRunManifest(input,
+  { allowSourceLessLegacyV2: true });
+async function createStoredLegacyFixture(db: Knex) {
+  const id = "legacy-source-less-evaluation";
+  const manifestJson = JSON.stringify(manifest);
+  const manifestHash = createHash("sha256").update(manifestJson).digest("hex");
+  await db("o_agentEvaluationRun").insert({ id, schemaVersion: manifest.schemaVersion,
+    manifestJson, manifestHash, createdAt: 200 });
+  return { id, manifestHash };
+}
 
 async function initializeQuietly(db: Knex) {
   const previous = console.log;
@@ -62,25 +72,27 @@ async function fixture() {
 }
 
 test("T11 manifest freezes a unique paired case/seed matrix and revisions", () => {
-  assert.equal(validateEvaluationRunManifest(manifest).caseIds.length, 1);
-  assert.throws(() => validateEvaluationRunManifest({ ...manifest, seeds: [11, 11] }));
-  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+  assert.throws(() => validateEvaluationRunManifest(manifest), /corpus identity/u);
+  assert.equal(validateLegacy(manifest).caseIds.length, 1);
+  assert.throws(() => validateLegacy({ ...manifest, seeds: [11, 11] }));
+  assert.throws(() => validateLegacy({ ...manifest,
     caseInputs: [{ caseId: "HOLD-EXT-001", projectId: 7, contentHash: hashEvaluationInput("x"),
       role: "scriptAgent", scope: "read-only-project-guidance-v1" }] }));
-  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+  assert.throws(() => validateLegacy({ ...manifest,
     candidate: { ...manifest.candidate, skill: "" } }));
-  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+  assert.throws(() => validateLegacy({ ...manifest,
     candidate: { ...manifest.candidate, model: "model-2" } }), /common environment/u);
-  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+  assert.throws(() => validateLegacy({ ...manifest,
     candidate: { ...manifest.candidate, schema: "schema-2" } }), /common environment/u);
-  assert.throws(() => validateEvaluationRunManifest({ ...manifest,
+  assert.throws(() => validateLegacy({ ...manifest,
     caseInputs: [{ ...manifest.caseInputs[0], projectId: 0 }] }));
 });
 
 test("T11 case evidence must link a terminal production Agent Run and is idempotent", async () => {
   const { db, runtime } = await fixture();
   try {
-    const created = await runtime.create(manifest);
+    await assert.rejects(runtime.create(manifest), /corpus identity/u);
+    const created = await createStoredLegacyFixture(db);
     await db("o_agentRun").insert({ id: "run-1", projectId: 7,
       status: "succeeded", version: 3,
       createdAt: 110, completedAt: 150,
@@ -145,7 +157,7 @@ test("T11 case evidence must link a terminal production Agent Run and is idempot
 test("T11 rejects queued or trace-less Agent Runs before recording a case", async () => {
   const { db, runtime } = await fixture();
   try {
-    const created = await runtime.create(manifest);
+    const created = await createStoredLegacyFixture(db);
     const input = { evaluationRunId: created.id, caseId: "DEV-EXT-001",
       seed: 11, variant: "baseline" as const, agentRunId: "run-queued" };
     await db("o_agentRun").insert({ id: "run-queued", projectId: 7,

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import knexFactory from "knex";
 
-import { createAgentRuntime, PRODUCTION_HARNESS_ROLE,
+import { AgentRunProjectNotFoundError, createAgentRuntime, PRODUCTION_HARNESS_ROLE,
   PRODUCTION_HARNESS_SCOPE } from "../src/agentRuntime";
 import { prepareProductionSkillRun } from
   "../src/agents/productionAgent/harnessPreparation";
@@ -244,7 +244,8 @@ test("Production Run links guarded reads, owner-approved image effects and ambig
     assert.equal((await db("o_agentRunSkillBinding").where({ runId: run.id }).first())?.revisionId,
       draft.id);
     await assert.rejects(runtime.start({ ...input,
-      clientRequestId: "wrong-owner-production", actorUserId: 2 }), /Project owner/);
+      clientRequestId: "wrong-owner-production", actorUserId: 2 }),
+    AgentRunProjectNotFoundError);
     assert.equal(await runtime.inspect({ runId: run.id, projectId: 7,
       actorUserId: 2 }), null);
     assert.equal(await runtime.inspect({ runId: run.id, projectId: 7 }), null);

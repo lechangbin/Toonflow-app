@@ -1,18 +1,15 @@
-import { validateGoldenEvalManifest,
-  type GoldenEvalPartition } from "./goldenEval";
+import type { GoldenEvalPartition } from "./goldenEval";
+import { resolveEvaluationCaseDefinitions } from "./evaluationCaseDefinitions";
 import { createEvaluationRunRuntime } from "./evaluationRun";
 
 export const EVALUATION_ASSESSMENT_QUEUE_VERSION = "toonflow.evaluation-assessment-queue.v1" as const;
 type Evaluation = ReturnType<typeof createEvaluationRunRuntime>;
 
-/** A review queue, not a scoring result: Run success never implies a Golden hard gate passed. */
+/** A review queue, not a scoring result: Run success never implies a hard gate passed. */
 export async function createEvaluationAssessmentQueue(evaluation: Evaluation,
   evaluationRunId: string) {
   const observed = await evaluation.inspect(evaluationRunId);
-  if (!observed.manifest.goldenManifestJson) {
-    throw new TypeError("Evaluation assessment requires a frozen Golden manifest");
-  }
-  const golden = validateGoldenEvalManifest(JSON.parse(observed.manifest.goldenManifestJson) as unknown);
+  const definitions = resolveEvaluationCaseDefinitions(observed.manifest);
   const evidence = new Map(observed.cases.map((entry) =>
     [`${entry.variant}:${entry.caseId}:${entry.seed}`, entry] as const));
   const cells: Array<{ caseId: string; partition: GoldenEvalPartition;
@@ -25,7 +22,7 @@ export async function createEvaluationAssessmentQueue(evaluation: Evaluation,
     failureClassification: "pending"; elapsedMs: number | null;
     costMicros: null }> = [];
   for (const variant of observed.manifest.variants) {
-    for (const entry of golden.cases) {
+    for (const entry of definitions.cases) {
       for (const seed of observed.manifest.seeds) {
         const source = evidence.get(`${variant}:${entry.id}:${seed}`);
         cells.push({ caseId: entry.id, partition: entry.partition,
@@ -34,7 +31,7 @@ export async function createEvaluationAssessmentQueue(evaluation: Evaluation,
           runStatus: source?.runStatus ?? null,
           hardGates: entry.hardGates.map((gate) => ({ id: gate.id, state: "not-evaluated" })),
           requiredArtifacts: [...entry.requiredArtifacts],
-          quality: { rubricVersion: golden.qualityRubricVersion, state: "pending", score: null },
+          quality: { rubricVersion: definitions.qualityRubricVersion, state: "pending", score: null },
           failureClassification: "pending", elapsedMs: source?.elapsedMs ?? null,
           costMicros: null });
       }

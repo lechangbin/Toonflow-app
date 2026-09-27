@@ -1,6 +1,6 @@
 # Agent Harness T18 导学：旧 Socket 与新 Harness 兼容边界（阶段版）
 
-> 对应开放 Issue #74。已做 App/Web 全量预验收及隔离本地环境的 Script 浏览器/进程恢复子集；旧 Socket 生命周期、Production 与审批跨仓流程、最终冻结修订的 T21 验收仍未完成。不写简历或未测收益。
+> 对应开放 Issue #74。Script 与 Production 的隔离本地假模型浏览器正路径、Script 审批以及受控进程恢复已有阶段证据；旧 Socket 迁移、跨入口完整矩阵、真实 Provider 与最终冻结修订的 T21 验收仍未完成。不写简历或未测收益。
 
 ## 前置知识
 
@@ -71,6 +71,14 @@
 | 切换先关门 | 校验期间暂不可 chat | Gate 状态测试 | 浏览器切换与断线验证 |
 | 客户端 ID 不可信 | 每次需查归属 | Production 上下文定向测试 | 全旧入口审计 |
 
-App/Web 的全量测试和构建已有预验收通过记录，Script 浏览器 start/succeeded/Trace/刷新、审批正路径与租约到期后恢复有隔离环境实测；但测试 Project 绕过正常模型选择，页面监督模式不跨刷新自动开启，Production、完整写入审批矩阵、旧 Socket 黄金路径、全部跨仓浏览器矩阵与真实 Provider 均未验收。T18 的 Issue #74 仍开放，不能把这个子集称为完整兼容迁移。
+App/Web 曾有全量预验收记录，之后的新组合尚未做最终全量验收。Script 与 Production 的本地假模型浏览器子集已覆盖启动、读源、刷新、审批正路径及受控中断恢复；但测试 Project 绕过正常模型选择，Production 审批/拒绝、旧 Socket 黄金路径、全部跨入口浏览器矩阵和真实 Provider 仍未验收。T18 Issue #74 保持开放，不能把子集称为完整兼容迁移。
 
-补充浏览器实践：沿 `tests/fixtures/prepareHarnessBrowserFixture.ts`、`fakeOpenAITextServer.mjs` 和三个 `checkScript*Browser.js` 脚本分别复现停止版本冲突、Owner 直接提案的批准/拒绝，以及 Skill/Project grant 允许后的模型 Tool 提案。queued→running 可让按钮持有旧版本；Web 丢掉 409 会使停止意图消失；修复仅对明确冲突重读同一 Run 并复用命令 ID 重试。Trace 中 `run.cancellation-requested` 后仍可能 `succeeded`，不等于供应商撤销。模型提案的父 Run 有 `tool.proposal.created`，但 `storySkeleton` 直到 Owner 看全文并批准才改变。该夹具仍只覆盖 Script 子集；正常 Project 模型配置、Production、跨入口、旧 Socket 退场和完整恢复矩阵未验收。
+补充 Script 浏览器实践：沿 `tests/fixtures/prepareHarnessBrowserFixture.ts`、`fakeOpenAITextServer.mjs` 和三个 `checkScript*Browser.js` 脚本分别复现停止版本冲突、Owner 直接提案的批准/拒绝，以及 Skill/Project grant 允许后的模型 Tool 提案。queued→running 可让按钮持有旧版本；Web 丢掉 409 会使停止意图消失；修复仅对明确冲突重读同一 Run 并复用命令 ID 重试。Trace 中 `run.cancellation-requested` 后仍可能 `succeeded`，不等于供应商撤销。模型提案的父 Run 有 `tool.proposal.created`，但 `storySkeleton` 直到 Owner 看全文并批准才改变。Script 夹具仍只覆盖子集；Production 正路径另见下文，正常 Project 模型配置、跨入口、旧 Socket 退场和完整恢复矩阵未验收。
+
+对比两条审批来源：Owner 直接调用提案接口适合验证查看全文、批准与拒绝 UI；模型 Tool 提案还需要已发布 Skill 请求 Tool/Capability、Owner 开启 Project grant、父 Run 产生 `tool.proposal.created`，提案本身不写入。观察 Model 提案批准前后 `storySkeleton` 的服务端值。上述 Script 夹具只覆盖局部正路径；Production 的独立只读正路径见下段，跨入口审批、重连/恢复及旧 Socket 退场仍是开放门槛。
+
+Production 继续读 `src/agentRuntime/index.ts` 的 Context 预算参数和 ADR-0019。完整 Production Tool/权限合同必须作为强制 Context 保留；固定 8192 上限让真实组合在 Provider 调用前失败，不能通过删掉安全合同来“修好”。在隔离数据库和假 Model 下运行 `checkProductionHarnessBrowser.js`，看 Production 专属 32768 上限如何仍受 Model 容量、输出/协议预留及安全余量约束，并证明成功 Run 的 HTTP 状态、因果抽屉和刷新恢复。脚本现在依次跑普通只读与 `get_production_workspace_text` Tool 读源，观察后一条 `tool.succeeded` 和有哈希的 ToolReceipt；它不证明越权拒绝、审批或 Vendor 生成。
+
+再看脚本的第三条延迟 Run：在 queued/running 阶段刷新页面，之后仍从 HTTP 恢复同一 ID 并看到终态。假模型只根据最后一条 user 指令识别测试触发词；如果扫描所有历史消息，上条读源标记会污染慢调用，让它错误地产生 Tool 调用。把“刷新期间服务端仍在运行”与“进程崩溃后的恢复”分开回答。
+
+进程恢复再读 ADR-0012/0013 与 `src/database/agentRunRecovery.ts`：本地假 Model 延迟时必须确认最新 checkpoint 是 `model-call-intent`、Run 仍 running，才终止专用临时服务。测试为快速走到租约接管分支，仅把临时 Run 的 lease 设为过期；重启后检查 waiting、`interrupted-model-call`、无 Output、无新增假模型调用及浏览器 HTTP 投影。别把这个加速测试描述成真实 60 秒时间测试，也别把无重发等同于供应商端无效果。

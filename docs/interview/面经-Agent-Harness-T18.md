@@ -1,6 +1,6 @@
 # Agent Harness T18 面经：旧 Socket 与新 Harness 的兼容边界（阶段版）
 
-> 对应开放 Issue #74。App/Web 全量预验收和 Script Harness 的隔离浏览器/重启恢复/审批子集已有记录；Production、完整审批矩阵、旧 Socket 回退与最终冻结版本的跨仓验收仍未完成。本文不提供简历 bullet；个人 ownership 按提交记录确认。
+> 对应开放 Issue #74。App/Web 曾有全量预验收；Script 审批与 Production 只读浏览器正路径、受控进程恢复已有隔离假模型证据。旧 Socket 迁移、跨入口完整矩阵、真实 Provider 与最终冻结组合仍未验收。本文不提供简历 bullet；个人 ownership 按提交记录确认。
 
 ## 项目背景
 
@@ -22,10 +22,10 @@
 12. 问：为什么新 Harness 请求失败不能隐式回退旧 Socket？答：两条路径的 Skill 冻结、grant、审批、恢复和状态语义不同。新路径失败时若悄悄把同一意图交给旧 Agent，用户以为仍受新安全边界保护，实际可能执行宽松旧能力。Web 侧监督模式应显式切换，错误应留在该模式显示，用户明确切出才走旧链路。阶段客户端测试验证局部契约；兼容回退的浏览器行为尚未完成最终验收。追问：这会降低可用性吗？答：会增加显式操作，但避免隐性权限降级。
 13. 问：为何 T18 还需要 App/Web 同时冻结测试？答：停止协议一端发、一端收，单仓测试可能分别通过却在同一页面交互中不兼容；例如 Web 不再乐观置 idle 后，App 若不发 stop 就会卡住。当前已把 Web T18 bundle 同步进 App，并在本地页面实跑 Script Run 的启动、状态、Trace 与重启恢复子集；它仍未覆盖旧 Socket 停止、Production 审批和全部断线时序。最终要冻结 App、Web、bundle 匹配修订，再重跑完整矩阵。追问：截图够吗？答：不够，还要可复现命令、脱敏请求/状态证据与修订哈希。
 14. 问：阶段报告里哪些事实可以说，哪些仍应保留 unknown？答：可以说旧 stop 一次性终态、迟到消息栅栏、Production 上下文 Owner/Script 隔离和切换门有定向测试；App/Web 全量预验收通过，Script 子集在假服务本地浏览器观察了成功、取消意图与中断恢复。不能说旧 Agent 已迁完、真实 Vendor 已取消、全部浏览器矩阵已通过或所有旧 Socket 均安全。付费 Provider 未调用，结果和退款仍属 unknown。追问：为什么不以测试数量当覆盖率？答：样本范围不等于全入口分母。
-15. 问：T18 下一步的完成门槛是什么？答：除当前止损外，还需继续收敛旧 Socket 生命周期所有权和前端完成回调，让新 Harness 的 Run、审批、效果在刷新/重连时以持久快照为权威，并证明显式模式切换、回退及旧入口兼容。现有本地浏览器子集只覆盖 Script，只读模型没有写入审批，测试 Project 还绕过正常选择；要补 Production 和审批/拒绝、自动化跨仓流程、冻结两仓修订和最终 bundle 再对照 Issue #74。当前 Draft PR 与局部实测不能替代所有门槛。追问：如何避免迁移期间混用状态？答：保持来源和终态语义显式。
+15. 问：T18 下一步的完成门槛是什么？答：除当前止损外，还需收敛旧 Socket 生命周期所有权和前端完成回调，让新 Harness 的 Run、审批、效果在刷新/重连时以持久快照为权威，并证明显式模式切换与回退。现有本地假模型夹具已覆盖 Script 审批和 Production 只读正路径，但正常 Project 模型选择、Production 审批/拒绝、跨入口和旧 Socket 完整浏览器矩阵未验收；还要冻结 App/Web 修订与 bundle 后复测。当前 Draft PR 与局部实测不能替代这些门槛。追问：如何避免迁移期间混用状态？答：保持来源和终态语义显式。
 16. 问：模型请求中断时，为何不自动再发一次？答：【S】我在隔离本地浏览器环境启动了一条只读 Script Run，后端已经把请求发到慢假模型服务；这时只看页面断线，无法判断模型是否已经处理或收费。【T】我要验证进程恢复时系统不把未知效果当成安全失败重试。【A】我确认假服务收到一次调用后中断 App，等运行租约过期再重启；随后在页面重新读取服务端列表、详情和 Trace，并用临时 SQLite 核对 Output 数量。【R】该 Run 进入等待人工核对，Trace 标为模型调用中断，Output 为零，假服务没有第二次调用。这只证明这一组本地时序，不能外推真实 Provider 的账单。追问：为何第一次重启后仍显示 running？答：【S】第一次重启发生在原执行租约尚未过期时，页面读到旧运行状态，若立刻重新执行可能与仍存活的旧 worker 争写。【T】我需要解释恢复的时间边界，而不是把短暂 running 误报为恢复失败。【A】我读取持久租约过期时间，确认就绪恢复在未过期时跳过；到期后重启才由恢复流程检查已提交的模型调用意图，归类成待核对。【R】这保留了租约所有权和副作用不明两道约束，代价是恢复不是瞬时完成；多进程竞争仍需单独测。追问：如果模型迟到成功怎么办？答：【S】另一条慢假模型 Run 在运行中接到停止请求，但 HTTP 请求已越过本地边界。【T】我要区分用户停止意图与供应商实际结果。【A】我看到了取消请求的持久 Trace，随后假模型返回成功时页面依照服务端终态显示 succeeded，不伪造 cancelled。【R】这避免把已观察到的输出藏起来，但不表示这种交互文案已经完善，也不证明真实供应商能取消或退款；最终仍要在 UI 和 Provider canary 中验证。
 
-第 15 题保留此前只读浏览器子集的阶段表述；最新模型 Tool 提案与审批正路径见第 17–19 题，不能把旧句“没有写入审批”当成现状。
+第 1–14、16 题包含早期阶段事实；当前 Script 审批与 Production 只读进展以第 15、17–19 题及 T18 阶段报告为准，不能把早期覆盖边界单独当作现状。
 
 17. 问：停止请求撞上 queued→running 的 409 为什么会丢意图？答：【S】浏览器持有 queued 版本，后台先进入 running；旧 Web Axios 把 409 缩成无状态响应体。【T】要区分明确版本冲突和结果未知的网络错误。【A】保留 HTTP status，仅对 409 重读同 Project/Run/role/scope，版本前进且仍可取消时用原命令 ID 最多重试一次；网络未知不重试。【R】本地慢假模型复跑后 Trace 出现 `run.cancellation-requested`，但迟到响应使 Run 仍 succeeded。它证明意图留痕，不证明 Provider 撤销。证据：Web `scriptHarnessContract.ts`、T18 浏览器夹具与报告。
 18. 问：Owner 接口提案的批准/拒绝 UI 能证明模型授权吗？答：【S】待审面板既可显示 Owner 直接建的候选，也可显示来自父 Agent Run 的候选。【T】要避免把 UI 决策用例误称模型链路。【A】先用 Owner 接口在临时 Project 建两条单字段候选，页面看全文并批准其一、拒绝其二，再从服务端核对仅获批字段改变。【R】这证明审批/拒绝的局部 UI 与持久效果，未经过模型 Tool 或 Skill grant；两者另有测试。证据：`checkScriptWriteApprovalBrowser.js`。
@@ -40,6 +40,7 @@
 | 双路径与待验收 | `docs/reports/agent-harness-compatibility-74-progress.md`、Web T18 Draft PR #9、Issue #74 | 11–15 |
 | 本地浏览器与恢复子集 | `docs/reports/agent-harness-final-acceptance-77-prep.md`、`src/agentRuntime/lease.ts`、`src/database/agentRunRecovery.ts`、Web `src/views/scriptAgent/index.vue` | 13–16 |
 | 停止竞态与模型提案审批 | Web `src/utils/scriptHarnessContract.ts`、App `tests/fixtures/checkScriptHarnessBrowser.js`、`checkScriptWriteApprovalBrowser.js`、`checkScriptModelProposalBrowser.js` | 17–19 |
+| Production 浏览器与中断恢复 | `tests/fixtures/checkProductionHarnessBrowser.js`、`checkInterruptedProductionBrowser.js`、`src/database/agentRunRecovery.ts` | 15、16 |
 
 ## 高风险 Claim
 
