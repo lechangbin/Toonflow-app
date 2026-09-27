@@ -39,10 +39,10 @@ async page => {
     throw new Error("Unauthorized Production read was not rejected by the local Model path");
   }
   await panel.getByRole("button", { name: "查看服务端因果证据" }).click();
-  await panel.getByRole("listitem").filter({ hasText: "run.succeeded" }).waitFor();
+  await panel.getByRole("listitem").filter({ hasText: "tool.denied" }).waitFor();
   if (await panel.getByRole("listitem").filter({ hasText: "tool.succeeded" }).count()) {
     throw new Error("Unauthorized Production read unexpectedly succeeded");
   }
   return { runId, grantVersion: 2, modelObservedDenial: true,
-    successfulToolTraceCount: 0, provider: "local-fake-only" };
+    deniedToolTraceCount: 1, successfulToolTraceCount: 0, provider: "local-fake-only" };
 }
