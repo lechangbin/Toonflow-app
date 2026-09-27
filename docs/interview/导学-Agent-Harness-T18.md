@@ -14,4 +14,10 @@
 
 浏览器实践现在可沿 `tests/fixtures/prepareHarnessBrowserFixture.ts` → `fakeOpenAITextServer.mjs` → 三个 `checkScript*Browser.js` 脚本做隔离联调。先解释 queued→running 为什么会让停止按钮拿到旧版本，以及 Web 错误拦截器丢掉 409 时为何停止意图消失；再看重试只在明确冲突且同一个 Run 版本前进时发生。慢假模型的 Run 可以在 `run.cancellation-requested` 后仍 `succeeded`，不能把意图写入说成供应商已撤销。
 
-对比两条审批来源：Owner 直接调用提案接口适合验证查看全文、批准与拒绝 UI；模型 Tool 提案还需要已发布 Skill 请求 Tool/Capability、Owner 开启 Project grant、父 Run 产生 `tool.proposal.created`，提案本身不写入。观察 Model 提案批准前后 `storySkeleton` 的服务端值。现有夹具只覆盖 Script 的局部正路径，跨入口、Production、重连/恢复及旧 Socket 退场仍是开放门槛。
+对比两条审批来源：Owner 直接调用提案接口适合验证查看全文、批准与拒绝 UI；模型 Tool 提案还需要已发布 Skill 请求 Tool/Capability、Owner 开启 Project grant、父 Run 产生 `tool.proposal.created`，提案本身不写入。观察 Model 提案批准前后 `storySkeleton` 的服务端值。上述 Script 夹具只覆盖局部正路径；Production 的独立只读正路径见下段，跨入口审批、重连/恢复及旧 Socket 退场仍是开放门槛。
+
+Production 继续读 `src/agentRuntime/index.ts` 的 Context 预算参数和 ADR-0019。完整 Production Tool/权限合同必须作为强制 Context 保留；固定 8192 上限让真实组合在 Provider 调用前失败，不能通过删掉安全合同来“修好”。在隔离数据库和假 Model 下运行 `checkProductionHarnessBrowser.js`，看 Production 专属 32768 上限如何仍受 Model 容量、输出/协议预留及安全余量约束，并证明成功 Run 的 HTTP 状态、因果抽屉和刷新恢复。脚本现在依次跑普通只读与 `get_production_workspace_text` Tool 读源，观察后一条 `tool.succeeded` 和有哈希的 ToolReceipt；它不证明越权拒绝、审批或 Vendor 生成。
+
+再看脚本的第三条延迟 Run：在 queued/running 阶段刷新页面，之后仍从 HTTP 恢复同一 ID 并看到终态。假模型只根据最后一条 user 指令识别测试触发词；如果扫描所有历史消息，上条读源标记会污染慢调用，让它错误地产生 Tool 调用。把“刷新期间服务端仍在运行”与“进程崩溃后的恢复”分开回答。
+
+进程恢复再读 ADR-0012/0013 与 `src/database/agentRunRecovery.ts`：本地假 Model 延迟时必须确认最新 checkpoint 是 `model-call-intent`、Run 仍 running，才终止专用临时服务。测试为快速走到租约接管分支，仅把临时 Run 的 lease 设为过期；重启后检查 waiting、`interrupted-model-call`、无 Output、无新增假模型调用及浏览器 HTTP 投影。别把这个加速测试描述成真实 60 秒时间测试，也别把无重发等同于供应商端无效果。
