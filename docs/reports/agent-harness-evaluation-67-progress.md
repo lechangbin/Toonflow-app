@@ -98,4 +98,6 @@ SQLite 新表 `o_agentEvaluationRun` 保存清单及哈希，`o_agentEvaluationC
 
 2026-09-27 #104 完整来源行摘要切片：新写入的 v3 EvaluationCase 除已有 Output 哈希和因果 Trace 末端外，还保存 `sourceAuditHash`，由当时 Run 相关的整组 Output、Trace、ToolReceipt、审批、ToolCall、图片/视频 Vendor 请求行按稳定路径/字段排序后计算。后续 `evaluation.inspect` 重算；即使 Trace 仍保持连续、ToolReceipt 的正文与其新哈希自洽，只要源行被改写就拒绝来源账本。历史已写 v3 记录无此字段时仍可只读，但不因此追认为新合同；旧 22 格 pilot 是这种历史记录且已因中断/代码修订封存。新的 Fake Runtime 回归分别篡改 Output 元数据、Trace 和 Receipt，验证来源复核拒绝；机器门篡改测试改用已读取旧快照后的竞态模型。另一条合法成功但未调用预期 Tool 的 Run 保留在 72 分母，未提交人工评审也显示 `gate-failed`，并阻止自动续跑。定向 AgentRuntime 7/7 与 TypeScript 通过。摘要不是外部签名、不能证明自然语言答案正确或公开 holdout 未污染；#104 保持开放。
 
+2026-09-27 #105 第二份独立 v3 Agnes 工程试跑：从当前来源闭包新建 0/72 账本，单并发执行后留有 5/72 个成功且机器门通过的格子；下一格 `candidate:DEV-RT-002:11` 在 execute 阶段失败，未产生 checkpoint 6，外部请求状态未知。in-flight 标记阻断自动续跑和重试。该结果没有人工语义评审，不能代替 72-cell 质量结论；细节见 `agent-harness-t11-agnes-matrix-pilot.md`。
+
 2026-09-27 #67 v2 来源身份收敛：默认 `validateEvaluationRunManifest` 和新增 `evaluation.create` 现在拒绝没有 `goldenManifestJson` 的 v2；正式 T02 Golden 冻结必须走带 18 例原文、哈希和输入合同的路径。此前测试/历史产生的单例、无来源 v2 记录可在显式 `allowSourceLessLegacyV2` 兼容读取下继续 `inspect`/`record`，但定义依赖的报告仍拒绝它们，不能当作 T02 证据。定向 v2 创建拒绝、旧记录读写兼容和正式 18 例冻结 8/8，TypeScript 通过；这没有把 T02 确定性用例变成 AgentRuntime 生产输入，也没有执行 Golden 72 格。
