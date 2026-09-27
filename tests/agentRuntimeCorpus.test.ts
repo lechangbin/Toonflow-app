@@ -336,6 +336,14 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       ?.variant, "baseline");
     const originalOutput = await db("o_agentRunOutput")
       .where({ runId: observed.cases[0].agentRunId }).first();
+    for (const field of ["id", "kind"] as const) {
+      await db("o_agentRunOutput").where({ id: originalOutput.id })
+        .update({ [field]: `${originalOutput[field]}-rewritten` });
+      await assert.rejects(evaluation.inspect(frozen.id), /source audit rows/u);
+      await db("o_agentRunOutput").where({ runId: observed.cases[0].agentRunId })
+        .update({ [field]: originalOutput[field] });
+      await evaluation.inspect(frozen.id);
+    }
     let racedContent = "伪造的盲评回复";
     const racedEvaluation = { ...evaluation, inspect: async (evaluationRunId: string) => {
       const snapshot = await evaluation.inspect(evaluationRunId);

@@ -66,7 +66,9 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 复核修正练习：在 Fake 来源测试里让 Run 合法成功但没有调用预期读取 Tool，确认没有评审记录时配对报告仍标 `gate-failed`；再将完整安全报告送入续跑门，确认旧格失败阻止新 Provider 调用。读 `runtimeCorpusCodeRevision.ts`：只改 Harness preparation 或新增受控 Tool 文件，为什么即使 `agentRuntime/index.ts` 不变，冻结的 App/Runtime/Tool 修订也应变化？说明这些修正发生在 22 格 pilot 后，不能倒推旧 pilot 已按新合同运行。
 
-来源摘要练习：读 `evaluationRun.ts` 的 v3 `sourceAuditHash`。与只冻结最后一条 Trace ID 相比，整组 Trace、ToolReceipt 和审批/计费请求行摘要能发现哪类自洽改写？在测试中先改一个 Trace 事件再恢复，或把 Receipt 正文和它自身哈希同时改掉，观察来源账本先拒绝；若特意模拟 `inspect` 后的读取竞态，独立机器门仍要自己核对当前行。历史 pilot 没有这份摘要，不能事后升级证据等级。
+来源摘要练习：读 `evaluationRun.ts` 的 v3 `sourceAuditHash`。与只冻结最后一条 Trace ID 或 Output 正文哈希相比，完整 Output 行、整组 Trace、ToolReceipt 和审批/计费请求行摘要能发现哪类自洽改写？在测试中先改 Output 的 ID 或 kind、Trace 事件再恢复，或把 Receipt 正文和它自身哈希同时改掉，观察来源账本先拒绝；若特意模拟 `inspect` 后的读取竞态，独立机器门仍要自己核对当前行。历史 pilot 没有这份摘要，不能事后升级证据等级。
+
+兼容边界练习：`evaluationRun.ts` 的新建 v2 为什么必须附带 T02 Golden 原文？一条只有任意 `caseManifestHash` 的旧单例记录不能证明自己来自 18 例定义。观察专用 `freezeGoldenEvaluationRun` 仍能冻结 18 例且零执行；旧无来源记录只在显式兼容读取时可检查历史 Run，不可新建为正式 T11 结果，也不能交给案例定义报告伪装为 Golden。
 
 实验设计练习：读 `runtimeCorpusTreatment.ts` 与 `docs/reports/agent-harness-t11-paired-study-plan.md`。为什么 Skill-only 比较还要锁定 App/Schema/Runtime/Tool/Context/Memory/Model/Vendor？哪些普通 Script 只读 case 不受 Skill 处理、只能作负对照？若两次“seed”仅是不同请求身份，为什么不能称为受控随机重复？本文件是预注册草案，不能当成已经观察到的收益。
 

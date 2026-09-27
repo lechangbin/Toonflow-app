@@ -48,7 +48,7 @@ const canonical = (value: unknown): unknown => Array.isArray(value)
     ? Object.fromEntries(Object.entries(value).sort(([left], [right]) =>
       left.localeCompare(right)).map(([key, item]) => [key, canonical(item)]))
     : value;
-const sourceAuditTables = ["o_agentTrace", "o_agentToolReceipt", "o_agentToolApproval",
+const sourceAuditTables = ["o_agentRunOutput", "o_agentTrace", "o_agentToolReceipt", "o_agentToolApproval",
   "o_agentToolCall", "o_agentVendorRequest", "o_agentVideoVendorRequest"] as const;
 async function sourceAuditHash(tx: Knex.Transaction, runId: string): Promise<string> {
   const material = [];
@@ -74,11 +74,13 @@ export function evaluationCaseRequestId(evaluationRunId: string,
   return `eval-${hash(JSON.stringify([evaluationRunId, variant, caseId, seed])).slice(0, 32)}`;
 }
 
-export function validateEvaluationRunManifest(input: unknown): EvaluationRunManifest {
+export function validateEvaluationRunManifest(input: unknown,
+  options: { allowSourceLessLegacyV2?: boolean } = {}): EvaluationRunManifest {
   const manifest = evaluationRunManifestSchema.parse(input);
   if (manifest.schemaVersion === RUNTIME_CORPUS_EVALUATION_RUN_VERSION
     ? manifest.agentRuntimeCorpusJson === undefined || manifest.goldenManifestJson !== undefined
-    : manifest.agentRuntimeCorpusJson !== undefined) {
+    : manifest.agentRuntimeCorpusJson !== undefined
+      || (!options.allowSourceLessLegacyV2 && manifest.goldenManifestJson === undefined)) {
     throw new TypeError("Evaluation Run corpus identity does not match its schema version");
   }
   if (manifest.schemaVersion === RUNTIME_CORPUS_EVALUATION_RUN_VERSION
@@ -162,7 +164,8 @@ export function createEvaluationRunRuntime(dependencies: {
         if (!evaluation || hash(evaluation.manifestJson) !== evaluation.manifestHash) {
           throw new Error("Evaluation Run manifest is missing or corrupt");
         }
-        const manifest = validateEvaluationRunManifest(JSON.parse(evaluation.manifestJson));
+        const manifest = validateEvaluationRunManifest(JSON.parse(evaluation.manifestJson),
+          { allowSourceLessLegacyV2: true });
         if (evaluation.schemaVersion !== manifest.schemaVersion) {
           throw new Error("Evaluation Run schema version differs from frozen manifest");
         }
@@ -246,7 +249,8 @@ export function createEvaluationRunRuntime(dependencies: {
         if (!row || hash(row.manifestJson) !== row.manifestHash) {
           throw new Error("Evaluation Run manifest is missing or corrupt");
         }
-        const manifest = validateEvaluationRunManifest(JSON.parse(row.manifestJson));
+        const manifest = validateEvaluationRunManifest(JSON.parse(row.manifestJson),
+          { allowSourceLessLegacyV2: true });
         if (row.schemaVersion !== manifest.schemaVersion) {
           throw new Error("Evaluation Run schema version differs from frozen manifest");
         }
