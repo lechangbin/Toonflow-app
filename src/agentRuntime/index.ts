@@ -1218,6 +1218,10 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
       || input.actorUserId! <= 0)) {
       throw new TypeError("Harness requires an authenticated Project actor");
     }
+    if (input.actorUserId !== undefined
+      && (!Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0)) {
+      throw new TypeError("Agent Run actor identity is invalid");
+    }
     const clientRequestId = input.clientRequestId.trim();
     const content = input.content.trim();
     if (!Number.isInteger(input.projectId) || input.projectId <= 0 || !clientRequestId || !content) {
@@ -1230,7 +1234,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
     const requestFingerprint = fingerprint({
       schemaVersion: input.schemaVersion, projectId: input.projectId, role: input.role,
       scope: input.scope, clientRequestId, content,
-      ...(dependencies.skillMode ? { actorUserId: input.actorUserId } : {}),
+      ...(input.actorUserId === undefined ? {} : { actorUserId: input.actorUserId }),
     });
     const runId = dependencies.createId();
     const stepId = dependencies.createId();
@@ -1243,7 +1247,7 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         id: runId, projectId: input.projectId, scriptId: null, role: input.role, scope: input.scope,
         clientRequestId, requestFingerprint,
         input: JSON.stringify({ content,
-          ...(dependencies.skillMode ? { actorUserId: input.actorUserId } : {}) }),
+          ...(input.actorUserId === undefined ? {} : { actorUserId: input.actorUserId }) }),
         status: "queued", waitingReason: null, attentionReason: null,
         allowedActions: JSON.stringify(["inspect", "cancel"]), lastCommittedStepId: null,
         version: 1, createdAt: now, updatedAt: now,
@@ -1256,7 +1260,9 @@ export function createAgentRuntime(dependencies: AgentRunDependencies): AgentRun
         if (authoritative.requestFingerprint !== requestFingerprint) throw new AgentRunConflictError();
         return { snapshot: await readSnapshot(trx, authoritative.id, input.projectId), created: false, stepId: "" };
       }
-      const project = await trx("o_project").where("id", input.projectId).first("id");
+      const project = await trx("o_project").where("id", input.projectId)
+        .modify((query) => { if (input.actorUserId !== undefined) query.where("userId", input.actorUserId); })
+        .first("id");
       if (!project) throw new AgentRunProjectNotFoundError(input.projectId);
       await trx("o_agentRunStep").insert({
         id: stepId, runId, ordinal: 1, kind: "model", logicalTarget: JSON.stringify(activeTarget),

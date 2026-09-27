@@ -1,0 +1,5 @@
+# Separate the AgentRuntime corpus from the deterministic Golden baseline
+
+T02's 18 Golden cases exercise deterministic domain seams; several cannot be represented by a single Agent request. T11 therefore uses a separately versioned 18-case AgentRuntime Case Corpus for paired production Agent Runs and retains T02's manifest and results as an independent deterministic regression baseline. A shared case count does not imply case identity, migrated hard gates, or comparable historical scores.
+
+An Evaluation Run freezes exactly one corpus identity and its complete source/hash, the per-case Agent input and Project fixture identity, and the baseline/candidate revisions. Coverage, assessment, and paired reports resolve definitions from that frozen corpus, not from a global T02 manifest. No production cell counts as a quality result until its Run, fixture, artifacts, safety gates, and human review are independently checked. We reject relabelling T02 cases with generic prompts: that would create 72 structural cells without testing the behavior each case claims to test.

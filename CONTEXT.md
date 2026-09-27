@@ -84,6 +84,18 @@ _Avoid_: Chat history, raw legacy Memory row
 A durable execution of one scoped request by an Agent role, with an authoritative lifecycle that survives transport disconnects and process restarts.
 _Avoid_: Production Action, Socket session, chat message
 
+**Evaluation Run**:
+A frozen comparison of Agent behavior across a declared case set and system revisions, whose case evidence points to actual Agent Runs.
+_Avoid_: Agent Run, Golden Eval result file, simulated Agent execution
+
+**AgentRuntime Case Corpus**:
+A versioned set of executable Agent requests, Project fixtures, and review definitions used to compare production Agent Runs. It is independent of the T02 deterministic Golden Eval cases.
+_Avoid_: Golden Eval manifest, generic prompt list, Evaluation Run
+
+**Evaluation Case**:
+One case, variant, and seed in an Evaluation Run, whose observation must come from its own production Agent Run.
+_Avoid_: Agent Step, fixture file, scored result without Run evidence
+
 **Agent Step**:
 An ordered, typed unit of work within an Agent Run whose lifecycle and result can be inspected independently.
 _Avoid_: Generation Task, callback, stream chunk
