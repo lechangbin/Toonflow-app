@@ -6,8 +6,10 @@ import knexFactory from "knex";
 
 import { createAgentRuntime } from "../src/agentRuntime";
 import type { DatabaseWork } from "../src/database";
-import { createEvaluationAgentCase } from "../src/eval/evaluationAgentCase";
+import { createEvaluationAgentCase, EvaluationCaseNonterminalRunError } from
+  "../src/eval/evaluationAgentCase";
 import { createEvaluationRunRuntime, hashEvaluationInput } from "../src/eval/evaluationRun";
+import { classifyRuntimeCorpusFailure } from "../src/eval/runtimeCorpusFailureDiagnostic";
 import initDB from "../src/lib/initDB";
 
 const revisionSet = { app: "app-1", schema: "schema-1", runtime: "runtime-1",
@@ -69,6 +71,43 @@ test("T11 adapter records a case only after the real AgentRuntime terminates", a
     await assert.rejects(adapter.execute({ ...input, projectId: 8 }), /frozen input/u);
     await assert.rejects(adapter.execute({ ...input, role: "productionAgent" }), /frozen input/u);
     assert.equal(modelCalls, 1);
+  } finally { await db.destroy(); }
+});
+
+test("T11 adapter preserves a safe nonterminal diagnosis without recording a case", async () => {
+  const db = knexFactory({ client: "better-sqlite3",
+    connection: { filename: ":memory:" }, useNullAsDefault: true });
+  const previousLog = console.log;
+  console.log = () => {};
+  try { await initDB(db); } finally { console.log = previousLog; }
+  try {
+    await db("o_project").insert({ id: 7, userId: 1, name: "评测项目" });
+    const queue: Array<() => Promise<void>> = [];
+    let id = 0;
+    const work: DatabaseWork = async (operation) => operation(db);
+    const runtime = createAgentRuntime({ work, now: () => 200,
+      createId: () => `runtime-${++id}`, schedule: (task) => queue.push(task),
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "text-v1",
+        temperature: 2, maxOutputTokens: 256 },
+      invokeText: async () => { throw new Error("apiKey=sk-private-do-not-print"); } }) });
+    const evaluation = createEvaluationRunRuntime({ work, now: () => 200,
+      createId: () => `evaluation-${++id}` });
+    const created = await createStoredLegacyFixture(db);
+    const adapter = createEvaluationAgentCase({ evaluation, runtime,
+      currentRevisions: async () => revisionSet,
+      awaitScheduledWork: async () => { while (queue.length) await queue.shift()!(); } });
+    await assert.rejects(adapter.execute({ evaluationRunId: created.id,
+      caseId: "DEV-EXT-001", seed: 11, variant: "baseline", projectId: 7,
+      role: "scriptAgent", scope: "read-only-project-guidance-v1",
+      content: "给出项目摘要" }), (error: unknown) => {
+      assert.ok(error instanceof EvaluationCaseNonterminalRunError);
+      const diagnostic = classifyRuntimeCorpusFailure(error);
+      assert.equal(diagnostic.runtime?.runStatus, "waiting");
+      assert.equal(diagnostic.runtime?.attentionReason, "model-call-outcome-unknown");
+      assert.doesNotMatch(JSON.stringify(diagnostic), /sk-private/u);
+      return true;
+    });
+    assert.equal((await evaluation.inspect(created.id)).recorded, 0);
   } finally { await db.destroy(); }
 });
 

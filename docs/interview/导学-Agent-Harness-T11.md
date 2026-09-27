@@ -90,6 +90,8 @@ Skill 绑定练习：读 `runtimeCorpusSkillBinding.ts`。为何清单中的 `sk
 
 来源摘要版本练习：读 `evaluationRun.ts` 的 `sourceAuditTablesV2`、`sourceAuditVersion` 与读旧分支。为什么不能让旧 v3 cell 在不改数据时突然按新增权限表复算？用 Fake Runtime 测试观察新 Script cell 冻结后的额外权限决策如何触发 source audit drift；说明这只证明新记录来源行一致，不证明决策当时的动态 grant 合法，也不升级两份旧 Agnes Pilot。
 
+第三次真实停机练习：对照 `agent-harness-t11-agnes-matrix-pilot.md` 的三份独立 Pilot。最新 Run 的六条完整记录使用来源摘要 v2，却在第七条 `candidate:DEV-RT-002:29` 留下未决标记；为什么 `evaluationAgentCase.ts:79` 只能说明 Run 非终态，不能说明 Provider 未接收请求或归因于网络？阅读 `EvaluationCaseNonterminalRunError` 和失败分类器的白名单，解释为何后加诊断只能改善未来观察，不能补齐本次丢失的内存 Trace、更不能安全重试。
+
 评审投影练习：同样的 `racedEvaluation` 再调用 `runtimeCorpusEvidenceArtifacts.ts`。如果投影只取当前 Output 而不比对冻结 cell，就可能把已替换的正文作为“来源投影”导出；现在它会直接拒绝。注意 ToolReceipt/Trace 完整正文还未在 EvaluationCase 中冻结整体哈希，不能把这一步夸大为永久不可篡改审计。
 
 Holdout 练习：读公开的 v3 corpus 与 `evaluationPairedAssessmentReport.ts` 的 `holdoutIntegrity`。为什么 12/3/3 分区和哈希并不能证明三条 holdout 未被候选作者看到？当前报告固定标 `unverified-public-corpus`，即使未来 72 格都跑完也不能自动升级为封存盲测结论。
