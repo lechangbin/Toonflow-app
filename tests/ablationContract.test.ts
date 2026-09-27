@@ -1,0 +1,140 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { CONTEXT_ABLATION_VARIANTS, SKILL_ABLATION_VARIANTS,
+  expectedAblationRunKeys,
+  hashAblationManifest, summarizeAblationResults,
+  validateAblationManifest } from
+  "../src/eval/ablationContract";
+import { runAblationMatrix } from "../src/eval/ablationRunner";
+
+const manifest = { schemaVersion: "toonflow.ablation-manifest.v1",
+  studyId: "t19-context-v1", axis: "context", referenceVariant: "full-context",
+  candidateVariants: [...CONTEXT_ABLATION_VARIANTS],
+  caseManifestHash: "a".repeat(64), caseIds: ["DEV-TOOL-001", "HOLD-TOOL-001"],
+  expectedFailureClasses: { "DEV-TOOL-001": "none", "HOLD-TOOL-001": "none" },
+  seeds: [11, 29], revisions: { app: "app-1", runtime: "run-1",
+    tool: "tool-1", context: "context-1", memory: "memory-1",
+    skill: "skill-1", model: "model-1", vendor: "vendor-1",
+    cases: "cases-1" },
+  commonBudget: { maxInputTokens: 2000, maxOutputTokens: 500,
+    maxToolCalls: 4, timeoutMs: 30000 },
+  thresholds: { minQualityScore: 1, maxP95LatencyMs: 2000,
+    maxCostMicrosPerCase: 100000, maxRetriesPerCase: 1,
+    zeroToleranceGateIds: ["leakage", "holdout-contamination",
+      "redaction-failure", "permission-escalation"] }, frozenAt: 100 };
+
+test("T19 contract freezes four Context leave-one-out variants and equal repeated run matrix", () => {
+  const parsed = validateAblationManifest(manifest);
+  assert.equal(expectedAblationRunKeys(parsed).length, 20);
+  assert.equal(hashAblationManifest(parsed), hashAblationManifest({ ...manifest }));
+});
+
+test("T19 contract rejects changed variants, duplicate cases/seeds, and missing revision locks", () => {
+  assert.throws(() => validateAblationManifest({ ...manifest,
+    candidateVariants: ["without-retrieval", "without-memory",
+      "without-compaction", "full-context"] }));
+  assert.throws(() => validateAblationManifest({ ...manifest,
+    caseIds: ["DEV-TOOL-001", "DEV-TOOL-001"] }));
+  assert.throws(() => validateAblationManifest({ ...manifest,
+    expectedFailureClasses: { "DEV-TOOL-001": "none" } }));
+  assert.throws(() => validateAblationManifest({ ...manifest, seeds: [11, 11] }));
+  assert.throws(() => validateAblationManifest({ ...manifest,
+    revisions: { ...manifest.revisions, model: "" } }));
+});
+
+test("T19 Skill variants retain mandatory permission hard gates", () => {
+  const skillManifest = { ...manifest, studyId: "t19-skill-v1", axis: "skill",
+    referenceVariant: "permission-gated-route",
+    candidateVariants: [...SKILL_ABLATION_VARIANTS] };
+  assert.equal(validateAblationManifest(skillManifest).candidateVariants.length, 4);
+  assert.throws(() => validateAblationManifest({ ...skillManifest,
+    thresholds: { ...skillManifest.thresholds,
+      zeroToleranceGateIds: ["leakage", "holdout-contamination",
+        "redaction-failure", "routing"] } }));
+});
+
+test("T19 result summary reports denominators and rejects hard-gate failure without a composite score", () => {
+  const manifestHash = hashAblationManifest(manifest);
+  const variants = [manifest.referenceVariant, ...manifest.candidateVariants];
+  const rows = variants.flatMap((variant) => manifest.caseIds.flatMap((caseId) =>
+    manifest.seeds.map((seed) => ({ manifestHash, executedAt: 200,
+      variant, caseId, seed,
+      qualityScore: 2, qualityEvidenceIds: ["rubric-review-1"], latencyMs: 200,
+      costMicros: 10, inputTokens: 100, outputTokens: 50, toolCalls: 1,
+      retries: 0, failureClass: "none", hardGates: { leakage: true,
+        "holdout-contamination": true, "redaction-failure": true,
+        "permission-escalation": true } }))));
+  const complete = summarizeAblationResults(manifest, rows);
+  assert.equal(complete.expected, 20);
+  assert.equal(complete.missing, 0);
+  assert(complete.variants.every((entry) => entry.thresholdsPassed));
+  assert(complete.variants.every((entry) => !entry.adoptable),
+    "unverified source Runs cannot be adopted from a metrics-only summary");
+  const failed = summarizeAblationResults(manifest, [
+    { ...rows[0], hardGates: { ...rows[0].hardGates,
+      "permission-escalation": false } }, ...rows.slice(1),
+  ]);
+  assert.equal(failed.variants[0].hardGateFailures["permission-escalation"], 1);
+  assert.equal(failed.variants[0].thresholdsPassed, false);
+  assert.equal(failed.variants[0].adoptable, false);
+  const wrongFailure = summarizeAblationResults(manifest, [
+    { ...rows[0], failureClass: "routing" }, ...rows.slice(1),
+  ]);
+  assert.equal(wrongFailure.variants[0].unexpectedFailureClass, 1);
+  assert.equal(wrongFailure.variants[0].thresholdsPassed, false);
+  assert.equal(wrongFailure.variants[0].adoptable, false);
+  const partial = summarizeAblationResults(manifest, rows.slice(1));
+  assert.equal(partial.missing, 1);
+  assert.equal(partial.variants[0].thresholdsPassed, false);
+  assert.equal(partial.variants[0].adoptable, false);
+  const unknownCost = summarizeAblationResults(manifest,
+    [{ ...rows[0], costMicros: null }, ...rows.slice(1)]);
+  assert.equal(unknownCost.variants[0].unknownMetrics, 1);
+  assert.equal(unknownCost.variants[0].thresholdsPassed, false);
+  assert.throws(() => summarizeAblationResults(manifest, [...rows, rows[0]]));
+  assert.throws(() => summarizeAblationResults(manifest,
+    [{ ...rows[0], executedAt: 50 }]));
+  assert.throws(() => summarizeAblationResults(manifest,
+    [{ ...rows[0], qualityEvidenceIds: [] }]));
+});
+
+test("T19 fake adapter receives the identical frozen budget for every run", async () => {
+  const calls: Array<{ variant: string; caseId: string; seed: number;
+    budget: unknown }> = [];
+  const result = await runAblationMatrix({ manifest, now: () => 200,
+    execute: async (invocation) => {
+      calls.push({ variant: invocation.variant, caseId: invocation.caseId,
+        seed: invocation.seed, budget: invocation.commonBudget });
+      return { qualityScore: 2, qualityEvidenceIds: ["rubric-1"],
+        latencyMs: 100, costMicros: 10, inputTokens: 100,
+        outputTokens: 50, toolCalls: 1, retries: 0,
+        failureClass: "none", hardGates: { leakage: true,
+          "holdout-contamination": true, "redaction-failure": true,
+          "permission-escalation": true } };
+    } });
+  assert.equal(calls.length, 20);
+  assert(calls.every((call) => JSON.stringify(call.budget)
+    === JSON.stringify(manifest.commonBudget)));
+  assert.equal(result.summary.missing, 0);
+  assert(result.summary.variants.every((entry) => entry.thresholdsPassed));
+  assert(result.summary.variants.every((entry) => !entry.adoptable));
+});
+
+test("T19 fake runner redacts adapter failures and never treats them as adoption", async () => {
+  const result = await runAblationMatrix({ manifest, now: () => 200,
+    execute: async (invocation) => {
+      if (invocation.seed === 11) throw new Error("secret raw prompt must not persist");
+      return { rawPrompt: "secret raw prompt must not persist" };
+    } });
+  assert.equal(result.results.length, 20);
+  assert.equal(result.summary.variants[0].adoptable, false);
+  assert.equal(result.summary.variants[0].unknownMetrics, 4);
+  assert.equal(result.summary.variants[0].hardGateFailures.leakage, 0);
+  assert.equal(result.summary.variants[0].hardGateUnknown.leakage, 4);
+  assert.equal(result.results[0].hardGates.leakage, null);
+  assert.equal(result.results[0].costMicros, null);
+  assert.equal(result.results[0].latencyMs, null);
+  assert(!JSON.stringify(result).includes("secret raw prompt"));
+  assert(result.results.every((entry) => entry.failureClass === "evidence"));
+});
