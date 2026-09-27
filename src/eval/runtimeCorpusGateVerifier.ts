@@ -174,3 +174,12 @@ export async function createRuntimeCorpusSafetyReport(input: {
     missing: cells.filter((cell) => cell.state === "missing-run").length,
     cells };
 }
+
+/** A stopped runner may only resume after all prior source gates still pass. */
+export function assertRuntimeCorpusSafetyReadyForResume(
+  report: Awaited<ReturnType<typeof createRuntimeCorpusSafetyReport>>): void {
+  if (report.expected !== 72 || report.observed + report.missing !== report.expected
+    || report.failed !== 0 || report.verified !== report.observed) {
+    throw new Error("T11 observed Runtime safety failure requires manual reconciliation");
+  }
+}

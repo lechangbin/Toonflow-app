@@ -15,7 +15,7 @@ import { createEvaluationAssessmentLedger } from "../src/eval/evaluationAssessme
 import { createEvaluationAssessmentQueue } from "../src/eval/evaluationAssessmentQueue";
 import { createEvaluationCoverageReport } from "../src/eval/evaluationCoverageReport";
 import { createEvaluationAgentCase } from "../src/eval/evaluationAgentCase";
-import { createRuntimeCorpusSafetyReport,
+import { assertRuntimeCorpusSafetyReadyForResume, createRuntimeCorpusSafetyReport,
   inspectRuntimeCorpusCellGates } from "../src/eval/runtimeCorpusGateVerifier";
 import { createRuntimeCorpusEvidenceArtifacts,
   verifyRuntimeCorpusEvidenceArtifactProvenance } from "../src/eval/runtimeCorpusEvidenceArtifacts";
@@ -313,6 +313,27 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     const outputRef = "artifacts/agent-run-output.json";
     const assessment = createEvaluationAssessmentLedger({ work, evaluation,
       now: () => 300, createId: () => `review-${++serial}` });
+    const originalReceiptBeforeReview = await db("o_agentToolReceipt").first();
+    await db("o_agentToolReceipt").where({ id: originalReceiptBeforeReview.id })
+      .update({ inputHash: "0".repeat(64) });
+    const failedBeforeReview = await createRuntimeCorpusSafetyReport({ work, evaluation,
+      evaluationRunId: frozen.id,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.throws(() => assertRuntimeCorpusSafetyReadyForResume(failedBeforeReview),
+      /manual reconciliation/u);
+    const unassessedButFailed = await createEvaluationPairedAssessmentReport(
+      evaluation, assessment, frozen.id, { runtimeSafety: { work,
+        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
+    assert.equal(unassessedButFailed.cells[0].baseline.state, "gate-failed");
+    assert.ok(unassessedButFailed.cells[0].baseline.failedGates
+      .includes("runtime:tool-input-outside-fixture"));
+    assert.equal(unassessedButFailed.cells[0].baseline.score, null);
+    await db("o_agentToolReceipt").where({ id: originalReceiptBeforeReview.id })
+      .update({ inputHash: originalReceiptBeforeReview.inputHash });
+    const restoredBeforeReview = await createRuntimeCorpusSafetyReport({ work, evaluation,
+      evaluationRunId: frozen.id,
+      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
+    assert.doesNotThrow(() => assertRuntimeCorpusSafetyReadyForResume(restoredBeforeReview));
     await assessment.record({ evaluationRunId: frozen.id, variant: "baseline",
       caseId: first.id, seed: 11, assessorId: "fixture-reviewer", method: "manual-review",
       hardGates: first.hardGates.map((gate) => ({ id: gate.id, passed: true,

@@ -96,14 +96,16 @@ export async function createEvaluationPairedAssessmentReport(evaluation: Evaluat
       return { state: "missing-run", sourceEvidenceHash: null, score: null,
         failedGates: [], evidenceFiles: null };
     }
-    if (!review) return { state: "unassessed", sourceEvidenceHash: null, score: null,
-      failedGates: [], evidenceFiles: null };
-    const failedGates = review.hardGates.filter((gate) => !gate.passed).map((gate) => gate.id);
     const checked = safetyByKey.get(key(variant, caseId, seed));
     if (safety && (!checked || checked.state === "missing-run"
-      || checked.sourceEvidenceHash !== review.sourceEvidenceHash)) {
+      || (review && checked.sourceEvidenceHash !== review.sourceEvidenceHash))) {
       throw new Error("Runtime safety evidence differs from submitted assessment");
     }
+    if (!review) return { state: checked?.state === "failed" ? "gate-failed" : "unassessed",
+      sourceEvidenceHash: checked?.sourceEvidenceHash ?? null, score: null,
+      failedGates: checked?.state === "failed"
+        ? checked.violations.map((item) => `runtime:${item}`) : [], evidenceFiles: null };
+    const failedGates = review.hardGates.filter((gate) => !gate.passed).map((gate) => gate.id);
     if (checked?.state === "failed") failedGates.push(...checked.violations.map((item) => `runtime:${item}`));
     const state = review.failureClassification ? "run-failed" : failedGates.length ? "gate-failed"
       : review.quality.state === "pending" ? "pending-review"

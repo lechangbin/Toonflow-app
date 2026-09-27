@@ -1,6 +1,6 @@
 /** Opt-in T11 study runner. The first command only prepares; run executes serial cells. */
 import assert from "node:assert/strict";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -17,8 +17,11 @@ import { validateAgentRuntimeCorpus } from "../src/eval/agentRuntimeCorpus";
 import { materializeAgentRuntimeProjectFixture,
   verifyMaterializedAgentRuntimeProjectFixture } from "../src/eval/agentRuntimeProjectFixture";
 import { createEvaluationRunRuntime, parseEvaluationRevisions } from "../src/eval/evaluationRun";
-import { inspectRuntimeCorpusCellGates } from "../src/eval/runtimeCorpusGateVerifier";
+import { assertRuntimeCorpusSafetyReadyForResume,
+  createRuntimeCorpusSafetyReport, inspectRuntimeCorpusCellGates } from
+  "../src/eval/runtimeCorpusGateVerifier";
 import { runRuntimeCorpusMatrix } from "../src/eval/runtimeCorpusMatrixDriver";
+import { createRuntimeCorpusCodeRevisions } from "../src/eval/runtimeCorpusCodeRevision";
 import { assertT11AgnesTextBinding, bindT11AgnesTextCall,
   T11_AGNES_TEXT_POLICY_REVISION } from "../src/eval/runtimeCorpusModelPolicy";
 import { openSanitizedRuntimeCorpusCheckpoint,
@@ -37,8 +40,6 @@ import { createConfiguredVendor } from "../src/vendor";
 import { VideoPromptProfileRegistry } from "../src/video/promptProfile";
 
 const source = (file: string) => fs.readFile(path.resolve(file));
-const digest = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
-const revision = async (file: string) => digest(await source(file));
 const PROJECT_ID = 7;
 let observedStage = "startup";
 let observedCellId: string | null = null;
@@ -52,17 +53,6 @@ async function configureAgnes(db: ReturnType<typeof knexFactory>, apiKey: string
       vendorId: "agnes", temperature: 0, maxOutputTokens: 512 });
     if (changed !== 1) throw new Error("T11 required Agent Model deployment is missing");
   }
-}
-
-async function staticRevisions() {
-  return { app: await revision("src/agentRuntime/index.ts"),
-    schema: await revision("src/lib/initDB.ts"),
-    runtime: await revision("src/agentRuntime/index.ts"),
-    tool: await revision("src/controlledTools/definitions.ts"),
-    context: await revision("src/context/index.ts"),
-    memory: await revision("src/memory/projectMemory.ts"),
-    model: T11_AGNES_TEXT_POLICY_REVISION,
-    vendor: await revision("data/vendor/agnes.ts") };
 }
 
 async function main() {
@@ -90,7 +80,8 @@ async function main() {
   if (corpus.cases.some((cell) => cell.fixture.sha256 !== expectedFixtureHash)) {
     throw new Error("T11 runner requires one isolated Project fixture");
   }
-  const policy = await staticRevisions();
+  const policy = { ...await createRuntimeCorpusCodeRevisions(repository),
+    model: T11_AGNES_TEXT_POLICY_REVISION };
   let db: ReturnType<typeof knexFactory>;
   let openedPlan: Awaited<ReturnType<typeof readRuntimeCorpusStudyPlan>> | undefined;
   let checkpoint: { sha256: string; sequence: number } | undefined;
@@ -211,7 +202,7 @@ async function main() {
         ({ inspectRuntimeCorpusSkillBinding }) => inspectRuntimeCorpusSkillBinding({ work,
           scriptSkillId: plan.treatment.scriptSkillId,
           productionSkillId: plan.treatment.productionSkillId }));
-      return { ...await staticRevisions(), skill: active.revision };
+      return { ...policy, skill: active.revision };
     };
     const scheduled: Array<() => Promise<void>> = [];
     let modelInvocations = 0;
@@ -242,6 +233,10 @@ async function main() {
         verifyMaterializedAgentRuntimeProjectFixture({ work, source: fixtureSource,
           expectedHash: fixture.sha256, projectId }) });
     journal = await openRuntimeCorpusExecutionJournal(directory, plan.evaluationRunId);
+    await journal.assertResumeSafe();
+    assertRuntimeCorpusSafetyReadyForResume(await createRuntimeCorpusSafetyReport({
+      work, evaluation, evaluationRunId: plan.evaluationRunId,
+      readFixture: async () => fixtureSource }));
     const result = await runRuntimeCorpusMatrix({ evaluation, evaluationRunId: plan.evaluationRunId,
       journal, db, directory, checkpoint, secretValues: [apiKey], maxNewCells,
       preflight: async (cell) => {
