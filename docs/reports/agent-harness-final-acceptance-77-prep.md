@@ -127,3 +127,7 @@ T11 #104 后续又把成功 Harness ToolReceipt 与同 Run、同 operation/tool 
 后续已对“未冻结决策行”缺口做版本化修正：新 v3 EvaluationCase 写 `sourceAuditVersion=2`，在原 Run 行摘要外纳入 Skill 权限决策及资源访问；旧 case 缺此版本仍按历史 v1 复算，不追认两份 Agnes pilot。Fake Runtime 新 Script cell 冻结后额外插入权限决策，`evaluation.inspect` 检出 source audit drift；重复 `record` 保持幂等。T11 相关 14/14 定向、TypeScript 检查通过；T21 组合尚待定向复跑，完整七类验收继续 pending。摘要不是外部签名，也不核实历史 grant 的业务正确性、真实费用或人审语义。
 
 该 T21 合并组合随后只跑 T11 AgentRuntime/来源/权限及 T21 索引/文件摘要的相关定向测试：19 passed、1 skipped（本 Windows 主机不可创建外链 symlink），`yarn lint` 通过。它是阶段单测复核，不是全量套件、外链 symlink 实测或七类正式验收；前段“尚待定向复跑”是合并时快照，现已完成这一局部复核。
+
+T11 第三份独立 Agnes Pilot 冻结新 v2 来源摘要后，串行完成 6/72 条 Run；六条来源记录均为 `sourceAuditVersion=2`，机器读源/安全门通过。第七条 `candidate:DEV-RT-002:29` 留下未决 `inflight`，外部效果未知，不能续跑或与此前 22/72、5/72 拼接。适配器仅报源 Run 非终态，无法从旧进程输出确定底层失败类别；新增的白名单非终态诊断及合成密钥防泄漏测试只对未来运行有效，不追认本 Pilot。三份 Pilot 均非完整配对质量研究，仍缺 72-cell、独立人工 rubric、holdout 隔离与可信费用证据；七类状态维持 pending。详情见 T11 工程 Pilot 报告。
+
+此轮合并后 T21 组合只复跑 T11 非终态诊断/适配器与 T21 证据文件/索引定向用例：10 passed、1 skipped（外链 symlink 创建受当前 Windows 主机限制），TypeScript 检查通过。未运行全量套件，也未改变任何最终类别或发布状态。
