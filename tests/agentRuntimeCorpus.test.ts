@@ -651,10 +651,17 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       evaluationRunId: frozen.id, variant: "baseline", caseId: scriptCase.id, seed: 11,
       readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
     assert.equal(scriptGate.state, "verified-read-and-safety-only");
+    const routedCells = (await evaluation.inspect(frozen.id)).cases;
+    const scriptRunId = routedCells.find((cell) => cell.caseId === scriptCase.id)!.agentRunId;
+    assert.equal((await db("o_agentSkillPermissionDecision")
+      .where({ runId: scriptRunId })).length, 1);
     const productionGate = await inspectRuntimeCorpusCellGates({ work, evaluation,
       evaluationRunId: frozen.id, variant: "baseline", caseId: productionCase.id, seed: 11,
       readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
     assert.equal(productionGate.state, "verified-read-and-safety-only");
+    const productionRunId = routedCells.find((cell) => cell.caseId === productionCase.id)!.agentRunId;
+    assert.equal((await db("o_agentSkillPermissionDecision")
+      .where({ runId: productionRunId })).length, 1);
   } finally {
     if (artifactRoot) fs.rmSync(artifactRoot, { recursive: true, force: true });
     await db.destroy();

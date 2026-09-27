@@ -121,3 +121,5 @@ Web T18 又以 `6c765ba`/`91a13d4` 修复明确断线时的假用户气泡与 Sc
 新增 `computeFinalAcceptanceEvidenceHash(root, refs)`：只接受索引允许的规范仓库相对路径，拒绝空清单、重复/缺失/目录路径，使用真实路径确认引用仍在根目录内，逐文件流式 SHA-256，再按路径字节序排序后对 `[路径, 文件哈希]` 数组的 JSON 求整体 SHA-256。这样相同文件集合不依赖输入顺序，篡改字节会改变摘要；它不读取密钥、不执行 `testCommand`，也不把 `resultHash` 自述视为通过。两份 T21 测试文件合计 5 passed、1 skipped（Windows 主机不允许创建外链 symlink）、TypeScript 检查通过；代码有 realpath 越界保护，但外链 symlink 实测在此主机未验证。当前模块只是未来独立检查器的文件完整性基础，尚未接入 `verifyFinalAcceptance`、核验 Git 跟踪/冻结修订、命令退出码、日志真实性、内容语义或人工评审。七类仍全部 pending。
 
 T11 #104 源码新增 Output 评测控制标记机器门，若冻结 case ID、Evaluation Run ID 或源 Agent Run ID 原样进入模型回复，就记 `evaluation-control-marker-leak`。T11 单测先红后绿，AgentRuntime corpus 定向 7/7 与 TypeScript 检查通过，并沿 T18→T20 合入 T21。它不能识别变形泄漏或证明公开 holdout 未污染；两份 Agnes pilot 仍为 22/72 和 5/72 且各有未对账 in-flight，不续跑、不拼接分母。evaluation 类别继续 pending，不能启动版本发布。
+
+T11 #104 后续又把成功 Harness ToolReceipt 与同 Run、同 operation/tool 的 Skill 权限决策逐一核对；缺失、错配、哈希损坏、重复或 `allowed=false` 却成功都使机器门失败，孤立损坏决策也不能忽略。普通无 Skill 的 Script 负对照不强制决策。T11 的纯决策测试先红后绿，Script/Production Fake Runtime 正路径各有决策；相关 9/9 定向及 TypeScript 检查通过。当前只对读取时存留的决策/Receipt 做一致性检查，没有重放历史动态 grant，也没有把决策行冻结进 `sourceAuditHash`，evaluation 安全结论仍非完整验收。七类全部 pending。
