@@ -60,6 +60,8 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 方案文件练习：读 `runtimeCorpusStudyPlan.ts`。重启后为什么要同时核对 Evaluation Run 清单哈希、模型政策哈希和 Skill 指纹？观察文件只存可恢复 ID/摘要，不含 API key、原始 Output；哈希只用于检测意外改动，不是防攻击签名，也不能替代 `runtimeCorpusExecutionJournal.ts` 的外部调用边界。
 
+矩阵续跑练习：读 `runtimeCorpusMatrixDriver.ts`。从 1 格检查点请求再运行 1 格，为什么会返回 72 预期、1 新增、70 缺失？改用旧检查点哈希时，为什么在任何预检/模型回调前拒绝？再把已记录格假设为非预定顺序前缀，解释为什么只过滤 missing 会破坏交替处理顺序。此驱动仍依赖调用方注入真实 Runtime、Skill 与 Model 校验，并未执行完整 Agnes 矩阵。
+
 实验设计练习：读 `runtimeCorpusTreatment.ts` 与 `docs/reports/agent-harness-t11-paired-study-plan.md`。为什么 Skill-only 比较还要锁定 App/Schema/Runtime/Tool/Context/Memory/Model/Vendor？哪些普通 Script 只读 case 不受 Skill 处理、只能作负对照？若两次“seed”仅是不同请求身份，为什么不能称为受控随机重复？本文件是预注册草案，不能当成已经观察到的收益。
 
 模型绑定练习：读 `runtimeCorpusModelPolicy.ts` 和 Agnes 单格脚本。区分“清单声明的 Model 修订”和“Vendor 从当前数据库解析出的实际目标”；尝试在定向测试中把 Production 温度改为 1，观察为何在 Model 调用前拒绝。固定两步上限也不等于 72 格总调用次数已持久计量；进程崩溃后仍需先核查外部效果。

@@ -10,6 +10,7 @@ import { freezeAgentRuntimeEvaluationRun } from "../src/eval/agentRuntimeEvaluat
 import { createEvaluationRunRuntime, evaluationCaseRequestId } from "../src/eval/evaluationRun";
 import { writeSanitizedRuntimeCorpusCheckpoint } from "../src/eval/runtimeCorpusCheckpoint";
 import { runRuntimeCorpusCell } from "../src/eval/runtimeCorpusCellRunner";
+import { runRuntimeCorpusMatrix } from "../src/eval/runtimeCorpusMatrixDriver";
 import { openRuntimeCorpusExecutionJournal } from "../src/eval/runtimeCorpusExecutionJournal";
 import initDB from "../src/lib/initDB";
 
@@ -88,9 +89,23 @@ test("T11 journal binds completion to a new source-verified v3 cell and predeces
     await journal.assertResumeSafe();
     await assert.rejects(journal.begin(baseline, first.sha256), /already completed/u);
     const candidate = `candidate:${caseName.id}:11`;
-    const second = await runRuntimeCorpusCell({ journal, db, directory, cellId: candidate,
-      previousCheckpointSha256: first.sha256, sequence: 2, secretValues: [secret],
-      execute: () => addCell("candidate", "run-candidate") });
+    let rejectedHeadCalls = 0;
+    await assert.rejects(runRuntimeCorpusMatrix({ evaluation, evaluationRunId: frozen.id,
+      journal, db, directory, checkpoint: { sha256: initial.sha256, sequence: 1 },
+      secretValues: [secret], maxNewCells: 1,
+      preflight: async () => { rejectedHeadCalls++; },
+      execute: async () => { rejectedHeadCalls++; } }),
+    /checkpoint head differs/u);
+    assert.equal(rejectedHeadCalls, 0);
+    const batch = await runRuntimeCorpusMatrix({ evaluation, evaluationRunId: frozen.id,
+      journal, db, directory, checkpoint: { sha256: first.sha256, sequence: 1 },
+      secretValues: [secret], maxNewCells: 1,
+      preflight: async (cell) => { assert.equal(cell.cellId, candidate); },
+      execute: async (cell) => { assert.equal(cell.cellId, candidate);
+        await addCell("candidate", "run-candidate"); } });
+    assert.deepEqual({ expected: batch.expected, executed: batch.executed,
+      remaining: batch.remaining }, { expected: 72, executed: 1, remaining: 70 });
+    const second = batch.checkpoint;
     await journal.assertResumeSafe();
     let extraCalls = 0;
     await assert.rejects(runRuntimeCorpusCell({ journal, db, directory, cellId: candidate,
@@ -103,7 +118,7 @@ test("T11 journal binds completion to a new source-verified v3 cell and predeces
       execute: async () => { throw new Error("simulated uncertain Provider outcome"); } }),
     /uncertain Provider outcome/u);
     await assert.rejects(journal.assertResumeSafe(), /unresolved in-flight/u);
-    await fs.writeFile(second.path, "tampered");
+    await fs.writeFile(path.join(directory, "checkpoint-0002.sqlite"), "tampered");
     await assert.rejects(journal.assertResumeSafe(), /completion or checkpoint is corrupt|unresolved in-flight/u);
   } finally {
     await journal?.close();
