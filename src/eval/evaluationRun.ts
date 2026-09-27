@@ -50,9 +50,12 @@ const canonical = (value: unknown): unknown => Array.isArray(value)
     : value;
 const sourceAuditTables = ["o_agentRunOutput", "o_agentTrace", "o_agentToolReceipt", "o_agentToolApproval",
   "o_agentToolCall", "o_agentVendorRequest", "o_agentVideoVendorRequest"] as const;
-async function sourceAuditHash(tx: Knex.Transaction, runId: string): Promise<string> {
+const sourceAuditTablesV2 = [...sourceAuditTables, "o_agentSkillPermissionDecision",
+  "o_agentSkillResourceAccess"] as const;
+async function sourceAuditHash(tx: Knex.Transaction, runId: string,
+  version: 1 | 2 = 1): Promise<string> {
   const material = [];
-  for (const table of sourceAuditTables) {
+  for (const table of version === 2 ? sourceAuditTablesV2 : sourceAuditTables) {
     const rows = await tx(table).where({ runId }).select("*");
     material.push([table, rows.map(canonical).sort((left, right) =>
       JSON.stringify(left).localeCompare(JSON.stringify(right)))]);
@@ -132,6 +135,7 @@ const caseEvidenceSchema = z.strictObject({
   outputHash: digest.nullable(), lastTraceId: identity,
   lastTraceSequence: z.number().int().positive(),
   sourceAuditHash: digest.optional(),
+  sourceAuditVersion: z.literal(2).optional(),
 });
 type CaseEvidence = z.infer<typeof caseEvidenceSchema>;
 
@@ -209,6 +213,16 @@ export function createEvaluationRunRuntime(dependencies: {
           || outputs.length > 1 || !validRunOutput(output)) {
           throw new Error("Evaluation case lacks valid Agent Run evidence");
         }
+        const existing = await tx("o_agentEvaluationCase").where({
+          evaluationRunId: input.evaluationRunId, caseId: input.caseId,
+          seed: input.seed, variant: input.variant,
+        }).first();
+        if (existing && hash(existing.evidenceJson) !== existing.evidenceHash) {
+          throw new Error("Evaluation case was already bound to corrupt evidence");
+        }
+        const previous = existing
+          ? caseEvidenceSchema.parse(JSON.parse(existing.evidenceJson) as unknown) : null;
+        const auditVersion = previous ? previous.sourceAuditVersion === 2 ? 2 : 1 : 2;
         const evidence = caseEvidenceSchema.parse({ caseId: input.caseId, seed: input.seed,
           variant: input.variant, agentRunId: run.id, projectId: run.projectId,
           runVersion: run.version, runStatus: run.status,
@@ -217,12 +231,10 @@ export function createEvaluationRunRuntime(dependencies: {
           outputHash: output?.contentHash ?? null,
           lastTraceId: trace.id, lastTraceSequence: trace.sequence,
           ...(manifest.schemaVersion === RUNTIME_CORPUS_EVALUATION_RUN_VERSION
-            ? { sourceAuditHash: await sourceAuditHash(tx, run.id) } : {}) });
+            && (!previous || previous.sourceAuditHash !== undefined)
+            ? { sourceAuditHash: await sourceAuditHash(tx, run.id, auditVersion),
+              ...(auditVersion === 2 ? { sourceAuditVersion: 2 } : {}) } : {}) });
         const evidenceJson = JSON.stringify(evidence);
-        const existing = await tx("o_agentEvaluationCase").where({
-          evaluationRunId: input.evaluationRunId, caseId: input.caseId,
-          seed: input.seed, variant: input.variant,
-        }).first();
         if (existing) {
           if (existing.agentRunId !== input.agentRunId
             || hash(existing.evidenceJson) !== existing.evidenceHash) {
@@ -283,7 +295,8 @@ export function createEvaluationRunRuntime(dependencies: {
             .select("content", "contentHash", "schemaVersion");
           const output = outputs[0];
           if (evidence.sourceAuditHash !== undefined
-            && await sourceAuditHash(tx, evidence.agentRunId) !== evidence.sourceAuditHash) {
+            && await sourceAuditHash(tx, evidence.agentRunId,
+              evidence.sourceAuditVersion === 2 ? 2 : 1) !== evidence.sourceAuditHash) {
             throw new Error("Evaluation source Agent Run evidence has changed: source audit rows");
           }
           if (!run || run.projectId !== evidence.projectId

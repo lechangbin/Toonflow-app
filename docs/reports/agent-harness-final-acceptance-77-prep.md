@@ -123,3 +123,5 @@ Web T18 又以 `6c765ba`/`91a13d4` 修复明确断线时的假用户气泡与 Sc
 T11 #104 源码新增 Output 评测控制标记机器门，若冻结 case ID、Evaluation Run ID 或源 Agent Run ID 原样进入模型回复，就记 `evaluation-control-marker-leak`。T11 单测先红后绿，AgentRuntime corpus 定向 7/7 与 TypeScript 检查通过，并沿 T18→T20 合入 T21。它不能识别变形泄漏或证明公开 holdout 未污染；两份 Agnes pilot 仍为 22/72 和 5/72 且各有未对账 in-flight，不续跑、不拼接分母。evaluation 类别继续 pending，不能启动版本发布。
 
 T11 #104 后续又把成功 Harness ToolReceipt 与同 Run、同 operation/tool 的 Skill 权限决策逐一核对；缺失、错配、哈希损坏、重复或 `allowed=false` 却成功都使机器门失败，孤立损坏决策也不能忽略。普通无 Skill 的 Script 负对照不强制决策。T11 的纯决策测试先红后绿，Script/Production Fake Runtime 正路径各有决策；相关 9/9 定向及 TypeScript 检查通过。当前只对读取时存留的决策/Receipt 做一致性检查，没有重放历史动态 grant，也没有把决策行冻结进 `sourceAuditHash`，evaluation 安全结论仍非完整验收。七类全部 pending。
+
+后续已对“未冻结决策行”缺口做版本化修正：新 v3 EvaluationCase 写 `sourceAuditVersion=2`，在原 Run 行摘要外纳入 Skill 权限决策及资源访问；旧 case 缺此版本仍按历史 v1 复算，不追认两份 Agnes pilot。Fake Runtime 新 Script cell 冻结后额外插入权限决策，`evaluation.inspect` 检出 source audit drift；重复 `record` 保持幂等。T11 相关 14/14 定向、TypeScript 检查通过；T21 组合尚待定向复跑，完整七类验收继续 pending。摘要不是外部签名，也不核实历史 grant 的业务正确性、真实费用或人审语义。
