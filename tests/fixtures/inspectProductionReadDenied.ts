@@ -23,8 +23,15 @@ try {
   const receipts = db.prepare("select count(*) as total from o_agentToolReceipt where runId = ?")
     .get(runId) as { total: number };
   assert.equal(receipts.total, 0, "denied Tool must not execute or persist a success receipt");
+  const traces = db.prepare(`select eventType, toolReceiptId, diagnostic from o_agentTrace
+    where runId = ? and eventType = 'tool.denied'`).all(runId) as
+    Array<{ eventType: string; toolReceiptId: string | null; diagnostic: string }>;
+  assert.equal(traces.length, 1, "permission rejection must be visible in the causal Trace");
+  assert.equal(traces[0]!.toolReceiptId, null);
+  assert.equal(JSON.parse(traces[0]!.diagnostic).kind, "authorizationFailed");
   console.log(JSON.stringify({ runId, permission: "denied-project-grant",
-    permissionDecisionCount: decisions.length, toolReceiptCount: receipts.total }));
+    permissionDecisionCount: decisions.length, toolReceiptCount: receipts.total,
+    deniedTraceCount: traces.length }));
 } finally {
   db.close();
 }

@@ -80,7 +80,7 @@ App/Web 曾有全量预验收记录，之后的新组合尚未做最终全量验
 
 Production 继续读 `src/agentRuntime/index.ts` 的 Context 预算参数和 ADR-0019。完整 Production Tool/权限合同必须作为强制 Context 保留；固定 8192 上限让真实组合在 Provider 调用前失败，不能通过删掉安全合同来“修好”。在隔离数据库和假 Model 下运行 `checkProductionHarnessBrowser.js`，看 Production 专属 32768 上限如何仍受 Model 容量、输出/协议预留及安全余量约束，并证明成功 Run 的 HTTP 状态、因果抽屉和刷新恢复。脚本现在依次跑普通只读与 `get_production_workspace_text` Tool 读源，观察后一条 `tool.succeeded` 和有哈希的 ToolReceipt；它不证明越权拒绝、审批或 Vendor 生成。
 
-再对照 `checkProductionReadDeniedBrowser.js` 与 `inspectProductionReadDenied.ts`：从 Owner 页面撤销 Project 工作区读取授权后，即使假模型仍提出同一个 Tool 调用，服务端也只留下 `allowed=false` 的权限决策，缺失层为 Project capability，既没有成功 ToolReceipt，也没有实际读取。模型回复“读取被拒绝”后 Run 仍可 succeeded；这表示模型对拒绝作了终结回复，不是 Tool 成功。因果抽屉目前不投影这条专门权限决策，不能用抽屉没有 `tool.denied` 反推没有发生拒绝。回答“权限判定是否可审计”时要区分数据库决策行、ToolReceipt 与 Trace 的覆盖范围。
+再对照 `checkProductionReadDeniedBrowser.js` 与 `inspectProductionReadDenied.ts`：从 Owner 页面撤销 Project 工作区读取授权后，即使假模型仍提出同一个 Tool 调用，服务端也只留下 `allowed=false` 的权限决策，缺失层为 Project capability，既没有成功 ToolReceipt，也没有实际读取。模型回复“读取被拒绝”后 Run 仍可 succeeded；这表示模型对拒绝作了终结回复，不是 Tool 成功。首次浏览器试验发现抽屉没有拒绝事件；随后在 `src/controlledTools/index.ts` 的决策事务内为新拒绝追加安全 `tool.denied` Trace，第二份全新隔离浏览器已看到该事件，重复操作不重复追加。Trace 仍不携带决策行 ID 或操作 ID，逐操作审计要结合权限决策账本，不能只看抽屉。
 
 再看脚本的第三条延迟 Run：在 queued/running 阶段刷新页面，之后仍从 HTTP 恢复同一 ID 并看到终态。假模型只根据最后一条 user 指令识别测试触发词；如果扫描所有历史消息，上条读源标记会污染慢调用，让它错误地产生 Tool 调用。把“刷新期间服务端仍在运行”与“进程崩溃后的恢复”分开回答。
 

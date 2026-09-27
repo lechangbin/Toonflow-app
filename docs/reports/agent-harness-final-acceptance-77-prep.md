@@ -63,7 +63,7 @@ T12 增量 `9f1bde2c` 经 T13→T20 依赖链同步到 T21；T16 的新增 Scrip
 | functional | App 当前组合 715/715 Node 测试、类型检查通过 | 冻结源码和数据后复跑完整相关契约，并归档可复算输出 |
 | compatibility | 旧 Socket 止损测试及 Script 正路径局部浏览器用例 | 旧入口退场/迁移、App/Web 共同 Run 行为及回滚矩阵 |
 | recovery | Script Run 进程中断与 Production post-intent 假模型中断各有隔离试验，已同步源码但未在冻结组合复测完整矩阵 | 多入口、审批、真实 Provider 未知效果与跨进程恢复矩阵 |
-| security | Project/Tool/Skill 权限的定向拒绝测试；T18 Production 本地假模型 grant 撤销负路径已在隔离浏览器复现 | 跨入口越权、恶意 Tool 参数、导出脱敏、拒绝决策的 UI 投影与浏览器网络响应核验 |
+| security | Project/Tool/Skill 权限的定向拒绝测试；T18 Production 本地假模型 grant 撤销负路径及 Run 级拒绝 Trace 已在隔离浏览器复现 | 跨入口越权、恶意 Tool 参数、逐操作拒绝关联、导出脱敏与浏览器网络响应核验 |
 | evaluation | T02 本地假适配 18/18 硬门；T11 账本、串行续跑与配对报告契约；两次相互独立的 Agnes 工程试跑已记入阶段报告，源码已同步但试跑来源不同于本组合 | 全新冻结来源的 72-cell 生产 Runtime 执行、未知效果对账、独立 hard-gate/人工评审和来源核对；不得给质量结论 |
 | build | 当前 App `yarn build`；先前 Web 六文件阶段配对 | 最终 App/Web 修订、全部 bundle 哈希冻结，目标 tag 的 Actions 平台构建 |
 | browser | Script 启动、停止、刷新、审批/拒绝、模型提案局部成功；Production 正路径及恢复的假模型夹具已同步源码，尚未在冻结组合重跑 | 冻结组合上的 Production、跨入口、Reconnect、恢复、旧 Socket 全路径可重复自动化 |
@@ -109,3 +109,5 @@ T18 App PR #100 在独立临时 SQLite、全新浏览器 profile 和本地假文
 同步后在 T21 组合上运行 T11/T18 相关 11 个定向测试及类型检查，均通过；没有执行全量验收。正式发布仍需先处理两份未对账的真实请求，冻结共同修订与 App/Web bundle，再在冻结组合上重跑七类证据并独立核验；当前不创建 tag 或 Release。
 
 T18 后续负路径增量已沿堆叠分支同步：在全新临时 Project 的 Production 页面撤销工作区读 grant，浏览器确认版本 1→2 且关闭，再令本地假模型提出同一 Tool 调用。Run `b8e5fe7b-adc2-4d92-917f-6a4d8568da3f` 为 succeeded，模型回复“读取被拒绝”；只读 SQLite 复核 1 条 `allowed=false`、缺失 Project capability 的权限决策，ToolReceipt 0，因果抽屉无成功读取事件。另用独立新环境重跑 Production 普通、授权读源及运行中刷新三条正路径，均成功，控制台 0 error。此处 succeeded 只是模型正确结束，不是 Tool 读取成功；权限拒绝尚未投影为 `tool.denied` Trace/Receipt，浏览器抽屉不能独立展示决策。该切片只跑 Production/context 的 4 个定向测试与类型检查，未做最终安全/浏览器矩阵或真实 Provider 验收，七类状态仍 pending。
+
+后续已修正上一段的可观察性缺口：新发生的权限拒绝把 `allowed=false` 决策和安全诊断 `tool.denied` Trace 放在同一事务，仍不伪造 ToolReceipt；重复操作不会追加第二条拒绝 Trace。全新隔离浏览器 Run `e922a8f8-41c0-4950-a398-8d4d98255f79` 的因果抽屉出现拒绝事件，SQLite 为拒绝决策 1、Trace 1、ToolReceipt 0，控制台 0 error。T18 相关 6 个定向测试和类型检查通过；T21 新合并组合尚未做全量验收。Trace 目前只给 Run 级拒绝事实，不包含权限决策行 ID 或操作 ID；逐操作追溯仍需专门决策账本。安全与浏览器最终类别仍 pending。
