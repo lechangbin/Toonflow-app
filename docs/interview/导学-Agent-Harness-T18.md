@@ -24,4 +24,6 @@ Production 继续读 `src/agentRuntime/index.ts` 的 Context 预算参数和 ADR
 
 旧 Production 前端另读 `rightChatBox/index.vue` 的 `watch(connected)` 与 `useChat.ts` 的 `message:update`：传输层重连不是消息完成证据，不能因此本地写入 idle。现在 watcher 仅刷新审批；消息终态由服务端更新驱动。用 `productionLegacyReconnectBoundary.test.ts` 解释这个静态回归门，并说明仍缺真实 Socket 断线期间终态丢失的浏览器恢复矩阵；旧聊天可能保持生成中，受控 Harness 的 HTTP Run 才是可查询的权威状态。
 
+再跟踪 `useChat.chat()` 的顺序和 Script/Production 两个 `handleSend`：Socket 已断开时，即使 UI 通常禁用输入，连接竞态仍可能让发送处理函数执行。先加本地气泡再发现 `emit=false` 会伪造已发送消息，随后清空草稿还会丢用户输入；现在先确认客户端可发送，再回显并清空。用 `useChatStopBoundary.test.ts` 的断线与连接用例说明修复范围，同时明确 `emit=true` 没有服务端 ACK，不能把该测试写成持久投递保证。
+
 进程恢复再读 ADR-0012/0013 与 `src/database/agentRunRecovery.ts`：本地假 Model 延迟时必须确认最新 checkpoint 是 `model-call-intent`、Run 仍 running，才终止专用临时服务。测试为快速走到租约接管分支，仅把临时 Run 的 lease 设为过期；重启后检查 waiting、`interrupted-model-call`、无 Output、无新增假模型调用及浏览器 HTTP 投影。别把这个加速测试描述成真实 60 秒时间测试，也别把无重发等同于供应商端无效果。
