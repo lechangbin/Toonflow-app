@@ -15,8 +15,34 @@ env:
   NODE_VERSION: "24"
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    name: 发布前验证
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 安装依赖
+        run: yarn install --frozen-lockfile
+
+      - name: 类型检查
+        run: yarn lint
+
+      - name: 全量自动化测试
+        run: yarn test
+
+      - name: 本地确定性 Golden 硬门
+        run: yarn eval:golden
+
   # ==================== Windows 构建 ====================
   build-Windows:
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -55,6 +81,7 @@ jobs:
 
   # ==================== macOS 构建 ====================
   build-macOS:
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -102,6 +129,7 @@ jobs:
 
   # ==================== Linux 构建 ====================
   build-Linux:
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
