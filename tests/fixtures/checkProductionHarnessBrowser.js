@@ -59,6 +59,28 @@ async page => {
   await page.getByRole("button", { name: "受控 Run（试用）" }).click();
   const restored = page.getByRole("region", { name: "生产 Agent 持久 Run" });
   await restored.getByText(`Run ${readRunId} · succeeded`, { exact: false }).waitFor();
-  return { runId, readRunId, status: "succeeded", restoredAfterReload: true,
+  await restored.getByRole("textbox", {
+    name: "描述要检查的拍摄计划、图片、派生资产、分镜或视频候选",
+  }).fill("[slow-fixture] 刷新期间继续受控生产指导");
+  await restored.getByRole("button", { name: "创建 Run" }).click();
+  await page.waitForFunction((prior) => {
+    const text = document.querySelector(".productionHarness .runCard")?.textContent || "";
+    const match = text.match(/Run ([0-9a-f-]{36}) · (queued|running)/u);
+    return match && match[1] !== prior;
+  }, readRunId, { timeout: 5_000 });
+  const active = await restored.locator(".runCard").innerText();
+  const activeRunId = active.match(/Run ([0-9a-f-]{36}) · (?:queued|running)/u)?.[1];
+  if (!activeRunId) throw new Error("Slow Production Run was not observed before refresh");
+  await page.reload();
+  await page.getByRole("button", { name: "受控 Run（试用）" }).click();
+  const afterReconnect = page.getByRole("region", { name: "生产 Agent 持久 Run" });
+  await afterReconnect.getByText(new RegExp(`Run ${activeRunId} · (queued|running|succeeded)`)).waitFor();
+  await afterReconnect.getByText(`Run ${activeRunId} · succeeded`, { exact: false })
+    .waitFor({ timeout: 20_000 });
+  if (!(await afterReconnect.locator(".runCard").innerText())
+    .includes("本地假模型：只读建议已完成。")) {
+    throw new Error("Refreshed Run inherited a previous fixture trigger");
+  }
+  return { runId, readRunId, activeRunId, status: "succeeded", restoredAfterReload: true,
     provider: "local-fake-only" };
 }

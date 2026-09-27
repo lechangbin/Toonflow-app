@@ -27,8 +27,8 @@ const server = http.createServer(async (request, response) => {
     }
   }
   const parsed = JSON.parse(body);
-  const userText = parsed.messages?.filter((entry) => entry.role === "user")
-    .map((entry) => typeof entry.content === "string" ? entry.content : "").join("\n") ?? "";
+  const latestUserMessage = parsed.messages?.filter((entry) => entry.role === "user").at(-1);
+  const userText = typeof latestUserMessage?.content === "string" ? latestUserMessage.content : "";
   const proposal = userText.includes("[propose-fixture]");
   const productionRead = userText.includes("[production-read-fixture]");
   const toolReturned = parsed.messages?.some((entry) => entry.role === "tool");
