@@ -8,8 +8,10 @@ export const REQUIRED_ACCEPTANCE_IDS = [
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/u);
 const revision = z.string().trim().min(1).max(128);
-const evidenceRef = z.string().regex(/^(?:docs|data|tests|artifacts)\/[A-Za-z0-9._\/-]+$/u)
-  .refine((value) => !value.split("/").includes(".."));
+export const finalAcceptanceEvidenceRefSchema = z.string()
+  .regex(/^(?:docs|data|tests|artifacts)\/[A-Za-z0-9._\/-]+$/u)
+  .refine((value) => value.split("/").every((segment) => segment !== ".."
+    && segment !== "." && segment !== ""));
 const revisionManifestSchema = z.strictObject({
   app: revision, web: revision, schema: revision, bundle: digest,
   runtime: revision, tool: revision, context: revision,
@@ -26,7 +28,7 @@ export const finalAcceptanceIndexSchema = z.strictObject({
   items: z.array(z.strictObject({
     id: z.enum(REQUIRED_ACCEPTANCE_IDS),
     state: z.enum(["pending", "passed", "failed"]),
-    evidenceRefs: z.array(evidenceRef),
+    evidenceRefs: z.array(finalAcceptanceEvidenceRefSchema),
     testCommand: z.string().min(1).max(1000).nullable(),
     resultHash: digest.nullable(),
     sourceComponent: sourceComponent.nullable(),

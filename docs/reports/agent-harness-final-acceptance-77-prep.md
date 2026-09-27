@@ -115,3 +115,7 @@ T18 后续负路径增量已沿堆叠分支同步：在全新临时 Project 的 
 Web T18 修订 `667df45` 去掉旧 Production 聊天的 Socket 重连乐观 idle 重置，保留服务端 `message:update` 对旧消息终态的所有权；5 个相关定向测试、Vue 类型检查和 Vite 构建通过。更新后的 Web `dist` 六文件已逐项与 App T18 `data/web` 比对，仅 `index.html` 变化并已同步，SHA-256 为 `1EDE4EDE15E2F2DE68E0BDE39008B1F609C0EA3C71A178A88D8DCDC3CD2AA6DD`，沿 T19/T20 合入本 T21 分支。这是阶段配对，不是冻结版本；尚无真实 Socket 断线期间终态丢失的浏览器恢复证据，旧 UI 仍可能保持生成中。兼容与浏览器类别继续 pending。
 
 Web T18 又以 `6c765ba`/`91a13d4` 修复明确断线时的假用户气泡与 Script/Production 草稿丢失：`useChat.chat()` 只有客户端 `emit` 可发送后才回显，两个旧入口仅在发送返回成功时清空输入。相关 8/8 定向测试、独立 Vue 类型检查与 Vite 构建通过；并行构建时一次类型检查在无关项目弹窗出现两处隐式 any，独立复跑未复现，原因未确认。当前 Web/App 配对 `index.html` SHA-256 为 `0B109653898943F72919E4EED0FB32CFF2A6A0922311BC4CE7998EBC873FB4EA`，此前哈希是历史阶段值。`emit=true` 不是服务端 ACK，旧 Socket 仍缺权威重读、完整回退与真实断线时序验收；兼容、浏览器继续 pending。
+
+## 2026-09-27 T21 本地证据字节复核模块（不产生验收通过结论）
+
+新增 `computeFinalAcceptanceEvidenceHash(root, refs)`：只接受索引允许的规范仓库相对路径，拒绝空清单、重复/缺失/目录路径，使用真实路径确认引用仍在根目录内，逐文件流式 SHA-256，再按路径字节序排序后对 `[路径, 文件哈希]` 数组的 JSON 求整体 SHA-256。这样相同文件集合不依赖输入顺序，篡改字节会改变摘要；它不读取密钥、不执行 `testCommand`，也不把 `resultHash` 自述视为通过。两份 T21 测试文件合计 5 passed、1 skipped（Windows 主机不允许创建外链 symlink）、TypeScript 检查通过；代码有 realpath 越界保护，但外链 symlink 实测在此主机未验证。当前模块只是未来独立检查器的文件完整性基础，尚未接入 `verifyFinalAcceptance`、核验 Git 跟踪/冻结修订、命令退出码、日志真实性、内容语义或人工评审。七类仍全部 pending。
