@@ -183,6 +183,66 @@ test("T11 materializes a hash-bound isolated Project fixture atomically", async 
   } finally { await db.destroy(); }
 });
 
+test("T11 keeps a genuine unreviewed machine-gate failure visible and blocks resume", async () => {
+  const db = knexFactory({ client: "better-sqlite3",
+    connection: { filename: ":memory:" }, useNullAsDefault: true });
+  const previousLog = console.log;
+  console.log = () => undefined;
+  try { await initDB(db); } finally { console.log = previousLog; }
+  try {
+    const manifestSource = fs.readFileSync(path.resolve(
+      "data/eval/agent-runtime-corpus-v1/manifest.json"), "utf8");
+    const corpus = validateAgentRuntimeCorpus(JSON.parse(manifestSource) as unknown);
+    const fixtureSource = fs.readFileSync(path.resolve(corpus.cases[0].fixture.path), "utf8");
+    const work = async <T>(operation: (database: typeof db) => Promise<T> | T) => operation(db);
+    await materializeAgentRuntimeProjectFixture({ work, source: fixtureSource,
+      expectedHash: corpus.cases[0].fixture.sha256, projectId: 7 });
+    let serial = 0;
+    const createId = () => `unreviewed-${++serial}`;
+    const revisions = { app: "app-1", schema: "schema-1", runtime: "runtime-1",
+      tool: "tool-1", context: "context-1", memory: "memory-1",
+      skill: "skill-1", model: "model-1", vendor: "vendor-1" };
+    const evaluation = createEvaluationRunRuntime({ work, now: () => 200, createId });
+    const frozen = await freezeAgentRuntimeEvaluationRun(evaluation, {
+      manifestSource, studyId: "unreviewed-gate", seeds: [11, 29],
+      baseline: revisions, candidate: { ...revisions, app: "app-2" }, frozenAt: 100,
+      projectIds: Object.fromEntries(corpus.cases.map((cell) => [cell.id, 7])),
+      readFixture: async () => fixtureSource });
+    const scheduled: Array<() => Promise<void>> = [];
+    const runtime = createAgentRuntime({ work, now: () => 250, createId,
+      schedule: (item) => scheduled.push(item),
+      openTextCall: async () => ({ target: { vendorId: "fake", modelId: "text-v1",
+        contextWindowTokens: 50_000, maxOutputTokens: 256 },
+      invokeText: async () => ({ text: "没有检索来源" } as any) }) });
+    const adapter = createEvaluationAgentCase({ evaluation, runtime,
+      currentRevisions: async () => revisions,
+      awaitScheduledWork: async () => { while (scheduled.length) await scheduled.shift()!(); },
+      verifyProjectFixture: async ({ projectId, fixture }) =>
+        verifyMaterializedAgentRuntimeProjectFixture({ work, source: fixtureSource,
+          expectedHash: fixture.sha256, projectId }) });
+    const first = corpus.cases[0];
+    const result = await adapter.execute({ evaluationRunId: frozen.id,
+      variant: "baseline", caseId: first.id, seed: 11, projectId: 7,
+      actorUserId: 1, role: first.role, scope: first.scope, content: first.content });
+    assert.equal(result.runStatus, "succeeded");
+    const safety = await createRuntimeCorpusSafetyReport({ work, evaluation,
+      evaluationRunId: frozen.id, readFixture: async () => fixtureSource });
+    assert.deepEqual({ observed: safety.observed, failed: safety.failed, missing: safety.missing },
+      { observed: 1, failed: 1, missing: 71 });
+    assert.throws(() => assertRuntimeCorpusSafetyReadyForResume(safety),
+      /manual reconciliation/u);
+    const assessment = createEvaluationAssessmentLedger({ work, evaluation,
+      now: () => 300, createId });
+    const report = await createEvaluationPairedAssessmentReport(evaluation,
+      assessment, frozen.id, { runtimeSafety: { work,
+        readFixture: async () => fixtureSource } });
+    assert.equal(report.cells[0].baseline.state, "gate-failed");
+    assert.ok(report.cells[0].baseline.failedGates.includes("runtime:expected-read-missing"));
+    assert.equal(report.cells[0].baseline.score, null);
+    assert.equal(report.assessedRuns, 0);
+  } finally { await db.destroy(); }
+});
+
 test("T11 checked-in corpus can execute one real Runtime cell with a local Fake Model", async () => {
   const db = knexFactory({ client: "better-sqlite3",
     connection: { filename: ":memory:" }, useNullAsDefault: true });
@@ -236,11 +296,33 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       content: first.content });
     const observed = await evaluation.inspect(frozen.id);
     assert.equal(observed.recorded, 1);
+    assert.match(observed.cases[0].sourceAuditHash!, /^[a-f0-9]{64}$/u);
     assert.equal(observed.missing.length, 71);
     assert.equal(modelCalls, 1);
     assert.equal((await db("o_agentRunOutput")).length, 1);
     assert.equal((await db("o_agentToolReceipt").where({ toolName: "get_novel_text",
       status: "succeeded" })).length, 1);
+    const originalTrace = await db("o_agentTrace").where({ runId: observed.cases[0].agentRunId })
+      .orderBy("sequence", "asc").first();
+    await db("o_agentTrace").where({ id: originalTrace.id }).update({ eventType: "rewritten" });
+    await assert.rejects(evaluation.inspect(frozen.id), /evidence has changed/u);
+    await db("o_agentTrace").where({ id: originalTrace.id })
+      .update({ eventType: originalTrace.eventType });
+    assert.deepEqual(await db("o_agentTrace").where({ id: originalTrace.id }).first(), originalTrace);
+    await evaluation.inspect(frozen.id);
+    const originalAuditReceipt = await db("o_agentToolReceipt")
+      .where({ runId: observed.cases[0].agentRunId }).first();
+    const changedReceiptOutput = JSON.stringify({ text: "changed source" });
+    await db("o_agentToolReceipt").where({ id: originalAuditReceipt.id }).update({
+      outputJson: changedReceiptOutput,
+      outputHash: createHash("sha256").update(changedReceiptOutput).digest("hex") });
+    await assert.rejects(evaluation.inspect(frozen.id), /evidence has changed/u);
+    await db("o_agentToolReceipt").where({ id: originalAuditReceipt.id }).update({
+      outputJson: originalAuditReceipt.outputJson,
+      outputHash: originalAuditReceipt.outputHash });
+    assert.deepEqual(await db("o_agentToolReceipt")
+      .where({ id: originalAuditReceipt.id }).first(), originalAuditReceipt);
+    await evaluation.inspect(frozen.id);
     const blind = await createRuntimeCorpusBlindReviewBatch({ work, evaluation,
       evaluationRunId: frozen.id, blindingKey: Buffer.alloc(32, 7) });
     assert.deepEqual({ pairs: blind.expectedPairs, sides: blind.expectedSides },
@@ -313,27 +395,6 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     const outputRef = "artifacts/agent-run-output.json";
     const assessment = createEvaluationAssessmentLedger({ work, evaluation,
       now: () => 300, createId: () => `review-${++serial}` });
-    const originalReceiptBeforeReview = await db("o_agentToolReceipt").first();
-    await db("o_agentToolReceipt").where({ id: originalReceiptBeforeReview.id })
-      .update({ inputHash: "0".repeat(64) });
-    const failedBeforeReview = await createRuntimeCorpusSafetyReport({ work, evaluation,
-      evaluationRunId: frozen.id,
-      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
-    assert.throws(() => assertRuntimeCorpusSafetyReadyForResume(failedBeforeReview),
-      /manual reconciliation/u);
-    const unassessedButFailed = await createEvaluationPairedAssessmentReport(
-      evaluation, assessment, frozen.id, { runtimeSafety: { work,
-        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
-    assert.equal(unassessedButFailed.cells[0].baseline.state, "gate-failed");
-    assert.ok(unassessedButFailed.cells[0].baseline.failedGates
-      .includes("runtime:tool-input-outside-fixture"));
-    assert.equal(unassessedButFailed.cells[0].baseline.score, null);
-    await db("o_agentToolReceipt").where({ id: originalReceiptBeforeReview.id })
-      .update({ inputHash: originalReceiptBeforeReview.inputHash });
-    const restoredBeforeReview = await createRuntimeCorpusSafetyReport({ work, evaluation,
-      evaluationRunId: frozen.id,
-      readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
-    assert.doesNotThrow(() => assertRuntimeCorpusSafetyReadyForResume(restoredBeforeReview));
     await assessment.record({ evaluationRunId: frozen.id, variant: "baseline",
       caseId: first.id, seed: 11, assessorId: "fixture-reviewer", method: "manual-review",
       hardGates: first.hardGates.map((gate) => ({ id: gate.id, passed: true,
@@ -372,8 +433,10 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
     await assert.rejects(verifyRuntimeCorpusEvidenceArtifactProvenance({ work, evaluation,
       assessment: { ...reviewed, artifacts: reviewed.artifacts.map((artifact) => ({ ...artifact,
         sha256: "0".repeat(64) })) } }), /differ from source Agent Run/u);
+    const staleEvaluation = { ...evaluation, inspect: async () => observed };
     await db("o_agentToolReceipt").update({ inputHash: "0".repeat(64) });
-    const foreign = await inspectRuntimeCorpusCellGates({ work, evaluation,
+    await assert.rejects(evaluation.inspect(frozen.id), /source audit rows/u);
+    const foreign = await inspectRuntimeCorpusCellGates({ work, evaluation: staleEvaluation,
       evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
       readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
     assert.equal(foreign.state, "failed");
@@ -387,31 +450,30 @@ test("T11 checked-in corpus can execute one real Runtime cell with a local Fake 
       chapter: "雨夜启程", text: "伪造的来源正文" });
     await db("o_agentToolReceipt").update({ outputJson: fakeOutput,
       outputHash: createHash("sha256").update(fakeOutput).digest("hex") });
-    const forged = await inspectRuntimeCorpusCellGates({ work, evaluation,
+    const forged = await inspectRuntimeCorpusCellGates({ work, evaluation: staleEvaluation,
       evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
       readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
     assert.ok(forged.violations.includes("tool-output-differs-from-fixture"));
     await db("o_agentToolReceipt").update({ outputJson: originalReceipt.outputJson,
       outputHash: originalReceipt.outputHash });
     await db("o_agentToolReceipt").update({ outputJson: "{" });
-    const corruptReport = await createRuntimeCorpusSafetyReport({ work, evaluation,
+    const corruptReport = await createRuntimeCorpusSafetyReport({ work,
+      evaluation: staleEvaluation,
       evaluationRunId: frozen.id,
       readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
     assert.deepEqual({ expected: corruptReport.expected, failed: corruptReport.failed,
       missing: corruptReport.missing }, { expected: 72, failed: 1, missing: 71 });
     assert.ok(corruptReport.cells[0].violations.includes("tool-receipt-corrupt"));
-    const pairedWithCorruptEvidence = await createEvaluationPairedAssessmentReport(
+    await assert.rejects(createEvaluationPairedAssessmentReport(
       evaluation, assessment, frozen.id, { runtimeSafety: { work,
-        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } });
-    assert.equal(pairedWithCorruptEvidence.cells[0].baseline.state, "gate-failed");
-    assert.ok(pairedWithCorruptEvidence.cells[0].baseline.failedGates.includes(
-      "runtime:tool-receipt-corrupt"));
+        readFixture: async (fixturePath: string) => fs.readFileSync(path.resolve(fixturePath)) } }),
+    /source audit rows/u);
     await db("o_agentToolReceipt").update({ outputJson: originalReceipt.outputJson });
     const proposalTrace = await db("o_agentTrace").where({ runId: observed.cases[0].agentRunId })
       .orderBy("sequence", "asc").first();
     await db("o_agentTrace").where({ id: proposalTrace.id })
       .update({ eventType: "tool.proposal.created" });
-    const proposed = await inspectRuntimeCorpusCellGates({ work, evaluation,
+    const proposed = await inspectRuntimeCorpusCellGates({ work, evaluation: staleEvaluation,
       evaluationRunId: frozen.id, variant: "baseline", caseId: first.id, seed: 11,
       readFixture: async (fixturePath) => fs.readFileSync(path.resolve(fixturePath)) });
     assert.ok(proposed.violations.includes("unapproved-effect-or-proposal"));

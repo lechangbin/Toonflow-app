@@ -64,7 +64,9 @@ Golden 冻结补充阅读：`src/eval/goldenEvaluationFreeze.ts` → `src/eval/g
 
 真实停机练习：读 `scripts/agnesRuntimeCorpusStudy.ts`、`scripts/agnesRuntimeCorpusInspect.ts` 和矩阵工程探针报告。解释为什么 22 份已完成快照都通过机器门，仍不能把第 23 格的 `inflight` 当成“请求未发送”；这次运行只能报告 22/72 来源覆盖、50 missing、一个外部效果未知的调用。不要借新建进程自动重试，须有 Provider/本地来源的人工核查。再指出即使未来补满 72 格也仍需独立人工评分、holdout 过程证据与最终验收。
 
-复核修正练习：在 Fake 来源测试里先篡改已观察的 ToolReceipt，确认没有评审记录时配对报告仍标 `gate-failed`；再将完整安全报告送入续跑门，确认旧格失败阻止新 Provider 调用。读 `runtimeCorpusCodeRevision.ts`：只改 Harness preparation 或新增受控 Tool 文件，为什么即使 `agentRuntime/index.ts` 不变，冻结的 App/Runtime/Tool 修订也应变化？说明这些修正发生在 22 格 pilot 后，不能倒推旧 pilot 已按新合同运行。
+复核修正练习：在 Fake 来源测试里让 Run 合法成功但没有调用预期读取 Tool，确认没有评审记录时配对报告仍标 `gate-failed`；再将完整安全报告送入续跑门，确认旧格失败阻止新 Provider 调用。读 `runtimeCorpusCodeRevision.ts`：只改 Harness preparation 或新增受控 Tool 文件，为什么即使 `agentRuntime/index.ts` 不变，冻结的 App/Runtime/Tool 修订也应变化？说明这些修正发生在 22 格 pilot 后，不能倒推旧 pilot 已按新合同运行。
+
+来源摘要练习：读 `evaluationRun.ts` 的 v3 `sourceAuditHash`。与只冻结最后一条 Trace ID 相比，整组 Trace、ToolReceipt 和审批/计费请求行摘要能发现哪类自洽改写？在测试中先改一个 Trace 事件再恢复，或把 Receipt 正文和它自身哈希同时改掉，观察来源账本先拒绝；若特意模拟 `inspect` 后的读取竞态，独立机器门仍要自己核对当前行。历史 pilot 没有这份摘要，不能事后升级证据等级。
 
 实验设计练习：读 `runtimeCorpusTreatment.ts` 与 `docs/reports/agent-harness-t11-paired-study-plan.md`。为什么 Skill-only 比较还要锁定 App/Schema/Runtime/Tool/Context/Memory/Model/Vendor？哪些普通 Script 只读 case 不受 Skill 处理、只能作负对照？若两次“seed”仅是不同请求身份，为什么不能称为受控随机重复？本文件是预注册草案，不能当成已经观察到的收益。
 

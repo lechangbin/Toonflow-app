@@ -4,6 +4,7 @@ import { AGENT_RUN_OUTPUT_SCHEMA_VERSION } from "@/agentRuntime";
 import type { DatabaseWork } from "@/database";
 import { auditCausalTraceTimeline } from "@/agentRuntime/causalTrace";
 import { z } from "zod";
+import type { Knex } from "knex";
 
 import { hashGoldenEvalManifest, validateGoldenEvalManifest } from "./goldenEval";
 import { hashAgentRuntimeCorpus, validateAgentRuntimeCorpus } from "./agentRuntimeCorpus";
@@ -41,6 +42,23 @@ export type EvaluationRunManifest = z.infer<typeof evaluationRunManifestSchema>;
 export const parseEvaluationRevisions = (input: unknown) => revisions.parse(input);
 
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
+const canonical = (value: unknown): unknown => Array.isArray(value)
+  ? value.map(canonical)
+  : value && typeof value === "object"
+    ? Object.fromEntries(Object.entries(value).sort(([left], [right]) =>
+      left.localeCompare(right)).map(([key, item]) => [key, canonical(item)]))
+    : value;
+const sourceAuditTables = ["o_agentTrace", "o_agentToolReceipt", "o_agentToolApproval",
+  "o_agentToolCall", "o_agentVendorRequest", "o_agentVideoVendorRequest"] as const;
+async function sourceAuditHash(tx: Knex.Transaction, runId: string): Promise<string> {
+  const material = [];
+  for (const table of sourceAuditTables) {
+    const rows = await tx(table).where({ runId }).select("*");
+    material.push([table, rows.map(canonical).sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)))]);
+  }
+  return hash(JSON.stringify(material));
+}
 export const hashEvaluationInput = (content: string) => hash(content.trim());
 const actorMatches = (storedInput: unknown, expectedActorUserId?: number) =>
   expectedActorUserId === undefined || (typeof storedInput === "object" && storedInput !== null
@@ -111,6 +129,7 @@ const caseEvidenceSchema = z.strictObject({
   costMicros: z.null(),
   outputHash: digest.nullable(), lastTraceId: identity,
   lastTraceSequence: z.number().int().positive(),
+  sourceAuditHash: digest.optional(),
 });
 type CaseEvidence = z.infer<typeof caseEvidenceSchema>;
 
@@ -193,7 +212,9 @@ export function createEvaluationRunRuntime(dependencies: {
           runCreatedAt: run.createdAt, runCompletedAt: run.completedAt,
           elapsedMs: run.completedAt - run.createdAt, costMicros: null,
           outputHash: output?.contentHash ?? null,
-          lastTraceId: trace.id, lastTraceSequence: trace.sequence });
+          lastTraceId: trace.id, lastTraceSequence: trace.sequence,
+          ...(manifest.schemaVersion === RUNTIME_CORPUS_EVALUATION_RUN_VERSION
+            ? { sourceAuditHash: await sourceAuditHash(tx, run.id) } : {}) });
         const evidenceJson = JSON.stringify(evidence);
         const existing = await tx("o_agentEvaluationCase").where({
           evaluationRunId: input.evaluationRunId, caseId: input.caseId,
@@ -257,6 +278,10 @@ export function createEvaluationRunRuntime(dependencies: {
           const outputs = await tx("o_agentRunOutput").where({ runId: evidence.agentRunId })
             .select("content", "contentHash", "schemaVersion");
           const output = outputs[0];
+          if (evidence.sourceAuditHash !== undefined
+            && await sourceAuditHash(tx, evidence.agentRunId) !== evidence.sourceAuditHash) {
+            throw new Error("Evaluation source Agent Run evidence has changed: source audit rows");
+          }
           if (!run || run.projectId !== evidence.projectId
             || run.clientRequestId !== evaluationCaseRequestId(id,
               evidence.variant, evidence.caseId, evidence.seed)
